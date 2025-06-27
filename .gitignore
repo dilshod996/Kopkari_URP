@@ -70,3 +70,8 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+# Temporarily ignore heavy third-party assets
+Assets/Malbers Animations/
+Assets/Fantastic Nature Pack/
+Assets/GabrielAguiarProductions/
+
