@@ -1,0 +1,268 @@
+fileFormatVersion: 2
+guid: 498c230bd5038a94f98496928cdbb8d5
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: OtAnjomlari_0
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 384
+        width: 426
+        height: 502
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5923ee284e18e5841bc88e20d9709cad
+      internalID: -952706595
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OtAnjomlari_1
+      rect:
+        serializedVersion: 2
+        x: 522
+        y: 191
+        width: 114
+        height: 651
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 03dd12048da307446ab087425fafebd3
+      internalID: -1784169565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OtAnjomlari_2
+      rect:
+        serializedVersion: 2
+        x: 688
+        y: 505
+        width: 188
+        height: 347
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 05a4f8394ec724b4088c384bbaf58625
+      internalID: -1103326657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OtAnjomlari_20
+      rect:
+        serializedVersion: 2
+        x: 644
+        y: 160
+        width: 268
+        height: 344
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 99e92a52a4dfd564bac78d61abb7cdb5
+      internalID: 187866994
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OtAnjomlari_25
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 60
+        width: 453
+        height: 325
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6e5c8cfd6018ae24b945023c14c14140
+      internalID: 958784822
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: fdc5132423de65046a9e79ca5a476e15
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable:
+      OtAnjomlari_0: -952706595
+      OtAnjomlari_1: -1784169565
+      OtAnjomlari_10: 391684040
+      OtAnjomlari_11: -1365247954
+      OtAnjomlari_12: -186805508
+      OtAnjomlari_13: -1179419281
+      OtAnjomlari_14: -1781238104
+      OtAnjomlari_15: -636347583
+      OtAnjomlari_16: 278475829
+      OtAnjomlari_17: -139915420
+      OtAnjomlari_18: -72792765
+      OtAnjomlari_19: -1943221380
+      OtAnjomlari_2: -1103326657
+      OtAnjomlari_20: 187866994
+      OtAnjomlari_21: 960459430
+      OtAnjomlari_22: -1738767592
+      OtAnjomlari_23: 351608684
+      OtAnjomlari_24: -642238879
+      OtAnjomlari_25: 958784822
+      OtAnjomlari_26: -1805104257
+      OtAnjomlari_27: 1486330736
+      OtAnjomlari_28: 2102405750
+      OtAnjomlari_29: -1415834440
+      OtAnjomlari_3: -1490028535
+      OtAnjomlari_30: 1580940999
+      OtAnjomlari_31: -201607099
+      OtAnjomlari_32: 1183119541
+      OtAnjomlari_33: 2142832312
+      OtAnjomlari_34: -1851347087
+      OtAnjomlari_35: -485841761
+      OtAnjomlari_4: 1657206156
+      OtAnjomlari_5: -498725918
+      OtAnjomlari_6: 1643435424
+      OtAnjomlari_7: 241272907
+      OtAnjomlari_8: -1557254318
+      OtAnjomlari_9: -1872298956
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
