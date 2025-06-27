@@ -1,0 +1,383 @@
+fileFormatVersion: 2
+guid: 35adfe8d958703047836577b5f08347d
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Android
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: 50
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_16
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 641
+        width: 286
+        height: 355
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 35fc3f6d20e762d45aa4b0338b302db2
+      internalID: 1618845116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_19
+      rect:
+        serializedVersion: 2
+        x: 678
+        y: 647
+        width: 324
+        height: 361
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0fe1fc2fbf2734f41bfa08fc4e2eeae8
+      internalID: 1578536578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_21
+      rect:
+        serializedVersion: 2
+        x: 335
+        y: 642
+        width: 336
+        height: 356
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 73bb00864aaa1e746b213e6e8302069c
+      internalID: 145736361
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_28
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 298
+        width: 272
+        height: 338
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0f70c0149a4310242bd756adb4900e4e
+      internalID: 270701888
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_30
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 303
+        width: 350
+        height: 333
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e87f51451feb8734b9c3f62caabaadf6
+      internalID: -1941345622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_33
+      rect:
+        serializedVersion: 2
+        x: 677
+        y: 302
+        width: 319
+        height: 326
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: de6bc73fb655c7142a210380e023562d
+      internalID: 119001334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_44
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 0
+        width: 276
+        height: 304
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9b27953dbdc4fe94fabe5c21639c960b
+      internalID: 281800259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_50
+      rect:
+        serializedVersion: 2
+        x: 349
+        y: 0
+        width: 305
+        height: 296
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 033e63bc18d816f4da5a81f51c82a29a
+      internalID: -158768111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: uloqchaSpriteSheet 1_51
+      rect:
+        serializedVersion: 2
+        x: 678
+        y: 0
+        width: 312
+        height: 289
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 745efc37c6ea7dc409fcfe21055623ba
+      internalID: 2074488463
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: 1af6775376679e248ba3840acfabbdd8
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable:
+      uloqchaSpriteSheet 1_0: -528404438
+      uloqchaSpriteSheet 1_1: -1495430000
+      uloqchaSpriteSheet 1_10: -459016195
+      uloqchaSpriteSheet 1_11: 1661603337
+      uloqchaSpriteSheet 1_12: 671201609
+      uloqchaSpriteSheet 1_13: 1072044310
+      uloqchaSpriteSheet 1_14: 42538500
+      uloqchaSpriteSheet 1_15: -2101433560
+      uloqchaSpriteSheet 1_16: 1618845116
+      uloqchaSpriteSheet 1_17: 537733124
+      uloqchaSpriteSheet 1_18: -1662127225
+      uloqchaSpriteSheet 1_19: 1578536578
+      uloqchaSpriteSheet 1_2: 433632996
+      uloqchaSpriteSheet 1_20: 406704283
+      uloqchaSpriteSheet 1_21: 145736361
+      uloqchaSpriteSheet 1_22: -1592622035
+      uloqchaSpriteSheet 1_23: -1808640434
+      uloqchaSpriteSheet 1_24: -76234884
+      uloqchaSpriteSheet 1_25: 1311198102
+      uloqchaSpriteSheet 1_26: -1719688044
+      uloqchaSpriteSheet 1_27: -1522514713
+      uloqchaSpriteSheet 1_28: 270701888
+      uloqchaSpriteSheet 1_29: -1344139425
+      uloqchaSpriteSheet 1_3: 271492973
+      uloqchaSpriteSheet 1_30: -1941345622
+      uloqchaSpriteSheet 1_31: 1479138195
+      uloqchaSpriteSheet 1_32: -285708484
+      uloqchaSpriteSheet 1_33: 119001334
+      uloqchaSpriteSheet 1_34: -363097739
+      uloqchaSpriteSheet 1_35: -1012433669
+      uloqchaSpriteSheet 1_36: 431489752
+      uloqchaSpriteSheet 1_37: 707413696
+      uloqchaSpriteSheet 1_38: -1528812941
+      uloqchaSpriteSheet 1_39: -1999919035
+      uloqchaSpriteSheet 1_4: -256090570
+      uloqchaSpriteSheet 1_40: -697343866
+      uloqchaSpriteSheet 1_41: -456800476
+      uloqchaSpriteSheet 1_42: 1924521427
+      uloqchaSpriteSheet 1_43: -1690836645
+      uloqchaSpriteSheet 1_44: 281800259
+      uloqchaSpriteSheet 1_45: -1096719639
+      uloqchaSpriteSheet 1_46: 929751460
+      uloqchaSpriteSheet 1_47: 1226888871
+      uloqchaSpriteSheet 1_48: -1234949210
+      uloqchaSpriteSheet 1_49: 923837806
+      uloqchaSpriteSheet 1_5: -1504393953
+      uloqchaSpriteSheet 1_50: -158768111
+      uloqchaSpriteSheet 1_51: 2074488463
+      uloqchaSpriteSheet 1_52: 528223174
+      uloqchaSpriteSheet 1_53: -703015278
+      uloqchaSpriteSheet 1_54: -1160424776
+      uloqchaSpriteSheet 1_55: -804968596
+      uloqchaSpriteSheet 1_56: -1581722124
+      uloqchaSpriteSheet 1_57: -480699208
+      uloqchaSpriteSheet 1_58: 1038069655
+      uloqchaSpriteSheet 1_59: -344735203
+      uloqchaSpriteSheet 1_6: 1815493731
+      uloqchaSpriteSheet 1_60: -1146535995
+      uloqchaSpriteSheet 1_61: -2036476242
+      uloqchaSpriteSheet 1_62: -926271402
+      uloqchaSpriteSheet 1_63: -718695460
+      uloqchaSpriteSheet 1_64: -1970426630
+      uloqchaSpriteSheet 1_65: -1491324544
+      uloqchaSpriteSheet 1_66: 1600851161
+      uloqchaSpriteSheet 1_7: -2128684538
+      uloqchaSpriteSheet 1_8: -446477800
+      uloqchaSpriteSheet 1_9: -1269444038
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

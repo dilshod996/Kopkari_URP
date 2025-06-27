@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: HorseCustoms
+  m_EditorClassIdentifier: 
+  m_GroupName: HorseCustoms
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 072c74e3c0f5af245b112f6f861282fb
+  m_SerializeEntries:
+  - m_GUID: 48a3ff7d81b735a47aaa910a8a1df49f
+    m_Address: HorseBrown
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d72f275ed72cb9549bbddf7300e78d17
+    m_Address: HorseEyes
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bfa6f52b0fc2a9646abc0f3adadfbad4
+    m_Address: HorseManeBlack
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 40e1ad78d17981c43b148efa9105b11e
+    m_Address: Saddle
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 692b9cde8f7cd9547ad7c8375948a044, type: 2}
+    - {fileID: 11400000, guid: e4a0f4659da8f024bad1222c686fa809, type: 2}

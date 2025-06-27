@@ -1,0 +1,311 @@
+fileFormatVersion: 2
+guid: c36129c16c50c3d4bb0a61309102a62a
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Android
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: 50
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: CostumSetIcons_4
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 1635
+        width: 660
+        height: 866
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 42ba554813a0d9f4daf3f5e7b2c335ce
+      internalID: -1575287497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CostumSetIcons_41
+      rect:
+        serializedVersion: 2
+        x: 271
+        y: 787
+        width: 866
+        height: 820
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 85b6ebef3f1b44f45bf2d9569047dd3f
+      internalID: -681906181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CostumSetIcons_57
+      rect:
+        serializedVersion: 2
+        x: 350
+        y: 69
+        width: 615
+        height: 690
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 239698b3b53478a4298eeab4f0470cdb
+      internalID: 922654412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CostumSetIcons_61
+      rect:
+        serializedVersion: 2
+        x: 1256
+        y: 153
+        width: 417
+        height: 575
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e94bcb2d5b9ac9849a199dcfdfa5fea6
+      internalID: -1106002213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable:
+      CostumSetIcons_0: -1717008542
+      CostumSetIcons_1: 573302403
+      CostumSetIcons_10: -297672774
+      CostumSetIcons_11: -1272713374
+      CostumSetIcons_12: 692476453
+      CostumSetIcons_13: -545361950
+      CostumSetIcons_14: 501489986
+      CostumSetIcons_15: -1282914972
+      CostumSetIcons_16: 2060182049
+      CostumSetIcons_17: 1777150502
+      CostumSetIcons_18: -1413166408
+      CostumSetIcons_19: 238494651
+      CostumSetIcons_2: -660953936
+      CostumSetIcons_20: -261685800
+      CostumSetIcons_21: -1966213710
+      CostumSetIcons_22: 1884010452
+      CostumSetIcons_23: 517272690
+      CostumSetIcons_24: -1539072613
+      CostumSetIcons_25: -970876829
+      CostumSetIcons_26: 1945119281
+      CostumSetIcons_27: -464933923
+      CostumSetIcons_28: -389067510
+      CostumSetIcons_29: 1606391101
+      CostumSetIcons_3: 480292798
+      CostumSetIcons_30: -68732278
+      CostumSetIcons_31: 1337235746
+      CostumSetIcons_32: 1200057321
+      CostumSetIcons_33: 1080905712
+      CostumSetIcons_34: -466787098
+      CostumSetIcons_35: 550403339
+      CostumSetIcons_36: -417910531
+      CostumSetIcons_37: -544101938
+      CostumSetIcons_38: -1486471574
+      CostumSetIcons_39: 322771441
+      CostumSetIcons_4: -1575287497
+      CostumSetIcons_40: -161357191
+      CostumSetIcons_41: -681906181
+      CostumSetIcons_42: 408307770
+      CostumSetIcons_43: -424484897
+      CostumSetIcons_44: 1455775652
+      CostumSetIcons_45: -1714670889
+      CostumSetIcons_46: -1523332075
+      CostumSetIcons_47: 792787235
+      CostumSetIcons_48: 30725360
+      CostumSetIcons_49: -1455759344
+      CostumSetIcons_5: 1645427961
+      CostumSetIcons_50: 589739161
+      CostumSetIcons_51: 1021150318
+      CostumSetIcons_52: 1415503223
+      CostumSetIcons_53: 867235990
+      CostumSetIcons_54: 809476213
+      CostumSetIcons_55: -1603721226
+      CostumSetIcons_56: -1176174877
+      CostumSetIcons_57: 922654412
+      CostumSetIcons_58: -1244527828
+      CostumSetIcons_59: -857365379
+      CostumSetIcons_6: -1680584650
+      CostumSetIcons_60: -1127122344
+      CostumSetIcons_61: -1106002213
+      CostumSetIcons_62: 186500970
+      CostumSetIcons_63: 40846564
+      CostumSetIcons_64: 1102075090
+      CostumSetIcons_65: -1701483087
+      CostumSetIcons_66: -1355196094
+      CostumSetIcons_67: -1462837268
+      CostumSetIcons_68: -556084837
+      CostumSetIcons_69: 1393636760
+      CostumSetIcons_7: -703495517
+      CostumSetIcons_70: -528459951
+      CostumSetIcons_71: -1961626670
+      CostumSetIcons_72: 1670067809
+      CostumSetIcons_73: 22555810
+      CostumSetIcons_74: 1707243077
+      CostumSetIcons_75: -1482400419
+      CostumSetIcons_76: -1363830217
+      CostumSetIcons_77: -1346189280
+      CostumSetIcons_78: 372494731
+      CostumSetIcons_79: 392803302
+      CostumSetIcons_8: -1742519096
+      CostumSetIcons_80: -2011011101
+      CostumSetIcons_81: -1933303744
+      CostumSetIcons_82: 1481414383
+      CostumSetIcons_83: -1071685282
+      CostumSetIcons_84: 2114034148
+      CostumSetIcons_85: -476762677
+      CostumSetIcons_86: -295455416
+      CostumSetIcons_87: 2094536935
+      CostumSetIcons_88: 930763633
+      CostumSetIcons_89: -1121915978
+      CostumSetIcons_9: 1747183478
+      CostumSetIcons_90: 1243471122
+      CostumSetIcons_91: -510741349
+      CostumSetIcons_92: -551555859
+      CostumSetIcons_93: -1430434677
+      CostumSetIcons_94: 988518692
+      CostumSetIcons_95: -903152593
+      CostumSetIcons_96: -1736226856
+      CostumSetIcons_97: 1891520147
+      CostumSetIcons_98: -784010146
+      CostumSetIcons_99: -1655051159
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

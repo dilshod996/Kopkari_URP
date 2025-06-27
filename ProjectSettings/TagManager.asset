@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - Stair
+  - WallRun
+  - Climb
+  - Fly
+  - Animal
+  - Water
+  - WaterCover
+  - InitialDoor
+  - Lamb
+  - lampGetTutorial
+  - SpeedLow
+  - videoOt
+  - NPC
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - Player
+  - Water
+  - UI
+  - NPC
+  - Cube
+  - Lamb
+  - Trophy
+  - NewUI
+  - 
+  - 
+  - 
+  - 
+  - BodyPart
+  - 
+  - 
+  - 
+  - 
+  - Animal
+  - 
+  - 
+  - Enemy
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - Item
+  - NameUI
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
