@@ -33,6 +33,7 @@ namespace Kopkari
         [SerializeField] AudioClip introMusic;
         [SerializeField] TMP_Text gameName;
         [SerializeField] private Button startButton;
+        [SerializeField] private Button skipButton;
         //Intro scene addressable addresses
         private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
         //Lobby scene addressable addresses
@@ -76,8 +77,8 @@ namespace Kopkari
             });
             videoPlayer.loopPointReached += OnVideoFinished;
             GetAddressableData();
-            
-            PlayerPrefs.DeleteAll();
+            SkippAppear();
+            //PlayerPrefs.DeleteAll();
             PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
             SetInitialLanguage();
@@ -85,7 +86,7 @@ namespace Kopkari
             {
                 LoadLobbyScene();
             });
-
+            skipButton.onClick.AddListener(SkippVideo);
             InitializePlayerPrefs();
 
         }
@@ -112,11 +113,6 @@ namespace Kopkari
         }
         private void InitializePlayerPrefs()
         {
-            //if (!PlayerPrefs.HasKey(UsernameKey))
-            //    PlayerPrefs.SetString(UsernameKey, DefaultUsername);
-
-            //if (!PlayerPrefs.HasKey(CountryName))
-            //    PlayerPrefs.SetInt(CountryName, 0);
 
             if (!PlayerPrefs.HasKey(Constants.Horse.HorseNameKey))
                 PlayerPrefs.SetString(HorseNameKey, DefaultHorseName);
@@ -141,6 +137,27 @@ namespace Kopkari
 
 
         #region Get Intro Video
+
+        private void SkippAppear()
+        {
+            int skippAppear = PlayerPrefs.GetInt(Constants.Initialize.skippAppear);
+            if(skippAppear==0)
+            {
+                skipButton.gameObject.SetActive(false);
+            }
+        }
+        public void SkippVideo()
+        {
+            if (videoPlayer.isPlaying && videoPlayer.clip != null)
+            {
+                videoPlayer.Stop();
+                moveLobbyPage.SetActive(true);
+                if (startingPage.activeSelf)
+                    startingPage.SetActive(false);
+                skipButton.gameObject.SetActive(false);
+                gameName.text = LanguageManager.Instance.GetText(5);
+            }
+        }
         public void SoundEffect(AudioClip clip)
         {
             SoundManager.Instance.PlayMusic(clip);
@@ -179,7 +196,8 @@ namespace Kopkari
                             SoundEffect(audio);
                             Debug.Log("🔊 Audio played");
                         }
-                        startingPage.SetActive(false);
+                        if(startingPage.activeSelf)
+                            startingPage.SetActive(false);
                     }
                     else
                     {
@@ -206,26 +224,10 @@ namespace Kopkari
             {
                 videoPlayer.clip = handle.Result;
                 videoPlayer.Play();
-                startingPage.SetActive(false);
+                if (startingPage.activeSelf)
+                    startingPage.SetActive(false);
             }
 
-            //VideoClip clip = await AddressablesManager.Instance.LoadAssetSmartAsync<VideoClip>(
-            //   "IntroVideo",
-            //    progress => {
-            //        float percent = progress * 100f;
-            //        progressBar.currentPercent = percent;
-            //        progressBar.UpdateUI(); // Qo‘lda UI ni yangilash
-            //                                //Debug.Log($"Progress: {percent}%");
-            //    },
-            //    fakeDurationIfCached: 5f);
-
-            //if (clip != null)
-            //{
-            //    Debug.Log("Video loaded successfully");
-            //    videoPlayer.clip = clip;
-            //    videoPlayer.Play();
-            //    startingPage.SetActive(false);
-            //}
         }
         #endregion
 
@@ -285,7 +287,13 @@ namespace Kopkari
         void OnVideoFinished(VideoPlayer vp)
         {
             moveLobbyPage.SetActive(true);
+            if(PlayerPrefs.GetInt(Constants.Initialize.skippAppear) == 0)
+            {
+                PlayerPrefs.SetInt(Constants.Initialize.skippAppear, 1);
+                PlayerPrefs.Save();
+            }
             gameName.text = LanguageManager.Instance.GetText(5);
+            skipButton.gameObject.SetActive(false);
             startButton.GetComponentInChildren<TMP_Text>().text = LanguageManager.Instance.GetText(4);
             Debug.Log("Video finished");
         }

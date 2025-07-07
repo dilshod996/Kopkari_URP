@@ -12,9 +12,6 @@ EditorBuildSettings:
     path: Assets/02.Scenes/Loading.unity
     guid: 4dd03be80dd83834f84bdfd2a9c714db
   - enabled: 1
-    path: Assets/02.Scenes/Lobby.unity
-    guid: a1ba27af11bd7be42bc40705fe5b3b81
-  - enabled: 1
     path: Assets/02.Scenes/GamePlayScenes/Beginer.unity
     guid: b73c90525571a9743b8fea27ea612867
   - enabled: 1
@@ -23,6 +20,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/02.Scenes/CustomRoom/AvatarCustom.unity
     guid: 8efaea749e921344ab2e69a9a4e5e4c7
+  - enabled: 1
+    path: Assets/02.Scenes/Lobby.unity
+    guid: 40dc587d911790d4c81f0ea3de543bc9
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 76785f93504f65749b446b828074051a,
       type: 2}

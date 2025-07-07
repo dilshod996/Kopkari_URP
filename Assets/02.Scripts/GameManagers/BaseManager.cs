@@ -242,11 +242,6 @@ public class BaseManager : MonoBehaviour
         {
             mainVirtualCamera.Priority = 15; // Asosiy kamera faqat o'yin boshlanganda ishlaydi
         }
-        // Kamera harakatga tayyorlansin faqat enable bo‘lganda
-        //if (enable)
-        //{
-        //    dollyCamera?.StartGame();
-        //}
 
         // State faqat false bo‘lsa darhol reset qilinadi
         if (!enable)

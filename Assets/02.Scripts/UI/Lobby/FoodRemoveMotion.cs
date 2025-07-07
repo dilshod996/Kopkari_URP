@@ -31,19 +31,19 @@ public class FoodRemoveMotion : MonoBehaviour
         Sprite icon = null; // Default value in case no match is found
         switch(foodName)
         {
-            case "bugdoy":
+            case Constants.Prizes.Bugdoy:
                 icon = bugdoySprite;
                 break;
-            case "arpa":
+            case Constants.Prizes.Arpa:
                 icon = arpaSprite;
                 break;
-            case "olma":
+            case Constants.Prizes.Apple:
                 icon = olmaSprite;
                 break;
-            case "suv":
+            case Constants.Prizes.Water:
                 icon = suvSprite;
                 break;
-            case "chidamlisuv":
+            case Constants.Prizes.StaminWater:
                 icon = chidamliSuvSprite;
                 break;
             default:

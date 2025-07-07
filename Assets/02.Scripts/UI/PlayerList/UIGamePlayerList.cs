@@ -13,18 +13,30 @@ public class UIGamePlayerList : MonoBehaviour
     [SerializeField] private TMP_Text powerTitle;
     [SerializeField] private TMP_Text readyTitle;
     [SerializeField] private TMP_Text startBtnText;
+
+    [Header("Time Info")]
+    [SerializeField] private GameObject panelToHide;
+    [SerializeField] private TMP_Text timeText;
+    private int currentTime = 5;
     [Header("Settings")]
-    //public CameraTransitionManager cameraMove;
+    public CameraTransitionManager cameraMove;
     public CountdownAnimator countdownAnimator;
     [SerializeField] private Button startBtn;
     void Start()
     {
-        startBtn.onClick.AddListener(StartGame);
+        
+        UpdateText();                   // Boshlanishda vaqtni ko¡®rsatish
+        StartCoroutine(Countdown());   // Taymerni boshlash
     }
 
     private void OnEnable()
     {
         Transiliations();
+        startBtn.onClick.AddListener(StartGame);
+    }
+    private void OnDisable()
+    {
+        startBtn.onClick.RemoveListener(StartGame);
     }
 
     private void Transiliations()
@@ -40,9 +52,8 @@ public class UIGamePlayerList : MonoBehaviour
 
     private void StartGame()
     {
-        countdownAnimator.gameObject.SetActive(true);
-        //cameraMove.OnStartButtonClicked();
-        //StartCoroutine(DelayStart());
+        cameraMove.OnStartButtonClicked(); 
+        //countdownAnimator.gameObject.SetActive(true);
         gameObject.SetActive(false);
         
     }
@@ -51,4 +62,25 @@ public class UIGamePlayerList : MonoBehaviour
         yield return new WaitForSeconds(3f);
 
     }
+
+    #region Time Live Panel
+    IEnumerator Countdown()
+    {
+        while (currentTime > 0)
+        {
+            yield return new WaitForSeconds(1f);
+            currentTime--;
+            UpdateText();
+        }
+
+        // Vaqt tugadi
+        panelToHide.SetActive(false);
+        startBtn.gameObject.SetActive(true);
+    }
+
+    void UpdateText()
+    {
+        timeText.text = $"00:0{currentTime}";
+    }
+    #endregion
 }

@@ -25,11 +25,7 @@ public class HorseDetails : MonoBehaviour
     private const string FoodPrefsKey = "foodToggle";
     private const string WaterPrefsKey = "waterToggle";
 
-    private const string Bugdoy = "bugdoy";
-    private const string Arpa = "arpa";
-    private const string Olma = "olma";
-    private const string Suv = "suv";
-    private const string Chidamlisuv = "chidamlisuv";
+
     
     private bool isFoodSelected = false;
     private bool isWaterSelected = false;

@@ -1,3 +1,5 @@
+using Unity.VisualScripting;
+
 public static class Constants
 {
     public static class Player
@@ -56,10 +58,8 @@ public static class Constants
     {
         public const string GamePlay = "GamePlayTutorial";
     }
-    // Boshqa guruhlar ham bo'lishi mumkin:
-    // public static class SceneNames
-    // {
-    //     public const string MainMenu = "MainMenu";
-    //     public const string GameScene = "GameScene";
-    // }
+    public static class Initialize
+    {
+        public const string skippAppear= "skippAppear";
+    }
 }

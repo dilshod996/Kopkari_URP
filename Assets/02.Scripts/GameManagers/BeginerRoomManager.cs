@@ -85,13 +85,17 @@ public class BeginerRoomManager : BaseManager
 
     public override void WinOrLosePage()
     {
+        if (IsCatched)
+            IsCatched = false;
+
+        if (pickableObj != null)
+            pickableObj.Drop(); // Uloqni tashlaymiz
         // 1. O'yinni to'xtatamiz
         GameObjectsEnable(false);
         GameStartedAction(false);
 
         // 2. Uloq qo'lida bo'lsa qaytaramiz (tozalaymiz)
-        if (IsCatched)
-            IsCatched = false;
+
 
         // 3. Hozirgi prize haqida log
         Debug.Log("WinOrLosePage: Current prize index: " + prizeManager.CurrentPrizeIndex);

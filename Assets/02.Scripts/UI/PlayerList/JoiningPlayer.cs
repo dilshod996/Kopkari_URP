@@ -12,10 +12,6 @@ public class JoiningPlayer : MonoBehaviour
     public string playerName;
     public string horseName;
     public bool isAIPlayer = true;
-    void Start()
-    {
-        
-    }
 
     private void OnEnable()
     {
@@ -28,12 +24,19 @@ public class JoiningPlayer : MonoBehaviour
             playerNameText.text = playerName;
             horseNameText.text = horseName;
         }
-        playerStatusText.text = LanguageManager.Instance.GetText(275);
+        playerStatusText.text = LanguageManager.Instance.GetText(304);
+        StartCoroutine(ChangeStatusAfterRandomDelay());
     }
 
     private void GetUserData()
     {
         playerNameText.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         horseNameText.text = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
+    }
+    private IEnumerator ChangeStatusAfterRandomDelay()
+    {
+        float delay = Random.Range(2f, 5f);
+        yield return new WaitForSeconds(delay);
+        playerStatusText.text = LanguageManager.Instance.GetText(275);
     }
 }

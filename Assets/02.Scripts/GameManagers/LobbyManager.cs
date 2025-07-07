@@ -75,7 +75,7 @@ public class LobbyManager : MonoBehaviour
     [SerializeField] private TMP_Text tournamentText;
     [SerializeField] private TMP_Text storeText;
     [SerializeField] private TMP_Text settingsText;
-    [SerializeField] private TMP_Text newsText;
+    //[SerializeField] private TMP_Text newsText;
     [SerializeField] private TMP_Text timeText;
     [SerializeField] private TMP_Text lobbyName;
     private const string NPCStartTimeKey = "NPCStartTime";
@@ -412,7 +412,7 @@ public class LobbyManager : MonoBehaviour
         tournamentText.text = LanguageManager.Instance.GetText(24);
         storeText.text = LanguageManager.Instance.GetText(25);
         settingsText.text = LanguageManager.Instance.GetText(26);
-        newsText.text = LanguageManager.Instance.GetText(28);
+       // newsText.text = LanguageManager.Instance.GetText(28);
         //timeText.text = LanguageManager.Instance.GetText(21);
         lobbyName.text = LanguageManager.Instance.GetText(27);
 
@@ -636,11 +636,11 @@ public class LobbyManager : MonoBehaviour
             float percentageAdded = 0;
             switch (waterName)
             {
-                case "suv":
+                case Constants.Prizes.Water:
                     decreaseAmount = 1f;
                     percentageAdded = 10f;
                     break;
-                case "chidamlisuv":
+                case Constants.Prizes.StaminWater:
                     decreaseAmount = 1f;
                     percentageAdded = 15f;
                     break;
