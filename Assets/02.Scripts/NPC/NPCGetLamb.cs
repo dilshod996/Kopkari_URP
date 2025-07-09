@@ -32,8 +32,8 @@ public class NPCGetLamb : MonoBehaviour
     public bool TestMode = false; // Optional for debugging
 
     [SerializeField] private TMP_Text nameText;
-    [SerializeField] private TMP_Text walkZoneText;
-    [SerializeField] private TMP_Text defendText;
+    //[SerializeField] private TMP_Text walkZoneText;
+    //[SerializeField] private TMP_Text defendText;
 
     [Header("Effect To Other Players")]
 
@@ -43,13 +43,13 @@ public class NPCGetLamb : MonoBehaviour
     private void OnDisable()
     {
         StopAllCoroutines();
-        if (attackDefendManager != null)
-        {
-            attackDefendManager.OnWalkZoneAdded -= UpdateWalkZone;
-            attackDefendManager.OnWalkZoneRemoved -= UpdateWalkZone;
-            attackDefendManager.OnDefendAdded -= UpdateDefend;
-            attackDefendManager.OnDefendRemoved -= UpdateDefend;
-        }
+        //if (attackDefendManager != null)
+        //{
+        //    attackDefendManager.OnWalkZoneAdded -= UpdateWalkZone;
+        //    attackDefendManager.OnWalkZoneRemoved -= UpdateWalkZone;
+        //    attackDefendManager.OnDefendAdded -= UpdateDefend;
+        //    attackDefendManager.OnDefendRemoved -= UpdateDefend;
+        //}
     }
     private void OnEnable()
     {
@@ -57,25 +57,25 @@ public class NPCGetLamb : MonoBehaviour
         {
             nameText.text = gameObject.name;
         }
-        if(attackDefendManager != null)
-        {
-            walkZoneText.text = attackDefendManager.walkZoneCount.ToString();
-            defendText.text = attackDefendManager.defendCount.ToString();
-            attackDefendManager.OnWalkZoneAdded += UpdateWalkZone;
-            attackDefendManager.OnWalkZoneRemoved += UpdateWalkZone;
-            attackDefendManager.OnDefendAdded += UpdateDefend;
-            attackDefendManager.OnDefendRemoved += UpdateDefend;
-        }
+        //if(attackDefendManager != null)
+        //{
+        //    //walkZoneText.text = attackDefendManager.walkZoneCount.ToString();
+        //    //defendText.text = attackDefendManager.defendCount.ToString();
+        //    //attackDefendManager.OnWalkZoneAdded += UpdateWalkZone;
+        //    //attackDefendManager.OnWalkZoneRemoved += UpdateWalkZone;
+        //    //attackDefendManager.OnDefendAdded += UpdateDefend;
+        //    //attackDefendManager.OnDefendRemoved += UpdateDefend;
+        //}
 
     }
-    public void UpdateWalkZone()
-    {
-        walkZoneText.text = attackDefendManager.walkZoneCount.ToString();
-    }
-    public void UpdateDefend()
-    {
-        defendText.text = attackDefendManager.defendCount.ToString();
-    }
+    //public void UpdateWalkZone()
+    //{
+    //    walkZoneText.text = attackDefendManager.walkZoneCount.ToString();
+    //}
+    //public void UpdateDefend()
+    //{
+    //    defendText.text = attackDefendManager.defendCount.ToString();
+    //}
     public void OnEnterEvent()
     {
         if (pickUp != null && pickUp.FocusedItem != null && !pickUp.Has_Item && waitCoroutine == null)

@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   walkZonePrefab: {fileID: 4328205558253925573, guid: c8a5523651af070488fbd9168ad0481a,
     type: 3}
-  dropDistanceBehind: 5.3
+  dropDistanceBehind: 6.3
   defendQobiq: {fileID: 2715161489486235039}
   walkZoneCount: 2
   defendCount: 2

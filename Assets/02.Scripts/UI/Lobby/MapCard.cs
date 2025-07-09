@@ -10,7 +10,7 @@ public class MapCard : MonoBehaviour
  
     public Image shadowImage;
     public TMP_Text mapNameText;
-    public TMP_Text mapInfoText;
+   // public TMP_Text mapInfoText;
     public Button chooseButton;
     public Button cardClickButton;
     public Button infoButton;
@@ -133,7 +133,7 @@ public class MapCard : MonoBehaviour
     public void SetMapInfo(string name, string info, string unlockInfo, bool unlocked)
     {
         if (mapNameText != null) mapNameText.text = name;
-        if (mapInfoText != null) mapInfoText.text = info;
+        //if (mapInfoText != null) mapInfoText.text = info;
 
         isUnlocked = unlocked;
 

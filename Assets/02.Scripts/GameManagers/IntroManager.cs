@@ -77,8 +77,9 @@ namespace Kopkari
             });
             videoPlayer.loopPointReached += OnVideoFinished;
             GetAddressableData();
+           // PlayerPrefs.DeleteAll();
             SkippAppear();
-            //PlayerPrefs.DeleteAll();
+
             PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
             SetInitialLanguage();
