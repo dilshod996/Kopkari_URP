@@ -29,6 +29,9 @@ public class BaseManager : MonoBehaviour
     public BackViewCam backviewCam;
 
     [Header("----------------------------")]
+
+    [Header("-------------Speed info---------------")]
+    public GameObject speedShader;
     //[Header("-------------Camera Pivot Point---------------")]
     //public Transform camPivotPoint;
 
@@ -185,25 +188,6 @@ public class BaseManager : MonoBehaviour
         //lampTimerCoroutine = StartCoroutine(LampCatchCountdown());
     }
 
-    //protected virtual IEnumerator LampCatchCountdown()
-    //{
-    //    //while (lampCatchTime > 0 && IsCatched)
-    //    //{
-    //    //    if (lampCatchTime <= 3 && !isFinished)
-    //    //    {
-    //    //        string timeStr = $"00:{Mathf.CeilToInt(lampCatchTime):00}";
-    //    //        TimeNotification?.CustomeUpdate("Vaqt...", timeStr, true);
-    //    //        CurrentCondition = PlayerCondition.CatchLimit;
-    //    //        isFinished = true;
-    //    //        //currentCondition = PlayerCondition.CatchLimit;
-    //    //    }
-    //    //    yield return new WaitForSeconds(1f);
-    //    //    lampCatchTime -= 1f;
-    //    //}
-    //    TriggerEvent();
-        
-    //}
-
     public virtual void TriggerEvent()
     {
         IsCatched = false;
@@ -325,20 +309,6 @@ public class BaseManager : MonoBehaviour
     }
     #region Save prize data to PlayerPrefs
 
-    //public void SavePrizeDataToPlayerPrefs(List<Prize> prizes)
-    //{
-    //    foreach (var prize in prizes)
-    //    {
-    //        string key = prize.prizeType.ToString(); // "Money", "Horse", ...
-
-    //        if (PrizesContainsKey(key)) // faqat Prizes classda mavjud key bo‘lsa
-    //        {
-    //            PlayerPrefs.SetFloat(key.ToLower(), prize.rewardAmount); // lower agar Prizes key lowercase bo‘lsa
-    //        }
-    //    }
-
-    //    PlayerPrefs.Save();
-    //}
     public void SavePrizeDataToPlayerPrefs(List<Prize> prizes)
     {
         foreach (var prize in prizes)
@@ -395,6 +365,10 @@ public class BaseManager : MonoBehaviour
     {
         speedUxScript.gameObject.SetActive(true);
         speedUxScript.StartSlide(duration);
+    }
+    public virtual void SpeedShaderActive(bool value)
+    {
+        speedShader.SetActive(value);
     }
     #endregion
 }

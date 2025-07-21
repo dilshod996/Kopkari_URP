@@ -171,4 +171,8 @@ public class BeginerRoomManager : BaseManager
         modalWindowPopup.UpdateUICustomWithButtons(LanguageManager.Instance.GetText(280), LanguageManager.Instance.GetText(281),
                 LanguageManager.Instance.GetText(1), LanguageManager.Instance.GetText(2)); 
     }
+    public override void SpeedShaderActive(bool value)
+    {
+        base.SpeedShaderActive(value);
+    }
 }
