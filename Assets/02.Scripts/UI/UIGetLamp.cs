@@ -1,113 +1,144 @@
-using MalbersAnimations.Controller;
-using MalbersAnimations.Events;
-using Michsky.UI.ModernUIPack;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.EventSystems;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
-using static BaseManager;
+using System.Collections;
 
-public class UIGetLamp : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+public class UIGetLamp : MonoBehaviour
 {
-    [SerializeField] private ProgressBar holdSlider;
+    [Header("UI")]
+    [SerializeField] private Image fillImage; // Image: Filled Vertical, origin Bottom
+    [SerializeField] private GameObject fillImgBg;
+
+    [Header("Pickup Settings")]
     [SerializeField] private PlayerDataManager playerData;
+    [SerializeField] private float holdTime = 5f;   // 0â†’100% toâ€˜lish vaqti
+    [SerializeField] private float decayTime = 3f;  // 100â†’0% tushish vaqti
+    [SerializeField] private bool resetAfterPerform = true;
 
-    public bool isHolding = false;
-    private float holdTime = 5f;
+    private bool isHolding;
+    private float progress01;              // 0..1
+    private Coroutine runningCR;
+    private float buildRate;               // 1/holdTime (precomputed)
+    private float decayRate;               // 1/decayTime (precomputed)
 
-    private List<string> uloqMessages = new List<string>
+    private void OnEnable()
     {
-        "Uloqni mahkam ushla, qo¡®lingdan chiqib ketmasin!",
-        //"Raqiblaring juda yaqin! Ko¡®proq kuch sarflang!",
-        "Sizning ot kuchingiz yetarlimi? Hali ko¡®ramiz!",
-        "Uloqni mahkam tort, raqiblar senga qarab yugurmoqda!",
-        "Faqat eng mard chavandoz uloqni ko¡®tara oladi!",
-        "Hamma ko¡®zlar sizda! G¡®alaba sizga bog¡®liq!",
-        "Uloqni olib chiqish oson emas! Kuching yetadimi?",
-        //"Otingni qattiq hayda! Hali jang tugagani yo¡®q!",
-        "Qattiq tur! Uloq hozircha sening qo¡®lingda!",
-       // "Kurash avjida! Qolganlari ham uloq uchun jon kuydiryapti!",
-        "G¡®alabaga bir qadam qoldi! Bardam bo¡®ling!",
-        "Bu sening imkoniyating! Uloqni ko¡®tar va maydondan olib chiq!",
-        "Hamma kuchini ishga sol! Raqiblar juda yaqinlashdi!",
-        "Boshqalardan oldin uloqni olib, o¡®zingni ko¡®rsat!",
-        "O¡®zingni yo¡®qotma, uzoqni o¡®yla va harakatni to¡®g¡®ri tanla!"
-    };
-    public void OnPointerDown(PointerEventData eventData)
+        buildRate = (holdTime > 0f) ? 1f / holdTime : 999f;
+        decayRate = (decayTime > 0f) ? 1f / decayTime : 0f;
+
+        //if (fillImage)
+        //{
+        //    fillImage.type = Image.Type.Filled;
+        //    fillImage.fillAmount = 0f;
+        //    fillImage.gameObject.SetActive(false); // faqat jarayonda koâ€˜rinadi
+        //}
+    }
+
+
+    public void BeginHold()
     {
-        Debug.Log("pressed");          
         isHolding = true;
-        holdSlider.gameObject.SetActive(isHolding);
-        StartCoroutine(HoldCoroutine());
 
-    }
-    private void Update()
-    {
-        if (!isHolding && this.gameObject.activeSelf)
+        if (fillImage)
         {
-            holdSlider.gameObject.SetActive(false);
+            // agar ilgari 0 boâ€˜lgan boâ€˜lsa, yangi jarayonni 0 dan boshlatamiz
+            if (progress01 <= 0.0001f)
+                progress01 = 0f;
+
+            fillImage.fillAmount = progress01;
+            fillImage.gameObject.SetActive(true);
+            fillImgBg.SetActive(true);
         }
+
+        StopRunning();
+        runningCR = StartCoroutine(HoldRoutine());
+
+        BaseManager.Instance.CurrentCondition = BaseManager.PlayerCondition.GettingTarget;
     }
-    private void OnDisable()
+
+
+    public void EndHold()
     {
-        if (isHolding)
+        isHolding = false;
+        StopRunning();
+
+        if (decayRate > 0f && progress01 > 0f)
+            runningCR = StartCoroutine(DecayRoutine());
+        else
+            TryHideWhenEmpty();
+    }
+
+    private IEnumerator HoldRoutine()
+    {
+        while (isHolding && progress01 < 1f)
         {
-            isHolding=false;
-            holdSlider.gameObject.SetActive(false);
-        }
-    }
-    public void OnPointerUp(PointerEventData eventData)
-    {
-
-        isHolding = false; // Avval isHolding ni false qilish
-        StopCoroutine(HoldCoroutine()); // Korrutinani to¡®xtatish
-
-        holdSlider.currentPercent = 0;
-        holdSlider.gameObject.SetActive(isHolding);
-  
-
-    }
-
-    private IEnumerator HoldCoroutine()
-    {
-        float timer = 0f;
-        
-        //holdSlider.currentPercent = 0;
-        Debug.Log("Time: " + timer);
-        BaseManager.Instance.CurrentCondition = PlayerCondition.GettingTarget;
-
-        while (isHolding && timer < holdTime)
-        {
-            timer += Time.deltaTime;
-            holdSlider.currentPercent = (timer / holdTime) * 100;
+            progress01 += buildRate * Time.deltaTime;
+            if (fillImage) fillImage.fillAmount = progress01;
             yield return null;
         }
 
-        if (timer >= holdTime)
+        if (progress01 >= 1f)
         {
             PerformAction();
+
+            if (resetAfterPerform)
+            {
+                progress01 = 0f;
+                if (fillImage)
+                {
+                    fillImage.fillAmount = 0f;
+                    fillImage.gameObject.SetActive(false);
+                    fillImgBg.SetActive(false);
+                }
+                isHolding = false;
+            }
         }
+
+        runningCR = null;
     }
-    private IEnumerator ResetSlider()
+
+    private IEnumerator DecayRoutine()
     {
-        while (holdSlider.currentPercent > 0)
+        while (!isHolding && progress01 > 0f)
         {
-            holdSlider.currentPercent -= (100 / holdTime) * Time.deltaTime;
+            progress01 -= decayRate * Time.deltaTime;
+            if (fillImage) fillImage.fillAmount = progress01;
             yield return null;
         }
+
+        TryHideWhenEmpty();
+        runningCR = null;
+    }
+
+    private void TryHideWhenEmpty()
+    {
+        if (fillImage && progress01 <= 0.0001f)
+        {
+            fillImage.gameObject.SetActive(false);
+            fillImgBg.SetActive(false);
+        }
+            
     }
 
     private void PerformAction()
     {
         BaseManager.Instance.LambOwner = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerData.PickupObj();
-        //BaseManager.Instance.CurrentCondition = PlayerCondition.GotTarget;
-        //if(AIGameRoom.Instance!=null)
-        //    AIGameRoom.Instance.LambOwner = "dima"; //DataManager.Instance.PlayerName;
-        if (holdSlider.gameObject.activeSelf)
+        Debug.Log("âœ… Uloq olindi!");
+    }
+
+    private void StopRunning()
+    {
+        if (runningCR != null)
         {
-            holdSlider.gameObject.SetActive(false);
+            StopCoroutine(runningCR);
+            runningCR = null;
         }
+    }
+
+    private void OnDisable()
+    {
+        isHolding = false;
+        StopRunning();
+        // fillImage ni bu yerda oâ€˜chirmaymiz â€” decay routine hal qiladi
     }
 }

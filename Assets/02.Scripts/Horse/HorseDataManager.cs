@@ -15,6 +15,7 @@ public class HorseDataManager : MonoBehaviour
     public MAnimal CurrentAnimal { get; private set; }
     public MaterialChanger MaterialChanger { get; private set; }
 
+    public KopkariHorseBomb currentBomb { get; private set; }
     public async Task<Mount> SpawnHorseAsync()
     {
         //GameObject horseGO = await AddressablesManager.Instance.LoadAndInstantiateCachedAsync(
@@ -57,10 +58,23 @@ public class HorseDataManager : MonoBehaviour
         CurrentAnimal = horseInstance.GetComponentInChildren<MAnimal>();
         MaterialChanger = horseInstance.GetComponentInChildren<MaterialChanger>();
 
+        //Bomb pyhsics ni olish for use
+        currentBomb = horseInstance.GetComponent<KopkariHorseBomb>();
+        
         return CurrentMount;
     }
-
-
+    //Buttonga ulash kerak
+    public void OnBombButtonClicked()
+    {
+        if (currentBomb != null)
+        {
+            currentBomb.ActivateHere();
+        }
+        else
+        {
+            Debug.LogWarning("No player horse bomb bound yet.");
+        }
+    }
     public void CustomizeHorse(int materialIndex)
     {
         MaterialChanger?.SetAllMaterials(materialIndex);

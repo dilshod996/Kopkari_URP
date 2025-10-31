@@ -250,6 +250,10 @@ public class LobbyManager : MonoBehaviour
     {
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.Jomboy, preloadAddresses);
     }
+    public void PastDargom()
+    {
+        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.PastDargom, preloadAddresses);
+    }
     public void AvatarCustom()
     {
         SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
@@ -258,6 +262,13 @@ public class LobbyManager : MonoBehaviour
     {
         
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.Beginer, preloadAddresses);
+    }
+    #endregion
+
+    #region Racing Rooms
+    public void FirstRoom()
+    {
+        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.FirstRacing, preloadAddresses);
     }
     #endregion
 

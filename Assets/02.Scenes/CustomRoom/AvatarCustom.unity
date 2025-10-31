@@ -17871,7 +17871,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1054.3623, y: -456.67157}
+  m_AnchoredPosition: {x: 1054.3623, y: -436.5496}
   m_SizeDelta: {x: 826, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &606096755
@@ -59756,7 +59756,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 272.5, y: -15}
-  m_SizeDelta: {x: 140.97, y: 30}
+  m_SizeDelta: {x: 0, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1499330782957033917
 GameObject:
@@ -63630,6 +63630,9 @@ MeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: 04b101db3a102ab4d85fe65feef45197, type: 2}
   - {fileID: 2100000, guid: d3d8386aa840e454b90330a214c1a96c, type: 2}
+  - {fileID: 2100000, guid: 56d3dc68050c80c4f87204e862eda148, type: 2}
+  - {fileID: 2100000, guid: 68a3aa21bdb4d8c4ea1ede3646c1cbf1, type: 2}
+  - {fileID: 2100000, guid: 90a48910906fa514eb736a9b917b8130, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

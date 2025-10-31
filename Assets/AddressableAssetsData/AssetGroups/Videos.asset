@@ -17,7 +17,7 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: efec4a0ff7c29964f9e5b001c33dd813
   m_SerializeEntries:
-  - m_GUID: b2ace7ea73cd0dd4087845536ab3db9f
+  - m_GUID: 5fc192a9a54ca6048931ce7e70d03dee
     m_Address: IntroVideo
     m_ReadOnly: 0
     m_SerializedLabels:

@@ -76,6 +76,8 @@ public class AIGameRoom : MonoBehaviour
 
     // Game logout popup
     [SerializeField] private ModalWindowManager Popup;
+
+   
     public enum PrizeTypes
     {
         Carpet,

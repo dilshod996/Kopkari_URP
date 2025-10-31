@@ -23,6 +23,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/02.Scenes/Lobby.unity
     guid: 40dc587d911790d4c81f0ea3de543bc9
+  - enabled: 1
+    path: Assets/02.Scenes/GamePlayScenes/PastDargom.unity
+    guid: 9f0ba59199102e04db4f7276b76637b2
+  - enabled: 1
+    path: Assets/02.Scenes/Racing Rooms/FirstRacing.unity
+    guid: b052c37a0b757a748a985ca7d1919440
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 76785f93504f65749b446b828074051a,
       type: 2}

@@ -22,7 +22,7 @@ MonoBehaviour:
 
 
     Int: Sends the Weapon ID'
-  debug: 0
+  debug: 1
   m_int:
     UseConstant: 1
     ConstantValue: 0

@@ -22,7 +22,9 @@ public class SceneLoadManager : MonoBehaviour
         Lobby,
         AvatarCustom,
         Beginer,
-        Jomboy
+        Jomboy,
+        PastDargom,
+        FirstRacing
     }
 
     public SceneType CurrentSceneType  = SceneType.None;

@@ -86,6 +86,10 @@ public class BaseManager : MonoBehaviour
 
     [Header("Player Conditions")]
     [SerializeField] protected NPCDialogueManager NPCDialogueManager;
+
+
+    [Header("Pooled VFX")]
+    public VFXPool pool;
     public enum PlayerCondition
     {
         Start ,         // Dastlabki holat

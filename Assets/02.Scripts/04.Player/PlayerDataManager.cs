@@ -101,7 +101,14 @@ public class PlayerDataManager : MonoBehaviour
         await Task.Delay(1000);
         riderInstance.Anim.speed = 1f;
         horseAnimal = horseManager.CurrentAnimal;
-        BaseManager.Instance.horseAnimal = horseAnimal;
+        if (BaseManager.Instance != null)
+        {
+            BaseManager.Instance.horseAnimal = horseAnimal;
+        }
+        if(RacingController.Instance != null)
+        {
+            RacingController.Instance.GetSetAnimal(horseAnimal);
+        }
        // playerAnimal = riderInstance.RiderAnimal;
         attackDefendController = playerInstance.GetComponentInChildren<AttackDefendManager>();
         if (attackDefendController != null && walkZoneBtn != null)
