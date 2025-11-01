@@ -95,4 +95,11 @@ public class RacingController : MonoBehaviour
         horse.Always_Forward(false);
     }
     #endregion
+
+    #region Scene Details.
+    public void BackLobby()
+    {
+        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Lobby);
+    }
+    #endregion
 }

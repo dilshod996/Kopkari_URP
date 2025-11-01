@@ -270,6 +270,10 @@ public class LobbyManager : MonoBehaviour
     {
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.FirstRacing, preloadAddresses);
     }
+    public void SecondRoom()
+    {
+        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.SecondRacing, preloadAddresses);
+    }
     #endregion
 
     #region Player Starting Prefs

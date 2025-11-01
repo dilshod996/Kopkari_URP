@@ -8,8 +8,8 @@ using UnityEditor;
 
 namespace MalbersAnimations
 {
-    [HelpURL("https://malbersanimations.gitbook.io/animal-controller/mobile/mobile-joystick")]
-    [AddComponentMenu("Malbers/Input/Mobile Joystick")]
+    //[HelpURL("https://malbersanimations.gitbook.io/animal-controller/mobile/mobile-joystick")]
+    //[AddComponentMenu("Malbers/Input/Mobile Joystick")]
     public class MobileJoystickX : MonoBehaviour, IDragHandler, IPointerUpHandler, IPointerDownHandler
     {
         [Tooltip("What mouse button to use for the joystick ")]

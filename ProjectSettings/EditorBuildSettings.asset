@@ -29,6 +29,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/02.Scenes/Racing Rooms/FirstRacing.unity
     guid: b052c37a0b757a748a985ca7d1919440
+  - enabled: 1
+    path: Assets/02.Scenes/Racing Rooms/SecondRacing.unity
+    guid: c149ac85ce0ae43458ce06fac84be151
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 76785f93504f65749b446b828074051a,
       type: 2}
