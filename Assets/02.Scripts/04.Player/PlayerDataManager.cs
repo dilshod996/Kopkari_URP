@@ -25,6 +25,7 @@ public class PlayerDataManager : MonoBehaviour
     public Button defendBtn;
 
     private MAnimal horseAnimal;
+    
 
     [Header("Player Attack and DefendDetails")]
     [SerializeField] private TMP_Text walkZoneText;
@@ -62,17 +63,17 @@ public class PlayerDataManager : MonoBehaviour
         string username = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerInstance.name = username;
         // 2. Ichidan PlayerSkinLoader scriptni topamiz
-        PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        // 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
-        if (skinLoader != null)
-        {
-            // await skinLoader.ApplyMaterials();
-            await skinLoader.ApplySkins();
-        }
-        else
-        {
-            Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-        }
+        //PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+        //// 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
+        //if (skinLoader != null)
+        //{
+        //    // await skinLoader.ApplyMaterials();
+        //    await skinLoader.ApplySkins();
+        //}
+        //else
+        //{
+        //    Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
+        //}
 
         // 2. Component sifatida MRider ni olamiz
         riderInstance = playerInstance.GetComponent<MRider>();
@@ -107,7 +108,9 @@ public class PlayerDataManager : MonoBehaviour
         }
         if(RacingController.Instance != null)
         {
+           
             RacingController.Instance.GetSetAnimal(horseAnimal);
+            
         }
        // playerAnimal = riderInstance.RiderAnimal;
         attackDefendController = playerInstance.GetComponentInChildren<AttackDefendManager>();

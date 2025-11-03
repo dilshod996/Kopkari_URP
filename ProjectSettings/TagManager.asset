@@ -17,6 +17,7 @@ TagManager:
   - SpeedLow
   - videoOt
   - NPC
+  - RacingHead
   layers:
   - Default
   - TransparentFX
