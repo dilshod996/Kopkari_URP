@@ -47,8 +47,8 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
+  - Ground
+  - RacingObstacle
   - Item
   - NameUI
   m_SortingLayers:

@@ -8,7 +8,8 @@ public class RacingAgent : MonoBehaviour
     public string teamName = "Team A";       // 🔹 yangi
     public float earnings = 0f;              // 🔹 yangi
     public Transform pivot;
-
+    public bool isPlayer;
+    public BoostersContainer boosterContainer;
     public int CheckpointIndex { get; set; } = -1;    // hali o‘tmagan
     public int PrevCheckpointIndex { get; set; } = -1;
     public int Ranking { get; set; } = 0;     // 🔹 leaderboard set qiladi
@@ -26,14 +27,6 @@ public class RacingAgent : MonoBehaviour
     // 🧭 Oxirgi checkpointdan o‘tgan ON (split) vaqti
     public float LastSplitTime { get; private set; } = 0f;
 
-    public void BeginRace()
-    {
-        if (HasStarted) return;
-        HasStarted = true;
-        StartTime = Time.time;
-        FinishTime = 0f;
-        HasFinished = false;
-    }
 
     // ⬇️ Global start vaqtini berish uchun overload
     public void BeginRace(float globalStartTime)
@@ -60,5 +53,14 @@ public class RacingAgent : MonoBehaviour
     {
         if (!pivot) pivot = transform;
     }
-    
+
+    private void OnEnable()
+    {
+        if (isPlayer)
+        {
+            displayName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+            teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
+        }
+    }
+
 }

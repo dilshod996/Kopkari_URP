@@ -63,17 +63,17 @@ public class PlayerDataManager : MonoBehaviour
         string username = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerInstance.name = username;
         // 2. Ichidan PlayerSkinLoader scriptni topamiz
-        //PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        //// 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
-        //if (skinLoader != null)
-        //{
-        //    // await skinLoader.ApplyMaterials();
-        //    await skinLoader.ApplySkins();
-        //}
-        //else
-        //{
-        //    Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-        //}
+        PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+        // 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
+        if (skinLoader != null)
+        {
+            // await skinLoader.ApplyMaterials();
+            await skinLoader.ApplySkins();
+        }
+        else
+        {
+            Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
+        }
 
         // 2. Component sifatida MRider ni olamiz
         riderInstance = playerInstance.GetComponent<MRider>();
@@ -112,26 +112,27 @@ public class PlayerDataManager : MonoBehaviour
             RacingController.Instance.GetSetAnimal(horseAnimal);
             
         }
-       // playerAnimal = riderInstance.RiderAnimal;
-        attackDefendController = playerInstance.GetComponentInChildren<AttackDefendManager>();
-        if (attackDefendController != null && walkZoneBtn != null)
-        {
-            // Avval eski listenerlarni tozalaymiz, keyin yangi funksiya bog‘laymiz
-            walkZoneText.text = attackDefendController.walkZoneCount.ToString();
-            attackDefendController.OnWalkZoneAdded += UpdateWalkZoneText;
-            attackDefendController.OnWalkZoneRemoved += UpdateWalkZoneText;
-            defendText.text = attackDefendController.defendCount.ToString();
-            attackDefendController.OnDefendAdded += UpdateDefendText;
-            attackDefendController.OnDefendRemoved += UpdateDefendText;
-            walkZoneBtn.onClick.RemoveAllListeners();
-            walkZoneBtn.onClick.AddListener(attackDefendController.DropWalkTrap);
-            defendBtn.onClick.RemoveAllListeners();
-            defendBtn.onClick.AddListener(() => CheckItLocked(attackDefendController));
-        }
-        else
-        {
-            Debug.LogError("Dropper yoki Button topilmadi!");
-        }
+
+       //// playerAnimal = riderInstance.RiderAnimal;
+       // attackDefendController = playerInstance.GetComponentInChildren<AttackDefendManager>();
+       // if (attackDefendController != null && walkZoneBtn != null)
+       // {
+       //     // Avval eski listenerlarni tozalaymiz, keyin yangi funksiya bog‘laymiz
+       //     walkZoneText.text = attackDefendController.walkZoneCount.ToString();
+       //     attackDefendController.OnWalkZoneAdded += UpdateWalkZoneText;
+       //     attackDefendController.OnWalkZoneRemoved += UpdateWalkZoneText;
+       //     defendText.text = attackDefendController.defendCount.ToString();
+       //     attackDefendController.OnDefendAdded += UpdateDefendText;
+       //     attackDefendController.OnDefendRemoved += UpdateDefendText;
+       //     walkZoneBtn.onClick.RemoveAllListeners();
+       //     walkZoneBtn.onClick.AddListener(attackDefendController.DropWalkTrap);
+       //     defendBtn.onClick.RemoveAllListeners();
+       //     defendBtn.onClick.AddListener(() => CheckItLocked(attackDefendController));
+       // }
+       // else
+       // {
+       //     Debug.LogError("Dropper yoki Button topilmadi!");
+       // }
         //SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
     }
     private void OnDisable()

@@ -94,14 +94,14 @@ public class RacingLeaderboard : MonoBehaviour
             UpdateRow(ag, k + 1);
         }
 
-        // Debug (startdan keyin)
-        var sb = new System.Text.StringBuilder("RANK: ");
-        for (int r = 0; r < standings.Count; r++)
-        {
-            var a2 = standings[r];
-            sb.Append($"{a2.Ranking}.{a2.displayName}[P={a2.Passed},CP={Mathf.Max(0, a2.CheckpointIndex)},T={a2.LastSplitTime:0.00}s] ");
-        }
-        Debug.Log(sb.ToString());
+        //Debug(startdan keyin)
+        //var sb = new System.Text.StringBuilder("RANK: ");
+        //for (int r = 0; r < standings.Count; r++)
+        //{
+        //    var a2 = standings[r];
+        //    sb.Append($"{a2.Ranking}.{a2.displayName}[P={a2.Passed},CP={Mathf.Max(0, a2.CheckpointIndex)},T={a2.LastSplitTime:0.00}s] ");
+        //}
+        //Debug.Log(sb.ToString());
 
     }
 
@@ -117,6 +117,17 @@ public class RacingLeaderboard : MonoBehaviour
         if (!rows.TryGetValue(a, out var row) || row == null) return;
         int cpShow = Mathf.Max(0, a.CheckpointIndex);
         row.SetData($"{rank}. {a.displayName}", $"CP {cpShow} • Passed {a.Passed}");
+        if (a.isPlayer) // yoki o‘zingda qanday belgilang bo‘lsa
+        {
+            if (ColorUtility.TryParseHtmlString("#FFBF34", out Color highlightColor))
+            {
+                row.SetColor(highlightColor);
+            }
+        }
+        //else
+        //{
+        //    row.SetColor(Color.white, new Color(0.8f, 0.8f, 0.8f)); // boshqalar oq-yumshoq rangda
+        //}
     }
     // 🟢 Yangi funksiya: joriy standings ro‘yxatini qaytaradi
     public List<RacingAgent> GetStandings()

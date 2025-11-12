@@ -1,66 +1,99 @@
-﻿using MalbersAnimations.Controller;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using MalbersAnimations.Controller;
+using System;
 
+[RequireComponent(typeof(Collider))]
 public class WalkZone : MonoBehaviour
 {
-    public float lifetime = 5f;
-    public Collider walkZoneCollider;
-    private void Start()
+    [Header("Effect")]
+    [SerializeField] private float slowDuration = 2.5f;
+    [SerializeField] private int slowSpeedIndex = 3;
+    [SerializeField] private bool onlyAffectHeads = true;
+
+    // Trap ichida bir marta slow berish uchun
+    private readonly HashSet<RacingAgent> _affected = new();
+
+    private void Reset()
     {
-        //Destroy(gameObject, lifetime);
-        StartCoroutine(AutoDestroy());
+        var col = GetComponent<Collider>();
+        col.isTrigger = true;
     }
-    public void OnGameObjectEnter(GameObject obj)
+
+    private void OnTriggerEnter(Collider other)
     {
-        // 1. Qobiq yoqilgan bo‘lsa, hech narsa qilmaymiz
-        var player = obj.GetComponentInChildren<AttackDefendManager>();
-        if (player != null && player.defendQobiq.activeSelf)
+        if (onlyAffectHeads && !other.CompareTag("RacingHead")) return;
+
+        var agent = other.GetComponentInParent<RacingAgent>();
+        if (!agent) return;
+
+        // Sizda nomi 'boosters' yoki 'boosterContainer' — bitta nomda bo‘lsin
+        var boosters = agent.boosterContainer;
+        if (!boosters) return;
+
+        // NPC: zaxira bo‘lsa auto-defend → slow SKIP
+        if (boosters.isNpc && boosters.defendCount > 0)
         {
-            Debug.Log(" Qobiq yoqilgan — WalkZone ishlamaydi");
+            boosters.DefendPlayerNpc(); // ichida o‘zi Decrease va qorqon ON
             return;
         }
-        if (player.defendCount > 0 && player.isNpc)
-        {
-            player.DefendPlayerNpc();
+
+        // Player: qalqon allaqachon yoqilgan bo‘lsa → slow SKIP
+        if (!boosters.isNpc && boosters.defendQobiq.activeSelf)
             return;
-        }
-        Debug.Log("Qobiq yoqilmagan — WalkZone ishlaydi");
-        var animal = obj.GetComponentInChildren<MAnimal>();
-        if (animal != null)
-        {
-            animal.CurrentSpeedSet.LockSpeed = true;
-            //animal.CurrentSpeedSet.CurrentIndex = 1;
-        }
 
-
+        // Endi slow beramiz (faqat shu yerda affected va subscribe qilamiz)
+        TrySlow(boosters, agent);
+        SimplePool.Despawn(gameObject);
     }
-    public void OnGameObjectExit(GameObject obj)
+
+    private void TrySlow(BoostersContainer boosters, RacingAgent agent)
     {
-        var animal = obj.GetComponentInChildren<MAnimal>();
-        if (animal != null && animal.CurrentSpeedSet != null)
+
+        if (!boosters.horseAnimal) return;
+        if (_affected.Contains(agent)) return; // trap ichida takror sekinlashtirmaslik
+
+        _affected.Add(agent);
+        var animal = boosters.horseAnimal;
+        int originalIndex = 5;
+
+        // ONE-SHOT subscribe: defend yoqilsa — affected dan chiqaramiz
+        Action handler = null;
+        handler = () =>
         {
-            animal.CurrentSpeedSet.LockSpeed = false;
+            _affected.Remove(agent);
+            boosters.OnDefendActivated -= handler; // one-shot
+        };
+        boosters.OnDefendActivated += handler;
 
-            
-        }
+        // Slow beramiz: faqat haqiqatan sekinlashtiradigan bo‘lsa tushiramiz
+       
+        int targetIndex = Mathf.Min(originalIndex, slowSpeedIndex); // hech qachon tezlatib yubormasin
+        Debug.Log("Target index: " + targetIndex);
+        animal.Speed_CurrentIndex_Set(targetIndex);
+        StartCoroutine(ApplySlowRoutine(animal, agent, originalIndex, targetIndex, slowDuration, boosters, handler));
     }
-    private IEnumerator AutoDestroy()
-    {
-        yield return new WaitForSeconds(lifetime);
 
-        if (walkZoneCollider != null)
+    private IEnumerator ApplySlowRoutine(MAnimal animal,
+                                         RacingAgent agent,
+                                         int originalIndex,
+                                         int appliedSlowIndex,
+                                         float duration,
+                                         BoostersContainer boosters,
+                                         Action handler)
+    {
+        yield return new WaitForSeconds(duration);
+
+        // Agar hanuz slow indeks turib turgan bo‘lsa (defend/sprint o‘zgartirmagan bo‘lsa) — restore qilamiz
+        if (animal != null && animal.CurrentSpeedIndex == appliedSlowIndex)
         {
-            transform.position += Vector3.down * 15f;
-            Debug.Log("📉 WalkZone yer ostiga tushirildi - TriggerExit ishga tushadi");
+            animal.Speed_CurrentIndex_Set(originalIndex);
         }
 
-        yield return new WaitForSeconds(0.1f); // optional delay for safety
-        Destroy(gameObject);
-    }
-    public void TestCollider()
-    {
-        Debug.Log("Collider stopped");
+        _affected.Remove(agent);
+        Debug.Log("Current index" + animal.CurrentSpeedIndex);
+        // Safety: defend bosilmagan bo‘lsa ham listenerni tozalaymiz
+        if (boosters != null) boosters.OnDefendActivated -= handler;
     }
 }

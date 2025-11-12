@@ -12,4 +12,9 @@ public class UIRankingView : MonoBehaviour
         if (nameText) nameText.text = name;
         if (metaText) metaText.text = meta;
     }
+    public void SetColor(Color nameColor)
+    {
+        if (nameText) nameText.color = nameColor;
+        //nameText.ForceMeshUpdate();
+    }
 }

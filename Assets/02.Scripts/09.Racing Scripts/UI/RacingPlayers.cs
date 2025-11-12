@@ -147,6 +147,9 @@ public class RacingPlayers : MonoBehaviour
 
     private List<PlayerEntry> GetEntries()
     {
+        string userName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+        string teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
+        string horseName = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
         if (!useDemoSeed) return new List<PlayerEntry>();
 
         return new List<PlayerEntry>
@@ -155,6 +158,7 @@ public class RacingPlayers : MonoBehaviour
             new PlayerEntry("Navro'z",   "Samar",       2, "Bukhara Eagles",   88),
             new PlayerEntry("Qodir",      "Oq Oy",       3, "Tashkent Wolves",  84),
             new PlayerEntry("Sadir",      "Bo‘ron",      4, "Fergana Hawks",    80),
+            new PlayerEntry(userName, horseName, 5, teamName, 79)
             //new PlayerEntry("Bekzod",     "Arg‘umoq",    5, "Jizzakh Lions",    77),
         };
     }

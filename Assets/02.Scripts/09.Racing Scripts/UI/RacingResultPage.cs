@@ -22,6 +22,7 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private float stagger = 0.06f;         // ketma-ket delay
     [SerializeField] private LeanTweenType easeType = LeanTweenType.easeOutCubic;
     [SerializeField] private bool clearOnBuild = true;
+    public SceneLoadManager.SceneType sceneType;
 
     private void Start()
     {
@@ -32,7 +33,14 @@ public class RacingResultPage : MonoBehaviour
             startButtonGroup.interactable = false;
             startButtonGroup.blocksRaycasts = false;
         }
-        BuildList(RacingLeaderboard.Instance.GetStandings());
+        //BuildList(RacingLeaderboard.Instance.GetStandings());
+    }
+    private void OnEnable()
+    {
+        if(replayButton != null)
+        {
+            replayButton.onClick.AddListener(Replay);
+        }
     }
     public void BuildList(List<RacingAgent> entries)
     {
@@ -130,9 +138,14 @@ public class RacingResultPage : MonoBehaviour
                 });
         }
     }
+    public void Replay()
+    {
+        SceneLoadManager.Instance.LoadScene(sceneType);
+    }
 
     private void OnDisable()
     {
         Clear();
+        replayButton.onClick.RemoveAllListeners();
     }
 }

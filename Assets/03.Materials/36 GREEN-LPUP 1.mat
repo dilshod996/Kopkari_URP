@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: 36 GREEN-LPUP 1
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Shader: {fileID: 4800000, guid: a5373e7a4216aa3409f9e01706d1f035, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -17,8 +17,7 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap:
-    RenderType: Opaque
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -44,8 +43,16 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _DetailsUV2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _EmissionMap:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Gradient:
+        m_Texture: {fileID: 2800000, guid: 0f424a347039ef447a763d3d4b4782b0, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -68,6 +75,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _texcoord2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -83,6 +94,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlphaClip: 0
+    - _AlphaCutoff: 0.5
     - _AlphaToMask: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
@@ -93,16 +105,23 @@ Material:
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
+    - _DetailOpacity: 0
     - _DstBlend: 0
     - _DstBlendAlpha: 0
+    - _EmissionPower: 1
     - _EnvironmentReflections: 1
     - _GlossMapScale: 1
     - _Glossiness: 0
     - _GlossyReflections: 1
+    - _GradientIntensity: 0.236
+    - _GradientOffset: 0
+    - _GradientPower: 1
+    - _GradientScale: 1
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
     - _Smoothness: 0
@@ -115,10 +134,30 @@ Material:
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 0.18204641, g: 0.4056604, b: 0.082280174, a: 1}
-    - _Color: {r: 0.18204638, g: 0.40566036, b: 0.08228014, a: 1}
+    - _BaseColor: {r: 0.23824069, g: 0.4943396, b: 0.12591663, a: 1}
+    - _Color: {r: 0.23824063, g: 0.49433953, b: 0.1259166, a: 1}
+    - _Color1: {r: 1, g: 1, b: 1, a: 0}
+    - _Color2: {r: 0.654902, g: 0.654902, b: 0.654902, a: 1}
+    - _Color3: {r: 0.6603774, g: 0.6603774, b: 0.6603774, a: 1}
+    - _Color4: {r: 1, g: 1, b: 1, a: 1}
+    - _Color5: {r: 1, g: 1, b: 1, a: 1}
+    - _Color6: {r: 1, g: 1, b: 1, a: 1}
+    - _Color7: {r: 1, g: 1, b: 1, a: 1}
+    - _Color8: {r: 0.15441176, g: 0.16024336, b: 1, a: 1}
+    - _Color9: {r: 0.15294117, g: 0.9929401, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _GradientColor: {r: 0, g: 0, b: 0, a: 0}
+    - _MRE1: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE2: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE3: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE4: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE5: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE6: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE7: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE8: {r: 0, g: 1, b: 0, a: 0}
+    - _MRE9: {r: 0, g: 1, b: 0, a: 0}
     - _SpecColor: {r: 0.07352942, g: 0.07352942, b: 0.07352942, a: 1}
+    - _Tint: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
 --- !u!114 &6356457593853196296
 MonoBehaviour:

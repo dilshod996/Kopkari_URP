@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -27,15 +27,18 @@ public class UIRacingPlayerFinal : MonoBehaviour
             default: prize = 0f; break;
         }
 
-        // Agentning earnings qiymatini ham yangilab qo¡®yish (keyinchalik saqlash uchun)
-        data.earnings = prize;
+        // Agentning earnings qiymatini ham yangilab qoâ€˜yish (keyinchalik saqlash uchun)
+        // â›³ Finish qilmaganlarga vaqt "-" va prize = 0 (xohlasang qoldir)
+        bool dnf = !data.HasFinished;
+
+        data.earnings = dnf ? 0f : prize;
 
         if (txtRanking) txtRanking.text = $"#{data.Ranking}";
         if (txtPlayerName) txtPlayerName.text = data.displayName;
-        if (txtTime) txtTime.text = $"{data.LastSplitTime:0.00}s";
+        if (txtTime) txtTime.text = dnf ? "-" : $"{data.LastSplitTime:0.00}s";
         if (txtTeam) txtTeam.text = data.teamName;
         if (txtEarnings) txtEarnings.text = $"${data.earnings:0}";
 
-        if (canvasGroup) canvasGroup.alpha = 0f; // fade anim oldidan 0 qilamiz
+        if (canvasGroup) canvasGroup.alpha = 0f; // fade anim oldidan 0
     }
 }

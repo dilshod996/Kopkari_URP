@@ -1,10 +1,14 @@
 ﻿using MalbersAnimations.Controller;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using System.Xml.Serialization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class RacingController : MonoBehaviour
 {
@@ -34,24 +38,53 @@ public class RacingController : MonoBehaviour
 
     [SerializeField] private GameObject mobileCanvasPanel;
 
+
+    [Header("Sprint UI Effect")]
+    [SerializeField] private Image sprintImg;
+
+    [Header("Reverse UI")]
+    [SerializeField] private RectTransform reversePanel;     // boshida SetActive(false)
+    [SerializeField] private TextMeshProUGUI reverseTimeText;
+    [SerializeField] private float slideDuration = 0.25f;    // anim vaqti
+    [SerializeField] private float panelShownY = -165f;         // ko‘rinadigan y
+    [SerializeField] private float panelHiddenY = 150f;      // yuqoriga yashirin y (anchored)
+    [SerializeField] private float reverseGraceTime = 5f;    // sekund
+    [SerializeField] private float uiTick = 0.2f;            // progress text yangilash
+    private Coroutine reverseCo;
+    private bool reverseActive;
+    private float tLeft;
+
+    [Header("Popup Data")]
+    [SerializeField] UISpeechBuble speechBubble;
+
+    [Header("Game Over")]
+    [SerializeField] GameOver gameOverPanel;
+    [Header("Walk Zone Prefab")]
+    public GameObject walkZonePrefab;
+
     private void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
         }
-
+        else
+            Destroy(gameObject);
     }
     void Start()
     {
         InitLeaderboardPanelHidden();
+        SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
+        //GetSetAnimal(HorseMine.Instance.horseAnimal);
+    }
+    private void OnDestroy()
+    {
+        // poolingdagi barcha aktiv WalkZone obyektlarni qaytaradi
+        SimplePool.ClearAll();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+
+
     public void OnStartButtonPressed()
     {
         StartCoroutine(StartCountdown());
@@ -182,15 +215,14 @@ public class RacingController : MonoBehaviour
         yield return new WaitUntil(() => horse != null);
 
         horse.Always_Forward(true);
+        mobileCanvasPanel.gameObject.SetActive(true);
     }
     public void StopHorseRun()
     {
-        StartCoroutine(HorseStop());
+        StartCoroutine(HorseStopAction(ShowResultPanel));
     }
-    private IEnumerator HorseStop()
+    private IEnumerator HorseStopAction(Action action)
     {
-
-
         // 3 soniyadan so‘ng to‘xtatamiz misol uchun
         horse.Always_Forward(false);
         horse.Speed_CurrentIndex_Set(2);
@@ -198,10 +230,7 @@ public class RacingController : MonoBehaviour
         mobileCanvasPanel.gameObject.SetActive(false);
         yield return new WaitForSeconds(2f);
         horse.StopMoving();
-        ShowResultPanel();
-
-        //horse.Move(Vector3.zero);
-        //horse.Speed = 0;
+        action?.Invoke();
     }
     #endregion
 
@@ -265,4 +294,140 @@ public class RacingController : MonoBehaviour
         });
     }
     #endregion
+
+    #region Horse Back Running
+    public void StartReverse()
+    {
+        // Timer reset (agar allaqachon aktiv bo‘lsa ham yangilaymiz)
+        tLeft = reverseGraceTime;
+        SpeechBubbleEnable("Ogohlantirish orqaga yugurayapsan!");
+        if (!reverseActive)
+        {
+            reverseActive = true;
+            ShowPanel(); // SetActive(true) + slide in
+
+            if (reverseCo != null) StopCoroutine(reverseCo);
+            reverseCo = StartCoroutine(ReverseCountdown());
+        }
+        // reverseActive bo‘lsa ham faqat tLeft yangilandi (UI shu korutinada yangilanadi)
+    }
+
+    public void ClearReverse()
+    {
+        if (!reverseActive) return;
+        SpeechBubbleDisable();
+        reverseActive = false;
+        if (reverseCo != null) { StopCoroutine(reverseCo); reverseCo = null; }
+        HidePanel(); // slide out + SetActive(false)
+
+    }
+
+    // ===== UI Anim (LeanTween) =====
+    private void ShowPanel()
+    {
+        if (!reversePanel) return;
+
+        reversePanel.gameObject.SetActive(true); // LT uchun active bo‘lishi shart
+        LeanTween.cancel(reversePanel);
+
+        // start pozitsiya: hiddenY
+        var ap = reversePanel.anchoredPosition;
+        reversePanel.anchoredPosition = new Vector2(ap.x, panelHiddenY);
+
+        LeanTween.value(reversePanel.gameObject, panelHiddenY, panelShownY, slideDuration)
+                 .setEaseOutCubic()
+                 .setOnUpdate((float y) =>
+                 {
+                     var p = reversePanel.anchoredPosition;
+                     reversePanel.anchoredPosition = new Vector2(p.x, y);
+                 });
+    }
+
+    private void HidePanel()
+    {
+        if (!reversePanel) return;
+
+        LeanTween.cancel(reversePanel);
+        var ap = reversePanel.anchoredPosition;
+
+        LeanTween.value(reversePanel.gameObject, ap.y, panelHiddenY, slideDuration)
+                 .setEaseInCubic()
+                 .setOnUpdate((float y) =>
+                 {
+                     var p = reversePanel.anchoredPosition;
+                     reversePanel.anchoredPosition = new Vector2(p.x, y);
+                 })
+                 .setOnComplete(() =>
+                 {
+                     if (reverseTimeText) reverseTimeText.text = "";
+                     reversePanel.gameObject.SetActive(false); // qayta inactive
+                 });
+    }
+
+    // ===== Countdown (Update yo‘q) =====
+    private IEnumerator ReverseCountdown()
+    {
+        var wait = new WaitForSecondsRealtime(uiTick);
+
+        while (reverseActive && tLeft > 0f)
+        {
+            if (reverseTimeText) reverseTimeText.text = $"{tLeft:0}";
+            tLeft -= uiTick;
+            yield return wait;
+        }
+
+        reverseCo = null;
+
+        if (reverseActive)
+        {
+            // Timeout → DQ
+            reverseActive = false;
+            HidePanel();
+            Disqualify();
+        }
+    }
+
+    // ===== DQ logika =====
+    private void Disqualify()
+    {
+        // Bu yerda sizning o‘yindagi jazo:
+        // - Malbers: hayvonni bloklash
+        // - Result page/popup
+        // - Leaderboardga signal
+        // Masalan:
+        // var animal = FindObjectOfType<MalbersAnimations.Controller.MAnimal>();
+        // if (animal) animal.Lock(true);
+        StartCoroutine(HorseStopAction(GameOverPanel));
+        SpeechBubbleDisable();
+        Debug.Log("[RacingController] Reverse timeout -> DQ");
+    }
+
+    private void GameOverPanel()
+    {
+        gameOverPanel.gameObject.SetActive(true);
+    }
+    #endregion
+
+    #region Popup Speech Bubble
+    public void ShowAndHideSpeech(string speech)
+    {
+        StartCoroutine(SpeechCoroutine(speech));
+    }
+    private IEnumerator SpeechCoroutine(string text)
+    {
+        SpeechBubbleEnable(text);
+        yield return new WaitForSeconds(3.5f);
+        SpeechBubbleDisable();
+    }
+    public void SpeechBubbleEnable(string text)
+    {
+       // speechBubble.gameObject.SetActive(true);
+        speechBubble.Show(text);
+    }
+    public void SpeechBubbleDisable()
+    {
+        speechBubble.Hide();
+    }
+    #endregion
+
 }

@@ -103,10 +103,12 @@ namespace MalbersAnimations
         {
             if (bg == null)   bg = GetComponent<Graphic>();
             if (Jbutton == null) Jbutton = transform.GetChild(0).GetComponent<Graphic>();
-            if (DragRect == null) DragRect = GetComponent<Graphic>(); 
-
-            BgXSize = bg.rectTransform.sizeDelta.x;
-            BgYSize = bg.rectTransform.sizeDelta.y;
+            if (DragRect == null) DragRect = GetComponent<Graphic>();
+            if (bg != null)
+            {
+                BgXSize = bg.rectTransform.sizeDelta.x;
+                BgYSize = bg.rectTransform.sizeDelta.y;
+            }
         }
 
         void Update()

@@ -21,17 +21,17 @@ public class HorseDataManager : MonoBehaviour
     {
         horseInstance = Instantiate(horsePrefab, spawnPoint.position, spawnPoint.rotation, spawnPoint.transform);
 
-        ////// 4. Ichidan HorseSkinLoader scriptni topamiz
-        //HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
-        //if (horseSkinLoader != null)
-        //{
-        //    await horseSkinLoader.ApplySkins();
-        //}
-        //else
-        //{
-        //    Debug.Log("❌ HorseSkinLoader component not found on instantiated horse.");
-        //}
-        //await Task.Yield(); // Wait 1 frame
+        // 4. Ichidan HorseSkinLoader scriptni topamiz
+        HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
+        if (horseSkinLoader != null)
+        {
+            await horseSkinLoader.ApplySkins();
+        }
+        else
+        {
+            Debug.Log("❌ HorseSkinLoader component not found on instantiated horse.");
+        }
+        await Task.Yield(); // Wait 1 frame
 
         // Wait until Mount component and its MountPoint are ready
         Mount mount = null;
@@ -57,10 +57,11 @@ public class HorseDataManager : MonoBehaviour
         //    RacingController.Instance.GetSetRacingAgent(playerAgent);
 
         //}
-        //MaterialChanger = horseInstance.GetComponentInChildren<MaterialChanger>();
+        MaterialChanger = horseInstance.GetComponentInChildren<MaterialChanger>();
 
         //Bomb pyhsics ni olish for use
         currentBomb = horseInstance.GetComponent<KopkariHorseBomb>();
+
         
         return CurrentMount;
     }
