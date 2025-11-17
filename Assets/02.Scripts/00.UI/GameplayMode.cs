@@ -32,7 +32,7 @@ public class GameplayMode : MonoBehaviour
     {
         UITransilations();
         leagueBtn.onClick.AddListener(OpenLeaguePanel);
-        closeBtn.onClick.AddListener(CloseGameObject);
+        //closeBtn.onClick.AddListener(CloseGameObject);
     }
 
     private void UITransilations()
@@ -51,9 +51,9 @@ public class GameplayMode : MonoBehaviour
     {
         leaguePanel.SetActive(true);
     }
-    private void CloseGameObject()
+    public void CloseGameObject()
     {
-        gameObject.SetActive(false);
+        HomeMainUI.Instance.HideUI(this);
     }
     private void OnDisable()
     {
