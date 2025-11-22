@@ -33,7 +33,7 @@ namespace Kopkari
         [SerializeField] AudioClip introMusic;
         [SerializeField] TMP_Text gameName;
         [SerializeField] private Button startButton;
-        [SerializeField] private Button skipButton;
+        //[SerializeField] private Button skipButton;
         //Intro scene addressable addresses
         private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
         //Lobby scene addressable addresses
@@ -78,7 +78,6 @@ namespace Kopkari
             videoPlayer.loopPointReached += OnVideoFinished;
             GetAddressableData();
             //PlayerPrefs.DeleteAll();
-            SkippAppear();
 
             PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
@@ -87,7 +86,7 @@ namespace Kopkari
             {
                 LoadLobbyScene();
             });
-            skipButton.onClick.AddListener(SkippVideo);
+
             InitializePlayerPrefs();
 
         }
@@ -138,27 +137,6 @@ namespace Kopkari
 
 
         #region Get Intro Video
-
-        private void SkippAppear()
-        {
-            int skippAppear = PlayerPrefs.GetInt(Constants.Initialize.skippAppear);
-            if(skippAppear==0)
-            {
-                skipButton.gameObject.SetActive(false);
-            }
-        }
-        public void SkippVideo()
-        {
-            if (videoPlayer.isPlaying && videoPlayer.clip != null)
-            {
-                videoPlayer.Stop();
-                moveLobbyPage.SetActive(true);
-                if (startingPage.activeSelf)
-                    startingPage.SetActive(false);
-                skipButton.gameObject.SetActive(false);
-                gameName.text = LanguageManager.Instance.GetText(5);
-            }
-        }
         public void SoundEffect(AudioClip clip)
         {
             SoundManager.Instance.PlayMusic(clip);
@@ -170,10 +148,12 @@ namespace Kopkari
                 myAddresses,
                 progress =>
                 {
+                    
                     progressBar.currentPercent = progress * 100f;
+                    Debug.Log(progressBar.currentPercent);
                     progressBar.UpdateUI();
                 },
-                fakeDurationIfCached: 3f
+                fakeDurationIfCached: 2f
             );
             if (handles.Count > 0)
             {
@@ -218,7 +198,7 @@ namespace Kopkari
                     progressBar.currentPercent = percent;
                     progressBar.UpdateUI();
                 },
-                fakeDurationIfCached: 5f
+                fakeDurationIfCached: 3f
             );
 
             if (handle.Status == AsyncOperationStatus.Succeeded)
@@ -273,30 +253,25 @@ namespace Kopkari
         #endregion
 
         #region Not working now
-        public void LoadSecondScene()
-        {
-            SceneLoadMangager.Instance.LoadScene(SceneLoadMangager.SceneType.Lobby);
-        }
+
         public void LoadLobbyScene()
         {
             List<string> preloadAddresses = GetPreloadMaterialAddresses();
             SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.Home, preloadAddresses);
-            //SceneLoadManager.Instance.LoadSceneWithAddressables(SceneLoadManager.SceneType.Lobby,lobbySceneAddressableAddresses);
         }
         #endregion
 
         void OnVideoFinished(VideoPlayer vp)
         {
-            moveLobbyPage.SetActive(true);
-            if(PlayerPrefs.GetInt(Constants.Initialize.skippAppear) == 0)
-            {
-                PlayerPrefs.SetInt(Constants.Initialize.skippAppear, 1);
-                PlayerPrefs.Save();
-            }
-            gameName.text = LanguageManager.Instance.GetText(5);
-            skipButton.gameObject.SetActive(false);
-            startButton.GetComponentInChildren<TMP_Text>().text = LanguageManager.Instance.GetText(4);
-            Debug.Log("Video finished");
+            StartCoroutine(GoToLobbyAfterSmallDelay());
+        }
+
+        private IEnumerator GoToLobbyAfterSmallDelay()
+        {
+            yield return new WaitForSeconds(0.3f);
+
+            LoadLobbyScene();
+            Debug.Log("Video finished → Lobby scene");
         }
         private void OnDisable()
         {
@@ -308,12 +283,6 @@ namespace Kopkari
                     Addressables.Release(handle);
                 }
             }
-
-            //if (handle.IsValid())
-            //{
-            //    Addressables.Release(handle);
-            //    Debug.Log("Addressables released");
-            //}
 
         }
         #region Player Data
