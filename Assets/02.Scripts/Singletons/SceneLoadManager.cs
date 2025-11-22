@@ -19,6 +19,7 @@ public class SceneLoadManager : MonoBehaviour
         None,
         Intro,
         Loading,
+        Home,
         Lobby,
         AvatarCustom,
         Beginer,

@@ -8,7 +8,11 @@ public static class Constants
         public const string TeamName = "teamName";
         public const string CountryName = "countryName";
         public const string FirstTimeKey = "firstTime";
+        public const string PlayerHeadKey = "Player_Head";
         public const string PlayerFaceKey = "Player_Face";
+        public const string PlayerFaceHairKey = "Player_Face_Hair";
+        public const string PlayerHand = "Player_Hand";
+        public const string PlayerHat = "Player_Hat";
         public const string PlayerEyeLeftKey = "Player_EyeLeft";
         public const string PlayerEyeRightKey = "Player_EyeRight";
         public const string PlayerUpperBodyKey = "Player_UpperBody";

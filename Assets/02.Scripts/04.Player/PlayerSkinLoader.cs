@@ -12,13 +12,14 @@ public class PlayerSkinLoader : MonoBehaviour
     //[Header("Material Addressable Keys (must match renderers)")]
     //[SerializeField] private string[] materialAddresses;
     [Header("Grouped renderers for Player Skins")]
-    [SerializeField] private GameObject[] faceVariants;
+    [SerializeField] private GameObject[] faceHairVariants;
+    [SerializeField] private GameObject[] hatVariants;
     [SerializeField] private GameObject[] headVariants;
     [SerializeField] private GameObject[] upperBodyVariants;
     [SerializeField] private GameObject[] lowerBodyVariants;
+    [SerializeField] private GameObject[] handVariants;
 
-    [SerializeField] private Renderer eyeLeftRenderer;
-    [SerializeField] private Renderer eyeRightRenderer;
+
 
 
     private Material[] loadedMaterials;
@@ -120,15 +121,18 @@ public class PlayerSkinLoader : MonoBehaviour
     public async Task ApplySkins()
     {
         // 1. PlayerPrefs orqali material nomlarini olish
-        string faceKey = PlayerPrefs.GetString(Constants.Player.PlayerFaceKey);
         string helmetKey = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
+        string headKey = PlayerPrefs.GetString(Constants.Player.PlayerHeadKey);
+        string faceKey = PlayerPrefs.GetString(Constants.Player.PlayerFaceHairKey);
+        string handKey = PlayerPrefs.GetString(Constants.Player.PlayerHand);
         string upperKey = PlayerPrefs.GetString(Constants.Player.PlayerUpperBodyKey);
         string lowerKey = PlayerPrefs.GetString(Constants.Player.PlayerLowerBodyKey);
 
         // 2. Har bir qism uchun mos variantni aktiv qilish va materialni qo‘llash
-        await ActivateAndApplyMaterial(faceVariants, faceKey);
-        await ApplyEyeMaterials(faceKey); // O‘rnatilgan yuz materialini ko‘zlarga qo‘llash
-        await ActivateAndApplyMaterial(headVariants, helmetKey);
+        await ActivateAndApplyMaterial(hatVariants, helmetKey);
+        await ActivateAndApplyMaterial(headVariants, headKey);
+        await ActivateAndApplyMaterial(faceHairVariants, faceKey);
+        await ActivateAndApplyMaterial(handVariants, handKey);
         await ActivateAndApplyMaterial(upperBodyVariants, upperKey);
         await ActivateAndApplyMaterial(lowerBodyVariants, lowerKey);
     }
@@ -185,30 +189,6 @@ public class PlayerSkinLoader : MonoBehaviour
 
         if (!activated)
             Debug.LogWarning($"⚠️ No matching variant found for materials: [{string.Join(", ", materialAddresses)}]");
-    }
-    private async Task ApplyEyeMaterials(string faceMaterialKey)
-    {
-        if (MaterialCacheManager.TryGet(faceMaterialKey, out var cachedMat))
-        {
-            eyeLeftRenderer.material = cachedMat;
-            eyeRightRenderer.material = cachedMat;
-            Debug.Log($"👁️ Applied cached face material to eyes: {faceMaterialKey}");
-        }
-        else
-        {
-            var material = await AddressablesManager.Instance.LoadAssetAsync<Material>(faceMaterialKey);
-            if (material != null)
-            {
-                MaterialCacheManager.Add(faceMaterialKey, material);
-                eyeLeftRenderer.material = material;
-                eyeRightRenderer.material = material;
-                Debug.Log($"👁️ Loaded and applied face material to eyes: {faceMaterialKey}");
-            }
-            else
-            {
-                Debug.LogError($"❌ Failed to load face material for eyes: {faceMaterialKey}");
-            }
-        }
     }
 
     private void OnDestroy()

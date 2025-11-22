@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 3f7e4bd2404c9b84eb12bcaefb51e1eb
   m_currentHash:
     serializedVersion: 2
-    Hash: 9936ee438c3b9adc2111434bfaf160c0
+    Hash: 00000000000000000000000000000000
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 1
   m_BundleLocalCatalog: 0
@@ -42,7 +42,7 @@ MonoBehaviour:
   m_CustomContentStateBuildPath: 
   m_ContentStateBuildPath: 
   m_BuildAddressablesWithPlayerBuild: 0
-  m_overridePlayerVersion: 0.0.2
+  m_overridePlayerVersion: 0.0.3
   m_GroupAssets:
   - {fileID: 11400000, guid: 3d53911d996a23e4b928f468ef6f8d9e, type: 2}
   - {fileID: 11400000, guid: 2d476f1b2919a964c893aed1227cc9ff, type: 2}
@@ -88,7 +88,7 @@ MonoBehaviour:
       - m_Id: fd10585da3540554bae8ced10a608b55
         m_Value: ServerData/[BuildTarget]
       - m_Id: 6bb32a4d3d5a55640993fee64d1070ed
-        m_Value: https://kopkari-bucket-data.s3.ap-northeast-2.amazonaws.com/Kopkari/0.0.2/[BuildTarget]
+        m_Value: https://kopkari-bucket-data.s3.ap-northeast-2.amazonaws.com/Kopkari/0.0.3/[BuildTarget]
     m_ProfileEntryNames:
     - m_Id: aacba4a5fd61622419c51e3d69ddc674
       m_Name: BuildTarget

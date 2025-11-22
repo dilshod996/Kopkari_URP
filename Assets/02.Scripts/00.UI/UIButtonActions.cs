@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using MalbersAnimations.Scriptables;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -14,11 +15,14 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private Button defendBtn;
     [SerializeField] private Button walkZoneBtn;
     [SerializeField] private Button hitBtn;
+    [SerializeField] private Button shootChainBtn;
+    [SerializeField] private Button chainContainerBtn;
 
     [Header("Buttons Data Texts")]
     [SerializeField] private TMP_Text defendCountText;
     [SerializeField] private TMP_Text walkZoneCountText;
     [SerializeField] private TMP_Text hitCountText;
+    [SerializeField] private TMP_Text chainCounter;
 
     [Header("Shock Effect")]
     [SerializeField] private Image shockImg;
@@ -44,6 +48,10 @@ public class UIButtonActions : MonoBehaviour
     [Header("Hit Count Slider")]
     public Slider hitCountSlider;
 
+    [Header("Chain Data")]
+    [SerializeField] private IntVar chainCount;
+
+
     private void Awake()
     {
         if (Instance == null)
@@ -56,6 +64,8 @@ public class UIButtonActions : MonoBehaviour
     public void UpdateDefendText(int count) => defendCountText.text = count.ToString();
     public void UpdateWalkZoneText(int count) => walkZoneCountText.text = count.ToString();
     public void UpdateHitText(int count) => hitCountText.text = count.ToString();
+
+    public void UpdateChainCount(int count)=> chainCounter.text = count.ToString();
     #endregion
 
     #region Button State Updates
@@ -64,6 +74,8 @@ public class UIButtonActions : MonoBehaviour
     public void SetDefendState(bool state) => defendBtn.interactable = state;
     public void SetWalkZoneState(bool state) => walkZoneBtn.interactable = state;
     public void SetHitState(bool state) => hitBtn.interactable = state;
+
+    public void SetChainState(bool state) => shootChainBtn.interactable = state;
     #endregion
 
     /// <summary>
@@ -74,10 +86,12 @@ public class UIButtonActions : MonoBehaviour
         UpdateDefendText(defendCount);
         UpdateWalkZoneText(walkZoneCount);
         UpdateHitText(hitZoneCount);
+        UpdateChainCount(chainCount.Value);
 
         SetDefendState(defendCount > 0);
         SetWalkZoneState(walkZoneCount > 0);
         SetHitState(hitZoneCount > 0);
+        SetChainState(chainCount.Value > 0);
     }
 
     /// <summary>
@@ -214,6 +228,21 @@ public class UIButtonActions : MonoBehaviour
         {
             StopSingleEffect(slowImg, slowFloat);
         }
+    }
+    #endregion
+
+    #region Chain Section
+    /// <summary>
+    /// Bular ikkalasi ham Btn ga ulangan
+    /// </summary>
+    public void OnShootCHain()
+    {
+        UpdateChainCount(chainCount.Value);
+    }
+    public void OnClickChain()
+    {
+        bool newState = !chainContainerBtn.gameObject.activeSelf;
+        chainContainerBtn.gameObject.SetActive(newState);
     }
     #endregion
 }

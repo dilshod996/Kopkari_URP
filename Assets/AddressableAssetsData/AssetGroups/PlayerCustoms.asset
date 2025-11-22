@@ -17,83 +17,88 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 828cc208e0a30514a82ad084872312ab
   m_SerializeEntries:
-  - m_GUID: e420e49361fce1e43bad401bf82fd8ca
-    m_Address: Face
+  - m_GUID: 0ceb6c10017a20a4ca6d5deac63a27d5
+    m_Address: FaceHair1
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: f2f57f3aac6d602458ad1ab9b353efb4
-    m_Address: Helmet1
+  - m_GUID: 5864167e70592f34b861917f4933c3de
+    m_Address: Head2
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e440f66a7c231574a85a324ed3453863
-    m_Address: LowerBody1
+  - m_GUID: 4260b241650180243b8944bffe88cf4d
+    m_Address: Hat
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: d3696f3e8262a7e458156de5c12816f0
-    m_Address: UpperBody2
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 2710d66efb76a0a47b392ced77791701
-    m_Address: Hair
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 9c3db9c6ed973cd46a16a1070739c835
-    m_Address: Helmet2
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 0c6dbef8dc4014a48907d3aa5f6545e9
-    m_Address: Helmet3
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 180a1ecc3797f464ba21b5ac573a921b
-    m_Address: Helmet4
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 3035109e2fb740246acfbb6a7a7dc140
-    m_Address: LowerBody2
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 3e0ceefd2f470384b9b4c2256908515b
-    m_Address: LowerBody3
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 391484038875e6e4a8a2f89616dbce51
-    m_Address: BaseBody
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 04280cde5429a8e4488e31d9dd9fb970
+  - m_GUID: 56131308eeda1ea4e8ae0aa65d33d4c0
     m_Address: UpperBody1
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 49e43109393bf854ca84eb9aa2cbad62
+  - m_GUID: e42752fc1a8126449a57978d07e8cc1a
+    m_Address: LowerBody1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 23d4d28b88dabc34890daf5ac2fbdb56
+    m_Address: FaceHair4
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 923540df6c9888d4188af70087efcc54
+    m_Address: UpperBody2
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 23de5890e836db04bbaa935a71529dbd
+    m_Address: Hands
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 31a7acdf7236c9f4f9e0717c5acfb69a
     m_Address: UpperBody3
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f196c81fbfe57084fa054acca1a06075
+    m_Address: Head
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d7d0ebe64a31f8545b7f7dde95de3fdf
+    m_Address: UpperBody4
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7dac9172eadad2b4eb4eb4fd12318b04
+    m_Address: LowerBody2
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 74260b9514ecd7647ae56e93be08b42f
+    m_Address: Hat2
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b4027b896cb5ddd478b6815a54f033e2
+    m_Address: Hat3
+    m_ReadOnly: 0
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}

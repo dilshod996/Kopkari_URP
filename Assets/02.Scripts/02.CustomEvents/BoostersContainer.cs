@@ -51,6 +51,13 @@ public class BoostersContainer : MonoBehaviour
     [SerializeField] private LayerMask groundMask;
 
     private float _nextAllowedDropTime = 0f;
+    [Header("Damage / Hit Settings")]
+    [SerializeField] private MDamageable damageable;      // Malbersning damage componenti
+    [SerializeField] private GameObject slowEffectObj;    // Slow effekt uchun UI yoki FX
+    [SerializeField] private float slowDuration = 5f;     // necha sekund sekin yuradi
+    [SerializeField] private int slowSpeedIndex = 2;      // slow paytidagi speed index
+
+    private bool isUnderSlow = false;                     // slow aktivmi yoki yo‘q
 
     #region Starting Events
 
@@ -78,6 +85,15 @@ public class BoostersContainer : MonoBehaviour
             OnDefendAdded += HandleDefendChanged;
             OnDefendRemoved += HandleDefendChanged;
         }
+        // 🔹 Damage eventga ulaymiz
+        if (!damageable)
+            damageable = GetComponent<MDamageable>();
+
+        if (damageable != null)
+        {
+            // ⚠️ OnReceiveDamage ning imzosiga qarab moslashtirasan!
+            damageable.events.OnReceivingDamage.AddListener(OnReceiveDamageHandler);
+        }
     }
 
     private void OnDisable()
@@ -88,6 +104,10 @@ public class BoostersContainer : MonoBehaviour
             OnWalkZoneRemoved -= HandleWalkZoneChanged;
             OnDefendAdded -= HandleDefendChanged;
             OnDefendRemoved -= HandleDefendChanged;
+        }
+        if (damageable != null)
+        {
+            damageable.events.OnReceivingDamage.RemoveListener(OnReceiveDamageHandler);
         }
     }
 
@@ -112,7 +132,10 @@ public class BoostersContainer : MonoBehaviour
     #region Buttons Data Update
     private void InitialButtonsData()
     {
-        UIButtonActions.Instance.InitializeData(defendCount, walkZoneCount, hitCount);
+        if (UIButtonActions.Instance != null)
+        {
+            UIButtonActions.Instance.InitializeData(defendCount, walkZoneCount, hitCount);
+        }
     }
     #endregion
 
@@ -328,6 +351,7 @@ public class BoostersContainer : MonoBehaviour
 
     private IEnumerator DefendObject()
     {
+        isDefend = true;
         defendQobiq.SetActive(true);
         if (horseAnimal != null && horseAnimal.CurrentSpeedIndex != playerInitialSpeed)
         {
@@ -335,6 +359,7 @@ public class BoostersContainer : MonoBehaviour
         }
         yield return new WaitForSeconds(defendTime);
         defendQobiq.SetActive(false);
+        isDefend = false;
         defendCoroutine = null;
         //OnDefendDeactivated?.Invoke(); // (ixtiyoriy) if kerak bo‘lsa boshqa tizimlarga xabar
     }
@@ -347,4 +372,62 @@ public class BoostersContainer : MonoBehaviour
     }
     public void RemoveHit() { hitCount--; }
     #endregion
+
+    #region Damage / Hit Reaction / Spider Tur
+
+    // ⚠️ Parametrlarni MDamageable.OnReceiveDamage imzosiga moslashtir!
+    private void OnReceiveDamageHandler(/* masalan: MDamageable dam, Hit hit */ float dmg)
+    {
+        // 1) Agar allaqachon slow ishlayotgan bo‘lsa, boshqasini qo‘ymaymiz
+        if (isUnderSlow)
+            return;
+
+        // 2) Agar defend allaqachon aktiv bo‘lsa -> slow ishlatmaymiz
+        if (isDefend)
+        {
+            // faqat vizual effektlar bo‘lsa shu yerda qilsa bo‘ladi
+            return;
+        }
+
+        // 3) Agar defend count bor bo‘lsa -> avtomatik DefendPlayer chaqiramiz
+        if (defendCount > 0)
+        {
+            DefendPlayer();   // 1 ta defend sarflanadi, shield yoqiladi
+            return;
+        }
+
+        // 4) Umuman defend yo‘q bo‘lsa -> slow effektni yoqamiz
+        if (horseAnimal != null)
+        {
+            StartCoroutine(ApplyHitSlow());
+        }
+    }
+
+    private IEnumerator ApplyHitSlow()
+    {
+        isUnderSlow = true;
+
+        // Effektni yoqamiz (masalan particle, UI icon va h.k.)
+        if (slowEffectObj != null)
+            slowEffectObj.SetActive(true);
+
+        // Avvalgi speed indexni saqlab qo‘yamiz
+        int prevSpeedIndex = horseAnimal.CurrentSpeedIndex;
+
+        // Slow speedga tushiramiz
+        horseAnimal.Speed_CurrentIndex_Set(slowSpeedIndex);
+
+        yield return new WaitForSeconds(slowDuration);
+
+        // Avvalgi speedga qaytaramiz
+        horseAnimal.Speed_CurrentIndex_Set(prevSpeedIndex);
+
+        if (slowEffectObj != null)
+            slowEffectObj.SetActive(false);
+
+        isUnderSlow = false;
+    }
+
+    #endregion
+
 }

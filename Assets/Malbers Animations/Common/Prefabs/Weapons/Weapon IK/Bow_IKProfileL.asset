@@ -102,7 +102,7 @@ MonoBehaviour:
     rotationType: 3
     bone: 7
     RotationOffset: {x: 0, y: -65, z: -92.61}
-    Weight: 1
+    Weight: 0
   - name: AdditiveOffset [RightShoulder]
     rotationType: 0
     bone: 12

@@ -278,10 +278,12 @@ public class LobbyManager : MonoBehaviour
         List<string> preload = new List<string>();
 
         //PlayerPrefs dan material addresslarini olish
-        string face = PlayerPrefs.GetString(Constants.Player.PlayerFaceKey);
+        string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
+        string head = PlayerPrefs.GetString(Constants.Player.PlayerHeadKey);
+        string faceHair = PlayerPrefs.GetString(Constants.Player.PlayerFaceHairKey);
+        string hand = PlayerPrefs.GetString(Constants.Player.PlayerHand);
         string upper = PlayerPrefs.GetString(Constants.Player.PlayerUpperBodyKey);
         string lower = PlayerPrefs.GetString(Constants.Player.PlayerLowerBodyKey);
-        string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
 
         //PlayerPrefs dan ot material addresslarini olish
 
@@ -293,10 +295,12 @@ public class LobbyManager : MonoBehaviour
         string horseSaddle = PlayerPrefs.GetString(Constants.Horse.HorseSaddleKey);
         string horseReinsHead = PlayerPrefs.GetString(Constants.Horse.HorseReinsHeadKey);
 
-        preload.Add(face);
+        preload.Add(head);
+        preload.Add(hand);
+        preload.Add(faceHair);
         preload.Add(upper);
         preload.Add(lower);
-        preload.Add(helmet);
+        preload.Add(helmet); ;
         preload.Add(horseBody);
         preload.Add(horseEyes);
         preload.Add(horseMane);

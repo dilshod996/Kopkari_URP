@@ -30,7 +30,7 @@ public class GameplayMode : MonoBehaviour
 
     private void OnEnable()
     {
-        UITransilations();
+        //UITransilations();
         leagueBtn.onClick.AddListener(OpenLeaguePanel);
         //closeBtn.onClick.AddListener(CloseGameObject);
     }
@@ -49,7 +49,7 @@ public class GameplayMode : MonoBehaviour
     }
     private void OpenLeaguePanel()
     {
-        leaguePanel.SetActive(true);
+        HomeMainUI.Instance.ShowUI(leaguePanel);
     }
     public void CloseGameObject()
     {

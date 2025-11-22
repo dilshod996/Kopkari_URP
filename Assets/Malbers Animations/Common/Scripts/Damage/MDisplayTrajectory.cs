@@ -24,12 +24,14 @@ namespace MalbersAnimations.Weapons
         public Color endColor = Color.green;//Color of Line where it ends
 
         [Tooltip("Line renderer steps")]
-        public float Step = 0.1f;
+        public float Step = 0.15f;
         [Tooltip("Max Steps")]
-        public int MaxSteps = 50;
+        public int MaxSteps = 30;
 
-        private List<Vector3> Trajectory = new List<Vector3>();
-
+        //private List<Vector3> Trajectory = new List<Vector3>();
+        private readonly List<Vector3> Trajectory = new List<Vector3>(64);
+        [SerializeField] private float trajectoryUpdateRate = 0.05f;
+        private float _nextUpdateTime;
         public bool ShowTrayectory { get; set; }
 
         private void Reset()
@@ -66,10 +68,11 @@ namespace MalbersAnimations.Weapons
 
         private void Update()
         {
-            if (ShowTrayectory)
-            {
-                DisplayTrajectory(Thrower.AimOriginPos, Thrower.Velocity);
-            }
+            if (!ShowTrayectory) return;
+            if (Time.time < _nextUpdateTime) return;
+
+            _nextUpdateTime = Time.time + trajectoryUpdateRate;
+            DisplayTrajectory(Thrower.AimOriginPos, Thrower.Velocity);
         }
 
         void SetLineRenderer()
@@ -77,12 +80,12 @@ namespace MalbersAnimations.Weapons
             line.startWidth = StartWidth;
             line.endWidth = EndWidth;
 
-            var gradient = new Gradient();
-            gradient.SetKeys(
-                new GradientColorKey[] { new(startColor, 0.0f), new(endColor, 1.0f) },
-                new GradientAlphaKey[] { new(startColor.a, 0.0f), new(endColor.a, 1.0f) }
-            );
-            line.colorGradient = gradient;
+            //var gradient = new Gradient();
+            //gradient.SetKeys(
+            //    new GradientColorKey[] { new(startColor, 0.0f), new(endColor, 1.0f) },
+            //    new GradientAlphaKey[] { new(startColor.a, 0.0f), new(endColor.a, 1.0f) }
+            //);
+            //line.colorGradient = gradient;
             line.useWorldSpace = true;
             line.receiveShadows = false;
             line.enabled = false;
@@ -116,24 +119,24 @@ namespace MalbersAnimations.Weapons
                 line.positionCount = 0;
                 return;
             }
-            else
-            {
-                if (HitPoint) HitPoint.SetActive(true);
-                line.enabled = true;
-                Trajectory = TrajectoryPoints(Origin, ProjectileVelocity);
-                DisplayRenderer();
-            }
+
+            if (HitPoint) HitPoint.SetActive(true);
+            line.enabled = true;
+
+            TrajectoryPoints(Origin, ProjectileVelocity, Trajectory);
+            DisplayRenderer();
         }
 
-        private List<Vector3> TrajectoryPoints(Vector3 start, Vector3 velocity)
+
+        private void TrajectoryPoints(Vector3 start, Vector3 velocity, List<Vector3> points)
         {
-            var points = new List<Vector3>();
-            if (Step <= 0) return points;
+            points.Clear();       // ❗ yangi List emas, eski List tozalanadi
+            if (Step <= 0) return;
+
             points.Add(start);
             Vector3 prev = start;
 
             var hit = new RaycastHit() { normal = Vector3.up };
-
             int NoGravityStep = 0;
             float TraveledDistance = 0;
 
@@ -152,11 +155,11 @@ namespace MalbersAnimations.Weapons
                         break;
                     }
                 }
+
                 points.Add(pos);
 
                 var Direction = (pos - prev);
 
-                //Check if the gravity can be applied after distance
                 if (TraveledDistance < Thrower.AfterDistance)
                 {
                     TraveledDistance += Direction.magnitude;
@@ -171,18 +174,23 @@ namespace MalbersAnimations.Weapons
                 HitPoint.transform.position = hit.point;
                 HitPoint.transform.up = hit.normal;
             }
-            return points;
         }
+
 
 
         public void DisplayRenderer()
         {
-            for (int i = 1; i < Trajectory.Count; i++)              //Debug Lines for the Prediction
+            int count = Trajectory.Count;
+
+            // Debug chiziqlar – xohlasang faqat Editor uchun qoldirish mumkin
+            for (int i = 1; i < count; i++)
                 Debug.DrawLine(Trajectory[i - 1], Trajectory[i], Color.yellow);
 
-            line.positionCount = Trajectory.Count;
-            line.SetPositions(Trajectory.ToArray());
+            line.positionCount = count;
+            for (int i = 0; i < count; i++)
+                line.SetPosition(i, Trajectory[i]);   // ❌ ToArray yo‘q, alloc yo‘q
         }
+
     }
 
 

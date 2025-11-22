@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Throw_IKProfile
   m_EditorClassIdentifier: 
   LookAtIK: 1
-  Weight: 1
+  Weight: 0
   BodyWeight: 0.1
   HeadWeight: 1
   EyesWeight: 1
@@ -92,4 +92,4 @@ MonoBehaviour:
     rotationType: 3
     bone: 7
     RotationOffset: {x: 0, y: -65, z: -92.61}
-    Weight: 1
+    Weight: 0

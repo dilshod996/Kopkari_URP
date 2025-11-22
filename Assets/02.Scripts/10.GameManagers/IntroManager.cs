@@ -77,7 +77,7 @@ namespace Kopkari
             });
             videoPlayer.loopPointReached += OnVideoFinished;
             GetAddressableData();
-           // PlayerPrefs.DeleteAll();
+            //PlayerPrefs.DeleteAll();
             SkippAppear();
 
             PlayerMaterialsData();
@@ -280,7 +280,7 @@ namespace Kopkari
         public void LoadLobbyScene()
         {
             List<string> preloadAddresses = GetPreloadMaterialAddresses();
-            SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.Lobby, preloadAddresses);
+            SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.Home, preloadAddresses);
             //SceneLoadManager.Instance.LoadSceneWithAddressables(SceneLoadManager.SceneType.Lobby,lobbySceneAddressableAddresses);
         }
         #endregion
@@ -324,10 +324,13 @@ namespace Kopkari
             {
                 PlayerPrefs.SetInt(Constants.Player.FirstTimeKey, 1);
                 //Save default player materials
-                PlayerPrefs.SetString(Constants.Player.PlayerFaceKey, "Face");
-                PlayerPrefs.SetString(Constants.Player.PlayerUpperBodyKey, "UpperBody2");
+                PlayerPrefs.SetString(Constants.Player.PlayerFaceHairKey, "FaceHair4");
+                PlayerPrefs.SetString(Constants.Player.PlayerHeadKey, "Head");
+                PlayerPrefs.SetString(Constants.Player.PlayerHelmetKey, "Hat");
+                PlayerPrefs.SetString(Constants.Player.PlayerHand, "Hands");
+                PlayerPrefs.SetString(Constants.Player.PlayerUpperBodyKey, "UpperBody4");
                 PlayerPrefs.SetString(Constants.Player.PlayerLowerBodyKey, "LowerBody1");
-                PlayerPrefs.SetString(Constants.Player.PlayerHelmetKey, "Helmet1");
+ 
                 //Save default horse materials
 
                 PlayerPrefs.SetString(Constants.Horse.HorseBodyKey, "HorseBrown");
@@ -349,10 +352,13 @@ namespace Kopkari
             List<string> preload = new List<string>();
 
             //PlayerPrefs dan material addresslarini olish
-            string face = PlayerPrefs.GetString(Constants.Player.PlayerFaceKey);
+            string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
+            string head = PlayerPrefs.GetString(Constants.Player.PlayerHeadKey);
+            string faceHair = PlayerPrefs.GetString(Constants.Player.PlayerFaceHairKey);
+            string hand = PlayerPrefs.GetString(Constants.Player.PlayerHand);
             string upper = PlayerPrefs.GetString(Constants.Player.PlayerUpperBodyKey);
             string lower = PlayerPrefs.GetString(Constants.Player.PlayerLowerBodyKey);
-            string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
+
 
             //PlayerPrefs dan ot material addresslarini olish
 
@@ -364,7 +370,9 @@ namespace Kopkari
             string horseSaddle = PlayerPrefs.GetString(Constants.Horse.HorseSaddleKey);
             string horseReinsHead = PlayerPrefs.GetString(Constants.Horse.HorseReinsHeadKey);
 
-            preload.Add(face);
+            preload.Add(head);
+            preload.Add(hand);
+            preload.Add(faceHair);
             preload.Add(upper);
             preload.Add(lower);
             preload.Add(helmet);
