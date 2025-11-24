@@ -237,7 +237,7 @@ public class RacingController : MonoBehaviour
     #region Scene Details.
     public void BackLobby()
     {
-        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Lobby);
+        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Home);
     }
     #endregion
 

@@ -148,6 +148,95 @@ public class SceneLoadManager : MonoBehaviour
 
 
     }
+    #region Introdan Lobby ga
+    public void LoadSmartSceneIntro(SceneType scene, List<string> preloadKeys)
+    {
+        PreviousSceneType = CurrentSceneType;
+        CurrentSceneType = scene;
+        OnSceneLoaded?.Invoke(); // Notify that the scene has been loaded
+        if (!assetAlreadyInstantiated.Contains(scene))
+        {
+            LoadSceneWithAddressablesIntro(scene, preloadKeys);
+            assetAlreadyInstantiated.Add(scene);
+            Debug.Log($"Scene {scene} loaded with addressables.");
+        }
+        else
+        {
+            LoadSceneIntro(scene);
+            Debug.Log($"Scene {scene} loaded without addressables.");
+        }
+
+    }
+    public void LoadSceneWithAddressablesIntro(SceneType targetScene, List<string> preloadAddresses)
+    {
+        StartCoroutine(HandleSceneLoadIntro(targetScene, preloadAddresses));
+    }
+    private IEnumerator HandleSceneLoadIntro(SceneType targetScene, List<string> preloadAddresses)
+    {
+        AddressablesManager.Instance.loadingTime = 0f;
+
+        // 1. Avval Addressables preload (progress bar'ni hozirgi sahnadagi UI orqali ko‘rsatishing mumkin)
+        Task<AsyncOperationHandle> preloadTask =
+            AddressablesManager.Instance.PreloadWithProgressBarAsync(preloadAddresses, fakeDurationIfCached);
+
+        while (!preloadTask.IsCompleted)
+            yield return null;
+
+        AsyncOperationHandle preloadHandle = preloadTask.Result;
+
+        // 2. Joriy active sahnani eslab qolamiz
+        Scene oldScene = SceneManager.GetActiveScene();
+
+        // 3. Target sahnani ADDITIVE rejimda load qilamiz
+        AsyncOperation sceneLoadOp =
+            SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+
+        while (!sceneLoadOp.isDone)
+            yield return null;
+
+        // 4. Target sahna to‘liq load bo‘lguncha kutamiz va uni active qilamiz
+        Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+        while (!loadedScene.isLoaded)
+            yield return null;
+
+        SceneManager.SetActiveScene(loadedScene);
+
+        // 5. Addressables instantiation tugashini kutamiz
+        while (!AssetInstantiationFinished)
+            yield return null;
+
+        // 6. Eski sahnani unload qilamiz (Loading emas, balki oldingi active sahna)
+        if (oldScene.IsValid())
+        {
+            AsyncOperation unloadOld = SceneManager.UnloadSceneAsync(oldScene);
+            while (!unloadOld.isDone)
+                yield return null;
+        }
+
+        SetAssetInstantiationFinished(false); // keyingi sahnalar uchun reset
+    }
+    public void LoadSceneIntro(SceneType newScene)
+    {
+        StartCoroutine(LoadSceneDirect(newScene));
+    }
+
+    private IEnumerator LoadSceneDirect(SceneType newScene)
+    {
+        PreviousSceneType = CurrentSceneType;
+        CurrentSceneType = newScene;
+
+        // Fake progress bar uchun
+        AddressablesManager.Instance.loadingTime = 0f;
+        StartCoroutine(FakeLoadingTimeProgress());
+
+        // Agar fakeDuration ishlatilsa — kutamiz
+        yield return new WaitForSeconds(fakeDurationIfCached);
+
+        // To'g'ridan-to'g'ri sahnani yuklaymiz
+        SceneManager.LoadScene(newScene.ToString(), LoadSceneMode.Single);
+    }
+
+    #endregion
     private IEnumerator HandleSceneLoadWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
     {
         // 1. Oldingi sahifani saqlaymiz
@@ -217,7 +306,7 @@ public class SceneLoadManager : MonoBehaviour
     private IEnumerator LoadSceneWithTransition(SceneType newScene)
     {
         PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = SceneType.Loading;
+        CurrentSceneType = newScene;
         SceneManager.LoadScene(SceneType.Loading.ToString());
         AddressablesManager.Instance.loadingTime = 0f; // 💡 boshlanishida 0
         StartCoroutine(FakeLoadingTimeProgress());     // 💡 loadingTime ni sekin ko‘taradi
@@ -225,7 +314,7 @@ public class SceneLoadManager : MonoBehaviour
         yield return new WaitForSeconds(fakeDurationIfCached);
 
         SceneManager.LoadScene(newScene.ToString());
-        CurrentSceneType = newScene;
+        
     }
     IEnumerator FakeLoadingTimeProgress()
     {

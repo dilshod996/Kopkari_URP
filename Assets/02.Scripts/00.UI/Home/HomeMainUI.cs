@@ -2,11 +2,25 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
 using UnityEngine.UI;
 
 public class HomeMainUI : MonoBehaviour
 {
     public static HomeMainUI Instance { get; private set; }
+    [Header("MainUI Parent Object")]
+    [SerializeField] private GameObject mainUIPanel;
+
+    [Header("Touch bo‘lmasa necha sekunddan keyin yashirish")]
+    [SerializeField] private float idleTime = 5f;
+
+    [Header("Input Action")]
+    public InputAction touchAction;
+
+    private float lastInputTime;
+    private bool hidden = false;
+
 
     [Header("Auto Play")]
     [SerializeField] private bool playOnStart = true;
@@ -71,16 +85,20 @@ public class HomeMainUI : MonoBehaviour
 
     #endregion
 
+    [SerializeField] private Image fadeImage;      // rangini inspector’da berasan
+    [SerializeField] private float fadeDuration = 1f;
+
     private void Awake()
     {
         if (Instance == null)
             Instance = this;
         else
             Destroy(gameObject);
-        //PlayerPrefs.DeleteKey(PREF_LAST_CLAIM_DATE);
-        //PlayerPrefs.DeleteKey(PREF_DAY_IN_CYCLE);
-        //PlayerPrefs.DeleteKey(PREF_MONTH_PROGRESS);
         LoadState();
+        if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
+        {
+            fadeImage.gameObject.SetActive(true);
+        }
     }
 
     private void Start()
@@ -96,21 +114,35 @@ public class HomeMainUI : MonoBehaviour
         });
         CheckNewDayAndNotify();
     }
+
     private void OnEnable()
     {
         OnNewDayAvailable += HandleNewDay;
+        lastInputTime = Time.realtimeSinceStartup;
 
+        if (touchAction != null)
+        {
+            touchAction.Enable();
+            touchAction.performed += OnTouch;
+        }
 
-
+        InvokeRepeating(nameof(CheckIdle), 1f, 1f);
+       
     }
     private void OnDisable()
     {
         OnNewDayAvailable -= HandleNewDay;
+        if (touchAction != null)
+        {
+            touchAction.performed -= OnTouch;
+            touchAction.Disable();
+        }
 
+        CancelInvoke(nameof(CheckIdle));
 
     }
 
-    #region Beginning Right & Left Animations
+    #region Beginning Right & Left Animations & FadeOut Image
 
     public void PlayLeft()
     {
@@ -150,6 +182,37 @@ public class HomeMainUI : MonoBehaviour
                 LeanTween.scale(rect, Vector3.one, scaleTime * 0.8f)
                     .setEase(LeanTweenType.easeInOutQuad);
             });
+    }
+    public void RemoveInitialImage()
+    {
+        if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
+        {
+            StartCoroutine(FadeOut());
+        }
+    }
+    public IEnumerator FadeOut()  // 1 -> 0
+    {
+        float t = 0f;
+        Color c = fadeImage.color;
+
+        while (t < fadeDuration)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(1f, 0f, t / fadeDuration);
+
+            c = fadeImage.color;
+            c.a = a;
+            fadeImage.color = c;
+
+            yield return null;
+        }
+
+        c = fadeImage.color;
+        c.a = 0f;
+        fadeImage.color = c;
+
+        // Oxirida umuman ko‘rinmasin desang:
+        fadeImage.gameObject.SetActive(false);
     }
 
     #endregion
@@ -367,4 +430,35 @@ public class HomeMainUI : MonoBehaviour
         ShowUI(rewardPopup);
     }
     #endregion
+
+    #region MainUIPanle Show & Hide
+    private void OnTouch(InputAction.CallbackContext ctx)
+    {
+        lastInputTime = Time.realtimeSinceStartup;
+
+        if (hidden)
+            ShowUI();
+    }
+
+    private void CheckIdle()
+    {
+        if (!hidden && Time.realtimeSinceStartup - lastInputTime >= idleTime)
+        {
+            HideUI();
+        }
+    }
+
+    private void HideUI()
+    {
+        mainUIPanel.SetActive(false);
+        hidden = true;
+    }
+
+    private void ShowUI()
+    {
+        mainUIPanel.SetActive(true);
+        hidden = false;
+    }
+    #endregion
+
 }

@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6b37728fc2778049bf789f6eac9305a, type: 3}
   m_Name: (50) Shake Hand
   m_EditorClassIdentifier: 
-  ID: 50
   DisplayName: Human/Shake Hands
+  ID: 27

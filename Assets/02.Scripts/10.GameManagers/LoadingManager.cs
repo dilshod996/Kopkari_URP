@@ -13,6 +13,9 @@ public class LoadingManager : MonoBehaviour
     public ProgressBar progressBar;
     private float loadTime;
     [SerializeField] private TMP_Text randomText;
+    [SerializeField] private GameObject homePanel;
+    [SerializeField] private GameObject baxmalRacingPanel;
+    [SerializeField] private GameObject jomboyKopkariPanel;
 
     private void Awake()
     {
@@ -23,14 +26,32 @@ public class LoadingManager : MonoBehaviour
     {
         loadTime = AddressablesManager.Instance.loadingTime;
         SoundManager.Instance.StopMusicEvent();
-        //StartCoroutine(ProgressbarTime());
-        StartCoroutine(ChangeTextRoutine());
+        
     }
     private void OnEnable()
     {
-        StartCoroutine(ProgressbarTime());
+        PanelActivation();
+        
     }
-
+    private void PanelActivation()
+    {
+        switch(SceneLoadManager.Instance.CurrentSceneType)
+        {
+            case SceneLoadManager.SceneType.Home:
+                homePanel.SetActive(true);
+                StartCoroutine(ChangeTextRoutine());
+                StartCoroutine(ProgressbarTime());
+                break;
+            case SceneLoadManager.SceneType.SecondRacing:
+                baxmalRacingPanel.SetActive(true);
+                break;
+            default:
+                homePanel.SetActive(true );
+                StartCoroutine(ChangeTextRoutine());
+                StartCoroutine(ProgressbarTime());
+                break;
+        }
+    }
 
     IEnumerator ProgressbarTime()
     {

@@ -36,15 +36,6 @@ namespace Kopkari
         //[SerializeField] private Button skipButton;
         //Intro scene addressable addresses
         private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
-        //Lobby scene addressable addresses
-        private List<string> lobbySceneAddressableAddresses = new List<string> {
-            "Face",
-            "Helmet1",
-            "LowerBody1",
-            "UpperBody2"    ,
-            "Horse",
-            "Utov"
-        };
 
         [Header("User Details")]
         // private const string UsernameKey = "username";
@@ -54,6 +45,11 @@ namespace Kopkari
         private const string CountryName = "countryName";
         private const string FirstTimeKey = "firstTime";
         private const string PlayerFaceKey = "Player_Face";
+
+        [Header("Fade Settings")]
+        [SerializeField] private Image fadeImage;   // ✔ Sen so‘ragan Image
+        [SerializeField] private float fadeDuration = 0.5f;
+        private Color fadeColor;
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -150,7 +146,6 @@ namespace Kopkari
                 {
                     
                     progressBar.currentPercent = progress * 100f;
-                    Debug.Log(progressBar.currentPercent);
                     progressBar.UpdateUI();
                 },
                 fakeDurationIfCached: 2f
@@ -252,12 +247,12 @@ namespace Kopkari
         }
         #endregion
 
-        #region Not working now
+        #region Moving To Lobby
 
         public void LoadLobbyScene()
         {
             List<string> preloadAddresses = GetPreloadMaterialAddresses();
-            SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.Home, preloadAddresses);
+            SceneLoadManager.Instance.LoadSmartSceneIntro(SceneLoadManager.SceneType.Home, preloadAddresses);
         }
         #endregion
 
@@ -268,7 +263,7 @@ namespace Kopkari
 
         private IEnumerator GoToLobbyAfterSmallDelay()
         {
-            yield return new WaitForSeconds(0.3f);
+            yield return StartCoroutine(FadeIn());
 
             LoadLobbyScene();
             Debug.Log("Video finished → Lobby scene");
@@ -285,6 +280,38 @@ namespace Kopkari
             }
 
         }
+        /// Fade-in → 0 dan 1 ga (ekran qora bo‘ladi)
+        /// </summary>
+        public IEnumerator FadeIn()   // 0 -> 1
+        {
+            // 1) Avval aktiv qilamiz
+            fadeImage.gameObject.SetActive(true);
+
+            float t = 0f;
+
+            // 2) Bor rangni olamiz, faqat alpha 0 qilamiz
+            Color c = fadeImage.color;
+            c.a = 0f;
+            fadeImage.color = c;
+
+            // 3) Asta-sekin 0 dan 1 ga ko‘taramiz
+            while (t < fadeDuration)
+            {
+                t += Time.deltaTime;
+                float a = Mathf.Lerp(0f, 1f, t / fadeDuration);
+
+                c = fadeImage.color; // rangni buzmaslik uchun har safar o‘sha rangdan olamiz
+                c.a = a;
+                fadeImage.color = c;
+
+                yield return null;
+            }
+
+            c = fadeImage.color;
+            c.a = 1f;
+            fadeImage.color = c;
+        }
+
         #region Player Data
 
         private void PlayerMaterialsData()

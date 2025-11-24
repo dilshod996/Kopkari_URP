@@ -102,13 +102,6 @@ public class LobbyManager : MonoBehaviour
     private async void Start()
     {
         SceneLoadManager.Instance.SetAssetInstantiationFinished(false);
-        //player = await AddressablesManager.Instance.LoadAndInstantiateCachedAsync(
-        //    "Chopar",
-        //    position: playerSpawnPos.position,
-        //    rotation: playerSpawnPos.rotation,
-        //    parent: PlayerParent.transform
-        //);
-        // 1. Player'ni sahnaga qo‘yamiz
         playerInstance = Instantiate(playerPrefab, playerSpawnPos.position, playerSpawnPos.rotation, PlayerParent.transform);
 
         // 2. Ichidan PlayerSkinLoader scriptni topamiz
@@ -143,7 +136,8 @@ public class LobbyManager : MonoBehaviour
             parent: null
         );
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
-
+        //Removing Boshidagi FadeImgae Intro Scene dan kelayotganda
+        HomeMainUI.Instance.RemoveInitialImage();
         //Horse Animator Details
         HorseAnimGet();
         GetPlayerAnimator();
