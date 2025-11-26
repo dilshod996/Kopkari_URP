@@ -36,14 +36,16 @@ public class MapCard : MonoBehaviour
     [SerializeField] private int costMap;
     private MapCardScaler manager;
 
-    
+    //[Header("Moving Scene Details")]
+    //[SerializeField] private SceneLoadManager.SceneType selectedScene;
+    //[SerializeField] private Button selectBtn;
 
 
 
     private void OnEnable()
     {
         LockeMap();
-        //mapNameText.text = LanguageManager.Instance.GetText(mapLangCode);
+        mapNameText.text = LanguageManager.Instance.GetText(mapLangCode);
         blockBtn.onClick.AddListener(MapDetails);
         
     }

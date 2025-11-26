@@ -1,4 +1,4 @@
-#if UNITY_2023_2_OR_NEWER
+﻿#if UNITY_2023_2_OR_NEWER
 using Unity.Cinemachine;
 #else
 using Cinemachine;
@@ -432,31 +432,21 @@ namespace MalbersAnimations
             return Mathf.Clamp(lfAngle, lfMin, lfMax);
         }
 
-
         public void SetPriority(bool value)
         {
-            if (!TryGetComponent(out ThisCamera)) return;
-
-#if UNITY_2023_2_OR_NEWER
-            //CINEMACHINE 3
-            if (ThisCamera is CinemachineCamera cam)
+            // Har bir ThirdPersonFollowTarget *o'z* virtual kamerasi bilan bir GameObject'da turadi
+            var vcam = GetComponent<CinemachineVirtualCameraBase>();
+            if (vcam == null)
             {
-                if (value)
-                {
-                    cam.Priority.Value = priority;
-                    cam.Priority.Enabled = true;
-                }
-                else
-                {
-                    cam.Priority.Value = -1;
-                    cam.Priority.Enabled = false;
-                }
+                Debug.LogError($"[TPF] {name}: CinemachineVirtualCameraBase topilmadi!");
+                return;
             }
-#else
-            //CINEMACHINE 2
-            ThisCamera.Priority = value ? priority : -1;
-#endif
+
+            vcam.Priority = value ? priority : -1;
+
+            Debug.Log($"[TPF] {name} -> SetPriority({value}) => vcam.Priority = {vcam.Priority}");
         }
+
         public void SetCameraSide(bool value) => SetCameraSide(value ? 1 : 0);
 
 
@@ -506,6 +496,171 @@ namespace MalbersAnimations
                 CameraRotation(0, 0);
             }
         }
+        public void ActivateSolo()
+        {
+            // Boshqa TPFCameras ichidan faqat shu kamerani ON qilamiz
+            if (TPFCameras == null || TPFCameras.Count == 0)
+            {
+                SetPriority(true);
+                return;
+            }
+
+            foreach (var cam in TPFCameras)
+            {
+                // aynan shu kameraga true, qolganlarga false
+                cam.SetPriority(cam == this);
+               
+            }
+        }
+
+        public void AddVerticalOffset(float yOffset)
+        {
+            if (CM3PFollow == null) return;
+
+#if UNITY_2023_2_OR_NEWER
+    // CINEMACHINE 3
+    var offset = CM3PFollow.ShoulderOffset;
+    offset.y += yOffset;
+    CM3PFollow.ShoulderOffset = offset;
+#else
+            // CINEMACHINE 2
+            var offset = CM3PFollow.ShoulderOffset;
+            offset.y = yOffset;
+            CM3PFollow.ShoulderOffset = offset;
+#endif
+        }
+
+        public void SetFinishViewSmooth(
+             float distance,
+             float targetYaw,          // masalan 18f
+             float targetPitch = 15f,  // tepaga biroz ko'tarilgan
+             float verticalOffset = 0f,
+             float duration = 1f       // nechchi soniyada aylanib borsin
+         )
+        {
+            StartCoroutine(FinishViewSmoothRoutine(distance, targetYaw, targetPitch, verticalOffset, duration));
+        }
+
+        private IEnumerator FinishViewSmoothRoutine(
+            float distance,
+            float targetYaw,
+            float targetPitch,
+            float verticalOffset,
+            float duration)
+        {
+            // 1) Faqat shu kamerani yoqamiz
+            ActivateSolo();
+
+            // 2) Cinemachine Brain haqiqatan ham shu kameraga switch bo‘lguncha kutamiz
+            yield return new WaitUntil(() => ThisCamera == Brain.ActiveVirtualCamera);
+
+            // 3) Zoom
+            SetCameraDistance(distance);
+
+            // 4) Vertikal offset bo'lsa
+            if (Mathf.Abs(verticalOffset) > 0.001f)
+                AddVerticalOffset(verticalOffset);
+
+            // 5) Boshlang'ich yaw/pitch ni saqlab olamiz
+            float startYaw = _cinemachineTargetYaw;
+            float startPitch = _cinemachineTargetPitch;
+
+            // 6) Oxirgi qiymatlar (sen xohlagan 18 va pitch)
+            float endYaw = targetYaw;
+            float endPitch = Mathf.Clamp(targetPitch, BottomClamp, TopClamp);
+
+            // 7) Vaqt bo'yicha smooth o'zgarish
+            float t = 0f;
+            while (t < duration)
+            {
+                t += UnScaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+                float k = Mathf.Clamp01(t / duration);
+
+                _cinemachineTargetYaw = Mathf.Lerp(startYaw, endYaw, k);
+                _cinemachineTargetPitch = Mathf.Lerp(startPitch, endPitch, k);
+
+                yield return null;
+            }
+
+            // Oxirida aniq target qiymatga qo'yib qo'yamiz
+            _cinemachineTargetYaw = endYaw;
+            _cinemachineTargetPitch = endPitch;
+        }
+
+
+        /// <summary>
+        /// Kamerani birdan (smoothsiz) ma'lum burchak va masofaga qo'yish.
+        /// LookBack kamera uchun: tugma bosilganda chaqiriladi.
+        /// </summary>
+        public void SetViewInstant(
+            float distance,
+            float targetYaw,
+            float targetPitch = 15f,
+            float verticalOffset = 0f)
+        {
+            StartCoroutine(ViewInstantRoutine(distance, targetYaw, targetPitch, verticalOffset));
+        }
+
+        private IEnumerator ViewInstantRoutine(
+            float distance,
+            float targetYaw,
+            float targetPitch,
+            float verticalOffset)
+        {
+            // 1) Faqat shu kamerani yoqamiz
+            ActivateSolo();
+
+            // 2) Cinemachine Brain HAQIQATAN shu kameraga switch bo'lguncha kutamiz
+            yield return new WaitUntil(() => ThisCamera == Brain.ActiveVirtualCamera);
+
+            // 3) Zoom
+            SetCameraDistance(distance);
+
+            // 4) Vertikal offset bo'lsa
+            if (Mathf.Abs(verticalOffset) > 0.001f)
+                AddVerticalOffset(verticalOffset);
+
+            // 5) Yaw / Pitch ni qo'yamiz
+            _cinemachineTargetYaw = targetYaw;
+            _cinemachineTargetPitch = Mathf.Clamp(targetPitch, BottomClamp, TopClamp);
+
+            // 6) Darhol pivotni shu burchakka burab qo'yamiz
+            if (CamPivot != null)
+            {
+                var targetRot = Quaternion.Euler(_cinemachineTargetPitch, _cinemachineTargetYaw, 0f);
+
+                if (UseUpVector && UpVector)
+                    targetRot = Quaternion.FromToRotation(Vector3.up, UpVector.up) * targetRot;
+
+                CamPivot.rotation = targetRot;
+            }
+        }
+
+
+        /// <summary>
+        /// Hozirgi yaw dan 180° orqaga qaragan holda birdan view qilish.
+        /// (Look back tugmasi bosilganda ishlatish uchun)
+        /// </summary>
+        public void SetBackViewInstant(
+            float distance,
+            float targetPitch = 15f,
+            float verticalOffset = 0f)
+        {
+            // Hozirgi yaw ni olamiz
+            float currentYaw = _cinemachineTargetYaw;
+
+            // Orqaga qarash uchun 180° ga buramiz
+            float backYaw = currentYaw + 180f;
+
+            // Yaw ni -180..180 oralig'ida normalizatsiya qilamiz
+            if (backYaw > 180f) backYaw -= 360f;
+            if (backYaw < -180f) backYaw += 360f;
+
+            // Endi oddiy SetViewInstant bilan ishlatamiz
+            SetViewInstant(distance, backYaw, targetPitch, verticalOffset);
+        }
+
+
 
 #if UNITY_EDITOR
         private void OnValidate()

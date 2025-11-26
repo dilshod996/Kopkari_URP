@@ -24,14 +24,17 @@ public class GameplayMode : MonoBehaviour
     [SerializeField] private Button leagueBtn;
     [SerializeField] private Button closeBtn;
     [SerializeField] private Button trainingBtn;
+    [SerializeField] private Button racingMapsBtn;
 
     [Header("Other Panels")]
     [SerializeField] private GameObject leaguePanel;
+    [SerializeField] private GameObject racingMaps;
 
     private void OnEnable()
     {
         //UITransilations();
         leagueBtn.onClick.AddListener(OpenLeaguePanel);
+        racingMapsBtn.onClick.AddListener(OpenRacingMaps);
         //closeBtn.onClick.AddListener(CloseGameObject);
     }
 
@@ -51,6 +54,10 @@ public class GameplayMode : MonoBehaviour
     {
         HomeMainUI.Instance.ShowUI(leaguePanel);
     }
+    private void OpenRacingMaps()
+    {
+        HomeMainUI.Instance.ShowUI(racingMaps);
+    }
     public void CloseGameObject()
     {
         HomeMainUI.Instance.HideUI(this);
@@ -58,6 +65,7 @@ public class GameplayMode : MonoBehaviour
     private void OnDisable()
     {
         leagueBtn.onClick.RemoveListener(OpenLeaguePanel);
+        racingMapsBtn.onClick.RemoveListener(OpenRacingMaps);
         closeBtn.onClick.RemoveListener(CloseGameObject);
     }
 }

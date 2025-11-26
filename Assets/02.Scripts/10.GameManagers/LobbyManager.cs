@@ -56,6 +56,10 @@ public class LobbyManager : MonoBehaviour
     [SerializeField] private NPCStarter npcSelectPanel;
     [SerializeField] private GameObject giftPopupPanel;
 
+    [Header("EarningPoints(Coins)")]
+    [SerializeField] private TMP_Text taqaCoinText;
+    [SerializeField] private TMP_Text nyufiyCoinText;
+
     [Header("Other room addressables")]
     private List<string> customSceneAddressableAddresses = new List<string> { "Chopar"};
 
@@ -148,10 +152,10 @@ public class LobbyManager : MonoBehaviour
              SoundManager.Instance.PlayMusic(lobbySound);
         CheckNPCSelectionDads();
         InvokeRepeating(nameof(UpdateTimeRemaining), 0f, 1f);
-        if(PlayerPrefs.HasKey(Constants.Player.UsernameKey))
-        {
-            playerName.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        }
+        //if(PlayerPrefs.HasKey(Constants.Player.UsernameKey))
+        //{
+        //    playerName.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+        //}
         if(PlayerPrefs.HasKey(Constants.Horse.HorseNameKey))
         {
             horseName.text = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
@@ -260,7 +264,7 @@ public class LobbyManager : MonoBehaviour
     {
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.FirstRacing, preloadAddresses);
     }
-    public void SecondRoom()
+    public void BaxmalRacing()
     {
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.SecondRacing, preloadAddresses);
     }
@@ -420,7 +424,7 @@ public class LobbyManager : MonoBehaviour
         playText.text = LanguageManager.Instance.GetText(23);
         tournamentText.text = LanguageManager.Instance.GetText(24);
         storeText.text = LanguageManager.Instance.GetText(25);
-        settingsText.text = LanguageManager.Instance.GetText(26);
+        //settingsText.text = LanguageManager.Instance.GetText(26);
        // newsText.text = LanguageManager.Instance.GetText(28);
         //timeText.text = LanguageManager.Instance.GetText(21);
         lobbyName.text = LanguageManager.Instance.GetText(27);

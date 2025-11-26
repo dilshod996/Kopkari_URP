@@ -1,4 +1,5 @@
-﻿using MalbersAnimations.Controller;
+﻿using MalbersAnimations;
+using MalbersAnimations.Controller;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -61,6 +62,14 @@ public class RacingController : MonoBehaviour
     [SerializeField] GameOver gameOverPanel;
     [Header("Walk Zone Prefab")]
     public GameObject walkZonePrefab;
+    [Header("Camera Details")]
+    [SerializeField] private ThirdPersonFollowTarget mainCam;
+    [SerializeField] private ThirdPersonFollowTarget backCam;
+    [SerializeField] private ThirdPersonFollowTarget finishCam;
+    private float _savedMainYaw;
+    private float _savedMainPitch;
+
+    public float cameraDistance = 4.5f;
 
     private void Awake()
     {
@@ -82,6 +91,8 @@ public class RacingController : MonoBehaviour
         // poolingdagi barcha aktiv WalkZone obyektlarni qaytaradi
         SimplePool.ClearAll();
     }
+
+
 
 
 
@@ -226,9 +237,10 @@ public class RacingController : MonoBehaviour
         // 3 soniyadan so‘ng to‘xtatamiz misol uchun
         horse.Always_Forward(false);
         horse.Speed_CurrentIndex_Set(2);
+        CameraPostionCheck();
         HideLeaderboardPanel();
         mobileCanvasPanel.gameObject.SetActive(false);
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(3f);
         horse.StopMoving();
         action?.Invoke();
     }
@@ -428,6 +440,63 @@ public class RacingController : MonoBehaviour
     {
         speechBubble.Hide();
     }
+    #endregion
+
+    #region Camera Details
+    public void CameraPostionCheck()
+    {
+        horse.UseCameraInput = false;
+        finishCam.SetFinishViewSmooth(
+            cameraDistance,  // masofa
+            -33f,             // yaw -> Inspector’da 18 bo'lishi uchun
+            6.5f,             // pitch (istaganingcha o'zgartirishing mumkin)
+            0.13f,  // pastga/pasga offset kerak bo'lsa
+            1f               // 1 soniyada aylanib borsin, xohlasang 0.5 / 2f qil
+        );
+    }
+    public void LookBack()
+    {
+        horse.UseCameraInput = false;
+        CacheMainCamView();
+        // masalan lookBackCam – bu LookBack virtual kamera ichidagi ThirdPersonFollowTarget
+        backCam.SetBackViewInstant(
+            distance: 3f,       // yoki o'zing xohlagan masofa
+
+            verticalOffset: 0.4f   // agar ekstra tushirmoqchi bo'lsang, yoki 0f qoldirsa ham bo'ladi
+        );
+
+    }
+    public void CacheMainCamView()
+    {
+        _savedMainYaw = mainCam._cinemachineTargetYaw;
+        _savedMainPitch = mainCam._cinemachineTargetPitch;
+    }
+    public void MainCam()
+    {
+        StartCoroutine(ReturnToMainCamRoutine());
+    }
+
+    private IEnumerator ReturnToMainCamRoutine()
+    {
+
+
+        // Kamera view'ni birdan eski holatga qaytaramiz
+        mainCam.SetViewInstant(
+           distance: 6f,
+           targetYaw: _savedMainYaw,      // 157 o'rniga oldingi qiymat
+           targetPitch: _savedMainPitch,  // 13 o'rniga oldingi qiymat
+           verticalOffset: 0
+       );
+
+        // Bitta frame yoki kichik delay kutamiz – SetViewInstant ichidagi coroutine ishini tugatib olsin
+        yield return new WaitForSeconds(0.2f);               // xohlasang yield return new WaitForSeconds(0.1f);
+
+
+
+        // Endi otni inputga qaytadan bog'laymiz
+        horse.UseCameraInput = true;
+    }
+
     #endregion
 
 }

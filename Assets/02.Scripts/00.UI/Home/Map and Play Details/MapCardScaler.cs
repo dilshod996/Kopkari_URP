@@ -15,6 +15,7 @@ public class MapCardScaler : MonoBehaviour
 
     [Header("Texts")]
     [SerializeField] private TMP_Text titleText;
+    [SerializeField] private Button closeBtn;
 
 
     void Start()
@@ -104,6 +105,7 @@ public class MapCardScaler : MonoBehaviour
     private void OnEnable()
     {
         titleText.text = LanguageManager.Instance.GetText(46);
+        closeBtn.onClick.AddListener(ClosePage);
         //firstRoomName.text = LanguageManager.Instance.GetText(47);
         //secondRoomName.text = LanguageManager.Instance.GetText(48);
         //thirdRoomName.text = LanguageManager.Instance.GetText(49);
@@ -116,6 +118,10 @@ public class MapCardScaler : MonoBehaviour
         //tenthRoomName.text = LanguageManager.Instance.GetText(56);
         //eleventhRoomName.text = LanguageManager.Instance.GetText(57);
     }
+    private void ClosePage()
+    {
+        HomeMainUI.Instance.HideUI(this);
+    }
     void OnDisable()
     {
         mapCards = scrollRect.content.GetComponentsInChildren<MapCard>();
@@ -125,5 +131,6 @@ public class MapCardScaler : MonoBehaviour
             float normalizedPos = Mathf.Clamp01(1f / total);
             scrollRect.horizontalNormalizedPosition = normalizedPos;
         }
+        closeBtn.onClick.RemoveListener(ClosePage);
     }
 }
