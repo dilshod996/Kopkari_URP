@@ -112,6 +112,12 @@ namespace MalbersAnimations
 
         private bool Active { get; set; }
         public bool UseUpVector { get => useUpVector; set => useUpVector = value; }
+        // LookBack rejim flag'i
+        [SerializeField] private bool lookBackMode = false;
+
+        // Tashqaridan yoqish/o'chirish uchun
+        public void SetLookBackMode(bool value) => lookBackMode = value;
+
 
         #endregion
 
@@ -365,31 +371,38 @@ namespace MalbersAnimations
         {
             if (Active)
             {
-                // if there is an input and camera position
                 if (look.Value.sqrMagnitude >= _threshold)
                 {
-                    //Don't multiply mouse input by Time.deltaTime;
                     float deltaTimeMultiplier = UsingMouse ? 1.0f : (deltaTime * GamepadMult);
 
                     _cinemachineTargetYaw += look.x * InvertX * XMultiplier * deltaTimeMultiplier;
                     _cinemachineTargetPitch += look.y * InvertY * YMultiplier * deltaTimeMultiplier;
                 }
 
-                // clamp our rotations so our values are limited 360 degrees
                 _cinemachineTargetYaw = ClampAngle(_cinemachineTargetYaw, float.MinValue, float.MaxValue);
                 _cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, BottomClamp, TopClamp);
 
-                // Cinemachine will follow this target
-                var TargetRotation = Quaternion.Euler(_cinemachineTargetPitch, _cinemachineTargetYaw, 0.0f);
+                // 🔹 ASOSIY O'ZGARISH: vizual yaw
+                float visualYaw = _cinemachineTargetYaw;
 
-                if (UseUpVector && UpVector) TargetRotation = Quaternion.FromToRotation(Vector3.up, UpVector.up) * TargetRotation;
+                // Look back rejimi bo'lsa, faqat ko'rinishga 180° qo'shamiz,
+                // lekin _cinemachineTargetYaw ning o'zini o'zgartirmaymiz.
+                if (lookBackMode)
+                {
+                    visualYaw += 180f;
+                }
+
+                var TargetRotation = Quaternion.Euler(_cinemachineTargetPitch, visualYaw, 0.0f);
+
+                if (UseUpVector && UpVector)
+                    TargetRotation = Quaternion.FromToRotation(Vector3.up, UpVector.up) * TargetRotation;
 
                 if (lerp > 0)
-                    CamPivot.rotation = Quaternion.Lerp(CamPivot.rotation, TargetRotation, deltaTime * lerp); //NEEDED FOR SMOOTH CAMERA MOVEMENT
+                    CamPivot.rotation = Quaternion.Lerp(CamPivot.rotation, TargetRotation, deltaTime * lerp);
                 else
                     CamPivot.rotation = TargetRotation;
 
-                UpdateAllCamerasYawPitch(); //Update the other Cameras that are using the same Brain
+                UpdateAllCamerasYawPitch();
             }
             else if (ActiveCM_NOT3rdPerson != null)
             {
@@ -444,7 +457,7 @@ namespace MalbersAnimations
 
             vcam.Priority = value ? priority : -1;
 
-            Debug.Log($"[TPF] {name} -> SetPriority({value}) => vcam.Priority = {vcam.Priority}");
+            //Debug.Log($"[TPF] {name} -> SetPriority({value}) => vcam.Priority = {vcam.Priority}");
         }
 
         public void SetCameraSide(bool value) => SetCameraSide(value ? 1 : 0);
@@ -588,77 +601,11 @@ namespace MalbersAnimations
         }
 
 
-        /// <summary>
-        /// Kamerani birdan (smoothsiz) ma'lum burchak va masofaga qo'yish.
-        /// LookBack kamera uchun: tugma bosilganda chaqiriladi.
-        /// </summary>
-        public void SetViewInstant(
-            float distance,
-            float targetYaw,
-            float targetPitch = 15f,
-            float verticalOffset = 0f)
-        {
-            StartCoroutine(ViewInstantRoutine(distance, targetYaw, targetPitch, verticalOffset));
-        }
-
-        private IEnumerator ViewInstantRoutine(
-            float distance,
-            float targetYaw,
-            float targetPitch,
-            float verticalOffset)
-        {
-            // 1) Faqat shu kamerani yoqamiz
-            ActivateSolo();
-
-            // 2) Cinemachine Brain HAQIQATAN shu kameraga switch bo'lguncha kutamiz
-            yield return new WaitUntil(() => ThisCamera == Brain.ActiveVirtualCamera);
-
-            // 3) Zoom
-            SetCameraDistance(distance);
-
-            // 4) Vertikal offset bo'lsa
-            if (Mathf.Abs(verticalOffset) > 0.001f)
-                AddVerticalOffset(verticalOffset);
-
-            // 5) Yaw / Pitch ni qo'yamiz
-            _cinemachineTargetYaw = targetYaw;
-            _cinemachineTargetPitch = Mathf.Clamp(targetPitch, BottomClamp, TopClamp);
-
-            // 6) Darhol pivotni shu burchakka burab qo'yamiz
-            if (CamPivot != null)
-            {
-                var targetRot = Quaternion.Euler(_cinemachineTargetPitch, _cinemachineTargetYaw, 0f);
-
-                if (UseUpVector && UpVector)
-                    targetRot = Quaternion.FromToRotation(Vector3.up, UpVector.up) * targetRot;
-
-                CamPivot.rotation = targetRot;
-            }
-        }
+     
 
 
-        /// <summary>
-        /// Hozirgi yaw dan 180° orqaga qaragan holda birdan view qilish.
-        /// (Look back tugmasi bosilganda ishlatish uchun)
-        /// </summary>
-        public void SetBackViewInstant(
-            float distance,
-            float targetPitch = 15f,
-            float verticalOffset = 0f)
-        {
-            // Hozirgi yaw ni olamiz
-            float currentYaw = _cinemachineTargetYaw;
+     
 
-            // Orqaga qarash uchun 180° ga buramiz
-            float backYaw = currentYaw + 180f;
-
-            // Yaw ni -180..180 oralig'ida normalizatsiya qilamiz
-            if (backYaw > 180f) backYaw -= 360f;
-            if (backYaw < -180f) backYaw += 360f;
-
-            // Endi oddiy SetViewInstant bilan ishlatamiz
-            SetViewInstant(distance, backYaw, targetPitch, verticalOffset);
-        }
 
 
 

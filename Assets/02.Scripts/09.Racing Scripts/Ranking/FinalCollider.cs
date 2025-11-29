@@ -13,7 +13,6 @@ public class FinalCollider : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
-        Debug.Log("PlayerEntered");
         RacingController.Instance.StopHorseRun();
     }
 }

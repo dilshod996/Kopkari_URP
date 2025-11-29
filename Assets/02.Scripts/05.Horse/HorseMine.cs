@@ -25,7 +25,7 @@ public class HorseMine : MonoBehaviour
     [SerializeField] private int hitCount = 0;
     private bool isPenalized = false;
     private Action<GameObject> onHitHandler;
-
+    public static Action OnObstacleHit;
     [Header("Speed Improver")]
     [SerializeField] private bool maxSpeed = false;
     [SerializeField] private float maxSpeedDuration = 5f;
@@ -59,8 +59,9 @@ public class HorseMine : MonoBehaviour
     public void GetPenalty()
     {
         hitCount++;
-
+        OnObstacleHit?.Invoke();
         UIButtonActions.Instance.PlayShock();
+
         if (hitCount >= maxHits)
         {
             hitCount = 0;

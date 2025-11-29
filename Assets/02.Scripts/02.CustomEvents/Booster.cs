@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
 public class Booster : MonoBehaviour
@@ -11,6 +12,7 @@ public class Booster : MonoBehaviour
     [Header("Refs (optional)")]
     private Collider triggerCol;
     [SerializeField] private GameObject visuals;
+    public static Action OnSprintFull;   // Event
 
     private bool picked;
     private void Reset()
@@ -34,6 +36,7 @@ public class Booster : MonoBehaviour
         bool isNpc = other.CompareTag("NPC");
         if (!isPlayer && !isNpc) return;
 
+        //boostertype qilib bir korib chiqish kerakda delegate action qilib
         var boosters = other.GetComponentInChildren<BoostersContainer>();
         if (boosters == null) return;
 
@@ -54,7 +57,7 @@ public class Booster : MonoBehaviour
         switch (boosterType)
         {
             case BoosterType.SprintFull:
-                if (isPlayer) target.SprintStatFull();
+                if (isPlayer) OnSprintFull?.Invoke();   // 🔥 Sprintni to‘liq to‘ldir degan signaltarget.SprintStatFull();
                 else target.TriggerBoostSpeed();
                 break;
 

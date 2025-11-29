@@ -1,12 +1,14 @@
 ﻿// RacingAgent.cs
 using UnityEngine;
-
+/// <summary>
+/// This script located head of horse
+/// </summary>
 public class RacingAgent : MonoBehaviour
 {
     [Header("Identity")]
     public string displayName = "Rider";
     public string teamName = "Team A";       // 🔹 yangi
-    public float earnings = 0f;              // 🔹 yangi
+
     public Transform pivot;
     public bool isPlayer;
     public BoostersContainer boosterContainer;

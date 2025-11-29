@@ -8,8 +8,6 @@ using UnityEngine.UI;
 public class Settings : MonoBehaviour
 {
 
-    [SerializeField] private LobbyManager lobbyManager;
-
     [Header("Settings Texts")]
     [SerializeField] private TMP_Text titleSettings;
     [SerializeField] private TMP_Text languageTextTitle;
@@ -99,7 +97,8 @@ public class Settings : MonoBehaviour
     {
         Debug.Log("Selected item: " + languageDropdown.selectedItemIndex);
         SetLanguage(languageDropdown.selectedItemIndex);
-        lobbyManager.MainLobbyText();
+        HomeMainUI.Instance?.UITransilations();
+        //lobbyManager.MainLobbyText();
         gameObject.SetActive(false);
         //LanguageManager.Instance.SetLanguage(languageDropdown.selectedItemIndex);
     }

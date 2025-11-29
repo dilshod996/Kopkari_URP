@@ -3,6 +3,7 @@ using MalbersAnimations.Controller;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.NetworkInformation;
 using System.Xml.Serialization;
 using TMPro;
@@ -15,6 +16,7 @@ public class RacingController : MonoBehaviour
 {
     public static RacingController Instance { get; protected set; }
     public MAnimal horse;
+    public MAnimal riderAnimal;
     [SerializeField] private List<AIRacingRider> aiRiders;
     [SerializeField] private TMP_Text countText;
     [SerializeField] private float countdownDelay = 1f; // har bosqich oralig‘i
@@ -30,11 +32,6 @@ public class RacingController : MonoBehaviour
     [SerializeField] private LeanTweenType leaderboardEase = LeanTweenType.easeOutCubic;
     [SerializeField] private float leaderboardPopScale = 1.03f;   // 1.0 = popsiz
 
-    [Header("ResultPage Fade-In")]
-    [SerializeField] private RacingResultPage resultPage;
-    [SerializeField] private CanvasGroup resultboardGroup;        // leaderboard panel (CanvasGroup kerak)
-    [SerializeField] private RectTransform resultboardRoot;
-    [SerializeField] private float resultFadeDuration = 0.01f;  // fast rejimda fade
 
 
     [SerializeField] private GameObject mobileCanvasPanel;
@@ -45,7 +42,7 @@ public class RacingController : MonoBehaviour
 
     [Header("Reverse UI")]
     [SerializeField] private RectTransform reversePanel;     // boshida SetActive(false)
-    [SerializeField] private TextMeshProUGUI reverseTimeText;
+    [SerializeField] private TMP_Text reverseTimeText;
     [SerializeField] private float slideDuration = 0.25f;    // anim vaqti
     [SerializeField] private float panelShownY = -165f;         // ko‘rinadigan y
     [SerializeField] private float panelHiddenY = 150f;      // yuqoriga yashirin y (anchored)
@@ -64,13 +61,32 @@ public class RacingController : MonoBehaviour
     public GameObject walkZonePrefab;
     [Header("Camera Details")]
     [SerializeField] private ThirdPersonFollowTarget mainCam;
-    [SerializeField] private ThirdPersonFollowTarget backCam;
     [SerializeField] private ThirdPersonFollowTarget finishCam;
+    [SerializeField] private ThirdPersonFollowTarget sprintCam;
     private float _savedMainYaw;
     private float _savedMainPitch;
 
     public float cameraDistance = 4.5f;
+    [SerializeField] private float frontDistance = 6f;
+    [SerializeField] private float backDistance = 3f;
+    [SerializeField] private float backOffsetY = 0.4f;
 
+    [Header("Starting Point Slider Values")]
+    [SerializeField] private int defaultSpeedIndex = 4;  // odatiy tezlik
+    [SerializeField] private int boostSpeedIndex = 5;    // max tezlik
+    [SerializeField] private float boostTimeMultiplier = 4f; // slider * 4 sekund
+    private Coroutine boostRoutine;
+
+    private float boostTime;
+    private float penaltyTime;
+
+    public static Action<float> OnOverallBoostTime;
+    public static Action<float> OnOverallPenaltyTime;
+
+    public static Action OnRacingFinished;
+    public static Action OnRacingStarted;
+
+    #region Starting Functions
     private void Awake()
     {
         if (Instance == null)
@@ -86,46 +102,69 @@ public class RacingController : MonoBehaviour
         SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
         //GetSetAnimal(HorseMine.Instance.horseAnimal);
     }
+    private void OnEnable()
+    {
+        StartPowerBar.OnStartPowerSelected += OnPowerSelected;
+        PlayerDataManager.OnRiderAndHorse += GetSetAnimal;
+        BoostersContainer.OnBoostTime += SetBoostTime;
+        BoostersContainer.OnPenaltyTime += SetPenaltyTime;
+        UIButtonActions.OnSprintStart += HorseSprint;
+        UIButtonActions.OnSprintEnd += HorseDefaultSpeed;
+        BoostersContainer.OnSprintEffectStart += SprintCameraEnable;
+        BoostersContainer.OnSprintEffectEnd += SprintCameraDisable;
+        RacingResultPage.OnGetRiderRank += PlayFinalAnim;
+
+    }
     private void OnDestroy()
     {
         // poolingdagi barcha aktiv WalkZone obyektlarni qaytaradi
         SimplePool.ClearAll();
+        StartPowerBar.OnStartPowerSelected -= OnPowerSelected;
+        PlayerDataManager.OnRiderAndHorse -= GetSetAnimal;
+        BoostersContainer.OnBoostTime -= SetBoostTime;
+        BoostersContainer.OnPenaltyTime -= SetPenaltyTime;
+        UIButtonActions.OnSprintStart -= HorseSprint;
+        UIButtonActions.OnSprintEnd -= HorseDefaultSpeed;
+        BoostersContainer.OnSprintEffectStart -= SprintCameraEnable;
+        BoostersContainer.OnSprintEffectEnd -= SprintCameraDisable;
+        RacingResultPage.OnGetRiderRank += PlayFinalAnim;
     }
+    #endregion
 
+    #region Removed Boshlanish player ruyxat
+    //public void OnStartButtonPressed()
+    //{
+    //    StartCoroutine(StartCountdown());
+    //}
 
+    //private IEnumerator StartCountdown()
+    //{
+    //    countText.gameObject.SetActive(true);
 
+    //    for (int i = 3; i >= 1; i--)
+    //    {
+    //        countText.text = i.ToString();
+    //        yield return new WaitForSeconds(countdownDelay);
+    //    }
 
+    //    // "Start" yozuvi
+    //    countText.text = "Start!";
+    //    yield return new WaitForSeconds(startTextDuration);
 
-    public void OnStartButtonPressed()
-    {
-        StartCoroutine(StartCountdown());
-    }
+    //    //countText.gameObject.SetActive(false);
 
-    private IEnumerator StartCountdown()
-    {
-        countText.gameObject.SetActive(true);
+    //    // endi poyga boshlanadi
+    //    //StartRacing();
+    //}
+    #endregion
 
-        for (int i = 3; i >= 1; i--)
-        {
-            countText.text = i.ToString();
-            yield return new WaitForSeconds(countdownDelay);
-        }
-
-        // "Start" yozuvi
-        countText.text = "Start!";
-        yield return new WaitForSeconds(startTextDuration);
-
-        //countText.gameObject.SetActive(false);
-
-        // endi poyga boshlanadi
-        StartRacing();
-    }
+    #region Start and Stop Racing
     public void StartRacing()
     {
         EnableNavMesh();
-        StartRun();
         ShowLeaderboardPanel();
         RacingLeaderboard.Instance.StartRace();
+        OnRacingStarted?.Invoke();
     }
 
     public void StopRacing()
@@ -133,6 +172,8 @@ public class RacingController : MonoBehaviour
         DisableNavmesh();
         //StopAlwaysForward();
     }
+    #endregion
+
     #region LeaderBoard
     private void InitLeaderboardPanelHidden()
     {
@@ -204,21 +245,34 @@ public class RacingController : MonoBehaviour
     }
     #endregion
 
-    #region Horse Manage
-    public void StartRun()
+    #region Rider Details
+    public void PlayFinalAnim(int ranking)
     {
-        StartHorseRun(horse);
-    }
-    public void GetSetAnimal(MAnimal mAnimal)
-    {
-        horse = mAnimal;
-    }
-    public void StartHorseRun(MAnimal mAnimal)
-    {
-        StartCoroutine(HorseRunStarter(mAnimal));
+        switch(ranking)
+        {
+            case 1: case 2: case 3:
+                riderAnimal?.Mode_Activate(16, 1);
+                break;
+            default:
+                riderAnimal?.Mode_Activate(16, 2);
+                break;
+        }
     }
 
-    private IEnumerator HorseRunStarter(MAnimal mAnimal)
+    #endregion
+
+    #region Horse Manage
+    private void OnPowerSelected(float sliderValue)
+    {
+        StartHorseRun(horse, sliderValue);
+        StartRacing();
+    }
+    public void StartHorseRun(MAnimal mAnimal, float sliderValue)
+    {
+        StartCoroutine(HorseRunStarter(mAnimal, sliderValue));
+    }
+
+    private IEnumerator HorseRunStarter(MAnimal mAnimal, float sliderValue)
     {
         horse = mAnimal;
 
@@ -227,12 +281,66 @@ public class RacingController : MonoBehaviour
 
         horse.Always_Forward(true);
         mobileCanvasPanel.gameObject.SetActive(true);
+
+        // shu yerda tezlik hisoblanadi
+        CalculateSpeed(sliderValue);
     }
+
+    public void CalculateSpeed(float sliderValue)
+    {
+        if (horse == null)
+        {
+            return;
+        }
+
+        // 0..1 oralig‘iga qisib qo‘yamiz
+        sliderValue = Mathf.Clamp01(sliderValue);
+
+        // default (bosilmagan) holat: faqat 4-speedda yuradi
+        if (sliderValue <= 0f)
+        {
+            horse.Speed_CurrentIndex_Set(defaultSpeedIndex);
+            return;
+        }
+
+        // necha sekund boost bo‘lishini hisoblaymiz
+        float boostDuration = sliderValue * boostTimeMultiplier;
+
+        // agar avvalgi coroutine ishlayotgan bo‘lsa – to‘xtatamiz
+        if (boostRoutine != null)
+            StopCoroutine(boostRoutine);
+
+        boostRoutine = StartCoroutine(SpeedBoostRoutine(boostDuration));
+    }
+
+    private IEnumerator SpeedBoostRoutine(float duration)
+    {
+        // 1) Avval default speedga qo‘yib olamiz (ishonch uchun)
+        //horse.Speed_CurrentIndex_Set(defaultSpeedIndex);
+
+        // 2) Boost ON → max tezlik
+        horse.Speed_CurrentIndex_Set(boostSpeedIndex);
+
+        // 3) Sliderga qarab hisoblangan vaqt kutamiz
+        yield return new WaitForSeconds(duration);
+
+        // 4) Yana default speedga qaytaramiz
+        horse.Speed_CurrentIndex_Set(defaultSpeedIndex);
+
+        boostRoutine = null;
+    }
+
+    public void GetSetAnimal(MAnimal horseAnimal, MAnimal riderAnim)
+    {
+        horse = horseAnimal;
+        riderAnimal = riderAnim;
+    }
+
     public void StopHorseRun()
     {
-        StartCoroutine(HorseStopAction(ShowResultPanel));
+        StartCoroutine(HorseStopAction());
     }
-    private IEnumerator HorseStopAction(Action action)
+    private IEnumerator HorseStopAction(Action action=null)
     {
         // 3 soniyadan so‘ng to‘xtatamiz misol uchun
         horse.Always_Forward(false);
@@ -242,7 +350,20 @@ public class RacingController : MonoBehaviour
         mobileCanvasPanel.gameObject.SetActive(false);
         yield return new WaitForSeconds(3f);
         horse.StopMoving();
+        OnRacingFinished?.Invoke();
         action?.Invoke();
+    }
+
+    private void HorseSprint()
+    {
+        if (horse != null) { horse.Speed_CurrentIndex_Set(boostSpeedIndex);
+            SprintCameraEnable();
+        }
+    }
+
+    private void HorseDefaultSpeed()
+    {
+        if (horse != null) { horse.Speed_CurrentIndex_Set(defaultSpeedIndex);  SprintCameraDisable(); }
     }
     #endregion
 
@@ -253,59 +374,6 @@ public class RacingController : MonoBehaviour
     }
     #endregion
 
-    #region Final Page
-   
-    /// <summary>
-    /// Final sahifani animatsiya bilan ko‘rsatadi va anim tugagach ro‘yxatni quradi.
-    /// </summary>
-    public void ShowResultPanel()
-    {
-        if (!resultboardGroup || !resultPage) return;
-
-        // Tweenga toza holat
-        LeanTween.cancel(resultboardGroup.gameObject);
-        if (resultboardRoot) LeanTween.cancel(resultboardRoot.gameObject);
-
-        // Ko‘rinadigan, lekin yashirin (alpha=0)
-        resultboardGroup.gameObject.SetActive(true);
-        resultboardGroup.alpha = 0f;
-        resultboardGroup.interactable = false;
-        resultboardGroup.blocksRaycasts = false;
-
-        if (resultboardRoot)
-            resultboardRoot.localScale = (leaderboardPopScale > 1f) ? Vector3.one * leaderboardPopScale : Vector3.one;
-
-        // STANDINGS ni anim tugagach olish — shunda snapshot “final” bo‘ladi
-        // (agar hohlasang oldindan ham olishing mumkin)
-        var lb = RacingLeaderboard.Instance;
-
-        // Sequence: (pop -> fade) -> BuildList
-        var seq = LeanTween.sequence();
-
-        // Pop (agar kerak bo‘lsa)
-        if (resultboardRoot && leaderboardPopScale > 1f)
-        {
-            seq.append(LeanTween.scale(resultboardRoot, Vector3.one, resultFadeDuration * 0.55f).setEase(leaderboardEase));
-        }
-
-        // Fade-in
-        seq.append(LeanTween.alphaCanvas(resultboardGroup, 1f, resultFadeDuration).setEase(leaderboardEase));
-
-        // Anim tugagach: interaktivni yoqamiz va BuildList chaqiramiz
-        seq.append(() =>
-        {
-            resultboardGroup.interactable = true;
-            resultboardGroup.blocksRaycasts = true;
-
-            var standings = lb?.GetStandings();  // List<RacingAgent>
-            if (standings != null)
-            {
-                // 🔥 Endi final listni quramiz
-                resultPage.BuildList(standings);
-            }
-        });
-    }
-    #endregion
 
     #region Horse Back Running
     public void StartReverse()
@@ -385,6 +453,7 @@ public class RacingController : MonoBehaviour
         {
             if (reverseTimeText) reverseTimeText.text = $"{tLeft:0}";
             tLeft -= uiTick;
+            penaltyTime += uiTick;
             yield return wait;
         }
 
@@ -443,60 +512,82 @@ public class RacingController : MonoBehaviour
     #endregion
 
     #region Camera Details
+
+    private void SprintCameraEnable()
+    {
+        sprintCam.SetPriority(true);
+    }
+    private void SprintCameraDisable() { sprintCam.SetPriority(false); }
     public void CameraPostionCheck()
     {
         horse.UseCameraInput = false;
         finishCam.SetFinishViewSmooth(
             cameraDistance,  // masofa
-            -33f,             // yaw -> Inspector’da 18 bo'lishi uchun
-            6.5f,             // pitch (istaganingcha o'zgartirishing mumkin)
-            0.13f,  // pastga/pasga offset kerak bo'lsa
+            -32f,             // yaw -> Inspector’da 18 bo'lishi uchun
+            -4f,             // pitch (istaganingcha o'zgartirishing mumkin)
+            -0.85f,  // pastga/pasga offset kerak bo'lsa
             1f               // 1 soniyada aylanib borsin, xohlasang 0.5 / 2f qil
         );
     }
+
+
     public void LookBack()
     {
+        if (mainCam == null) return;
+
         horse.UseCameraInput = false;
-        CacheMainCamView();
-        // masalan lookBackCam – bu LookBack virtual kamera ichidagi ThirdPersonFollowTarget
-        backCam.SetBackViewInstant(
-            distance: 3f,       // yoki o'zing xohlagan masofa
 
-            verticalOffset: 0.4f   // agar ekstra tushirmoqchi bo'lsang, yoki 0f qoldirsa ham bo'ladi
-        );
+        // masofani va offsetni biroz o'zgartirishni xohlasang:
+        mainCam.SetCameraDistance(backDistance);
+        mainCam.AddVerticalOffset(backOffsetY);
 
+        // faqat flag'ni yoqamiz
+        mainCam.SetLookBackMode(true);
     }
-    public void CacheMainCamView()
-    {
-        _savedMainYaw = mainCam._cinemachineTargetYaw;
-        _savedMainPitch = mainCam._cinemachineTargetPitch;
-    }
+
     public void MainCam()
     {
-        StartCoroutine(ReturnToMainCamRoutine());
+        if (mainCam == null) return;
+
+        // masofani va offsetni front holatga qaytaramiz
+        mainCam.SetCameraDistance(frontDistance);
+        mainCam.AddVerticalOffset(0f); // yoki front uchun alohida offset bo'lsa o'shani
+
+        mainCam.SetLookBackMode(false);
+
+        StartCoroutine(EnableHorseInputDelayed());
     }
 
-    private IEnumerator ReturnToMainCamRoutine()
+    private IEnumerator EnableHorseInputDelayed()
     {
-
-
-        // Kamera view'ni birdan eski holatga qaytaramiz
-        mainCam.SetViewInstant(
-           distance: 6f,
-           targetYaw: _savedMainYaw,      // 157 o'rniga oldingi qiymat
-           targetPitch: _savedMainPitch,  // 13 o'rniga oldingi qiymat
-           verticalOffset: 0
-       );
-
-        // Bitta frame yoki kichik delay kutamiz – SetViewInstant ichidagi coroutine ishini tugatib olsin
-        yield return new WaitForSeconds(0.2f);               // xohlasang yield return new WaitForSeconds(0.1f);
-
-
-
-        // Endi otni inputga qaytadan bog'laymiz
+        yield return new WaitForSeconds(0.15f);
         horse.UseCameraInput = true;
     }
 
+
+
+    #endregion
+
+    #region Horse Statistics
+    public float GetBoostTime()
+    {
+        return boostTime;
+    }
+    public void SetBoostTime(float time)
+    {
+        boostTime = boostTime + time;
+        OnOverallBoostTime?.Invoke(boostTime);
+
+    }
+    public float GetPenaltyTime()
+    {
+        return penaltyTime;
+    }
+    public void SetPenaltyTime(float time)
+    {
+        penaltyTime = penaltyTime + time;
+        OnOverallPenaltyTime?.Invoke(penaltyTime);
+    }
     #endregion
 
 }

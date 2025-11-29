@@ -16,7 +16,7 @@ public class HorseDataManager : MonoBehaviour
     public MaterialChanger MaterialChanger { get; private set; }
 
     public KopkariHorseBomb currentBomb { get; private set; }
-    private RacingAgent playerAgent;
+
     public async Task<Mount> SpawnHorseAsync()
     {
         horseInstance = Instantiate(horsePrefab, spawnPoint.position, spawnPoint.rotation, spawnPoint.transform);

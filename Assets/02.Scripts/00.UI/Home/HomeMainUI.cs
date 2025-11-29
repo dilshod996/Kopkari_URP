@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Michsky.UI.ModernUIPack;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
@@ -24,13 +26,6 @@ public class HomeMainUI : MonoBehaviour
 
     [Header("Auto Play")]
     [SerializeField] private bool playOnStart = true;
-
-    [Header("Left Panel Settings")]
-    [SerializeField] private RectTransform leftRect;
-    [Header("Right Panel Settings")]
-    [SerializeField] private RectTransform rightRect;
-    [SerializeField] private float startXRight = 200f;   // o‘ngdan kiradi
-    [SerializeField] private float targetXRight = -143f; // final pozitsiya
 
     [Header("Movement Common Settings")]
     [SerializeField] private float moveTime = 0.35f;
@@ -57,6 +52,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameplayMode playMode;
     [SerializeField] private GameObject dailyUIRewards;
     [SerializeField] private RewardPopup rewardPopup;
+
 
     #region Reward System Parametrs
 
@@ -88,6 +84,32 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private Image fadeImage;      // rangini inspector’da berasan
     [SerializeField] private float fadeDuration = 1f;
 
+    [Header("PlayerData")]
+    [SerializeField] private TMP_Text playerName;
+    [SerializeField] private TMP_Text defenseText, slowDownText, webText, whipText;
+
+    [SerializeField] private TMP_Text defenseAmountText, webAmountText, slowDownAmountText, whipAmountText;
+
+    [Header("HorseData")]
+    [SerializeField] private TMP_Text horseName;
+    [SerializeField] private ProgressBar horsePower;
+    [SerializeField] private ProgressBar horseStamina;
+    [SerializeField] private ProgressBar horseCooling;
+    [SerializeField] private TMP_Text powerText, staminaText, coolingText;
+    private float foolPercentage=100f;
+
+
+    [SerializeField] private TMP_Text customText, tournoment, playText, collections, storeText, lobbyName;
+
+    [Header("Coins")]
+    [SerializeField] private TMP_Text nyufiyText, coinText;
+
+    [Header("Sale")]
+    [SerializeField] private Button saleBtn;
+    [SerializeField] private TMP_Text saleText;
+
+
+
     private void Awake()
     {
         if (Instance == null)
@@ -103,11 +125,6 @@ public class HomeMainUI : MonoBehaviour
 
     private void Start()
     {
-        if (playOnStart)
-        {
-            PlayLeft();
-            PlayRight();
-        }
         playBtn.onClick.AddListener(() =>
         {
             ShowUI(playMode);
@@ -127,6 +144,9 @@ public class HomeMainUI : MonoBehaviour
         }
 
         InvokeRepeating(nameof(CheckIdle), 1f, 1f);
+        RiderStatistcs();
+        HorseStatistcs();
+        if(LanguageManager.Instance != null) UITransilations();
        
     }
     private void OnDisable()
@@ -142,47 +162,105 @@ public class HomeMainUI : MonoBehaviour
 
     }
 
-    #region Beginning Right & Left Animations & FadeOut Image
-
-    public void PlayLeft()
+    #region Prefs Data
+    private void RiderStatistcs()
     {
-        if (leftRect == null) return;
-        Play(leftRect, -startXRight, -targetXRight);
+        if (PlayerPrefs.HasKey(Constants.Player.UsernameKey))
+        {
+            playerName.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+        }
+        defenseAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.Defense, 3)}";
+        slowDownAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.SlowDown, 3)}";
+        webAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.WebSnare, 3)}";
+        whipAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.Whip, 0)}";
+
+
+        // Coins – default 0
+        int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
+        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 0);
+
+        // Formatlash xohishingga qarab
+        nyufiyText.text = nyufiyAmount > 0 ? $"+{nyufiyAmount:N0}" : "0";
+        coinText.text = coinAmount > 0 ? $"+{coinAmount:N0}" : "0";
+    }
+    private void HorseStatistcs()
+    {
+        // Horse name (bor bo'lsa chiqaramiz)
+        if (PlayerPrefs.HasKey(Constants.Horse.HorseNameKey))
+        {
+            horseName.text = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
+        }
+
+        // Team name (doim default bo'lsa ham bo'ladi)
+        EnsureString(Constants.Player.TeamName, "Kaja Riders");
+
+        // Horse stats – hammasi bitta pattern
+        horsePower.currentPercent = GetOrInitFloat(Constants.HorseCondition.Power, foolPercentage);
+        horseStamina.currentPercent = GetOrInitFloat(Constants.HorseCondition.Stamina, foolPercentage);
+        horseCooling.currentPercent = GetOrInitFloat(Constants.HorseCondition.Cooling, foolPercentage);
+
+        horsePower.UpdateUI();
+        horseStamina.UpdateUI();
+        horseCooling.UpdateUI();
+
+
     }
 
-    public void PlayRight()
+    // Local helper: float qiymatni o'qiydi, bo'lmasa default yozib qaytaradi
+    float GetOrInitFloat(string key, float defaultValue)
     {
-        if (rightRect == null) return;
-        Play(rightRect, startXRight, targetXRight);
+        if (PlayerPrefs.HasKey(key))
+            return PlayerPrefs.GetFloat(key);
+
+        PlayerPrefs.SetFloat(key, defaultValue);
+        return defaultValue;
+    }
+    int GetOrInitInt(string key, int defaultValue)
+    {
+        if (PlayerPrefs.HasKey(key))
+        {
+            Debug.Log("Key: " + defaultValue);
+            return PlayerPrefs.GetInt(key);
+        }
+            
+
+        PlayerPrefs.SetInt(key, defaultValue);
+        return defaultValue;
     }
 
-    /// <summary>
-    /// Universal slide + punch scale
-    /// </summary>
-    private void Play(RectTransform rect, float startX, float targetX)
+    // Local helper: string qiymatni yo'qligida default qo'yib ketadi
+    void EnsureString(string key, string defaultValue)
     {
-        // Start pozitsiyani beramiz
-        var pos = rect.anchoredPosition;
-        rect.anchoredPosition = new Vector2(startX, pos.y);
-        rect.localScale = Vector3.one;
-
-        // Slide anima
-        LeanTween.moveX(rect, targetX, moveTime)
-            .setEase(ease)
-            .setOnComplete(() => PunchScale(rect));
+        if (!PlayerPrefs.HasKey(key))
+        {
+            PlayerPrefs.SetString(key, defaultValue);
+        }
     }
+    #endregion
 
-    private void PunchScale(RectTransform rect)
+    #region Transilations
+    public void UITransilations()
     {
-        // Scale 1 → 1.2 → 1
-        LeanTween.scale(rect, Vector3.one * punchScaleM, scaleTime)
-            .setEase(LeanTweenType.easeOutBack)
-            .setOnComplete(() =>
-            {
-                LeanTween.scale(rect, Vector3.one, scaleTime * 0.8f)
-                    .setEase(LeanTweenType.easeInOutQuad);
-            });
+        webText.text = LanguageManager.Instance.GetText(322);
+        defenseText.text = LanguageManager.Instance.GetText(324);
+        slowDownText.text = LanguageManager.Instance.GetText(323);
+        whipText.text = LanguageManager.Instance.GetText(325);
+
+        powerText.text = LanguageManager.Instance.GetText(326);
+        staminaText.text = LanguageManager.Instance.GetText(328);
+        coolingText.text = LanguageManager.Instance.GetText(327);
+        saleText.text = LanguageManager.Instance.GetText(329);
+        customText.text = LanguageManager.Instance.GetText(21);
+        tournoment.text = LanguageManager.Instance.GetText(24);
+        playText.text = LanguageManager.Instance.GetText(23);
+        collections.text = LanguageManager.Instance.GetText(320);
+        storeText.text = LanguageManager.Instance.GetText(25);
+        lobbyName.text = LanguageManager.Instance.GetText(27);
     }
+    #endregion
+
+    #region Beginning FadeOut Image
+
     public void RemoveInitialImage()
     {
         if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)

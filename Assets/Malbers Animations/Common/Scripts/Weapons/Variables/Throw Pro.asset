@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98ea95601fbf85b49b69663c2b27fbf0, type: 3}
   m_Name: Throw Pro
   m_EditorClassIdentifier: 
-  Description: Spider tur
+  Description: Spider web
   debug: 0
   value: 105

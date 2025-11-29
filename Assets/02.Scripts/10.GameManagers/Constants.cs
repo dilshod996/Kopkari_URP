@@ -67,4 +67,29 @@ public static class Constants
     {
         public const string skippAppear= "skippAppear";
     }
+
+    public static class Record
+    {
+        public const string BaxmalRacing = "baxmal";
+        public const string JomboyKopkari = "jomboyk";
+    }
+    public static class HorseCondition
+    {
+        public const string Power = "power";
+        public const string Cooling = "cooling";
+        public const string Stamina = "stamin";
+        public const string Level = "horse1";
+    }
+    public static class Coins
+    {
+        public const string Nyufiy = "nyufiy";
+        public const string Coin = "coin";
+    }
+    public static class PlayerItems
+    {
+        public const string Defense = "defense";
+        public const string SlowDown = "slowdown";
+        public const string WebSnare = "websnare";
+        public const string Whip = "whip";
+    }
 }

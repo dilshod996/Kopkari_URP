@@ -94,15 +94,6 @@ public class RacingLeaderboard : MonoBehaviour
             UpdateRow(ag, k + 1);
         }
 
-        //Debug(startdan keyin)
-        //var sb = new System.Text.StringBuilder("RANK: ");
-        //for (int r = 0; r < standings.Count; r++)
-        //{
-        //    var a2 = standings[r];
-        //    sb.Append($"{a2.Ranking}.{a2.displayName}[P={a2.Passed},CP={Mathf.Max(0, a2.CheckpointIndex)},T={a2.LastSplitTime:0.00}s] ");
-        //}
-        //Debug.Log(sb.ToString());
-
     }
 
 

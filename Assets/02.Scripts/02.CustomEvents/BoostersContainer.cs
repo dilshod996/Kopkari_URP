@@ -24,12 +24,12 @@ public class BoostersContainer : MonoBehaviour
     public int walkZoneCount = 2;
     public int defendCount = 2;
     public int hitCount = 0;
-    public event Action OnWalkZoneAdded;
-    public event Action OnWalkZoneRemoved;
+    public static event Action<int> OnWalkZoneAdded;
+    public static event Action<int> OnWalkZoneRemoved;
 
     // events for Defend
-    public event Action OnDefendAdded;
-    public event Action OnDefendRemoved;
+    public static event Action<int> OnDefendAdded;
+    public static event Action<int> OnDefendRemoved;
     [Header("Npc info")]
     public bool isNpc = false; // Npc bo‘lsa, bu true bo‘ladi
 
@@ -39,6 +39,8 @@ public class BoostersContainer : MonoBehaviour
     [Header("Speed Improver")]
     [SerializeField] private bool maxSpeed = false;
     [SerializeField] private float maxSpeedDuration = 5f;
+    public static Action OnSprintEffectStart;
+    public static Action OnSprintEffectEnd;
 
     [Header("NPC WalkTrap by Checkpoint (Simple)")]
     [SerializeField] private bool npcAutoDropByCheckpoint = true;
@@ -59,18 +61,20 @@ public class BoostersContainer : MonoBehaviour
 
     private bool isUnderSlow = false;                     // slow aktivmi yoki yo‘q
 
+    public static Action<float> OnPenaltyTime;
+    public static Action<float> OnBoostTime;
+
+    private float boostTime;
+    private float penaltyTime;
+
     #region Starting Events
 
     private void Start()
     {
-        //playerInitialSpeed = horseAnimal.CurrentSpeedIndex;
-        InitialButtonsData();
 
         if (!isNpc && UIButtonActions.Instance != null)
         {
             UIButtonActions.Instance.Bind(this);
-            // Birinchi holatni darhol qo'yamiz
-            UpdateUIStates();
         }
        
 
@@ -78,14 +82,6 @@ public class BoostersContainer : MonoBehaviour
 
     private void OnEnable()
     {
-        if (!isNpc && UIButtonActions.Instance != null)
-        {
-            OnWalkZoneAdded += HandleWalkZoneChanged;
-            OnWalkZoneRemoved += HandleWalkZoneChanged;
-            OnDefendAdded += HandleDefendChanged;
-            OnDefendRemoved += HandleDefendChanged;
-        }
-        // 🔹 Damage eventga ulaymiz
         if (!damageable)
             damageable = GetComponent<MDamageable>();
 
@@ -98,45 +94,17 @@ public class BoostersContainer : MonoBehaviour
 
     private void OnDisable()
     {
-        if (!isNpc && UIButtonActions.Instance != null)
-        {
-            OnWalkZoneAdded -= HandleWalkZoneChanged;
-            OnWalkZoneRemoved -= HandleWalkZoneChanged;
-            OnDefendAdded -= HandleDefendChanged;
-            OnDefendRemoved -= HandleDefendChanged;
-        }
         if (damageable != null)
         {
             damageable.events.OnReceivingDamage.RemoveListener(OnReceiveDamageHandler);
         }
     }
 
-    private void HandleWalkZoneChanged()
+    private int GetPrefs(string key)
     {
-        UIButtonActions.Instance?.SetWalkZoneState(walkZoneCount > 0);
+        return PlayerPrefs.GetInt(key);
     }
 
-    private void HandleDefendChanged()
-    {
-        UIButtonActions.Instance?.SetDefendState(defendCount > 0);
-    }
-
-    private void UpdateUIStates()
-    {
-        // Hamma holatlarni bir joyda qo‘yamiz
-        UIButtonActions.Instance?.SetWalkZoneState(walkZoneCount > 0);
-        UIButtonActions.Instance?.SetDefendState(defendCount > 0);
-    }
-    #endregion
-
-    #region Buttons Data Update
-    private void InitialButtonsData()
-    {
-        if (UIButtonActions.Instance != null)
-        {
-            UIButtonActions.Instance.InitializeData(defendCount, walkZoneCount, hitCount);
-        }
-    }
     #endregion
 
     #region Player Stats Speed
@@ -163,14 +131,15 @@ public class BoostersContainer : MonoBehaviour
     private IEnumerator ImproveSpeed()
     {
         maxSpeed = true;
-
-        // Eski speed ni saqlaymiz
         horseAnimal.Speed_CurrentIndex_Set(6);
-
+        if(!isNpc) OnSprintEffectStart?.Invoke();
         yield return new WaitForSeconds(maxSpeedDuration);
-
+        if (maxSpeed && !isNpc) { boostTime += maxSpeedDuration;
+            OnBoostTime?.Invoke(boostTime);
+        }
         // Avvalgi speedni qaytaramiz
         horseAnimal.Speed_CurrentIndex_Set(5);
+        if(!isNpc) OnSprintEffectEnd?.Invoke();
         maxSpeed = false;
         //Debug.Log($"{horseAnimal.name} recovered from penalty.");
     }
@@ -183,8 +152,9 @@ public class BoostersContainer : MonoBehaviour
             
         if (!isNpc)
         {
-            UIButtonActions.Instance.UpdateWalkZoneText(walkZoneCount);
-            OnWalkZoneAdded?.Invoke();
+            int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
+            playerSlowDown += 1;
+            OnWalkZoneAdded?.Invoke(playerSlowDown);
         }
             
     }
@@ -193,8 +163,9 @@ public class BoostersContainer : MonoBehaviour
         walkZoneCount = Mathf.Max(0, walkZoneCount - 1);            
         if (!isNpc)
         {
-            UIButtonActions.Instance.UpdateWalkZoneText(walkZoneCount);
-            OnWalkZoneRemoved?.Invoke();
+            int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
+            playerSlowDown -= 1;
+            OnWalkZoneRemoved?.Invoke(playerSlowDown);
         }
             
     }
@@ -303,8 +274,10 @@ public class BoostersContainer : MonoBehaviour
         defendCount++;
         if (!isNpc)
         {
-            UIButtonActions.Instance.UpdateDefendText(defendCount);
-            OnDefendAdded?.Invoke();
+            int defendPlayer =  GetPrefs(Constants.PlayerItems.Defense);
+            defendPlayer += 1;
+            OnDefendAdded?.Invoke(defendPlayer);
+            Debug.Log("Defend Count" +  defendPlayer);
         }
     }
     public void DecreaseDefend()
@@ -312,8 +285,9 @@ public class BoostersContainer : MonoBehaviour
         defendCount = Mathf.Max(0, defendCount - 1);
         if (!isNpc)
         {
-            UIButtonActions.Instance.UpdateDefendText(defendCount);
-            OnDefendRemoved?.Invoke();
+            int defendPlayer = GetPrefs(Constants.PlayerItems.Defense);
+            defendPlayer -= 1;
+            OnDefendRemoved?.Invoke(defendPlayer);
         }
             
     }
@@ -321,7 +295,6 @@ public class BoostersContainer : MonoBehaviour
     {
         if (defendCount <= 0)
         {
-            Debug.Log("❌ Defend mavjud emas");
             return;
         }
         DecreaseDefend();
@@ -330,6 +303,7 @@ public class BoostersContainer : MonoBehaviour
             StopCoroutine(defendCoroutine);
             defendQobiq.SetActive(false);
         }
+        if(isUnderSlow) isUnderSlow = false;
         defendCoroutine = StartCoroutine(DefendObject());
         OnDefendActivated?.Invoke();
     }
@@ -418,7 +392,9 @@ public class BoostersContainer : MonoBehaviour
         horseAnimal.Speed_CurrentIndex_Set(slowSpeedIndex);
 
         yield return new WaitForSeconds(slowDuration);
-
+        if (!isNpc && isUnderSlow) { penaltyTime += slowDuration;
+            OnPenaltyTime?.Invoke(penaltyTime);
+        }
         // Avvalgi speedga qaytaramiz
         horseAnimal.Speed_CurrentIndex_Set(prevSpeedIndex);
 

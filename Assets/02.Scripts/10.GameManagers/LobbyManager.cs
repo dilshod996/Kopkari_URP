@@ -10,7 +10,6 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using static UnityEngine.Rendering.VolumeComponent;
 
 public class LobbyManager : MonoBehaviour
 {
@@ -52,13 +51,8 @@ public class LobbyManager : MonoBehaviour
     private GameObject horseInstance;
     public MAnimal horseAnimator;
 
-    [Header("First Prefs")]
-    [SerializeField] private NPCStarter npcSelectPanel;
     [SerializeField] private GameObject giftPopupPanel;
 
-    [Header("EarningPoints(Coins)")]
-    [SerializeField] private TMP_Text taqaCoinText;
-    [SerializeField] private TMP_Text nyufiyCoinText;
 
     [Header("Other room addressables")]
     private List<string> customSceneAddressableAddresses = new List<string> { "Chopar"};
@@ -72,31 +66,14 @@ public class LobbyManager : MonoBehaviour
 
     public YesBtnActions BtnClicked = YesBtnActions.None;
 
-    [Header("Main Texts")]
-    [SerializeField] private TMP_Text customText;
-    [SerializeField] private TMP_Text prizeText;
-    [SerializeField] private TMP_Text playText;
-    [SerializeField] private TMP_Text tournamentText;
-    [SerializeField] private TMP_Text storeText;
-    [SerializeField] private TMP_Text settingsText;
-    //[SerializeField] private TMP_Text newsText;
-    [SerializeField] private TMP_Text timeText;
-    [SerializeField] private TMP_Text lobbyName;
-    private const string NPCStartTimeKey = "NPCStartTime";
-    [SerializeField] private TMP_Text hourNPC;
-    private TimeSpan npcDuration = TimeSpan.FromHours(24); // 24 soat
 
-    [Header("NPC Selection")]
-    [SerializeField] private Image npcImage;
-    [SerializeField] private Sprite npcFirstSprite;
-    [SerializeField] private Sprite npcSecondSprite;
+
     [Header("PlayerPrefs Texts")]
-    [SerializeField] private TMP_Text playerName;
-    [SerializeField] private TMP_Text horseName;
-    [SerializeField] private PlayerPrefsData playerPrefsPanel;
+
+    //[SerializeField] private PlayerPrefsData playerPrefsPanel;
     [SerializeField] private FoodRemoveMotion foodMotionObj;
     [SerializeField] private HorseDetails horseFoodsPanel;
-    private readonly string[] prefsToCheck = { "GiftGiven", "SelectedNPC", "username", "horsedata" };
+    private readonly string[] prefsToCheck = { "GiftGiven", "username", "horsedata" };
     private List<string> preloadAddresses;
     private bool isSleeping = false;
 
@@ -150,19 +127,8 @@ public class LobbyManager : MonoBehaviour
         closePopupManager.confirmButton.onClick.AddListener(ConfirmBtnEvent);
         if(SoundManager.Instance != null)
              SoundManager.Instance.PlayMusic(lobbySound);
-        CheckNPCSelectionDads();
-        InvokeRepeating(nameof(UpdateTimeRemaining), 0f, 1f);
-        //if(PlayerPrefs.HasKey(Constants.Player.UsernameKey))
-        //{
-        //    playerName.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        //}
-        if(PlayerPrefs.HasKey(Constants.Horse.HorseNameKey))
-        {
-            horseName.text = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
-        }
-        if (!PlayerPrefs.HasKey(Constants.Player.TeamName)) {
-            PlayerPrefs.SetString(Constants.Player.TeamName, "Kaja Riders");
-        }
+
+
         preloadAddresses = GetPreloadMaterialAddresses();
 
         if(eatBtn != null)
@@ -176,15 +142,14 @@ public class LobbyManager : MonoBehaviour
     }
     private void OnEnable()
     {
-        MainLobbyText();
-        foreach (var key in prefsToCheck)
-        {
-            if (!PlayerPrefs.HasKey(key))
-            {
-                SelectedPrefsCheck(key);
-                break;
-            }
-        }
+        //foreach (var key in prefsToCheck)
+        //{
+        //    if (!PlayerPrefs.HasKey(key))
+        //    {
+        //        SelectedPrefsCheck(key);
+        //        break;
+        //    }
+        //}
         if (eatAbility != null)
         {
             eatAbility.OnEnter.AddListener(EatAction);
@@ -217,6 +182,8 @@ public class LobbyManager : MonoBehaviour
     {
         BtnClicked = YesBtnActions.None;
     }
+
+
     #region Popup va Infolar
     public void CustomPopup()
     {
@@ -310,16 +277,16 @@ public class LobbyManager : MonoBehaviour
 
         return preload;
     }
-    public void PlayerNameCheck()
-    {
-        if (!PlayerPrefs.HasKey("username")){
-            if( playerPrefsPanel != null)
-            {
-                playerPrefsPanel.gameObject.SetActive(true);
-                playerPrefsPanel.UserDataCheck();
-            }
-        }
-    }
+    //public void PlayerNameCheck()
+    //{
+    //    if (!PlayerPrefs.HasKey("username")){
+    //        if( playerPrefsPanel != null)
+    //        {
+    //            playerPrefsPanel.gameObject.SetActive(true);
+    //            playerPrefsPanel.UserDataCheck();
+    //        }
+    //    }
+    //}
     private void CheckFirstTimeGift()
     {
         if (!PlayerPrefs.HasKey("GiftGiven"))
@@ -332,37 +299,6 @@ public class LobbyManager : MonoBehaviour
         {
             // Sovga allaqachon berilgan => to'g'ridan-to'g'ri NPC selection ni tekshiramiz
             //CheckNPCSelection();
-            SelectedPrefsCheck("SelectedNPC");
-        }
-    }
-    //Boboylar Npc
-    private void CheckNPCSelectionDads()
-    {
-        string selectedNPC = PlayerPrefs.GetString("SelectedNPC", string.Empty);
-
-        if (!string.IsNullOrEmpty(selectedNPC))
-        {
-            npcSelectPanel.EnableBg(); // panelni faollashtirish
-
-            switch (selectedNPC)
-            {
-                case "ShomurodOta":
-                    npcImage.sprite = npcFirstSprite;
-                    break;
-
-                case "NurmamatOta":
-                    npcImage.sprite = npcSecondSprite;
-                    break;
-
-                default:
-                    npcImage.sprite = npcFirstSprite; // Default sprite
-                    break;
-            }
-        }
-        else
-        {
-            // hech narsa tanlanmagan bo‘lsa panelni o‘chirsa ham bo‘ladi (ixtiyoriy)
-            npcImage.sprite = npcFirstSprite; // yoki null, agar bo‘sh bo‘lishi kerak bo‘lsa
         }
     }
 
@@ -376,85 +312,29 @@ public class LobbyManager : MonoBehaviour
         if (giftPopupPanel != null)
             giftPopupPanel.SetActive(false);
 
-        // Endi NPC tanlashni tekshiramiz
-        //CheckNPCSelection();
-        SelectedPrefsCheck("SelectedNPC");
-    }
-
-    private void CheckNPCSelection()
-    {
-        if (!PlayerPrefs.HasKey("SelectedNPC"))
-        {
-            // Agar hali NPC tanlanmagan bo'lsa
-            if (npcSelectPanel != null)
-                npcSelectPanel.gameObject.SetActive(true);
-        }
     }
 
     //SHu yerdan boshlab har bitta prefs save bolganligini korish kerak
-    public void SelectedPrefsCheck(string nameofPrefs)
-    {
-        switch (nameofPrefs)
-        {
-            case "GiftGiven":
-                CheckFirstTimeGift();
-                break;
-            case "SelectedNPC":
-                CheckNPCSelection();
-                break;
-            case Constants.Player.UsernameKey:
-                PlayerNameCheck();
-                break;
-            case "horsedata":
-                playerPrefsPanel.HorseDataCheck();
-                break;
-            default:break;
-        }
-    }
+    //public void SelectedPrefsCheck(string nameofPrefs)
+    //{
+    //    switch (nameofPrefs)
+    //    {
+    //        case "GiftGiven":
+    //            CheckFirstTimeGift();
+    //            break;
+    //        case Constants.Player.UsernameKey:
+    //            PlayerNameCheck();
+    //            break;
+    //        case "horsedata":
+    //            playerPrefsPanel.HorseDataCheck();
+    //            break;
+    //        default:break;
+    //    }
+    //}
 
         #endregion
 
-    #region Text Languages
 
-    public void MainLobbyText()
-    {
-
-        customText.text = LanguageManager.Instance.GetText(21);
-        prizeText.text = LanguageManager.Instance.GetText(22);
-        playText.text = LanguageManager.Instance.GetText(23);
-        tournamentText.text = LanguageManager.Instance.GetText(24);
-        storeText.text = LanguageManager.Instance.GetText(25);
-        //settingsText.text = LanguageManager.Instance.GetText(26);
-       // newsText.text = LanguageManager.Instance.GetText(28);
-        //timeText.text = LanguageManager.Instance.GetText(21);
-        lobbyName.text = LanguageManager.Instance.GetText(27);
-
-    }
-    private void UpdateTimeRemaining()
-    {
-        if (!PlayerPrefs.HasKey(NPCStartTimeKey))
-        {
-            hourNPC.text = "Time out";
-            CancelInvoke(nameof(UpdateTimeRemaining));
-            return;
-        }
-
-        DateTime startTime = DateTime.Parse(PlayerPrefs.GetString(NPCStartTimeKey));
-        TimeSpan elapsed = DateTime.Now - startTime; // Local vaqt farqi
-        TimeSpan remaining = npcDuration - elapsed;
-
-
-        if (remaining.TotalSeconds <= 0)
-        {
-            hourNPC.text = LanguageManager.Instance.GetText(260);
-            CancelInvoke(nameof(UpdateTimeRemaining));
-        }
-        else
-        {
-            hourNPC.text = $"{remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
-        }
-    }
-    #endregion
     #region Player Actions
     private void GetPlayerAnimator()
     {
