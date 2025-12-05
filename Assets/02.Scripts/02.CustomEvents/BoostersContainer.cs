@@ -2,12 +2,14 @@
 using MalbersAnimations.Controller;
 using System;
 using System.Collections;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class BoostersContainer : MonoBehaviour
 {
     [Header("Player Stats")]
     [SerializeField] private Stats playerStats;
+
     [SerializeField] private int playerInitialSpeed=5;
     [SerializeField] private string staminaStatName = "Stamina";
     [Header("Walk Zone Details")]
@@ -19,6 +21,7 @@ public class BoostersContainer : MonoBehaviour
     public bool isDefend=false;
     [SerializeField] private float defendTime = 5f;
     public event Action OnDefendActivated;
+    public static event Action<bool> OnDefendState;
 
     private Coroutine defendCoroutine;
     public int walkZoneCount = 2;
@@ -105,18 +108,6 @@ public class BoostersContainer : MonoBehaviour
         return PlayerPrefs.GetInt(key);
     }
 
-    #endregion
-
-    #region Player Stats Speed
-    public void SprintStatFull()
-    {
-        if(playerStats != null)
-        {
-            Debug.Log("Pinned " + playerStats.PinnedStat.Name);
-            //playerStats.Stat_ModifyValue(staminaStatName, 100f, StatOption.SetMaxValue);
-            playerStats.Stat_Pin_ModifyValue(100f);
-        }
-    }
     #endregion
 
     #region Boost Speed
@@ -306,6 +297,8 @@ public class BoostersContainer : MonoBehaviour
         if(isUnderSlow) isUnderSlow = false;
         defendCoroutine = StartCoroutine(DefendObject());
         OnDefendActivated?.Invoke();
+        if(!isNpc)
+            OnDefendState?.Invoke(false);
     }
     public void DefendPlayerNpc()
     {
@@ -333,6 +326,8 @@ public class BoostersContainer : MonoBehaviour
         }
         yield return new WaitForSeconds(defendTime);
         defendQobiq.SetActive(false);
+        if(!isNpc)
+            OnDefendState.Invoke(true);
         isDefend = false;
         defendCoroutine = null;
         //OnDefendDeactivated?.Invoke(); // (ixtiyoriy) if kerak bo‘lsa boshqa tizimlarga xabar
@@ -347,7 +342,7 @@ public class BoostersContainer : MonoBehaviour
     public void RemoveHit() { hitCount--; }
     #endregion
 
-    #region Damage / Hit Reaction / Spider Tur
+    #region Damage / Hit Reaction 
 
     // ⚠️ Parametrlarni MDamageable.OnReceiveDamage imzosiga moslashtir!
     private void OnReceiveDamageHandler(/* masalan: MDamageable dam, Hit hit */ float dmg)
@@ -405,5 +400,6 @@ public class BoostersContainer : MonoBehaviour
     }
 
     #endregion
+
 
 }

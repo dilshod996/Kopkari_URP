@@ -13,8 +13,6 @@ using UnityEngine.UI;
 
 public class LobbyManager : MonoBehaviour
 {
-    public NotificationManager NotificationManager;
-    public ModalWindowManager closePopupManager;
 
     public ModalWindowManager detailsPopupManager;
 
@@ -44,7 +42,6 @@ public class LobbyManager : MonoBehaviour
     public GameObject playerPrefab;
     private GameObject playerInstance;
     public MAnimal playerAnimator;
-   // private Ability playerActiveAbility;
 
     [Header("Horse")]
     public GameObject horsePrefab;
@@ -57,29 +54,10 @@ public class LobbyManager : MonoBehaviour
     [Header("Other room addressables")]
     private List<string> customSceneAddressableAddresses = new List<string> { "Chopar"};
 
-    public enum YesBtnActions
-    {
-        None, 
-        Quit,
-        Back
-    }
-
-    public YesBtnActions BtnClicked = YesBtnActions.None;
-
-
-
-    [Header("PlayerPrefs Texts")]
-
-    //[SerializeField] private PlayerPrefsData playerPrefsPanel;
-    [SerializeField] private FoodRemoveMotion foodMotionObj;
-    [SerializeField] private HorseDetails horseFoodsPanel;
-    private readonly string[] prefsToCheck = { "GiftGiven", "username", "horsedata" };
     private List<string> preloadAddresses;
     private bool isSleeping = false;
 
-    [Header("----------- Horse Action Buttons ------------")]
-    [SerializeField] private Button eatBtn;
-    [SerializeField] private Button drinkButton;
+
     private async void Start()
     {
         SceneLoadManager.Instance.SetAssetInstantiationFinished(false);
@@ -122,34 +100,13 @@ public class LobbyManager : MonoBehaviour
         //Horse Animator Details
         HorseAnimGet();
         GetPlayerAnimator();
-        StartCoroutine(NotiPopup());
-        closePopupManager.cancelButton.onClick.AddListener(CancelBtnEvent);
-        closePopupManager.confirmButton.onClick.AddListener(ConfirmBtnEvent);
-        if(SoundManager.Instance != null)
+        if (SoundManager.Instance != null)
              SoundManager.Instance.PlayMusic(lobbySound);
-
-
         preloadAddresses = GetPreloadMaterialAddresses();
 
-        if(eatBtn != null)
-        {
-            eatBtn.onClick.AddListener(PlayEat);
-        }
-        if(drinkButton != null)
-        {
-            drinkButton.onClick.AddListener(PlayDrink);
-        }
     }
     private void OnEnable()
     {
-        //foreach (var key in prefsToCheck)
-        //{
-        //    if (!PlayerPrefs.HasKey(key))
-        //    {
-        //        SelectedPrefsCheck(key);
-        //        break;
-        //    }
-        //}
         if (eatAbility != null)
         {
             eatAbility.OnEnter.AddListener(EatAction);
@@ -160,40 +117,16 @@ public class LobbyManager : MonoBehaviour
             drinkAbility.OnEnter.AddListener(DrinkAction);
             drinkAbility.OnExit.AddListener(StopDrink);
         }
+        FoodShowerPopup.OnWaterDrink += PlayDrink;
+        FoodShowerPopup.OnFoodEat += PlayEat;
     }
-
-
-    IEnumerator NotiPopup()
+    private void OnDisable()
     {
-        if (NotificationManager!=null)
-        {
-            yield return new WaitForSeconds(3f);
-            NotificationManager.timer = 7f;
-            NotificationManager.CustomeUpdate(LanguageManager.Instance.GetText(40), 
-                LanguageManager.Instance.GetText(41));
-        }
-        yield return null;
+        FoodShowerPopup.OnWaterDrink -= PlayDrink;
+        FoodShowerPopup.OnFoodEat -= PlayEat;
     }
-    void ConfirmBtnEvent()
-    {
-        AvatarCustom();
-    }
-    void CancelBtnEvent()
-    {
-        BtnClicked = YesBtnActions.None;
-    }
-
 
     #region Popup va Infolar
-    public void CustomPopup()
-    {
-
-        BtnClicked = YesBtnActions.Quit;
-        closePopupManager.UpdateUICustomWithButtons(LanguageManager.Instance.GetText(42),
-            LanguageManager.Instance.GetText(43),
-            LanguageManager.Instance.GetText(1),
-            LanguageManager.Instance.GetText(2));
-    }
 
     public void InfoPopup()
     {
@@ -233,6 +166,27 @@ public class LobbyManager : MonoBehaviour
     }
     public void BaxmalRacing()
     {
+        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
+        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
+        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        int langId=-1;
+        if (currentPower < 10)
+            langId = 334;
+
+        if (currentCooling < 10)
+            langId = 335;
+
+        if (currentStamina < 10)
+            langId = 336;
+        
+
+        if (currentPower < 10 || currentCooling < 10 || currentStamina < 10)
+        {
+            HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            return;  // Racing boshlanmaydi
+        }
+           
+
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.SecondRacing, preloadAddresses);
     }
     #endregion
@@ -336,19 +290,6 @@ public class LobbyManager : MonoBehaviour
 
 
     #region Player Actions
-    private void GetPlayerAnimator()
-    {
-        playerAnimator = playerInstance.GetComponent<MAnimal>();
-        Mode actionModePlayer = playerAnimator.Mode_Get(4); // Action Mode
-        if (actionModePlayer != null)
-        {
-            Debug.Log("✅ Action mode found for player");
-        }
-        else
-        {
-            Debug.LogError("❌ Action Mode not found for player");
-        }
-    }
     private void PlayerIdleLook()
     {
         playerAnimator.Mode_Activate(4, 55);
@@ -363,11 +304,8 @@ public class LobbyManager : MonoBehaviour
         Mode actionMode = horseAnimator.Mode_Get(4); // Action Mode
         if (actionMode != null)
         {
-            Debug.Log("✅ Action mode found");
             eatAbility = actionMode.Abilities.Find(a => a.Name == "Eat");
-            Debug.Log($"Eat Ability: {eatAbility?.Name}");
             drinkAbility = actionMode.Abilities.Find(a => a.Name == "Drink");
-            Debug.Log($"Drink Ability: {drinkAbility?.Name}");
             actionMode.OnEnterMode.AddListener(OnEnterAction);
             actionMode.OnExitMode.AddListener(OnExitAction);
         }
@@ -380,54 +318,15 @@ public class LobbyManager : MonoBehaviour
     public void PlayEat()
     {
         /// Mana shu yerda food resursini tekshirish kerak
-        string foodName = PlayerPrefs.GetString("foodToggle");
-        float amountFood = PlayerPrefs.GetFloat(foodName);
-        if (amountFood <= 0)
+        if (horseAnimator != null && eatAbility != null)
         {
-            Debug.Log("Food amount is zero or less. Cannot eat.");
-            horseFoodsPanel.gameObject.SetActive(true);
-            horseFoodsPanel.FinishedFoodMessage();
-            //return;
-        }
-        else
-        {
-            // Food amount is sufficient, proceed with eating
-            float decreaseAmount = 0;
-            float percentageAdded = 0;
-            switch (foodName)
-            {
-                case Constants.Prizes.Bugdoy:
-                    decreaseAmount = 0.5f;
-                    percentageAdded = 10f;
-                    break;
-                case Constants.Prizes.Arpa:
-                    decreaseAmount = 0.5f;
-                    percentageAdded = 15f;
-                    break;
-                case Constants.Prizes.Apple:
-                    decreaseAmount = 0.5f;
-                    percentageAdded = 20f;
-                    break;
-                default:
-                    Debug.Log("Food not found or not set in PlayerPrefs.");
-                    return;
-            }
-            foodMotionObj.SetFoodDetails(foodName, ("+" + percentageAdded.ToString()+"%"), (decreaseAmount.ToString() + " " + LanguageManager.Instance.GetText(106)));
-            float sum = amountFood - decreaseAmount;
-            PlayerPrefs.SetFloat(foodName, sum);
-            PlayerPrefs.Save(); // Save the updated food amount
-            if (horseAnimator != null && eatAbility != null)
-            {
-                horseAnimator.Mode_Activate(4, eatAbility.Index);
-                PlayerIdleLook();
-            }
-        }
-        
+            horseAnimator.Mode_Activate(4, eatAbility.Index);
+            PlayerIdleLook();
+        }       
 
     }
     public void EatAction()
     {
-        Debug.Log("Eating action started");
         if (eatParticle != null)
             eatParticle.Play();
 
@@ -444,7 +343,6 @@ public class LobbyManager : MonoBehaviour
     }
     public void DrinkAction()
     {
-        Debug.Log("Drinking action started");
         if (eatParticle != null)
             eatParticle.Play();
 
@@ -458,6 +356,7 @@ public class LobbyManager : MonoBehaviour
 
         if (foodBowl != null)
             waterBowl.SetActive(false);
+       
     }
 
     private void OnEnterAction()
@@ -470,19 +369,13 @@ public class LobbyManager : MonoBehaviour
         switch (activeAbility.Name)
         {
             case "Eat":
-                Debug.Log("🍽 EAT STARTED");
                 eatParticle.Play();
                 foodBowl.SetActive(true);
-                eatBtn.interactable = false;
-                drinkButton.interactable = false; 
                 break;
 
             case "Drink":
-                Debug.Log("🥤 DRINK STARTED");
                 eatParticle.Play();
                 waterBowl.SetActive(true);
-                eatBtn.interactable = false;
-                drinkButton.interactable = false;
                 break;
         }
     }
@@ -494,19 +387,15 @@ public class LobbyManager : MonoBehaviour
         switch (activeAbility.Name)
         {
             case "Eat":
-                Debug.Log("✅ EAT ENDED");
                 eatParticle.Stop();
                 foodBowl.SetActive(false);
-                eatBtn.interactable = true;
-                drinkButton.interactable = true;
+                HomeMainUI.Instance?.MainUIState(true);
                 break;
 
             case "Drink":
                 Debug.Log("✅ DRINK ENDED");
-                eatParticle.Stop();
                 waterBowl.SetActive(false);
-                drinkButton.interactable = true;
-                eatBtn.interactable = true;
+                HomeMainUI.Instance?.MainUIState(true);
                 break;
         }
 
@@ -514,46 +403,12 @@ public class LobbyManager : MonoBehaviour
     }
     public void PlayDrink()
     {
-        string waterName = PlayerPrefs.GetString("waterToggle");
-        float amountWater = PlayerPrefs.GetFloat(waterName);
-        if (amountWater <= 0)
+        if (horseAnimator != null && drinkAbility != null)
         {
-            Debug.Log("Water amount is zero or less. Cannot drink.");
-            horseFoodsPanel.gameObject.SetActive(true);
-            horseFoodsPanel.FinishedFoodMessage();
-            //return;
+            // Drink actionni boshlash (Mode 4, Ability 7 - Drink)
+            horseAnimator.Mode_Activate(4, drinkAbility.Index);
+            PlayerIdleLook();
         }
-        else
-        {
-            float decreaseAmount = 0;
-            float percentageAdded = 0;
-            switch (waterName)
-            {
-                case Constants.Prizes.Water:
-                    decreaseAmount = 1f;
-                    percentageAdded = 10f;
-                    break;
-                case Constants.Prizes.StaminWater:
-                    decreaseAmount = 1f;
-                    percentageAdded = 15f;
-                    break;
-                default:
-                    Debug.Log("Food not found or not set in PlayerPrefs.");
-                    return;
-            }
-            foodMotionObj.SetFoodDetails(waterName, ("+" + percentageAdded.ToString() + "%"), (decreaseAmount.ToString() + " " + LanguageManager.Instance.GetText(107)));
-            float sum = amountWater - decreaseAmount;
-            PlayerPrefs.SetFloat(waterName, sum);
-            PlayerPrefs.Save(); // Save the updated food amount
-            if(horseAnimator != null && drinkAbility != null)
-            {
-                // Drink actionni boshlash (Mode 4, Ability 7 - Drink)
-                horseAnimator.Mode_Activate(4, drinkAbility.Index);
-                PlayerIdleLook();
-            }
-            
-        }
-
     }
     public void SleepAction()
     {
@@ -571,6 +426,10 @@ public class LobbyManager : MonoBehaviour
         }
     }
     #endregion
+    private void GetPlayerAnimator()
+    {
+        playerAnimator = playerInstance.GetComponent<MAnimal>();
+    }
 
     private void OnDestroy()
     {

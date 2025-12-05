@@ -46,9 +46,7 @@ public class UIButtonActions : MonoBehaviour
     private bool isPressing = false;
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
-    public static Action OnSprintStart;     // Speed → 6
-    public static Action OnSprintEnd;       // Speed → 5
-    public static Action<float> OnSprintHold;
+
     private float totalHoldTime = 0f;
     // umumiy parametrlari (o‘zgarmaydi)
     private const string shockFloat = "_ShockAmount";
@@ -62,8 +60,6 @@ public class UIButtonActions : MonoBehaviour
     [Header("Hit Count Slider")]
     public Slider hitCountSlider;
 
-    [Header("Chain Data")]
-    [SerializeField] private IntVar webCount;
 
     [SerializeField] private GameObject loadingPanel;
     [SerializeField] private GameObject sliderObject;
@@ -82,7 +78,16 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private float fadeTime = 0.2f;
     [Header("Pages")]
     [SerializeField] private GameObject resultPage;
+    [SerializeField] private GameObject foodPanel;
+    [Header("Events")]
+    public static Action OnSprintStart;     // Speed → 6
+    public static Action OnSprintEnd;       // Speed → 5
+    public static Action<float> OnSprintHold;
+    public static Action OnWebSnareBtnEnable;
+    public static Action OnWebSnareStart;
+    public static Action OnWebSnareFinish;
 
+    public bool WeaponInHand;
 
     private void Awake()
     {
@@ -101,8 +106,12 @@ public class UIButtonActions : MonoBehaviour
         BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
         BoostersContainer.OnDefendAdded += UpdateDefendText;
         BoostersContainer.OnDefendRemoved += UpdateDefendText;
+
+        //THis is only for Racing Mode
         RacingController.OnRacingFinished += ShowResultPage;
         RacingController.OnRacingStarted += GetData;
+        BoostersContainer.OnDefendState += SetDefendState;
+        FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanleState;
     }
     private void OnDisable()
     {
@@ -115,6 +124,8 @@ public class UIButtonActions : MonoBehaviour
         BoostersContainer.OnDefendRemoved -= UpdateDefendText;
         RacingController.OnRacingFinished -= ShowResultPage;
         RacingController.OnRacingStarted -= GetData;
+        BoostersContainer.OnDefendState -= SetDefendState;
+        FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanleState;
     }
     #region Text Updates
     public void UpdateDefendText(int count)
@@ -155,7 +166,7 @@ public class UIButtonActions : MonoBehaviour
     public void SetWebState(bool state) => shootWebBtn.interactable = state;
     #endregion
 
-    #region SHow and Hide UI Pages
+    #region Show and Hide UI Pages
     public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
     public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
 
@@ -309,15 +320,19 @@ public class UIButtonActions : MonoBehaviour
     }
     #endregion
 
-    #region Player Items
+    #region Player Items bor yoki yo'qligini tekshirish
 
     public void GetData()
     {
         int defentCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
         int slowDownCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
         int webCounter = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
+        if (webCounter == 0)
+        {
+            webCounter = 4;
+
+        }
         int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
-        webCount.Value = webCounter;
         InitializeData(defentCount, slowDownCount, whipCount, webCounter);
     }
     /// <summary>
@@ -477,24 +492,59 @@ public class UIButtonActions : MonoBehaviour
     /// <summary>
     /// Bular ikkalasi ham Btn ga ulangan
     /// </summary>
-    //public void OnShootCHain()
-    //{
-    //    UpdateWebCount(webCount.Value);
-    //}
+    public void WebSnareBtnEvent()
+    {
+        OnWebSnareBtnEnable?.Invoke();
+    }
     public void OnWebSnoreButtonDown(BaseEventData data)
     {
-        UpdateWebCount(webCount.Value);
+        int countSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
+        if (countSnare > 0)
+        {
+            countSnare--;
+        }
+        Debug.Log("Web Snare COunt: " +  countSnare);
+        UpdateWebCount(countSnare);
+        OnWebSnareStart?.Invoke();
+        StartCoroutine(OnShootCooling(countSnare));
+        //if (countSnare <= 0) { OnClickChain(); }
+    }
+
+    private IEnumerator OnShootCooling(int snareCount)
+    {
+        chainContainerBtn.interactable = false;
+        yield return new WaitForSeconds(1f);
+        if (snareCount <= 0) { OnClickChain(); }
+        else chainContainerBtn.interactable = true;
+    }
+    public void OnWebSnoreButtonUp(BaseEventData data)
+    {
+        OnWebSnareFinish?.Invoke();
     }
     public void OnClickChain()
     {
         bool newState = !chainContainerBtn.gameObject.activeSelf;
+        if(chainContainerBtn.interactable ==false) chainContainerBtn.interactable = true;
+        WeaponInHand = newState;
         chainContainerBtn.gameObject.SetActive(newState);
+        OnWebSnareBtnEnable?.Invoke();
     }
     #endregion
 
-
     #region Pages
-
+    public void FoodPanleState(bool state)
+    {
+        if(state) ShowFoodPanel();
+        else HideFoodPanel();
+    }
+    public void ShowFoodPanel()
+    {
+        ShowUI(foodPanel);
+    }
+    public void HideFoodPanel()
+    {
+        HideUI(foodPanel);
+    }
     public void ShowResultPage()
     {
         ShowUI(resultPage);
@@ -502,6 +552,12 @@ public class UIButtonActions : MonoBehaviour
         {
             sprintImg.gameObject.SetActive(false);
         }
+        if(slowImg.gameObject.activeSelf)
+        {
+            slowImg.gameObject.SetActive(false);
+        }
+        if(WeaponInHand)
+            OnClickChain();
     }
     public void LoadingPanel(float time)
     {

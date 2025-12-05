@@ -67,6 +67,10 @@ public static class Constants
     {
         public const string skippAppear= "skippAppear";
     }
+    public static class Timer
+    {
+        public const string LastUpdateTime = "lastupdatetime";
+    }
 
     public static class Record
     {
@@ -79,6 +83,14 @@ public static class Constants
         public const string Cooling = "cooling";
         public const string Stamina = "stamin";
         public const string Level = "horse1";
+    }
+    public static class HorseFoods
+    {
+        public const string Wheat = "wheatFood";
+        public const string Barley = "barleyFood";
+        public const string Apple = "appleFood";
+        public const string Water = "waterFood";
+        public const string StaminWater = "staminWater";
     }
     public static class Coins
     {

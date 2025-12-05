@@ -32,6 +32,8 @@ public class PlayerDataManager : MonoBehaviour
 
 
     public static Action<MAnimal, MAnimal> OnRiderAndHorse;
+    public static Action OnDropObjectEvent;
+    public static Action OnPickObjectEventl;
 
     //public MAnimal playerAnimal;
     private async void Start()

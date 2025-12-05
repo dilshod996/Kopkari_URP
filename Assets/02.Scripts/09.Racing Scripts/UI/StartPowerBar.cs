@@ -69,13 +69,8 @@ public class StartPowerBar : MonoBehaviour
         hasSelected = true;
 
         float value = powerSlider.value;
-        float multiplier = 1f;
 
-        // Perfect zone check
-        if (value >= perfectThreshold)
-            multiplier = 1.3f;
-
-        OnStartPowerSelected?.Invoke(multiplier);
+        OnStartPowerSelected?.Invoke(value);
 
         gameObject.SetActive(false);
     }

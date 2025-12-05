@@ -1,67 +1,42 @@
+using MalbersAnimations;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public LookAtCamera lookAtCamera;
-    //public GameObject walkAreaPrefab;
-    //public float dropDistanceBehind = 2.5f; // inspector¡¯da sozlasa bo¡®ladi
-    //public GameObject defendQobiq;
-
-    //private Coroutine defendCoroutine;
-    void Start()
-    {
-        
-    }
-
+    [Header("Weapons")]
+    [SerializeField] private MWeaponManager weaponManager;
+    [SerializeField] private HolsterID webSnareRightHand;
     private void OnEnable()
     {
-        //SceneLoadManager.Instance.OnSceneLoaded += UpdateVisibility;
-        UpdateVisibility();
+        if (!weaponManager)
+            weaponManager = GetComponent<MWeaponManager>();
+        UIButtonActions.OnWebSnareBtnEnable += TakeWeapon;
+        UIButtonActions.OnWebSnareStart += ShootSnareStart;
+        UIButtonActions.OnWebSnareFinish += ShootSnareFinished;
     }
-    void UpdateVisibility()
+    private void OnDestroy()
     {
-        if (SceneLoadManager.Instance == null) return;
-
-        var sceneType = SceneLoadManager.Instance.CurrentSceneType;
-
-        // Agar Lobby yoki AvatarCustom sahifasi bo¡®lsa => yashirish
-        if (sceneType == SceneLoadManager.SceneType.Lobby || sceneType == SceneLoadManager.SceneType.AvatarCustom)
-        {
-            lookAtCamera.gameObject.SetActive(false);
-        }
-        else
-        {
-            if (lookAtCamera != null)
-            {
-                lookAtCamera.gameObject.SetActive(true);
-                lookAtCamera.GetNameAndLogo();
-            }
-            Debug.Log("Visible now");
-        }
+        UIButtonActions.OnWebSnareBtnEnable -= TakeWeapon;
+        UIButtonActions.OnWebSnareStart -= ShootSnareStart;
+        UIButtonActions.OnWebSnareFinish -= ShootSnareFinished;
     }
-    //public void DropIceTrap()
-    //{
-    //    Vector3 dropPosition = transform.position - transform.forward * dropDistanceBehind;
-    //    Instantiate(walkAreaPrefab, dropPosition, Quaternion.identity);
-    //}
 
-    //public void DefendPlayer()
-    //{
-    //    if (defendCoroutine != null)
-    //    {
-    //        StopCoroutine(defendCoroutine);
-    //        defendQobiq.SetActive(false); 
-    //    }
-    //    defendCoroutine = StartCoroutine(DefendObject());
-    //}
+    #region Web Snare(Tur otish)
+    public void TakeWeapon()
+    {
+        weaponManager.Holster_Equip(webSnareRightHand);
+        Debug.Log("Calling me");
+    }
+    public void ShootSnareFinished()
+    {
+        weaponManager.MainAttack(false);
+    }
+    private void ShootSnareStart()
+    {
+        weaponManager.MainAttack(true);
+    }
+    #endregion
 
-    //private IEnumerator DefendObject()
-    //{
-    //    defendQobiq.SetActive(true);
-    //    yield return new WaitForSeconds(10f);
-    //    defendQobiq.SetActive(false);
-    //    defendCoroutine = null; 
-    //}
 }

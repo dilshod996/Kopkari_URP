@@ -23,7 +23,7 @@ public class HomeMainUI : MonoBehaviour
     private float lastInputTime;
     private bool hidden = false;
 
-
+    #region UI Anim data
     [Header("Auto Play")]
     [SerializeField] private bool playOnStart = true;
 
@@ -45,13 +45,27 @@ public class HomeMainUI : MonoBehaviour
     [Header("Fade Settings For UI Pages")]
     [SerializeField] private bool useFade = true;
     [SerializeField] private float fadeTime = 0.2f;
+    [SerializeField] private Image fadeImage;      // rangini inspector’da berasan
+    [SerializeField] private float fadeDuration = 1f;
+
+    [SerializeField] private float durationHorseResouceBg = 5f;     // qancha davom etadi
+    [SerializeField] private float scaleMin = 1f;     // boshlanish scale
+    [SerializeField] private float scaleMax = 1.05f;  // maksimal scale
+
+    #endregion
 
     [Header("UI Buttons")]
     [SerializeField] private Button playBtn;
+
     [Header("UI Pages")]
+
     [SerializeField] private GameplayMode playMode;
+    [SerializeField] private GameObject racingFields;
     [SerializeField] private GameObject dailyUIRewards;
     [SerializeField] private RewardPopup rewardPopup;
+    [SerializeField] private GameObject foodPanel;
+
+    [SerializeField] private GameObject horseResourcesObject;
 
 
     #region Reward System Parametrs
@@ -81,8 +95,7 @@ public class HomeMainUI : MonoBehaviour
 
     #endregion
 
-    [SerializeField] private Image fadeImage;      // rangini inspector’da berasan
-    [SerializeField] private float fadeDuration = 1f;
+    #region Horse and Player Data
 
     [Header("PlayerData")]
     [SerializeField] private TMP_Text playerName;
@@ -98,6 +111,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private TMP_Text powerText, staminaText, coolingText;
     private float foolPercentage=100f;
 
+    #endregion
 
     [SerializeField] private TMP_Text customText, tournoment, playText, collections, storeText, lobbyName;
 
@@ -109,7 +123,25 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private TMP_Text saleText;
 
 
+    #region Popup UI
+    [Header("PopupUI")]
+    [SerializeField] private RectTransform popupRect;
+    [SerializeField] private TMP_Text popupText;
+    private Vector2 hiddenPos = new Vector2(0, 120f);   
+    private Vector2 shownPos = new Vector2(0, -120f);  
+    private float animTimePopup = 0.4f;     
+    [SerializeField] private float appearTime = 4f;
+    private Coroutine activeRoutinePopup;
+    #endregion
 
+    #region Update Horse resources timing
+
+    // Full bo‘lish vaqti minutda
+    private const float PowerRegenMinutes = 240f;   // 4 hours
+    private const float CoolingRegenMinutes = 300f; // 5 hours
+    private const float StaminaRegenMinutes = 180f; // 3 hours
+
+    #endregion
     private void Awake()
     {
         if (Instance == null)
@@ -134,6 +166,8 @@ public class HomeMainUI : MonoBehaviour
 
     private void OnEnable()
     {
+        Debug.Log("HOME UI SCRIPT ENABLED !");
+        ApplyOfflineRegen();
         OnNewDayAvailable += HandleNewDay;
         lastInputTime = Time.realtimeSinceStartup;
 
@@ -143,11 +177,15 @@ public class HomeMainUI : MonoBehaviour
             touchAction.performed += OnTouch;
         }
 
-        InvokeRepeating(nameof(CheckIdle), 1f, 1f);
+        //InvokeRepeating(nameof(CheckIdle), 1f, 1f);
         RiderStatistcs();
         HorseStatistcs();
         if(LanguageManager.Instance != null) UITransilations();
-       
+        FoodShowerPopup.OnBuyBtnPressed += UpdateNyufiy;
+        FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
+        FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
+        StartingInfo();
+
     }
     private void OnDisable()
     {
@@ -159,7 +197,9 @@ public class HomeMainUI : MonoBehaviour
         }
 
         CancelInvoke(nameof(CheckIdle));
-
+        FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
+        FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
+        FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
     }
 
     #region Prefs Data
@@ -180,8 +220,14 @@ public class HomeMainUI : MonoBehaviour
         int coinAmount = GetOrInitInt(Constants.Coins.Coin, 0);
 
         // Formatlash xohishingga qarab
-        nyufiyText.text = nyufiyAmount > 0 ? $"+{nyufiyAmount:N0}" : "0";
-        coinText.text = coinAmount > 0 ? $"+{coinAmount:N0}" : "0";
+        nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
+        coinText.text = coinAmount > 0 ? $"{coinAmount:N0}" : "0";
+    }
+
+    private void UpdateNyufiy()
+    {
+        int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
+        nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
     }
     private void HorseStatistcs()
     {
@@ -219,7 +265,6 @@ public class HomeMainUI : MonoBehaviour
     {
         if (PlayerPrefs.HasKey(key))
         {
-            Debug.Log("Key: " + defaultValue);
             return PlayerPrefs.GetInt(key);
         }
             
@@ -236,6 +281,51 @@ public class HomeMainUI : MonoBehaviour
             PlayerPrefs.SetString(key, defaultValue);
         }
     }
+    #endregion
+
+    #region HorseBoost Resources
+    public void FoodPanelState(bool state)
+    {
+        if (state) SHowFoodPanel();
+        else HideFoodPanel();
+    }
+    public void SHowFoodPanel()
+    {
+        ShowUI(foodPanel);
+    }
+    public void HideFoodPanel()
+    {
+        HideUI(foodPanel);
+    }
+    private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
+    {
+        // 1) PlayerPrefs dagi qiymatlarni olamiz
+        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power, foolPercentage);
+        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling, foolPercentage);
+        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina, foolPercentage);
+
+        // 2) Bufflarni qo‘shamiz
+        currentPower = Mathf.Clamp(currentPower + powerPercent, 0f, 100f);
+        currentCooling = Mathf.Clamp(currentCooling + coolingPercent, 0f, 100f);
+        currentStamina = Mathf.Clamp(currentStamina + staminaPercent, 0f, 100f);
+
+        // 3) Yangi qiymatlarni saqlaymiz
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
+        PlayerPrefs.Save();
+
+        // 4) UI barlarni yangilaymiz
+        horsePower.currentPercent = currentPower;
+        horseCooling.currentPercent = currentCooling;
+        horseStamina.currentPercent = currentStamina;
+
+        horsePower.UpdateUI();
+        horseCooling.UpdateUI();
+        horseStamina.UpdateUI();
+        MainUIState(false);
+    }
+
     #endregion
 
     #region Transilations
@@ -537,6 +627,156 @@ public class HomeMainUI : MonoBehaviour
         mainUIPanel.SetActive(true);
         hidden = false;
     }
+    public void MainUIState(bool state)
+    {
+        mainUIPanel.SetActive(state);
+    }
     #endregion
 
+    #region Popup Code
+
+    private void StartingInfo()
+    {
+        StartCoroutine(NotiPopup());
+    }
+    IEnumerator NotiPopup()
+    {
+        yield return new WaitForSeconds(3f);
+        AppearPopup(LanguageManager.Instance.GetText(41));
+    }
+    public void HorseResourceFinishPopup(string message)
+    {
+        AppearPopup(message, HorseResourcesScaleAnim);
+    }
+    public void AppearPopup(string message, Action action=null)
+    {
+        popupText.text = message;
+
+        // Agar popup allaqachon animda bo‘lsa — qaytadan boshlaymiz
+        if (activeRoutinePopup != null)
+            StopCoroutine(activeRoutinePopup);
+
+        activeRoutinePopup = StartCoroutine(PopupRoutine());
+        action?.Invoke();
+    }
+
+    private IEnumerator PopupRoutine()
+    {
+        // 1) Pastga tushish
+        yield return MoveUI(popupRect, hiddenPos, shownPos, animTimePopup);
+
+        // 2) 4 sekund tursin
+        yield return new WaitForSeconds(appearTime);
+
+        // 3) Yana yuqoriga chiqib ketish
+        yield return MoveUI(popupRect, shownPos, hiddenPos, animTime);
+    }
+
+    private IEnumerator MoveUI(RectTransform rect, Vector2 start, Vector2 end, float duration)
+    {
+        float t = 0f;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            rect.anchoredPosition = Vector2.Lerp(start, end, t / duration);
+            yield return null;
+        }
+
+        rect.anchoredPosition = end;
+    }
+    private void HorseResourcesScaleAnim()
+    {
+        StartCoroutine(PulseRoutine());
+        HideUI(racingFields);
+        if(playMode.gameObject.activeSelf) playMode.gameObject.SetActive(false);
+    }
+    private IEnumerator PulseRoutine()
+    {
+        float t = 0f;
+        RectTransform rt = horseResourcesObject.GetComponent<RectTransform>();
+
+        while (t < durationHorseResouceBg)
+        {
+            t += Time.deltaTime;
+
+            // 0 → 1 → 0 yurak urishi effekti
+            float pingPong = Mathf.PingPong(Time.time * 2, 1f);
+
+            float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
+
+            rt.localScale = new Vector3(scale, scale, 1);
+
+            yield return null;
+        }
+
+        rt.localScale = Vector3.one;
+    }
+
+    #endregion
+
+    #region Time Horse Resources Update
+    private void ApplyOfflineRegen()
+    {
+        Debug.Log("Regen Started");
+
+        if (!PlayerPrefs.HasKey(Constants.Timer.LastUpdateTime))
+        {
+            Debug.Log("Time key not exist");
+            PlayerPrefs.SetString(Constants.Timer.LastUpdateTime, DateTimeOffset.UtcNow.ToString("O"));
+            return;
+        }
+
+        string raw = PlayerPrefs.GetString(Constants.Timer.LastUpdateTime);
+        Debug.Log("Raw stored time: " + raw);
+
+        DateTimeOffset lastTime;
+        if (!DateTimeOffset.TryParse(raw, null, System.Globalization.DateTimeStyles.RoundtripKind, out lastTime))
+        {
+            Debug.Log("Parse failed, set lastTime = now");
+            lastTime = DateTimeOffset.UtcNow;
+        }
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        float elapsedMinutes = (float)(now - lastTime).TotalMinutes;
+        Debug.Log($"LastTime: {lastTime:o}, Now: {now:o}, elapsedMinutes: {elapsedMinutes}");
+
+        if (elapsedMinutes <= 0f)
+        {
+            Debug.Log("Elapsed minutes <= 0, regen SKIPPED");
+            return;
+        }
+
+        // Hozirgi statlar
+        float power = PlayerPrefs.GetFloat(Constants.HorseCondition.Power, foolPercentage);
+        float cooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling, foolPercentage);
+        float stamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina, foolPercentage);
+
+        // Har bir minut bo‘yicha regen
+        float powerPerMin = foolPercentage / PowerRegenMinutes;
+        float coolingPerMin = foolPercentage / CoolingRegenMinutes;
+        float staminaPerMin = foolPercentage / StaminaRegenMinutes;
+
+        Debug.Log("Offline adding resources: " + $"{powerPerMin} {coolingPerMin} {staminaPerMin}");
+
+        power += powerPerMin * elapsedMinutes;
+        cooling += coolingPerMin * elapsedMinutes;
+        stamina += staminaPerMin * elapsedMinutes;
+
+        power = Mathf.Clamp(power, 0f, foolPercentage);
+        cooling = Mathf.Clamp(cooling, 0f, foolPercentage);
+        stamina = Mathf.Clamp(stamina, 0f, foolPercentage);
+
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, power);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, cooling);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, stamina);
+
+        PlayerPrefs.SetString(Constants.Timer.LastUpdateTime, DateTimeOffset.UtcNow.ToString("O"));
+        PlayerPrefs.Save();
+
+        Debug.Log($"Regen applied. New stats: P={power}, C={cooling}, S={stamina}");
+    }
+
+    #endregion
 }

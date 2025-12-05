@@ -63,8 +63,6 @@ public class RacingController : MonoBehaviour
     [SerializeField] private ThirdPersonFollowTarget mainCam;
     [SerializeField] private ThirdPersonFollowTarget finishCam;
     [SerializeField] private ThirdPersonFollowTarget sprintCam;
-    private float _savedMainYaw;
-    private float _savedMainPitch;
 
     public float cameraDistance = 4.5f;
     [SerializeField] private float frontDistance = 6f;
@@ -127,7 +125,9 @@ public class RacingController : MonoBehaviour
         UIButtonActions.OnSprintEnd -= HorseDefaultSpeed;
         BoostersContainer.OnSprintEffectStart -= SprintCameraEnable;
         BoostersContainer.OnSprintEffectEnd -= SprintCameraDisable;
-        RacingResultPage.OnGetRiderRank += PlayFinalAnim;
+        RacingResultPage.OnGetRiderRank -= PlayFinalAnim;
+        riderAnimal = null;
+        horse = null;
     }
     #endregion
 
@@ -319,10 +319,12 @@ public class RacingController : MonoBehaviour
         //horse.Speed_CurrentIndex_Set(defaultSpeedIndex);
 
         // 2) Boost ON → max tezlik
+        sprintImg.gameObject.SetActive(true);
         horse.Speed_CurrentIndex_Set(boostSpeedIndex);
 
         // 3) Sliderga qarab hisoblangan vaqt kutamiz
         yield return new WaitForSeconds(duration);
+        sprintImg.gameObject.SetActive(false);
 
         // 4) Yana default speedga qaytaramiz
         horse.Speed_CurrentIndex_Set(defaultSpeedIndex);
