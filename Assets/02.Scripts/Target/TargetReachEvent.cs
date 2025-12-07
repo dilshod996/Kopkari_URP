@@ -8,6 +8,14 @@ public class TargetReachEvent : MonoBehaviour
     [SerializeField] private Pickable lambObject;
     private bool triggerLocked = false;
 
+    private void OnEnable()
+    {
+        BaseManager.OnResetTarget += ResetTrigger;
+    }
+    private void OnDisable()
+    {
+        BaseManager.OnResetTarget -= ResetTrigger;
+    }
     private void OnTriggerEnter(Collider other)
     {
         if (triggerLocked) return;

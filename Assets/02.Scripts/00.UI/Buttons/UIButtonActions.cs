@@ -87,6 +87,8 @@ public class UIButtonActions : MonoBehaviour
     public static Action OnWebSnareStart;
     public static Action OnWebSnareFinish;
 
+    public static Action<BoostersContainer> OnBindRequested;
+
     public bool WeaponInHand;
 
     private void Awake()
@@ -112,6 +114,7 @@ public class UIButtonActions : MonoBehaviour
         RacingController.OnRacingStarted += GetData;
         BoostersContainer.OnDefendState += SetDefendState;
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanleState;
+        OnBindRequested += Bind;
     }
     private void OnDisable()
     {
@@ -126,6 +129,7 @@ public class UIButtonActions : MonoBehaviour
         RacingController.OnRacingStarted -= GetData;
         BoostersContainer.OnDefendState -= SetDefendState;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanleState;
+        OnBindRequested -= Bind;
     }
     #region Text Updates
     public void UpdateDefendText(int count)
@@ -332,6 +336,10 @@ public class UIButtonActions : MonoBehaviour
             webCounter = 4;
 
         }
+        if (slowDownCount < 1)
+        {
+            slowDownCount = 5;
+        }
         int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
         InitializeData(defentCount, slowDownCount, whipCount, webCounter);
     }
@@ -410,23 +418,6 @@ public class UIButtonActions : MonoBehaviour
         StopSingleEffect(shockImg, shockFloat);
     }
 
-    // 🔹 Sprint Effect (faqat aktiv/inaktiv)
-    //public void PlaySprint(bool enable)
-    //{
-    //    if (!sprintImg) return;
-    //    sprintImg.gameObject.SetActive(enable);
-
-    //    if (enable)
-    //    {
-    //        LeanTween.cancel(sprintImg.gameObject);
-    //        LeanTween.delayedCall(sprintImg.gameObject, sprintLife, () =>
-    //        {
-    //            if (sprintImg) sprintImg.gameObject.SetActive(false);
-    //        }).setIgnoreTimeScale(true);
-    //    }
-    //}
-
-    // 🔹 Umumiy shader-based effekt helper
     private void PlayShaderEffect(Image img, string floatName, float life)
     {
         if (!img) return;
@@ -524,7 +515,7 @@ public class UIButtonActions : MonoBehaviour
     public void OnClickChain()
     {
         bool newState = !chainContainerBtn.gameObject.activeSelf;
-        if(chainContainerBtn.interactable ==false) chainContainerBtn.interactable = true;
+        if (chainContainerBtn.interactable == false) { chainContainerBtn.interactable = true; }
         WeaponInHand = newState;
         chainContainerBtn.gameObject.SetActive(newState);
         OnWebSnareBtnEnable?.Invoke();

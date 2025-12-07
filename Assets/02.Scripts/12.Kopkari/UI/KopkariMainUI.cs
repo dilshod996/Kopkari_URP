@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -41,7 +42,15 @@ public class KopkariMainUI : MonoBehaviour
     [Header("Pages")]
     [SerializeField] private GameObject loadingPanel;
 
+    #region Projectiles
+    [Header("Projectiles")]
+    [SerializeField] private TMP_Text defendCountText;
+    [SerializeField] private TMP_Text walkZoneCountText;
+    [SerializeField] private TMP_Text hitCountText;
+    [SerializeField] private TMP_Text webSnareCounter;
+    [SerializeField] private TMP_Text uloqPushCounterText;
 
+    #endregion
 
     #region Show and Hide UI Animation Data
 
@@ -65,6 +74,10 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private GameObject roomCanvas;
     #endregion[Header("Game Canvases")]
 
+    #region GetLamp UI
+
+    #endregion
+
     [Header("Events")]
     public static Action OnSprintStart;     // Speed → 6
     public static Action OnSprintEnd;       // Speed → 5
@@ -73,6 +86,10 @@ public class KopkariMainUI : MonoBehaviour
     public static Action OnWebSnareStart;
     public static Action OnWebSnareFinish;
 
+    public static Action OnEverythingReadyStart;
+    public static Action<BoostersContainer> OnBoostersContainerStart;
+
+    public bool WeaponInHand;
     #region Awake/Start/OnEnable/OnDisable
     private void Awake()
     {
@@ -83,6 +100,64 @@ public class KopkariMainUI : MonoBehaviour
         else
             Destroy(gameObject);
     }
+    private void OnEnable()
+    {
+        LoadingPanel(3f);
+        BaseManager.OnGameStartFinishState += CanvasEnable;
+        OnBoostersContainerStart += Bind;
+        Booster.OnSprintFull += HandleSprintFull;
+        BoostersContainer.OnSprintEffectStart += ShowSprintEffect;
+        BoostersContainer.OnSprintEffectEnd += HideSprintEffect;
+        BoostersContainer.OnWalkZoneAdded += UpdateWalkZoneText;
+        BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
+        BoostersContainer.OnDefendAdded += UpdateDefendText;
+        BoostersContainer.OnDefendRemoved += UpdateDefendText;
+
+        BoostersContainer.OnDefendState += SetDefendState;
+    }
+
+    private void OnDisable()
+    {
+        BaseManager.OnGameStartFinishState -= CanvasEnable;
+        OnBoostersContainerStart -= Bind;
+        Booster.OnSprintFull -= HandleSprintFull;
+        BoostersContainer.OnSprintEffectStart -= ShowSprintEffect;
+        BoostersContainer.OnSprintEffectEnd -= HideSprintEffect;
+        BoostersContainer.OnWalkZoneAdded -= UpdateWalkZoneText;
+        BoostersContainer.OnWalkZoneRemoved -= UpdateWalkZoneText;
+        BoostersContainer.OnDefendAdded -= UpdateDefendText;
+        BoostersContainer.OnDefendRemoved -= UpdateDefendText;
+        BoostersContainer.OnDefendState -= SetDefendState;
+    }
+    #endregion
+
+    #region Text Updates
+    public void UpdateDefendText(int count)
+    {
+        defendCountText.text = count.ToString();
+        SaveToPrefs(Constants.PlayerItems.Defense, count);
+        SetDefendState(count > 0);
+    }
+    public void UpdateWalkZoneText(int count)
+    {
+        walkZoneCountText.text = count.ToString();
+        SaveToPrefs(Constants.PlayerItems.SlowDown, count);
+        SetWalkZoneState(count > 0);
+    }
+    public void UpdateHitText(int count)
+    {
+        hitCountText.text = count.ToString();
+        SaveToPrefs(Constants.PlayerItems.Whip, count);
+        SetHitState(count > 0);
+    }
+
+    public void UpdateWebCount(int count)
+    {
+        webSnareCounter.text = count.ToString();
+        SaveToPrefs(Constants.PlayerItems.WebSnare, count);
+        SetWebState(count > 0);
+    }
+
     #endregion
 
     #region Button State Updates
@@ -93,6 +168,67 @@ public class KopkariMainUI : MonoBehaviour
     public void SetHitState(bool state) => hitBtn.interactable = state;
 
     public void SetWebState(bool state) => shootWebBtn.interactable = state;
+    #endregion
+
+    #region Player Data
+    public void GetData()
+    {
+        int defentCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        int slowDownCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
+        int webCounter = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
+        if (webCounter == 0)
+        {
+            webCounter = 4;
+
+        }
+        int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
+        InitializeData(defentCount, slowDownCount, whipCount, webCounter);
+    }
+    /// <summary>
+    /// Dastlabki qiymatlar va button holatini sozlash.
+    /// </summary>
+    public void InitializeData(int defendCount, int walkZoneCount, int hitCount, int webCount)
+    {
+        UpdateDefendText(defendCount);
+        UpdateWalkZoneText(walkZoneCount);
+        UpdateHitText(hitCount);
+        UpdateWebCount(webCount);
+    }
+    private void SaveToPrefs(string prefsName, int value)
+    {
+        PlayerPrefs.SetInt(prefsName, value);
+        PlayerPrefs.Save();
+    }
+    public void Bind(BoostersContainer boosters)
+    {
+        if (walkZoneBtn)
+        {
+            walkZoneBtn.onClick.RemoveAllListeners();
+            walkZoneBtn.onClick.AddListener(() =>
+            {
+                if (boosters != null && !boosters.isNpc)
+                    boosters.DropWalkTrap();
+            });
+        }
+        if (defendBtn)
+        {
+            defendBtn.onClick.RemoveAllListeners();
+            defendBtn.onClick.AddListener(() =>
+            {
+                if (boosters != null && !boosters.isNpc)
+                {
+                    boosters.DefendPlayer();
+                }
+            });
+        }
+        // xohlasangiz boshqa tugmalarni ham shu yerda bog‘laysiz
+        // defendBtn.onClick.AddListener(boosters.DefendPlayer);
+        // ...
+    }
+    public void SliderValueRestore()
+    {
+        hitCountSlider.value = hitCountSlider.maxValue;
+    }
     #endregion
 
     #region Show and Hide UI Pages
@@ -248,4 +384,84 @@ public class KopkariMainUI : MonoBehaviour
     }
     #endregion
 
+    #region Game Started Methods
+
+    private void CanvasEnable(bool state)
+    {
+        mobileCanvas.SetActive(state);
+        roomCanvas.SetActive(state);
+    }
+    #endregion
+
+    #region LoadingPanel
+    public void LoadingPanel(float time)
+    {
+        StartCoroutine(LoadingPanelDisabler(time));
+    }
+    private IEnumerator LoadingPanelDisabler(float time)
+    {
+        if (loadingPanel != null && !loadingPanel.activeSelf)
+        {
+            loadingPanel.SetActive(true);
+        }
+        yield return new WaitForSeconds(time);
+        loadingPanel.SetActive(false);
+        OnEverythingReadyStart?.Invoke();
+        GetData();
+    }
+    #endregion
+
+    #region Chain Section
+    /// <summary>
+    /// Bular ikkalasi ham Btn ga ulangan
+    /// </summary>
+    public void WebSnareBtnEvent()
+    {
+        OnWebSnareBtnEnable?.Invoke();
+    }
+    public void OnWebSnoreButtonDown(BaseEventData data)
+    {
+        int countSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
+        if (countSnare > 0)
+        {
+            countSnare--;
+        }
+        Debug.Log("Web Snare COunt: " + countSnare);
+        UpdateWebCount(countSnare);
+        OnWebSnareStart?.Invoke();
+        StartCoroutine(OnShootCooling(countSnare));
+        //if (countSnare <= 0) { OnClickChain(); }
+    }
+
+    private IEnumerator OnShootCooling(int snareCount)
+    {
+        chainContainerBtn.interactable = false;
+        yield return new WaitForSeconds(1f);
+        if (snareCount <= 0) { OnClickChain(); }
+        else chainContainerBtn.interactable = true;
+    }
+    public void OnWebSnoreButtonUp(BaseEventData data)
+    {
+        OnWebSnareFinish?.Invoke();
+    }
+    public void OnClickChain()
+    {
+        bool newState = !chainContainerBtn.gameObject.activeSelf;
+        if (chainContainerBtn.interactable == false) { chainContainerBtn.interactable = true; }
+        WeaponInHand = newState;
+        chainContainerBtn.gameObject.SetActive(newState);
+        OnWebSnareBtnEnable?.Invoke();
+    }
+    public void DisableWebSnare()
+    {
+        if (WeaponInHand)
+        {
+            OnClickChain();
+        }
+    }
+    #endregion
+
+    #region Uloq Catch Timer
+
+    #endregion
 }

@@ -83,7 +83,6 @@ public class NPCDialogueManager : MonoBehaviour
     #region Popup boshqaruv
     public void OpenPopup(string dialogueText, float popupShowTime = 2f)
     {
-        Debug.Log("NPC Popup ochildi");
         // Avval eski popup va coroutine'larni stop qilamiz
         if (typingCoroutine != null)
         {

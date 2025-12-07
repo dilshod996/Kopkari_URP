@@ -5,7 +5,6 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using VLB;
-using static BaseManager;
 
 public class NPCGetLamb : MonoBehaviour
 {
@@ -29,53 +28,21 @@ public class NPCGetLamb : MonoBehaviour
     private bool isItemPicked = false;
     private float currentItemTime;
 
-    public bool TestMode = false; // Optional for debugging
+    [Header("Checkpoints Route")]
+    [SerializeField] private CheckpointTrigger[] checkpointsRoute;   // AI shu tartibda boradi
+    [SerializeField] private Transform finishTarget;                 // yakuniy finish nuqta
 
-    [SerializeField] private TMP_Text nameText;
-    //[SerializeField] private TMP_Text walkZoneText;
-    //[SerializeField] private TMP_Text defendText;
-
-    [Header("Effect To Other Players")]
+    private int currentCheckpointIndex = -1;
 
 
-    public AttackDefendManager attackDefendManager; // Reference to AttackDefendManager for dropping traps
-    
     private void OnDisable()
     {
         StopAllCoroutines();
-        //if (attackDefendManager != null)
-        //{
-        //    attackDefendManager.OnWalkZoneAdded -= UpdateWalkZone;
-        //    attackDefendManager.OnWalkZoneRemoved -= UpdateWalkZone;
-        //    attackDefendManager.OnDefendAdded -= UpdateDefend;
-        //    attackDefendManager.OnDefendRemoved -= UpdateDefend;
-        //}
     }
     private void OnEnable()
     {
-        if (nameText != null)
-        {
-            nameText.text = gameObject.name;
-        }
-        //if(attackDefendManager != null)
-        //{
-        //    //walkZoneText.text = attackDefendManager.walkZoneCount.ToString();
-        //    //defendText.text = attackDefendManager.defendCount.ToString();
-        //    //attackDefendManager.OnWalkZoneAdded += UpdateWalkZone;
-        //    //attackDefendManager.OnWalkZoneRemoved += UpdateWalkZone;
-        //    //attackDefendManager.OnDefendAdded += UpdateDefend;
-        //    //attackDefendManager.OnDefendRemoved += UpdateDefend;
-        //}
 
     }
-    //public void UpdateWalkZone()
-    //{
-    //    walkZoneText.text = attackDefendManager.walkZoneCount.ToString();
-    //}
-    //public void UpdateDefend()
-    //{
-    //    defendText.text = attackDefendManager.defendCount.ToString();
-    //}
     public void OnEnterEvent()
     {
         if (pickUp != null && pickUp.FocusedItem != null && !pickUp.Has_Item && waitCoroutine == null)
@@ -95,7 +62,6 @@ public class NPCGetLamb : MonoBehaviour
 
     private IEnumerator WaitToPickUpLamb()
     {
-        TestMode = true;
 
         yield return new WaitForSeconds(waitToPickUp);
 
@@ -105,16 +71,26 @@ public class NPCGetLamb : MonoBehaviour
             if (lambParentObj.transform.childCount > 0)
             {
                 BaseManager.Instance.LambOwner = gameObject.name;
-                BaseManager.Instance.CurrentCondition = PlayerCondition.TakenTargetOthers;
+                BaseManager.Instance.CurrentCondition = BaseManager.PlayerCondition.TakenTargetOthers;
 
                 isItemPicked = true;
                 currentItemTime = itemPickedDuration;
 
-                goToFinishState?.Play(brain);
+                // ✅ AI ham uloq egasi sifatida ro‘yxatdan o‘tadi
+                if (BaseManager.Instance != null)
+                {
+                    BaseManager.Instance.NotifyGoatOwner(transform.root.gameObject, true);
+                }
 
 #if UNITY_EDITOR
                 Debug.Log($"[NPCGetLamb] Picked up item: {gameObject.name}");
 #endif
+
+                // Oldingi: to‘g‘ri finishga
+                // goToFinishState?.Play(brain);
+
+                // Yangi: checkpointlardan keyin finishga
+                StartRouteToCheckpoints();
 
                 StartItemTimer();
             }
@@ -122,10 +98,45 @@ public class NPCGetLamb : MonoBehaviour
             {
                 Debug.LogWarning("[NPCGetLamb] No lambs available to pick up.");
             }
-
         }
 
+
         waitCoroutine = null;
+    }
+    private void StartRouteToCheckpoints()
+    {
+        if (brain == null)
+            return;
+
+        currentCheckpointIndex = 0;
+        MoveToNextPoint();
+    }
+
+    private void MoveToNextPoint()
+    {
+        if (brain == null)
+            return;
+
+        // Hali checkpointlar qolganmi?
+        if (checkpointsRoute != null && currentCheckpointIndex >= 0 && currentCheckpointIndex < checkpointsRoute.Length)
+        {
+            var cp = checkpointsRoute[currentCheckpointIndex];
+            if (cp != null)
+            {
+                // Malbers Brain targetini shu checkpointga o‘rnatamiz
+               // brain.SetTarget(cp.transform);
+                goToFinishState?.Play(brain); // Bu state "borish" state bo‘lsa bas
+            }
+        }
+        else
+        {
+            // Barcha checkpoint tugadi → endi finishga
+            if (finishTarget != null)
+            {
+                //brain.SetTarget(finishTarget);
+                goToFinishState?.Play(brain);
+            }
+        }
     }
 
     private void StartItemTimer()
@@ -154,7 +165,6 @@ public class NPCGetLamb : MonoBehaviour
             currentItemTime -= 1f;
             if (!walkZoneDropped && currentItemTime <= itemPickedDuration - 4f)
             {
-                DropWalkTrap();               // ✅ 1 marta trap tashlaydi
                 walkZoneDropped = true;     // faqat shu coroutine ichida 1 marta
             }
         }
@@ -170,11 +180,11 @@ public class NPCGetLamb : MonoBehaviour
     private void DropItemAndRetry()
     {
         isItemPicked = false;
-        if(BaseManager.Instance.currentCondition == PlayerCondition.TakenTargetOthers)
+        if(BaseManager.Instance.currentCondition == BaseManager.PlayerCondition.TakenTargetOthers)
         {
             pickUp?.DropItem();
         }
-        if(BaseManager.Instance.currentCondition != PlayerCondition.LoserSession)
+        if(BaseManager.Instance.currentCondition != BaseManager.PlayerCondition.LoserSession)
         {
             BaseManager.Instance.currentCondition = BaseManager.PlayerCondition.None;
         }
@@ -192,15 +202,4 @@ public class NPCGetLamb : MonoBehaviour
     {
         reachedTargetState?.Play(brain);
     }
-
-    #region Effect To Other Players
-    public void DropWalkTrap()
-    {
-        attackDefendManager.DropWalkTrapNpc();
-    }
-    #endregion
-
-    #region Defend
-
-    #endregion
 }

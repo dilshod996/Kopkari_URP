@@ -1989,7 +1989,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: 583bab80dffb6e34cae2c915e9b8b930, type: 2}
+  m_Motion: {fileID: 7400000, guid: 1681a8a2004587d4d8a60bb51f9a3f02, type: 2}
   m_Tag: PickGround
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -22084,7 +22084,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Collect
-  m_Speed: 1.5
+  m_Speed: 1
   m_CycleOffset: 1
   m_Transitions:
   - {fileID: -1892399990781348110}

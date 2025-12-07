@@ -14,7 +14,7 @@ public class BoostersContainer : MonoBehaviour
     [SerializeField] private string staminaStatName = "Stamina";
     [Header("Walk Zone Details")]
    // [SerializeField] private GameObject walkZonePrefab;
-    public float dropDistanceBehind = 5.3f; // Inspector’da sozlasa bo‘ladi
+    public float dropDistanceBehind = 3.3f; // Inspector’da sozlasa bo‘ladi
 
     [Header("Defend Objects")]
     public GameObject defendQobiq;
@@ -69,15 +69,16 @@ public class BoostersContainer : MonoBehaviour
 
     private float boostTime;
     private float penaltyTime;
-
+    public GameObject walkzonePrefab;
     #region Starting Events
 
     private void Start()
     {
 
-        if (!isNpc && UIButtonActions.Instance != null)
+        if (!isNpc)
         {
-            UIButtonActions.Instance.Bind(this);
+            UIButtonActions.OnBindRequested?.Invoke(this);
+            KopkariMainUI.OnBoostersContainerStart?.Invoke(this);
         }
        
 
@@ -162,7 +163,8 @@ public class BoostersContainer : MonoBehaviour
     }
     public void DropWalkTrap()
     {
-        if (walkZoneCount <= 0)
+        int walkZone = GetPrefs(Constants.PlayerItems.SlowDown);
+        if (walkZone <= 0)
         {
             Debug.Log("WalkZone mavjud emas, tushirib bo'lmaydi.");
             return;
@@ -171,7 +173,7 @@ public class BoostersContainer : MonoBehaviour
         if (TryAlignDropToGround(out var pos, out var rot))
         {
             Debug.Log("///////////Drop it////////////");
-            var zone = SimplePool.Spawn(RacingController.Instance.walkZonePrefab, pos, rot);
+            var zone = SimplePool.Spawn(walkzonePrefab, pos, rot);
             //Instantiate(walkZonePrefab, pos, rot);
         }
     }
@@ -226,7 +228,7 @@ public class BoostersContainer : MonoBehaviour
         if (TryAlignDropToGround(out var pos, out var rot))
         {
             Debug.Log("///////////Drop it////////////");
-            var zone = SimplePool.Spawn(RacingController.Instance.walkZonePrefab, pos, rot);
+            var zone = SimplePool.Spawn(walkzonePrefab, pos, rot);
         }
             
         //else

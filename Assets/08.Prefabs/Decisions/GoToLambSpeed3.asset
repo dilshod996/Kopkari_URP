@@ -26,7 +26,7 @@ MonoBehaviour:
   GizmoStateColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   CreateTaskAsset: 1
   CreateDecisionAsset: 1
-  TasksIndex: -1
+  TasksIndex: 1
   DecisionIndex: -1
 --- !u!114 &735498321934154204
 MonoBehaviour:

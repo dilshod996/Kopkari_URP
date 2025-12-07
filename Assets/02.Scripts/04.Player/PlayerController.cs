@@ -15,12 +15,22 @@ public class PlayerController : MonoBehaviour
         UIButtonActions.OnWebSnareBtnEnable += TakeWeapon;
         UIButtonActions.OnWebSnareStart += ShootSnareStart;
         UIButtonActions.OnWebSnareFinish += ShootSnareFinished;
+
+        KopkariMainUI.OnWebSnareBtnEnable += TakeWeapon;
+        KopkariMainUI.OnWebSnareStart += ShootSnareStart;
+        KopkariMainUI.OnWebSnareFinish += ShootSnareFinished;
+
+
     }
     private void OnDestroy()
     {
         UIButtonActions.OnWebSnareBtnEnable -= TakeWeapon;
         UIButtonActions.OnWebSnareStart -= ShootSnareStart;
         UIButtonActions.OnWebSnareFinish -= ShootSnareFinished;
+
+        KopkariMainUI.OnWebSnareBtnEnable -= TakeWeapon;
+        KopkariMainUI.OnWebSnareStart -= ShootSnareStart;
+        KopkariMainUI.OnWebSnareFinish -= ShootSnareFinished;
     }
 
     #region Web Snare(Tur otish)

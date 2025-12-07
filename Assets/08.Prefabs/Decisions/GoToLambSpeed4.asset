@@ -115,7 +115,7 @@ MonoBehaviour:
   SpeedSet: Ground
   SpeedIndex:
     UseConstant: 1
-    ConstantValue: 4
+    ConstantValue: 5
     Variable: {fileID: 0}
   Sprint: 0
   ResetSprintOnExit: 0

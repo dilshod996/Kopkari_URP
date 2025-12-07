@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System;
 
 public class UIGetLamp : MonoBehaviour
 {
@@ -9,7 +10,6 @@ public class UIGetLamp : MonoBehaviour
     [SerializeField] private GameObject fillImgBg;
 
     [Header("Pickup Settings")]
-    [SerializeField] private PlayerDataManager playerData;
     [SerializeField] private float holdTime = 5f;   // 0→100% to‘lish vaqti
     [SerializeField] private float decayTime = 3f;  // 100→0% tushish vaqti
     [SerializeField] private bool resetAfterPerform = true;
@@ -20,22 +20,18 @@ public class UIGetLamp : MonoBehaviour
     private float buildRate;               // 1/holdTime (precomputed)
     private float decayRate;               // 1/decayTime (precomputed)
 
+
+    public static Action OnPlayerGotLamp;
     private void OnEnable()
     {
         buildRate = (holdTime > 0f) ? 1f / holdTime : 999f;
         decayRate = (decayTime > 0f) ? 1f / decayTime : 0f;
-
-        //if (fillImage)
-        //{
-        //    fillImage.type = Image.Type.Filled;
-        //    fillImage.fillAmount = 0f;
-        //    fillImage.gameObject.SetActive(false); // faqat jarayonda ko‘rinadi
-        //}
     }
 
 
     public void BeginHold()
     {
+        KopkariMainUI.Instance.DisableWebSnare();
         isHolding = true;
 
         if (fillImage)
@@ -122,7 +118,8 @@ public class UIGetLamp : MonoBehaviour
     private void PerformAction()
     {
         BaseManager.Instance.LambOwner = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        playerData.PickupObj();
+        OnPlayerGotLamp?.Invoke();
+        //playerData.PickupObj();
         Debug.Log("✅ Uloq olindi!");
     }
 

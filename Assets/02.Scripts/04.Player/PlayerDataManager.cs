@@ -23,9 +23,6 @@ public class PlayerDataManager : MonoBehaviour
     public HorseDataManager horseManager;
     private MAnimal riderAnimal;
 
-    public Button walkZoneBtn;
-    public Button defendBtn;
-
     private MAnimal horseAnimal;
     
 
@@ -34,6 +31,7 @@ public class PlayerDataManager : MonoBehaviour
     public static Action<MAnimal, MAnimal> OnRiderAndHorse;
     public static Action OnDropObjectEvent;
     public static Action OnPickObjectEventl;
+    public static Action<GameObject> OnLocalPlayerObject;
 
     //public MAnimal playerAnimal;
     private async void Start()
@@ -41,7 +39,16 @@ public class PlayerDataManager : MonoBehaviour
         await InitializePlayerAndMountAsync();
     }
 
-
+    private void OnEnable()
+    {
+        UIGetLamp.OnPlayerGotLamp += PickupObj;
+        //BaseManager.OnGoatPicked += DropState;
+    }
+    private void OnDisable()
+    {
+        UIGetLamp.OnPlayerGotLamp -= PickupObj;
+        //BaseManager.OnGoatPicked -= DropState;
+    }
     private async Task InitializePlayerAndMountAsync()
     {
 
@@ -50,17 +57,17 @@ public class PlayerDataManager : MonoBehaviour
         string username = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerInstance.name = username;
         // 2. Ichidan PlayerSkinLoader scriptni topamiz
-        PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        // 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
-        if (skinLoader != null)
-        {
-            // await skinLoader.ApplyMaterials();
-            await skinLoader.ApplySkins();
-        }
-        else
-        {
-            Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-        }
+        //PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+        //// 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
+        //if (skinLoader != null)
+        //{
+        //    // await skinLoader.ApplyMaterials();
+        //    await skinLoader.ApplySkins();
+        //}
+        //else
+        //{
+        //    Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
+        //}
 
         // 2. Component sifatida MRider ni olamiz
         riderInstance = playerInstance.GetComponent<MRider>();
@@ -90,24 +97,11 @@ public class PlayerDataManager : MonoBehaviour
         riderInstance.Anim.speed = 1f;
         horseAnimal = horseManager.CurrentAnimal;
         riderAnimal = riderInstance.RiderAnimal;
-        if (BaseManager.Instance != null)
-        {
-            BaseManager.Instance.horseAnimal = horseAnimal;
-        }
         OnRiderAndHorse?.Invoke(horseAnimal, riderAnimal);
+        OnLocalPlayerObject?.Invoke(playerInstance.transform.root.gameObject);
+
     }
 
-
-    public async void MountPlayer()
-    {
-        riderInstance.Anim.speed = 0.5f;
-        riderInstance.MountAnimal();
-        await Task.Delay(2000);
-        riderInstance.Anim.speed = 1f;
-
-        // Notify game manager
-        BeginerRoomManager.Instance.GameStartedAction(true);
-    }
 
     public void CustomizeRider(MaterialChanger materialChanger, int index)
     {
@@ -130,13 +124,18 @@ public class PlayerDataManager : MonoBehaviour
     {
         pickableObj?.TryPickUp();
     }
-    
+    public void DropState(bool state)
+    {
+        if (!state) DropObject();
+    }
     public void DropObject()
     {
         
         if (pickableObj != null && pickableObj.Has_Item)
         {
-            pickableObj.TryDrop();
+            //pickableObj.TryDrop();
+            pickableObj.DropItem();
+            Debug.Log("Droppedddd");
         }
         else
         {

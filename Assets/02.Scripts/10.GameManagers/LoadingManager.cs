@@ -38,15 +38,26 @@ public class LoadingManager : MonoBehaviour
         switch(SceneLoadManager.Instance.CurrentSceneType)
         {
             case SceneLoadManager.SceneType.Home:
+                if (baxmalRacingPanel.activeSelf) baxmalRacingPanel.SetActive(false);
+                if(jomboyKopkariPanel.activeSelf) jomboyKopkariPanel.SetActive(false);
                 homePanel.SetActive(true);
                 StartCoroutine(ChangeTextRoutine());
                 StartCoroutine(ProgressbarTime());
                 break;
             case SceneLoadManager.SceneType.SecondRacing:
+                if(homePanel.activeSelf) homePanel.SetActive(false);
+                if (jomboyKopkariPanel.activeSelf) jomboyKopkariPanel.SetActive(false);
                 baxmalRacingPanel.SetActive(true);
+                break;
+            case SceneLoadManager.SceneType.Beginer:
+                if (homePanel.activeSelf) homePanel.SetActive(false);
+                if (baxmalRacingPanel.activeSelf) baxmalRacingPanel.SetActive(false);
+                jomboyKopkariPanel.SetActive(true);
                 break;
             default:
                 homePanel.SetActive(true );
+                if (baxmalRacingPanel.activeSelf) baxmalRacingPanel.SetActive(false);
+                if (jomboyKopkariPanel.activeSelf) jomboyKopkariPanel.SetActive(false);
                 StartCoroutine(ChangeTextRoutine());
                 StartCoroutine(ProgressbarTime());
                 break;

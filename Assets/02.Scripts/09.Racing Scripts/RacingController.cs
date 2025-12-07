@@ -70,8 +70,8 @@ public class RacingController : MonoBehaviour
     [SerializeField] private float backOffsetY = 0.4f;
 
     [Header("Starting Point Slider Values")]
-    [SerializeField] private int defaultSpeedIndex = 4;  // odatiy tezlik
-    [SerializeField] private int boostSpeedIndex = 5;    // max tezlik
+    [SerializeField] private int defaultSpeedIndex = 5;  // odatiy tezlik
+    [SerializeField] private int boostSpeedIndex = 6;    // max tezlik
     [SerializeField] private float boostTimeMultiplier = 4f; // slider * 4 sekund
     private Coroutine boostRoutine;
 
@@ -111,6 +111,7 @@ public class RacingController : MonoBehaviour
         BoostersContainer.OnSprintEffectStart += SprintCameraEnable;
         BoostersContainer.OnSprintEffectEnd += SprintCameraDisable;
         RacingResultPage.OnGetRiderRank += PlayFinalAnim;
+        UILookBackButton.OnCameraPressedState += CameraBackState;
 
     }
     private void OnDestroy()
@@ -126,6 +127,7 @@ public class RacingController : MonoBehaviour
         BoostersContainer.OnSprintEffectStart -= SprintCameraEnable;
         BoostersContainer.OnSprintEffectEnd -= SprintCameraDisable;
         RacingResultPage.OnGetRiderRank -= PlayFinalAnim;
+        UILookBackButton.OnCameraPressedState -= CameraBackState;
         riderAnimal = null;
         horse = null;
     }
@@ -532,7 +534,11 @@ public class RacingController : MonoBehaviour
         );
     }
 
-
+    private void CameraBackState(bool state)
+    {
+        if (state) LookBack();
+        else MainCam();
+    }
     public void LookBack()
     {
         if (mainCam == null) return;
