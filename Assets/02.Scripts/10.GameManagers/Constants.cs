@@ -4,6 +4,7 @@ public static class Constants
 {
     public static class Player
     {
+        public const string Userid = "userId";
         public const string UsernameKey = "username";
         public const string TeamName = "teamName";
         public const string CountryName = "countryName";
@@ -75,6 +76,7 @@ public static class Constants
     public static class Record
     {
         public const string BaxmalRacing = "baxmal";
+        public const string Registon = "registon";
         public const string JomboyKopkari = "jomboyk";
     }
     public static class HorseCondition

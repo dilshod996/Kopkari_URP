@@ -5,6 +5,10 @@ using System.Collections;
 
 public class NPCGetLamb_CodeAI : MonoBehaviour
 {
+    [Header("NPC Info")]
+    [SerializeField] private int id = 0;
+    [SerializeField] private string nameNpc;
+    [SerializeField] private string teamName;
     [Header("Dependencies")]
     [SerializeField] private MPickUp pickUp;
     [SerializeField] private MAnimalBrain brain;
@@ -14,7 +18,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
     [SerializeField] private MAIState moveState;      // universal yurish state
 
     [Header("Targets")]
-    [SerializeField] private Transform lambPoint;     // uloq turgan nuqta
+    [SerializeField] private GameObject lambPoint;     // uloq turgan nuqta
     [SerializeField] private Transform finishPoint;   // finish nuqta
     [SerializeField] private Transform[] checkpoints; // 1-round, 2-round, 3-round bo‘yicha punktlar
 
@@ -40,9 +44,14 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
     [Header("Projectiles")]
     [SerializeField] private BoostersContainer boosterContainer;
 
-    [Header("Warmup / Start point")]
+    [Header("Warmup / Start point / Finish Point")]
     [SerializeField] private Transform targetPoint;   // NPC borishi kerak bo'lgan start nuqta
-    private bool hasStartPoint = false;
+    [SerializeField] private Transform secondRoundWarmPoint;
+    [SerializeField] private float slowDuration = 5f;     // necha sekund sekin yuradi
+    [SerializeField] private int slowSpeedIndex = 2;      // slow paytidagi speed index
+
+    private bool isFinished = false;
+
     private void Awake()
     {
         if (!brain) brain = GetComponentInParent<MAnimalBrain>();
@@ -55,6 +64,8 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
     {
         BaseManager.OnGameStarted += OnGameStart;
         HorseMine.OnReachedStartTarget += OnPlayerReachedStart;
+        TargetReachEvent.OnReachedTargetWithLamb += HandleReachedTargetWithLamb;
+        TargetReachEvent.OnRoundEnded += HandleFinish;
         //BaseManager.OnGoatPicked += HandleGoatOwnership;
     }
 
@@ -62,12 +73,22 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
     {
         BaseManager.OnGameStarted -= OnGameStart;
         HorseMine.OnReachedStartTarget -= OnPlayerReachedStart;
+        TargetReachEvent.OnReachedTargetWithLamb -= HandleReachedTargetWithLamb;
+        TargetReachEvent.OnRoundEnded -= HandleFinish;
         //BaseManager.OnGoatPicked -= HandleGoatOwnership;
 
         // xavfsizlik uchun
         if (waitCoroutine != null) StopCoroutine(waitCoroutine);
         if (itemTimerCoroutine != null) StopCoroutine(itemTimerCoroutine);
     }
+    public int GetId()
+    {
+        return id;
+    }
+
+
+
+    #region Movers
 
     // 🔹 Oddiy helper: target + state ni bir joyda chaqiramiz
     private void MoveTo(Transform target)
@@ -76,15 +97,21 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         // Har turdagi targetga alohida stop distance
         if (target == lambPoint)
         {
-            ai.StoppingDistance = 0.1f;
+            ai.StoppingDistance = 0.4f;
         }
         else if (target == finishPoint)
         {
+            BaseManager.Instance?.FinalPosState(true);
             ai.StoppingDistance = 0.7f;
         }
         else if(target == targetPoint)
         {
             ai.StoppingDistance = 1.5f;
+        }
+        else if (target == secondRoundWarmPoint)
+        {
+            ai.StoppingDistance = 1.5f;
+            MoveSecondWarmUpLocation(ai.animal);
         }
         else
         {
@@ -94,11 +121,45 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         ai.SetTarget(target, true); // AIControl targetga path hisoblaydi
         moveState?.Play(brain);     // Brain shu moveState’ga o‘tadi
     }
+    private void MoveToNextPoint()
+    {
+        // Checkpointlar umuman bo‘lmasa → to‘g‘ri finishga bor
+        if (checkpoints == null || checkpoints.Length == 0)
+        {
+            if (finishPoint != null)
+                MoveTo(finishPoint);
+            return;
+        }
 
+        // Agar hali boshlangan bo‘lmasa, 0 dan start qilamiz
+        if (currentCheckpointIndex < 0)
+            currentCheckpointIndex = 0;
+
+        // Hali checkpointlar tugamagan bo‘lsa
+        if (currentCheckpointIndex < checkpoints.Length)
+        {
+            Transform target = checkpoints[currentCheckpointIndex];
+            //KopkariResultsManager.Instance.OnTriggerPoint(id);
+            // MUHIM: targetni olayapmiz → keyin indexni +1 qilamiz
+            currentCheckpointIndex++;
+            //Debug.Log("CheckPoint index: " + currentCheckpointIndex);
+            MoveTo(target);
+        }
+        else
+        {
+            // Barcha checkpoint tugadi → finishga
+            if (finishPoint != null)
+                MoveTo(finishPoint);
+        }
+    }
+    #endregion
+
+    #region Start Events
     // 🔹 O‘yin boshlanganda – lambga bor
     public void OnGameStart()
     {
         hasLamb = false;
+        isFinished = false;
         currentCheckpointIndex = -1;
 
         if (waitCoroutine != null)
@@ -127,18 +188,26 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         else if (lambPoint != null)
         {
             // fallback: startpoint berilmagan bo'lsa eski xulq-atvor
-            MoveTo(lambPoint);
+            MoveTo(lambPoint.transform);
         }
+        KopkariResultsManager.Instance?.Register(id, nameNpc, teamName);
     }
     private void OnPlayerReachedStart()
     {
         // Player start joyiga yetib keldi → endi NPC uloqqa qarab yugursa bo'ladi
+        StartCoroutine(DelayReachStart());
+    }
+    private IEnumerator DelayReachStart()
+    {
+        yield return new WaitForSeconds(2f);
         if (lambPoint != null)
         {
-            MoveTo(lambPoint);
+            MoveTo(lambPoint.transform);
         }
     }
+    #endregion
 
+    #region Lamb Take Zone
     // =======================
     // 1) ULOQNI OLISh LOGIKASI
     // =======================
@@ -149,6 +218,10 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
     public void OnEnterLambZone()
     {
         // allaqachon kutayotgan bo‘lsa yoki uloq bor bo‘lsa – qayta boshlama
+        if (isFinished)
+        {
+            MoveTo(secondRoundWarmPoint);
+        }
         if (hasLamb || waitCoroutine != null) return;
         if (pickUp != null && pickUp.FocusedItem != null && !pickUp.Has_Item && waitCoroutine == null)
         {
@@ -169,17 +242,124 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         // ❗ NPC hali uloqni olmagan bo‘lsa – yana lambga qaytadi
         if (!hasLamb && lambPoint != null)
         {
-            MoveTo(lambPoint);
+            MoveTo(lambPoint.transform);
         }
+    }
+    #endregion
+
+    #region Timer
+
+    // =========================
+    // 2) ULOQ QO‘LDA TURISH TIMERI
+    // =========================
+    private void StartItemTimer()
+    {
+        if (itemTimerCoroutine != null)
+            StopCoroutine(itemTimerCoroutine);
+
+        currentItemTime = itemPickedDuration;
+        itemTimerCoroutine = StartCoroutine(ItemPickedCountdown());
+    }
+
+    private void StopItemTimer()
+    {
+        if (itemTimerCoroutine != null)
+        {
+            StopCoroutine(itemTimerCoroutine);
+            itemTimerCoroutine = null;
+        }
+    }
+
+    private IEnumerator ItemPickedCountdown()
+    {
+        // 1) Random vaqtlarni faqat coroutine ichida hisoblab olamiz
+        int min = 3;
+        int max = Mathf.Min(14, Mathf.FloorToInt(currentItemTime) - 1);
+
+        int rndA = -1;
+        int rndB = -1;
+
+        if (max >= min)
+        {
+            rndA = Random.Range(min, max + 1);
+            do
+            {
+                rndB = Random.Range(min, max + 1);
+            }
+            while (rndB == rndA);
+        }
+
+        bool usedA = false;
+        bool usedB = false;
+
+        //Debug.Log($"RANDOM TIMES → A={rndA}, B={rndB}");
+
+        // 2) Timer ishlashi
+        while (currentItemTime > 0f && hasLamb)
+        {
+            yield return new WaitForSeconds(1f);
+            currentItemTime -= 1f;
+
+            int t = Mathf.RoundToInt(currentItemTime);
+
+            // random A triggerri
+            if (!usedA && t == rndA)
+            {
+                usedA = true;
+                //Debug.Log($"▶ RND A TRIGGER: {t}");
+                boosterContainer.DropWalkTrapNpc();
+                // EVENT A
+            }
+
+            // random B triggerri
+            if (!usedB && t == rndB)
+            {
+                usedB = true;
+                //Debug.Log($"▶ RND B TRIGGER: {t}");
+                boosterContainer.DropWalkTrapNpc();
+                // EVENT B
+            }
+        }
+
+        itemTimerCoroutine = null;
+
+        if (currentItemTime <= 0f && hasLamb)
+        {
+            HandleLambTimeout();
+        }
+    }
+
+
+    /// <summary>
+    /// Uloqni ushlab turish vaqti tugaganda chaqiriladi
+    /// </summary>
+    private void HandleLambTimeout()
+    {
+        // Agar MPickUp hali ham itemni ushlab turgan bo‘lsa – tashlab yuborish ixtiyoriy
+        if (pickUp != null && pickUp.Item!=null)
+        {
+            pickUp.DropItem();  // agar sen timeoutda tashlashni xohlamasang, bu qatorni o‘chirib tashlashing mumkin
+            KopkariResultsManager.Instance.OnLambDropped(id);
+        }
+
+        hasLamb = false;
+
+        // BaseManager’ga xabar berish (ixtiyoriy)
+        BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
+
+        // Timeout → yana uloqqa yuramiz
+        if (lambPoint != null)
+            MoveTo(lambPoint.transform);
     }
 
     private IEnumerator WaitToPickUpLamb()
     {
         yield return new WaitForSeconds(waitToPickUp);
         // bu paytda ham hanuzgacha item fokusda va qo‘lda yo‘qligini tekshiramiz
-        if (pickUp != null && pickUp.Item==null && pickUp.FocusedItem != null)
+        if (pickUp != null && pickUp.Item == null && pickUp.FocusedItem != null)
         {
             pickUp.PickUpItem();
+            KopkariResultsManager.Instance.OnLambPicked(id);
             hasLamb = true;
             // BaseManager’ga xabar berish (agar sendagi NotifyGoatOwner bo‘lsa)
             BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, true);
@@ -206,133 +386,15 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
             // item yo‘q bo‘lib qolgan bo‘lsa – yana lambPointga yurish
             hasLamb = false;
             if (lambPoint != null)
-                MoveTo(lambPoint);
+                MoveTo(lambPoint.transform);
         }
 
         waitCoroutine = null;
     }
 
-    // =========================
-    // 2) ULOQ QO‘LDA TURISH TIMERI
-    // =========================
+    #endregion
 
-    private void StartItemTimer()
-    {
-        if (itemTimerCoroutine != null)
-            StopCoroutine(itemTimerCoroutine);
-
-        currentItemTime = itemPickedDuration;
-        itemTimerCoroutine = StartCoroutine(ItemPickedCountdown());
-    }
-
-    private void StopItemTimer()
-    {
-        if (itemTimerCoroutine != null)
-        {
-            StopCoroutine(itemTimerCoroutine);
-            itemTimerCoroutine = null;
-        }
-    }
-
-    //private IEnumerator ItemPickedCountdown()
-    //{
-    //    while (currentItemTime > 0f && hasLamb)
-    //    {
-    //        yield return new WaitForSeconds(1f);
-    //        currentItemTime -= 1f;
-    //        // shu yerda xohlasang UI, debug, boshqalarni yangilashing mumkin
-    //        // Debug.Log($"[NPC] Lamb time left: {currentItemTime}");
-    //    }
-
-    //    itemTimerCoroutine = null;
-
-    //    // Vaqt tugadi va hali ham uloq menda deb hisoblayotgan bo‘lsak
-    //    if (currentItemTime <= 0f && hasLamb)
-    //    {
-    //        HandleLambTimeout();
-    //    }
-    //}
-    private IEnumerator ItemPickedCountdown()
-    {
-        // 1) Random vaqtlarni faqat coroutine ichida hisoblab olamiz
-        int min = 3;
-        int max = Mathf.Min(14, Mathf.FloorToInt(currentItemTime) - 1);
-
-        int rndA = -1;
-        int rndB = -1;
-
-        if (max >= min)
-        {
-            rndA = Random.Range(min, max + 1);
-            do
-            {
-                rndB = Random.Range(min, max + 1);
-            }
-            while (rndB == rndA);
-        }
-
-        bool usedA = false;
-        bool usedB = false;
-
-        Debug.Log($"RANDOM TIMES → A={rndA}, B={rndB}");
-
-        // 2) Timer ishlashi
-        while (currentItemTime > 0f && hasLamb)
-        {
-            yield return new WaitForSeconds(1f);
-            currentItemTime -= 1f;
-
-            int t = Mathf.RoundToInt(currentItemTime);
-
-            // random A triggerri
-            if (!usedA && t == rndA)
-            {
-                usedA = true;
-                Debug.Log($"▶ RND A TRIGGER: {t}");
-                boosterContainer.DropWalkTrapNpc();
-                // EVENT A
-            }
-
-            // random B triggerri
-            if (!usedB && t == rndB)
-            {
-                usedB = true;
-                Debug.Log($"▶ RND B TRIGGER: {t}");
-                boosterContainer.DropWalkTrapNpc();
-                // EVENT B
-            }
-        }
-
-        itemTimerCoroutine = null;
-
-        if (currentItemTime <= 0f && hasLamb)
-        {
-            HandleLambTimeout();
-        }
-    }
-
-
-    /// <summary>
-    /// Uloqni ushlab turish vaqti tugaganda chaqiriladi
-    /// </summary>
-    private void HandleLambTimeout()
-    {
-        // Agar MPickUp hali ham itemni ushlab turgan bo‘lsa – tashlab yuborish ixtiyoriy
-        if (pickUp != null && pickUp.Item!=null)
-        {
-            pickUp.DropItem();  // agar sen timeoutda tashlashni xohlamasang, bu qatorni o‘chirib tashlashing mumkin
-        }
-
-        hasLamb = false;
-
-        // BaseManager’ga xabar berish (ixtiyoriy)
-        BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
-
-        // Timeout → yana uloqqa yuramiz
-        if (lambPoint != null)
-            MoveTo(lambPoint);
-    }
-
+    #region CheckPoint Finish
     // ======================
     // 3) CHECKPOINT / FINISH
     // ======================
@@ -358,6 +420,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         if (!npcPassedCheckpoints[idx])
         {
             npcPassedCheckpoints[idx] = true;
+            KopkariResultsManager.Instance.OnTriggerPoint(id);
             // Debug.Log($"[NPC] Checkpoint {idx} uloq bilan O'TILDI");
         }
 
@@ -381,98 +444,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
 
 
 
-    private void MoveToNextPoint()
-    {
-        // Checkpointlar umuman bo‘lmasa → to‘g‘ri finishga bor
-        Debug.Log("nextpoint");
-        if (checkpoints == null || checkpoints.Length == 0)
-        {
-            if (finishPoint != null)
-                MoveTo(finishPoint);
-            return;
-        }
-
-        // Agar hali boshlangan bo‘lmasa, 0 dan start qilamiz
-        if (currentCheckpointIndex < 0)
-            currentCheckpointIndex = 0;
-
-        // Hali checkpointlar tugamagan bo‘lsa
-        if (currentCheckpointIndex < checkpoints.Length)
-        {
-            Transform target = checkpoints[currentCheckpointIndex];
-
-            // MUHIM: targetni olayapmiz → keyin indexni +1 qilamiz
-            currentCheckpointIndex++;
-            Debug.Log("CheckPoint index: " + currentCheckpointIndex);
-            MoveTo(target);
-        }
-        else
-        {
-            // Barcha checkpoint tugadi → finishga
-            if (finishPoint != null)
-                MoveTo(finishPoint);
-        }
-    }
-
-
-    // 🔹 Finishga yetganda (finish triggerdan chaqiriladi)
-    public void OnFinishReached()
-    {
-        if (!hasLamb) return;
-
-        hasLamb = false;
-        StopItemTimer();
-
-        Debug.Log("[NPC] Finishga uloq bilan yetib keldi!");
-
-        // BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
-        // BaseManager.Instance?.NPCArrived(this); // o‘zingni metoding bo‘lsa
-    }
-
-    // ==========================
-    // 4) TASHQI SABAB BILAN ULOQ YO‘QOTISH
-    // ==========================
-
-    /// <summary>
-    /// Masalan: qamchi bilan urib yuborildi, boshqa rider tortib oldi va h.k.
-    /// </summary>
-    public void OnLambDroppedExternally()
-    {
-        if (!hasLamb) return;
-
-        hasLamb = false;
-        StopItemTimer();
-
-        // agar pickUp hali ham has_Item bo‘lsa – tashlab yuboramiz
-        if (pickUp != null && pickUp.Has_Item)
-        {
-            pickUp.DropItem();
-        }
-
-         BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
-
-        // Endi yana uloqqa qaytamiz
-        if (lambPoint != null)
-            MoveTo(lambPoint);
-    }
-    private void HandleGoatOwnership(bool ownerHasGoat)
-    {
-        // 1) Agar men uni ushlab turmasam → har doim lambPointga qaytaman
-        if (!pickUp.Has_Item)
-        {
-            // Uloq kimga o'tganidan qat’i nazar men endi egasi emasman
-            hasLamb = false;
-
-            StopItemTimer(); // agar timer ishlayotgan bo‘lsa
-
-            // darhol uloqqa qaytamiz
-            MoveTo(lambPoint);
-            return;
-        }
-
-        // 2) Agar men hozirgi egasi bo‘lsam → hech narsa qilinmaydi
-        //    (MoveToNextPoint davom etadi)
-    }
+   
     // CheckpointTrigger scriptlarni Transform emas, shu orqali tekshiramiz
     private int FindNextCheckpointIndex()
     {
@@ -507,7 +479,118 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         }
         return true;
     }
+    #endregion
 
+    #region Finish Points
+    private void HandleReachedTargetWithLamb(int riderId, bool isPlayer)
+    {
+        if (!hasLamb) return;
+        if (isPlayer) return;                 // faqat npc
+        if (riderId != GetId()) return;       // faqat o‘zi
+        hasLamb = false;
+        StopItemTimer();
+
+        // agar pickUp hali ham has_Item bo‘lsa – tashlab yuboramiz
+        if (pickUp != null && pickUp.Has_Item)
+        {
+            pickUp.DropItem();
+        }
+        lambPoint.gameObject.SetActive(false);
+        //DropLamb(); // NPCning o‘z drop metodi
+        var bm = BaseManager.Instance;
+        bm.NotifyGoatOwner(transform.root.gameObject, false);
+        bm.roomState = BaseManager.RoomState.GameFinished;
+        BaseManager.OnGameStartFinishState?.Invoke(false);
+
+        // qo‘shimcha: AI stop, celebrate anim, state reset...
+    }
+    private void HandleFinish()
+    {
+        isFinished = true;
+        if (secondRoundWarmPoint != null)
+        {
+            MoveTo(secondRoundWarmPoint);
+        }
+    }
+    // 🔹 Finishga yetganda (finish triggerdan chaqiriladi)
+    public void OnFinishReached()
+    {
+        if (!hasLamb) return;
+
+        hasLamb = false;
+        StopItemTimer();
+
+        Debug.Log("[NPC] Finishga uloq bilan yetib keldi!");
+
+        // BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
+        // BaseManager.Instance?.NPCArrived(this); // o‘zingni metoding bo‘lsa
+    }
+    #endregion
+
+    #region Not Used Yet
+    // ==========================
+    // 4) TASHQI SABAB BILAN ULOQ YO‘QOTISH
+    // ==========================
+
+    /// <summary>
+    /// Masalan: qamchi bilan urib yuborildi, boshqa rider tortib oldi va h.k.
+    /// </summary>
+    public void OnLambDroppedExternally()
+    {
+        if (!hasLamb) return;
+
+        hasLamb = false;
+        StopItemTimer();
+
+        // agar pickUp hali ham has_Item bo‘lsa – tashlab yuboramiz
+        if (pickUp != null && pickUp.Has_Item)
+        {
+            pickUp.DropItem();
+        }
+
+        BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
+
+        // Endi yana uloqqa qaytamiz
+        if (lambPoint != null)
+            MoveTo(lambPoint.transform);
+    }
+    private void HandleGoatOwnership(bool ownerHasGoat)
+    {
+        // 1) Agar men uni ushlab turmasam → har doim lambPointga qaytaman
+        if (!pickUp.Has_Item)
+        {
+            // Uloq kimga o'tganidan qat’i nazar men endi egasi emasman
+            hasLamb = false;
+
+            StopItemTimer(); // agar timer ishlayotgan bo‘lsa
+
+            // darhol uloqqa qaytamiz
+            MoveTo(lambPoint.transform);
+            return;
+        }
+
+        // 2) Agar men hozirgi egasi bo‘lsam → hech narsa qilinmaydi
+        //    (MoveToNextPoint davom etadi)
+    }
+    #endregion
+
+    #region Speed 
+    public void MoveSecondWarmUpLocation(MAnimal horse)
+    {
+        StartCoroutine(ApplyLoverSpeed(horse));
+    }
+    private IEnumerator ApplyLoverSpeed(MAnimal horseAnimal)
+    {
+        int prevSpeedIndex = horseAnimal.CurrentSpeedIndex;
+
+        // Slow speedga tushiramiz
+        horseAnimal.Speed_CurrentIndex_Set(slowSpeedIndex);
+
+        yield return new WaitForSeconds(slowDuration);
+        // Avvalgi speedga qaytaramiz
+        horseAnimal.Speed_CurrentIndex_Set(prevSpeedIndex);
+    }
+    #endregion
 
 
 

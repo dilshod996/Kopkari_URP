@@ -4,7 +4,7 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class Booster : MonoBehaviour
 {
-    public enum BoosterType { SprintFull, SetSpeedSprint, Defend, WalkZone, TimeBooster, Hit }
+    public enum BoosterType { SprintFull, SetSpeedSprint, Defend, WalkZone, TimeBooster, Hit, WebSnare }
 
     [Header("Booster")]
     public BoosterType boosterType;
@@ -82,6 +82,9 @@ public class Booster : MonoBehaviour
             case BoosterType.Hit:
                 if (isPlayer) target.AddHit();
                // else target.NpcMinorBuff(2f);
+                break;
+            case BoosterType.WebSnare:
+                target.AddWebSnare();
                 break;
         }
     }

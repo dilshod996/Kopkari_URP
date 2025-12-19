@@ -122,7 +122,7 @@ public class PlayerDataManager : MonoBehaviour
     #region PickUp And Drop
     public void PickupObj()
     {
-        pickableObj?.TryPickUp();
+        pickableObj?.PickUpItem();
     }
     public void DropState(bool state)
     {

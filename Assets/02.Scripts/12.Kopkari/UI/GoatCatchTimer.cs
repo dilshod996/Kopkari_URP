@@ -1,151 +1,135 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GoatCatchTimer : MonoBehaviour
 {
     [Header("UI References")]
-    public RectTransform panel;
+    [Tooltip("Timer paneli (butun obyekt). Bo'sh qoldirsang = shu GameObject")]
+    public GameObject timerRoot;
+
+    public Slider timeSlider;
     public TMP_Text timerText;
 
-    [Header("Slide Settings")]
-    public float startY = 100f;   // yashirin holatdagi Y
-    public float endY = -50f;     // ko‘ringan holatdagi Y
-    public float slideDuration = 0.5f;
+    [Header("Timer Settings")]
+    public float maxTime = 30f;      // 30 sekund
+    private float currentTime;
 
-    private Coroutine slideCoroutine;
+    private Coroutine countdownCoroutine;
 
     private void Awake()
     {
-        if (panel == null)
-            panel = GetComponent<RectTransform>();
+        if (timerRoot == null)
+            timerRoot = this.gameObject;
+
+        // Boshlanishida yashirin tursin
+        if (timerRoot != null)
+            timerRoot.SetActive(false);
     }
 
     private void OnEnable()
     {
-        // ⬇️ BaseManager vaqtdan xabar beradi: t (sekund)
-        BaseManager.OnGoatPickedTime += OnTimeChanged;
-        // ⬇️ Uloq mahalliy playerga berildi / ketdi
+        // Local player uloq oldi/yo‘qotdi (bool hasGoat)
         BaseManager.OnGoatPicked += HandleLocalGoatState;
-        // ⬇️ Majburan yopish kerak bo‘lganda (finish, round tugashi va hokazo)
-        BaseManager.OnHideCatchTime += ForceHide;
+        // Masalan raund qayta start bo‘lganda majburan yopish
+        BaseManager.OnGameStarted += ForceHide;
     }
 
     private void OnDisable()
     {
-        BaseManager.OnGoatPickedTime -= OnTimeChanged;
         BaseManager.OnGoatPicked -= HandleLocalGoatState;
-        BaseManager.OnHideCatchTime -= ForceHide;
+        BaseManager.OnGameStarted -= ForceHide;
 
-        if (slideCoroutine != null)
-        {
-            StopCoroutine(slideCoroutine);
-            slideCoroutine = null;
-        }
+        StopCountdown();
     }
 
-    /// <summary>
-    /// BaseManager’dan har sekund keladigan vaqt (t) ni UI’da yangilash
-    /// </summary>
-    private void OnTimeChanged(float timeLeft)
-    {
-        // t manfiy bo‘lib ketsa ham 0 dan pastga tushmasin
-        int t = Mathf.CeilToInt(Mathf.Max(0f, timeLeft));
-        if (timerText != null)
-            timerText.text = t.ToString("D2");
+    // ==================== MAIN LOGIC ====================
 
-        // Vaqt tugaganda UI ni sekin yopish (TriggerEvent BaseManager ichida)
-        if (timeLeft <= 0f)
-        {
-            StartSlideOut();
-        }
-    }
-
-    /// <summary>
-    /// Local player uloqni oldi yoki yo‘qotdi
-    /// </summary>
     private void HandleLocalGoatState(bool hasGoat)
     {
         if (hasGoat)
         {
-            // Uloq bizga o‘tganda panelni chiqaramiz
-            StartSlideIn();
+            StartTimer();
         }
         else
         {
-            // Uloq bizdan chiqqanda panelni yopamiz
-            StartSlideOut();
+            // Uloq ketdi – timerni to‘xtatib, panelni yopamiz
+            ForceHide();
         }
     }
 
     /// <summary>
-    /// Tashqaridan majburiy yashirish (masalan, raund tugadi)
+    /// Uloq olinganda timer boshlangan holat
     /// </summary>
-    public void ForceHide()
+    private void StartTimer()
     {
-        StartSlideOut(true);
-    }
+        if (timerRoot != null)
+            timerRoot.SetActive(true);
 
-    // ================= SLIDE FUNKSIYALAR =================
+        StopCountdown();
 
-    private void SetY(float y)
-    {
-        if (panel == null) return;
+        currentTime = maxTime;
 
-        Vector2 pos = panel.anchoredPosition;
-        pos.y = y;
-        panel.anchoredPosition = pos;
-    }
-
-    public void StartSlideIn()
-    {
-        StartSlide(endY, slideDuration);
-    }
-
-    public void StartSlideOut(bool instant = false)
-    {
-        if (instant)
+        if (timeSlider != null)
         {
-            if (slideCoroutine != null)
-            {
-                StopCoroutine(slideCoroutine);
-                slideCoroutine = null;
-            }
-
-            SetY(startY);
+            timeSlider.maxValue = maxTime;
+            timeSlider.value = maxTime;
         }
-        else
-        {
-            StartSlide(startY, slideDuration);
-        }
+
+        UpdateTimerText();
+
+        countdownCoroutine = StartCoroutine(TimerRoutine());
     }
 
-    private void StartSlide(float targetY, float duration)
+    private IEnumerator TimerRoutine()
     {
-        if (panel == null) return;
-
-        if (slideCoroutine != null)
-            StopCoroutine(slideCoroutine);
-
-        slideCoroutine = StartCoroutine(SlideTo(targetY, duration));
-    }
-
-    private IEnumerator SlideTo(float targetY, float duration)
-    {
-        float initialY = panel.anchoredPosition.y;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
+        while (currentTime > 0f)
         {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            float newY = Mathf.Lerp(initialY, targetY, t);
-            SetY(newY);
+            currentTime -= Time.deltaTime;
+            if (currentTime < 0f)
+                currentTime = 0f;
+
+            if (timeSlider != null)
+                timeSlider.value = currentTime;
+
+            UpdateTimerText();
+
             yield return null;
         }
 
-        SetY(targetY);
-        slideCoroutine = null;
+        // Vaqt tugadi → panelni o‘chiramiz
+        if (timerRoot != null)
+            timerRoot.SetActive(false);
+
+        countdownCoroutine = null;
+    }
+
+    private void UpdateTimerText()
+    {
+        if (timerText == null) return;
+
+        int t = Mathf.CeilToInt(currentTime);
+        timerText.text = t.ToString(); // 30, 29, ... 01, 00
+    }
+
+    /// <summary>
+    /// Tashqaridan majburiy yopish (round tugadi, finish va hokazo)
+    /// </summary>
+    public void ForceHide()
+    {
+        StopCountdown();
+
+        if (timerRoot != null)
+            timerRoot.SetActive(false);
+    }
+
+    private void StopCountdown()
+    {
+        if (countdownCoroutine != null)
+        {
+            StopCoroutine(countdownCoroutine);
+            countdownCoroutine = null;
+        }
     }
 }

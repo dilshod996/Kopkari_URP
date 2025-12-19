@@ -37,8 +37,10 @@ public class BaseManager : MonoBehaviour
     [SerializeField] protected List<Transform> lambPositions;
     [SerializeField] protected GameObject myLamb;
     [SerializeField] protected GameObject startVFX;
+    //finish target
     [SerializeField] protected GameObject targetPos;
     [SerializeField] protected GameObject targetVFX;
+    [SerializeField] protected GameObject finalFlag;
 
     [Header("Gameplay")]
     public Pickable pickableObj;
@@ -56,8 +58,7 @@ public class BaseManager : MonoBehaviour
     public enum RoomState { None, Warmup, GameStarted, WaterDropped, TimeFinished, HorseStamenaFinished, RiderStamenaFinished, LambReachTarget, GameFinished,PlayerEliminated, Won }
     public RoomState roomState = RoomState.None;
 
-    [Header("Player Conditions")]
-    [SerializeField] protected NPCDialogueManager NPCDialogueManager;
+
 
 
     [Header("Pooled VFX")]
@@ -85,19 +86,7 @@ public class BaseManager : MonoBehaviour
     }
 
     public PlayerCondition currentCondition = PlayerCondition.None;
-    public PlayerCondition CurrentCondition
-    {
-        get => currentCondition;
-        set
-        {
-            currentCondition = value;
 
-            if (NPCDialogueManager != null)
-            {
-                NPCDialogueManager.OpenNPCPanel(currentCondition);
-            }
-        }
-    }
     #region Camera Details
     [SerializeField] protected ThirdPersonFollowTarget mainCam;
     [SerializeField] protected ThirdPersonFollowTarget sprintCam;
@@ -116,7 +105,6 @@ public class BaseManager : MonoBehaviour
     public static Action OnGameStarted;
     public static Action OnGameEnded;
     public static Action<float> OnGoatPickedTime;
-    public static Action OnHideCatchTime;
     public static Action OnResetTarget;
 
     public static Action<bool> OnGoatPicked;
@@ -139,10 +127,15 @@ public class BaseManager : MonoBehaviour
     public static Transform CurrentStartPoint { get; private set; }
     public static float CurrentWarmupTime { get; private set; }
     public static Action<Transform,float> OnStartPoint;
+    public static Action<Transform> OnHorseTransform;
 
 
+    [Header("Popup Data")]
+    public UISpeechBuble speechBubble;
 
-  
+    private int UserId;
+    private bool roundEnded = false;
+    private bool droppedReported = false;
     public static BaseManager Instance { get; protected set; }
 
     protected virtual void Awake()
@@ -185,9 +178,8 @@ public class BaseManager : MonoBehaviour
     }
     protected virtual void OnEnable()
     {
-        HorseMine.OnReachedStartTarget += HandlePlayerReachedStart;
+        HorseMine.OnReachedStartTarget += PlayerReachPoint;
         OnGameStartFinishState += GameStartedAction;
-        OnGameStartFinishState += GameObjectsEnable;
         KopkariMainUI.OnSprintStart += HorseSprint;
         KopkariMainUI.OnSprintEnd += HorseDefaultSpeed;
         BoostersContainer.OnSprintEffectStart += SprintCameraEnable;
@@ -199,15 +191,18 @@ public class BaseManager : MonoBehaviour
     }
     protected virtual void OnDisable()
     {
-        HorseMine.OnReachedStartTarget -= HandlePlayerReachedStart;
+        HorseMine.OnReachedStartTarget -= PlayerReachPoint;
         OnGameStartFinishState -= GameStartedAction;
-        OnGameStartFinishState -= GameObjectsEnable;
         KopkariMainUI.OnSprintStart -= HorseSprint;
         KopkariMainUI.OnSprintEnd -= HorseDefaultSpeed;
         BoostersContainer.OnSprintEffectStart -= SprintCameraEnable;
         BoostersContainer.OnSprintEffectEnd -= SprintCameraDisable;
         PlayerDataManager.OnLocalPlayerObject -= RegisterLocalRider;
         PlayerDataManager.OnRiderAndHorse -= RegisterPlayerAndHorse;
+    }
+    protected virtual void OnDestroy()
+    {
+        SimplePool.ClearAll();
     }
     protected virtual void MainGameTimeTick()
     {
@@ -221,7 +216,6 @@ public class BaseManager : MonoBehaviour
             if (mainTime <= 3)
             {
                 timeText.color = Color.red;
-                currentCondition = PlayerCondition.MainTimeOver;
             }
                 
         }
@@ -288,6 +282,22 @@ public class BaseManager : MonoBehaviour
         // Hozir allaqachon subscribe bo‘lib turganlar uchun
         OnStartPoint?.Invoke(point, time);
     }
+    private void DisableStartPoint()
+    {
+        startTarget.gameObject.SetActive(false);
+    }
+    private void StartPosState(bool state)
+    {
+        startVFX?.SetActive(state);
+    }
+    public void FinalPosState(bool state)
+    {
+        if(state && targetPos.activeSelf)
+            return;
+        targetPos?.SetActive(state);
+        targetVFX?.SetActive(state);
+        finalFlag.SetActive(state);
+    }
     private void HandlePlayerReachedStart()
     {
         playerReachedStart = true;
@@ -296,7 +306,19 @@ public class BaseManager : MonoBehaviour
         roomState = RoomState.GameStarted;
         timeText.color = Color.white;   // agar warmupda rangni o'zgartirgan bo'lsang, reset qil
     }
-
+    private void PlayerReachPoint()
+    {
+        StartCoroutine(DelayReachStart());
+        OnHorseTransform?.Invoke(horseAnimal.transform);
+    }
+    private IEnumerator DelayReachStart()
+    {
+        speechBubble.ShowPopup("Are you ready!!!");
+        DisableStartPoint();
+        yield return new WaitForSeconds(2f);
+        speechBubble.ShowPopup("LET'S GOOO!!!");
+        HandlePlayerReachedStart();
+    }
     private void HandlePlayerNotReachedInTime()
     {
         roomState = RoomState.PlayerEliminated;
@@ -350,11 +372,20 @@ public class BaseManager : MonoBehaviour
     protected virtual void OnUloqPicked(GameObject pickerObj)
     {
         NotifyGoatOwner(pickerObj.transform.root.gameObject, true);
+
+        Debug.Log("Picker name: " +  pickerObj.name);
+        StartPosState(false);
         string pickerName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         if (pickerObj.name == pickerName)
         {
-            catchCounter++;
+            speechBubble.ShowPopup("Lets go!!! Faster Polvon");
+            TriggerPointNotFinished();
+            //catchCounter++;
             //StartPickUpTime();
+        }
+        else
+        {
+            speechBubble.ShowPopup($"<color=#FFD700>{pickerObj.name} Polvon</color> has taken the Ulak.");
         }
     }
     public void NotifyGoatOwner(GameObject ownerRoot, bool hasGoat)
@@ -371,7 +402,7 @@ public class BaseManager : MonoBehaviour
                 OnGoatPicked?.Invoke(true);
                 IsCatched = true;
                 StartPickUpTime();
-
+                KopkariResultsManager.Instance.OnLambPicked(UserId);
             }
             else
             {
@@ -400,13 +431,32 @@ public class BaseManager : MonoBehaviour
     #endregion
 
     #region Drop Uloq
+    //public virtual void TriggerEvent()
+    //{
+    //    IsCatched = false;
+    //    currentGoatOwner = null;
+    //    playerDataManager.DropObject();
+    //    OnGoatPicked?.Invoke(false);
+    //}
     public virtual void TriggerEvent()
     {
+        // finish bo‘lib bo‘lgan bo‘lsa endi drop logika ishlamasin
+        //if (roundEnded) return;
+
+        // owner/state tozalash
         IsCatched = false;
         currentGoatOwner = null;
+
+        // Player qo‘lidan objectni tushirish (pickable drop)
         playerDataManager.DropObject();
-        OnGoatPicked?.Invoke(false);
+
+        // UI signal
+        //OnGoatPicked?.Invoke(false);
+
+        // timer/coroutine + results update
+       // StopPickUpTime();
     }
+
     public void StopPickUpTime()
     {
         IsCatched = false;
@@ -420,7 +470,11 @@ public class BaseManager : MonoBehaviour
         OnGoatPickedTime?.Invoke(0f);
         OnGoatPicked?.Invoke(false);
 
-        /*Debug.Log("⛔ StopPickUpTime: Local player uloqni yo‘qotdi, timer to‘xtadi.");*/
+        if (!droppedReported)
+        {
+            droppedReported = true;
+            KopkariResultsManager.Instance.OnLambDropped(UserId);
+        }
     }
 
     #endregion
@@ -438,44 +492,28 @@ public class BaseManager : MonoBehaviour
 
     public virtual void GameStartedAction(bool state)
     {
-        roomState = state ? RoomState.Warmup : RoomState.None;
+        if (state)
+            roomState = RoomState.Warmup;
     }
 
-    public virtual void GameObjectsEnable(bool enable)
-    {
-        // Gameplay elementlar
-        //arrowObj?.SetActive(enable);
-        //myLamb?.SetActive(enable);
-        if (!enable)
-        {
-            roomState = RoomState.None;
-        }
-        else
-        {
-            OnHideCatchTime?.Invoke();
-        }
-    }
 
     public virtual void StartGame()
     {
+        droppedReported = false;
+        roundEnded = false;
         OnResetTarget?.Invoke();
-        CurrentCondition = PlayerCondition.Start;
+        //CurrentCondition = PlayerCondition.Start;
         OnGameStartFinishState?.Invoke(true);
         OnGameStarted?.Invoke();
+        speechBubble.ShowPopup("You have 30 seconds to reach your position!");
+        UserId = PlayerPrefs.GetInt(Constants.Player.Userid, 0);
     }
 
 
     public virtual void ContinueGame()
     {
-        StartGame();
-        catchCounter = 0;
+        //StartGame();
     }
-
-
-
-
-
-
 
     public virtual void ContinueGameChanger(Transform lambPos, Transform targetPos)
     {
@@ -487,11 +525,35 @@ public class BaseManager : MonoBehaviour
 
     public void MarkPlayerReachedTarget()
     {
-        if (roomState == RoomState.GameStarted)
-        {
-            roomState = RoomState.LambReachTarget;
-            WinOrLosePage();
-        }
+        // 0) Double call bo‘lmasin
+        if (roundEnded) return;
+
+        // 1) Faqat main game holatida
+        if (roomState != RoomState.GameStarted) return;
+
+        // 2) Player haqiqatan uloq egasi bo‘lishi kerak
+        if (!IsCatched) return;
+        if (currentGoatOwner == null) return;
+        if (LocalRiderRoot != null && currentGoatOwner != LocalRiderRoot) return;
+        KopkariMainUI.Instance.UpdateSlider();
+        roundEnded = true;
+
+        // 3) Drop + state reset
+        // Agar TriggerEvent() ichida DropObject + OnGoatPicked(false) bo‘lsa, shuni ishlat
+        TriggerEvent(); // IsCatched=false, currentGoatOwner=null, DropObject, OnGoatPicked(false)
+        roomState = RoomState.GameFinished;
+        // 4) Timer/UI stop (StopPickUpTime OnLambDropped ham qiladi)
+        StopPickUpTime();
+
+        // 5) Uloqni endi qayta pick qilinmasin
+        if (pickableObj != null)
+            pickableObj.gameObject.SetActive(false);
+
+        // 6) Room state
+
+        OnGameStartFinishState?.Invoke(false);
+        // 7) Final UI / page
+        WinOrLosePage();
     }
     public void RegisterLocalRider(GameObject riderRoot)
     {
@@ -582,12 +644,24 @@ public class BaseManager : MonoBehaviour
         // ✅ Birinchi marta, hozirgi goat owner bilan o‘tildi:
         checkpoint.MarkPassedWithGoat();
         passedCheckpointCount++;
-
+        KopkariMainUI.Instance.UpdateSlider();
+        KopkariResultsManager.Instance.OnTriggerPoint(UserId);
         Debug.Log($"[Checkpoint] {riderObj.name} uloq bilan checkpoint o'tdi. Jami: {passedCheckpointCount}/{checkpoints.Count}");
 
         if (passedCheckpointCount >= checkpoints.Count && checkpoints.Count > 0)
         {
             OnAllCheckpointsCompleted();
+        }
+    }
+    /// <summary>
+    /// Agarda Barcha triggerlardan hali otilmagan lekin finishpoint yoniq torgan bolsa uchirib quyamiz
+    /// 
+    /// </summary>
+    private void TriggerPointNotFinished()
+    {
+        if (passedCheckpointCount != checkpoints.Count)
+        {
+            FinalPosState(false);
         }
     }
 
@@ -598,7 +672,7 @@ public class BaseManager : MonoBehaviour
     public virtual void OnAllCheckpointsCompleted()
     {
         Debug.Log("[Checkpoint] 🔥 Barcha checkpointlar uloq bilan o‘tilgan!");
-
+        FinalPosState(true);
         // Masalan:
         // - myTargetPos ni enable qilish
         // - targetVFX yoqish

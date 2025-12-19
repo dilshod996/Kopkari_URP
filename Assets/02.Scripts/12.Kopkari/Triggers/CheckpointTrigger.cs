@@ -33,6 +33,6 @@ public class CheckpointTrigger : MonoBehaviour
         var col = GetComponent<Collider>();
 
         if (passedVFX != null)
-            passedVFX.SetActive(true);
+            passedVFX.SetActive(false);
     }
 }

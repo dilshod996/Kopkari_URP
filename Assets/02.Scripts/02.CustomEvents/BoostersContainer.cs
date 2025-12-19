@@ -33,6 +33,11 @@ public class BoostersContainer : MonoBehaviour
     // events for Defend
     public static event Action<int> OnDefendAdded;
     public static event Action<int> OnDefendRemoved;
+
+    // Events for  Web Snare
+
+    public static event Action<int> OnWebSnareAdded;
+    public static event Action<int> OnWebSnareRemoved;
     [Header("Npc info")]
     public bool isNpc = false; // Npc bo‘lsa, bu true bo‘ladi
 
@@ -152,14 +157,18 @@ public class BoostersContainer : MonoBehaviour
     }
     public void DecreaseWalkZone()
     {
-        walkZoneCount = Mathf.Max(0, walkZoneCount - 1);            
+
         if (!isNpc)
         {
             int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
             playerSlowDown -= 1;
             OnWalkZoneRemoved?.Invoke(playerSlowDown);
         }
-            
+        else
+        {
+            walkZoneCount = Mathf.Max(0, walkZoneCount - 1);
+        }
+
     }
     public void DropWalkTrap()
     {
@@ -264,7 +273,7 @@ public class BoostersContainer : MonoBehaviour
     #region Defend Details
     public void AddDefend()
     {
-        defendCount++;
+        
         if (!isNpc)
         {
             int defendPlayer =  GetPrefs(Constants.PlayerItems.Defense);
@@ -272,21 +281,30 @@ public class BoostersContainer : MonoBehaviour
             OnDefendAdded?.Invoke(defendPlayer);
             Debug.Log("Defend Count" +  defendPlayer);
         }
+        else
+        {
+            defendCount++;
+        }
     }
     public void DecreaseDefend()
     {
-        defendCount = Mathf.Max(0, defendCount - 1);
+        
         if (!isNpc)
         {
             int defendPlayer = GetPrefs(Constants.PlayerItems.Defense);
             defendPlayer -= 1;
             OnDefendRemoved?.Invoke(defendPlayer);
         }
+        else
+        {
+            defendCount = Mathf.Max(0, defendCount - 1);
+        }
             
     }
     public void DefendPlayer()
     {
-        if (defendCount <= 0)
+        int defenderCount = GetPrefs(Constants.PlayerItems.Defense);
+        if (defenderCount <= 0)
         {
             return;
         }
@@ -344,7 +362,23 @@ public class BoostersContainer : MonoBehaviour
     public void RemoveHit() { hitCount--; }
     #endregion
 
-    #region Damage / Hit Reaction 
+    #region Damage / Web Snares
+    /// <summary>
+    /// Bu faqatgina player uchun websnare qushadi lekin ai riderlarga walkzone bilan chegaralanadi hozircha
+    /// </summary>
+    public void AddWebSnare()
+    {
+        if (!isNpc)
+        {
+            int webSnare = GetPrefs(Constants.PlayerItems.WebSnare);
+            webSnare += 1;
+            OnWebSnareAdded?.Invoke(webSnare);
+        }
+        else
+        {
+            walkZoneCount++;
+        }
+    }
 
     // ⚠️ Parametrlarni MDamageable.OnReceiveDamage imzosiga moslashtir!
     private void OnReceiveDamageHandler(/* masalan: MDamageable dam, Hit hit */ float dmg)
@@ -401,6 +435,9 @@ public class BoostersContainer : MonoBehaviour
         isUnderSlow = false;
     }
 
+    #endregion
+
+    #region Reached Final so MoveSecond Warm Up location
     #endregion
 
 

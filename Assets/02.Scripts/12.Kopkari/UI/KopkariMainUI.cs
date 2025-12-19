@@ -5,7 +5,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using UnityEngine.UIElements.Experimental;
 
 public class KopkariMainUI : MonoBehaviour
 {
@@ -19,7 +18,9 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private Button hitBtn;
     [SerializeField] private Button shootWebBtn;
     [SerializeField] private Button chainContainerBtn;
-
+    [SerializeField] private Button pushButton;
+    [SerializeField] private Button pauseButton;
+ 
     #region Effects / Sprint/ Hit / Walk
     [SerializeField] private Image sprintImg;
     [SerializeField] private Image slowImg;
@@ -41,6 +42,15 @@ public class KopkariMainUI : MonoBehaviour
     private float totalHoldTime = 0f;
     [Header("Pages")]
     [SerializeField] private GameObject loadingPanel;
+    [SerializeField] private KopkariResultUI resultUI;
+    [SerializeField] private UIPauseGame pauseMenu;
+    [Header("Top Slider && BottomUI")]
+    [SerializeField] private RectTransform bottomUI;
+    [SerializeField] private Slider topUloqSlider;
+    [SerializeField] private GameObject[] pointTexts; // 0..4
+    [SerializeField] private GameObject[] pointFlags; // 0..4
+
+    private int sliderCount = 0;
 
     #region Projectiles
     [Header("Projectiles")]
@@ -74,8 +84,8 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private GameObject roomCanvas;
     #endregion[Header("Game Canvases")]
 
-    #region GetLamp UI
-
+    #region Lamp Show Ui
+    [SerializeField] private GoatDistanceUI goalDistanceUI;
     #endregion
 
     [Header("Events")]
@@ -89,7 +99,12 @@ public class KopkariMainUI : MonoBehaviour
     public static Action OnEverythingReadyStart;
     public static Action<BoostersContainer> OnBoostersContainerStart;
 
+    public static Action OnHorsePushEffect;
+
     public bool WeaponInHand;
+    private Coroutine canvasRoutine;
+    private Coroutine moveBottomRoutine;
+
     #region Awake/Start/OnEnable/OnDisable
     private void Awake()
     {
@@ -112,8 +127,14 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
         BoostersContainer.OnDefendAdded += UpdateDefendText;
         BoostersContainer.OnDefendRemoved += UpdateDefendText;
+        BoostersContainer.OnWebSnareAdded += UpdateWebCount;
 
         BoostersContainer.OnDefendState += SetDefendState;
+        HorseMine.OnReachedStartTarget += MoveUP;
+        BaseManager.OnGoatPicked += ShowMeters;
+        TargetReachEvent.OnRoundEnded += DisableMeters;
+        pushButton.onClick.AddListener(PushEffectStart);
+        pauseButton.onClick.AddListener(PauseMenu);
     }
 
     private void OnDisable()
@@ -128,6 +149,12 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnDefendAdded -= UpdateDefendText;
         BoostersContainer.OnDefendRemoved -= UpdateDefendText;
         BoostersContainer.OnDefendState -= SetDefendState;
+        HorseMine.OnReachedStartTarget -= MoveUP;
+        BoostersContainer.OnWebSnareAdded -= UpdateWebCount;
+        TargetReachEvent.OnRoundEnded -= DisableMeters;
+        BaseManager.OnGoatPicked -= ShowMeters;
+        pushButton.onClick.RemoveListener(PushEffectStart);
+        pauseButton.onClick.RemoveListener(PauseMenu);
     }
     #endregion
 
@@ -388,8 +415,38 @@ public class KopkariMainUI : MonoBehaviour
 
     private void CanvasEnable(bool state)
     {
-        mobileCanvas.SetActive(state);
-        roomCanvas.SetActive(state);
+        // Oldingi coroutine bo‘lsa to‘xtatamiz
+        if (canvasRoutine != null)
+        {
+            StopCoroutine(canvasRoutine);
+            Debug.Log("clean");
+            canvasRoutine = null;
+        }
+
+        if (state)
+        {
+            // Darhol yoqiladi
+            mobileCanvas.SetActive(true);
+            roomCanvas.SetActive(true);
+            Debug.Log("Yoq");
+        }
+        else
+        {
+            // 2 sekunddan keyin o‘chadi
+            canvasRoutine = StartCoroutine(DisableCanvasDelayed());
+        }
+    }
+
+    private IEnumerator DisableCanvasDelayed()
+    {
+        
+        MoveDown();
+        yield return new WaitForSeconds(2f);
+        Debug.Log("Uchir");
+        mobileCanvas.SetActive(false);
+        roomCanvas.SetActive(false);
+
+        canvasRoutine = null;
     }
     #endregion
 
@@ -461,7 +518,122 @@ public class KopkariMainUI : MonoBehaviour
     }
     #endregion
 
-    #region Uloq Catch Timer
+    #region Bottom Ui && Top Slider uloq
+    public void PlayerDataRegister()
+    {
+        string namePlayer = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+        int playerid = PlayerPrefs.GetInt(Constants.Player.Userid, 0);
+        string teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
+        KopkariResultsManager.Instance.Register(playerid, namePlayer, teamName, true);
 
+    }
+    public void MoveUP()
+    {
+        MoveBottomUI(28, 1f);
+        ShowMeters(false);
+        KopkariResultsManager.Instance?.StartRace();
+        PlayerDataRegister();
+    }
+    public void MoveDown()
+    {
+        MoveBottomUI(-50,1f);
+    }
+    public void MoveBottomUI(float targetY, float duration)
+    {
+        if (moveBottomRoutine != null)
+        {
+            StopCoroutine(moveBottomRoutine);
+            moveBottomRoutine = null;
+        }
+
+        moveBottomRoutine = StartCoroutine(MoveBottomUICo(targetY, duration));
+    }
+
+    private IEnumerator MoveBottomUICo(float targetY, float duration)
+    {
+        Vector2 startPos = bottomUI.anchoredPosition;
+        Vector2 endPos = new Vector2(startPos.x, targetY);
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float lerp = Mathf.SmoothStep(0f, 1f, t / duration);
+            bottomUI.anchoredPosition = Vector2.Lerp(startPos, endPos, lerp);
+            yield return null;
+        }
+
+        bottomUI.anchoredPosition = endPos;
+        moveBottomRoutine = null;
+    }
+
+
+    public void UpdateSlider()
+    {
+        sliderCount++;
+        sliderCount = Mathf.Clamp(sliderCount, 0, 4);
+
+        topUloqSlider.value = sliderCount;
+        UpdateFlag(sliderCount);
+    }
+
+    private void UpdateFlag(int pointNumber) // 1..4 keladi
+    {
+        int idx = pointNumber - 1; // 0..3 ga map
+
+        for (int i = 0; i < pointTexts.Length; i++)
+        {
+            // ✅ Flaglar: ortda qolganlar ham ON bo‘lib qoladi (o‘chmaydi)
+            if (pointFlags[i] != null && i <= idx)
+                pointFlags[i].SetActive(true);
+
+            // ✅ Textlar: faqat ortda qolganlar OFF
+            if (pointTexts[i] != null && i < idx)
+                pointTexts[i].SetActive(false);
+        }
+
+        if (pointNumber == 3)
+        {
+            Debug.Log("You are near to final!");
+            //BaseManager.Instance?.FinalPosState(true);
+        }
+
+           
+    }
+
+    #endregion
+
+    #region Push Effect
+    private void PushEffectStart()
+    {
+        OnHorsePushEffect?.Invoke();
+    }
+    #endregion
+
+    #region Goat show meters/ Finish Events
+    private void DisableMeters()
+    {
+        ShowMeters(true);
+        ShowUI(resultUI);
+        //goalDistanceUI.ForceHide();
+        //MoveDown();
+    }
+    private void ShowMeters(bool hasGoat)
+    {
+        if(BaseManager.Instance.roomState==BaseManager.RoomState.GameFinished)
+        {
+            //goalDistanceUI.Hide();
+            return;
+        }
+        else          
+            goalDistanceUI.SHowHide(hasGoat);
+    }
+    #endregion
+
+    #region Other Button Actions
+    private void PauseMenu()
+    {
+        ShowUI(pauseMenu);
+    }
     #endregion
 }

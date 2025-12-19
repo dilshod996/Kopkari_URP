@@ -108,7 +108,7 @@ public class UIButtonActions : MonoBehaviour
         BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
         BoostersContainer.OnDefendAdded += UpdateDefendText;
         BoostersContainer.OnDefendRemoved += UpdateDefendText;
-
+        BoostersContainer.OnWebSnareAdded += UpdateWebCount;
         //THis is only for Racing Mode
         RacingController.OnRacingFinished += ShowResultPage;
         RacingController.OnRacingStarted += GetData;
@@ -129,6 +129,7 @@ public class UIButtonActions : MonoBehaviour
         RacingController.OnRacingStarted -= GetData;
         BoostersContainer.OnDefendState -= SetDefendState;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanleState;
+        BoostersContainer.OnWebSnareAdded -= UpdateWebCount;
         OnBindRequested -= Bind;
     }
     #region Text Updates

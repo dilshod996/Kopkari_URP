@@ -70,8 +70,8 @@ public class NPCGetLamb : MonoBehaviour
             pickUp.PickUpItem();
             if (lambParentObj.transform.childCount > 0)
             {
-                BaseManager.Instance.LambOwner = gameObject.name;
-                BaseManager.Instance.CurrentCondition = BaseManager.PlayerCondition.TakenTargetOthers;
+                //BaseManager.Instance.LambOwner = gameObject.name;
+                //BaseManager.Instance.CurrentCondition = BaseManager.PlayerCondition.TakenTargetOthers;
 
                 isItemPicked = true;
                 currentItemTime = itemPickedDuration;

@@ -40,17 +40,20 @@ public class WalkZone : MonoBehaviour
         bool isNpc = other.CompareTag("NPC");
         if (!isPlayer && !isNpc) return;
 
-        if (triggered) return;
-        triggered = true;
-
-        // Trap 2chi marta ishga tushmasin:
-        if (_collider != null)
-            _collider.enabled = false;
+ 
         var boosters = other.GetComponentInChildren<BoostersContainer>();
-        if (boosters == null) {
+        if (!boosters) {
+            if (triggered) return;
+            triggered = true;
+
+            // Trap 2chi marta ishga tushmasin:
+            if (_collider != null)
+                _collider.enabled = false;
+            SimplePool.Despawn(gameObject);
+
             Debug.Log("#########ishlamayapti");
+            return;
         }
-        if (!boosters) return;
         // NPC: zaxira qalqon bo‘lsa → auto-defend → slow SKIP
         if (boosters.isNpc && boosters.defendCount > 0)
         {
@@ -61,7 +64,12 @@ public class WalkZone : MonoBehaviour
         // Player: qalqon allaqachon yoqilgan bo‘lsa → slow SKIP
         if (boosters.defendQobiq != null && boosters.defendQobiq.activeSelf)
             return;
+        if (triggered) return;
+        triggered = true;
 
+        // Trap 2chi marta ishga tushmasin:
+        if (_collider != null)
+            _collider.enabled = false;
         // Endi slow beramiz (faqat shu yerda affected va subscribe qilamiz)
         TrySlow(boosters);
 

@@ -26,13 +26,11 @@ public class BeginerRoomManager : BaseManager
     protected override void Update()
     {
         base.Update();
-
-        if (roomState == RoomState.GameFinished)
-        {
-            WinOrLosePage();
-        }
     }
-
+    protected override void OnDestroy()
+    {
+        base.OnDestroy();
+    }
     public override void GameStartedAction(bool state)
     {
         base.GameStartedAction(state);
@@ -46,27 +44,7 @@ public class BeginerRoomManager : BaseManager
 
     public override void WinOrLosePage()
     {
-        if (IsCatched)
-            IsCatched = false;
-
-        if (pickableObj != null)
-            pickableObj.Drop(); // Uloqni tashlaymiz
-        // 1. O'yinni to'xtatamiz
-        GameObjectsEnable(false);
-        GameStartedAction(false);
-
-
-        string labmOwner = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        if (LambOwner == labmOwner && mainTime > 0)
-        {
-            Debug.Log("✅ G‘alaba – foydalanuvchi uloqni manzilga yetkazdi.");
-            HandleWin();
-        }
-        else
-        {
-            Debug.Log("❌ Mag‘lubiyat – foydalanuvchi uloqni yetkaza olmadi.");
-            HandleLose();
-        }
+        base.WinOrLosePage();
     }
 
     public override void HandleWin()

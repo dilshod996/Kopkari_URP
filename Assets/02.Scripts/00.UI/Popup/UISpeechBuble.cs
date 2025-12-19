@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System.Collections;
+using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(RectTransform))]
@@ -19,7 +20,7 @@ public class UISpeechBuble : MonoBehaviour
     [SerializeField] private float fadeOutDuration = 0.25f;
 
     private RectTransform rect;
-
+    private Coroutine autoHideCo;
     private void Awake()
     {
         rect = GetComponent<RectTransform>();
@@ -37,7 +38,23 @@ public class UISpeechBuble : MonoBehaviour
         rect.anchoredPosition = new Vector2(startX, pos.y);
         canvasGroup.alpha = 0f;
     }
+    public void ShowPopup(string text)
+    {
+        Show(text);
+        if (autoHideCo != null)
+        {
+            StopCoroutine(autoHideCo);
+            autoHideCo = null;
+        }
 
+        // Yangi auto-hide coroutine
+        autoHideCo = StartCoroutine(AutoHideAfterDelay());
+    }
+    private IEnumerator AutoHideAfterDelay()
+    {
+        yield return new WaitForSeconds(4f);
+        Hide();
+    }
     public void Show(string text)
     {
         if (!gameObject.activeSelf)
@@ -66,7 +83,7 @@ public class UISpeechBuble : MonoBehaviour
             .setOnComplete(() =>
             {
                 // 2️⃣ Keyin yumshoq to‘xtash (-312 gacha)
-                LeanTween.moveX(rect, -312f, settleDuration)
+                LeanTween.moveX(rect, midX, settleDuration)
                     .setEase(LeanTweenType.easeOutQuad)
                     .setIgnoreTimeScale(true);
             });
@@ -95,6 +112,7 @@ public class UISpeechBuble : MonoBehaviour
                 gameObject.SetActive(false);
                 rect.anchoredPosition = new Vector2(startX, y);
             });
+        CleanSpeech();
     }
 
     public void SpeechBuble(string text)
