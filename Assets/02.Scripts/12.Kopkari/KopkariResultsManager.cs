@@ -12,7 +12,7 @@ public class KopkariResultsManager : MonoBehaviour
     private bool _raceStarted;
     private float _raceStartTime;
     public float RaceDuration { get; private set; }
-
+    public string UloqOwner;
 
     // Optional: kim birinchi lamb bilan finishga kirdi (winner id)
     public int WinnerId { get; private set; }
@@ -127,6 +127,7 @@ public class KopkariResultsManager : MonoBehaviour
             s.isHolding = true;
             s.holdStartTime = Time.time;
         }
+        UloqOwner = s.playerName;
     }
 
     public void OnLambDropped(int riderId)
@@ -136,6 +137,7 @@ public class KopkariResultsManager : MonoBehaviour
 
         if (!s.isHolding) return;
         ForceEndHold(s);
+        UloqOwner = string.Empty;
     }
 
     private void ForceEndHold(RiderRaceStats s)

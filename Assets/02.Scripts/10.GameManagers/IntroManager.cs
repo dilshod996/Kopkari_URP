@@ -59,6 +59,8 @@ namespace Kopkari
             }
 
             Instance = this;
+            Application.targetFrameRate = 60;
+            QualitySettings.vSyncCount = 0;
         }
         private async void Start()
         {

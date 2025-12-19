@@ -65,6 +65,32 @@ namespace MalbersAnimations.Controller
         [HideInInspector, SerializeField] private int Runtime_Tabs2;
         #endregion
 
+        #region Custom Optimized
+        [Header("Mobile Optimization Settings")]
+        [Tooltip("Is this the player character? Player always gets full update rate")]
+        public bool isPlayerM = false;
+
+        [Tooltip("LOD distances from camera (Close, Medium, Far, VeryFar)")]
+        public float[] lodDistances = new float[] { 15f, 30f, 50f, 100f };
+
+        [Tooltip("Update frequency for each LOD (1=every frame, 2=every 2 frames, etc)")]
+        public int[] lodUpdateRates = new int[] { 1, 2, 3, 5 };
+
+        [Tooltip("Cache camera reference instead of using Camera.main")]
+        private Transform cameraTransform;
+
+        private int currentLOD = 0;
+        private int frameCounter = 0;
+        private float sqrDistanceToCamera;
+        private bool shouldUpdateThisFrame = true;
+
+        // Cached values to reduce calculations
+        private Vector3 lastPosition;
+        private float lastGroundCheckTime;
+        private const float GROUND_CHECK_INTERVAL = 0.1f; // Check ground every 0.1s for far LODs
+        #endregion
+
+
 #if UNITY_EDITOR
         private void OnValidate()
         {

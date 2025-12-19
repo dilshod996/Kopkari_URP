@@ -373,10 +373,18 @@ public class BaseManager : MonoBehaviour
     {
         NotifyGoatOwner(pickerObj.transform.root.gameObject, true);
 
-        Debug.Log("Picker name: " +  pickerObj.name);
+
         StartPosState(false);
+        StartCoroutine(NotifyRoom());
+
+    }
+    private IEnumerator NotifyRoom()
+    {
+        var kopkariResult = KopkariResultsManager.Instance;
+        yield return new WaitForSeconds(0.5f);
         string pickerName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        if (pickerObj.name == pickerName)
+        Debug.Log("Picker name: " + kopkariResult.UloqOwner);
+        if (kopkariResult.UloqOwner == pickerName)
         {
             speechBubble.ShowPopup("Lets go!!! Faster Polvon");
             TriggerPointNotFinished();
@@ -385,7 +393,7 @@ public class BaseManager : MonoBehaviour
         }
         else
         {
-            speechBubble.ShowPopup($"<color=#FFD700>{pickerObj.name} Polvon</color> has taken the Ulak.");
+            speechBubble.ShowPopup($"<color=#FFD700>{kopkariResult.UloqOwner} Polvon</color> has taken the Ulak.");
         }
     }
     public void NotifyGoatOwner(GameObject ownerRoot, bool hasGoat)

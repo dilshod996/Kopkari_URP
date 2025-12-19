@@ -434,6 +434,7 @@ public class KopkariMainUI : MonoBehaviour
         {
             // 2 sekunddan keyin o‘chadi
             canvasRoutine = StartCoroutine(DisableCanvasDelayed());
+            ShowUI(resultUI);
         }
     }
 
@@ -614,7 +615,7 @@ public class KopkariMainUI : MonoBehaviour
     private void DisableMeters()
     {
         ShowMeters(true);
-        ShowUI(resultUI);
+
         //goalDistanceUI.ForceHide();
         //MoveDown();
     }
