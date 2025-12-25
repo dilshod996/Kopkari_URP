@@ -146,6 +146,9 @@ public class BaseManager : MonoBehaviour
         }
         else
             Destroy(gameObject);
+
+        Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 0;
     }
 
     protected virtual void Start()

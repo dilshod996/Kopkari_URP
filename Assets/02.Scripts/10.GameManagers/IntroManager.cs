@@ -52,13 +52,12 @@ namespace Kopkari
         private Color fadeColor;
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (Instance == null)
             {
-                Destroy(gameObject);
-                return;
+                Instance = this;
             }
-
-            Instance = this;
+            else
+                Destroy(gameObject);
             Application.targetFrameRate = 60;
             QualitySettings.vSyncCount = 0;
         }

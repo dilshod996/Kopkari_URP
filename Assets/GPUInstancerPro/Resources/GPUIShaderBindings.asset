@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f01694a6d0ad91f4985ea0689f262c1b, type: 3}
+  m_Name: GPUIShaderBindings
+  m_EditorClassIdentifier: 
+  shaderInstances:
+  - shaderName: ANGRYMESH/Stylized Pack/Grass
+    replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Grass
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 19:34:35.219
+  - shaderName: ANGRYMESH/Stylized Pack/Tree Bark
+    replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Tree Bark
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 21:44:00.186
+  - shaderName: ANGRYMESH/Stylized Pack/Tree Leaf
+    replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Tree Leaf
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 21:44:01.595
+  - shaderName: Hidden/Amplify Impostors/Octahedron Impostor URP
+    replacementShaderName: Hidden/GPUInstancerPro/Amplify Impostors/Octahedron Impostor
+      URP
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 21:44:02.920
+  - shaderName: ANGRYMESH/Stylized Pack/Props
+    replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Props
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 22:04:32.925
+  - shaderName: Universal Render Pipeline/Lit
+    replacementShaderName: GPUInstancerPro/Universal Render Pipeline/Lit
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 22:26:28.949
+  - shaderName: Custom/SpectatorWobble_URP
+    replacementShaderName: GPUInstancerPro/Custom/SpectatorWobble_URP
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 12/22/2025 22:26:30.360
+  stripObjectMotionVectorVariants: 0
+  stripPerInstanceLightProbeVariants: 0

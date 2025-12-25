@@ -19,7 +19,15 @@ public class RacingLeaderboard : MonoBehaviour
     public bool RaceStarted { get; private set; }
     public float RaceStartTime { get; private set; }
 
-    private void Awake() => Instance = this;
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+            Destroy(gameObject);
+    }
 
     public void Register(RacingAgent agent)
     {

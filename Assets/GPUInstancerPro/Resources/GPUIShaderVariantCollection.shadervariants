@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!200 &20000000
+ShaderVariantCollection:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: GPUIShaderVariantCollection
+  m_Shaders:
+  - first: {fileID: 4800000, guid: 303b28effad14e94871a6cfad2db6615, type: 3}
+    second:
+      variants:
+      - keywords: 
+        passType: 0
+  - first: {fileID: 4800000, guid: 8478781d80234fa29651593b02782b9d, type: 3}
+    second:
+      variants:
+      - keywords: 
+        passType: 0
+  - first: {fileID: 4800000, guid: d08f1c80788f66b428d7b2babe2f225e, type: 3}
+    second:
+      variants:
+      - keywords: 
+        passType: 0
+      - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLETINTVARIATIONCOLOR_ON
+          _ENABLEWIND_ON
+        passType: 0
+      - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLEWIND_ON
+        passType: 0
+  - first: {fileID: 4800000, guid: 1c919c43f8df6b04d9270da7ff976b66, type: 3}
+    second:
+      variants:
+      - keywords: LOD_FADE_CROSSFADE _ENABLEWIND_ON
+        passType: 0
+  - first: {fileID: 4800000, guid: 6390979043293ae4bb8174f3047d4f39, type: 3}
+    second:
+      variants:
+      - keywords: LOD_FADE_CROSSFADE _ENABLEBACKFACEPROJECTION_ON _ENABLEGLANCINGANGLECUT_ON
+          _ENABLESECONDCOLOR_ON _ENABLETINTCOLOR_ON _ENABLEWIND_ON _ENABLEWORLDPROJECTION_ON
+        passType: 0
+      - keywords: LOD_FADE_CROSSFADE _ENABLEBACKFACEPROJECTION_ON _ENABLEGLANCINGANGLECUT_ON
+          _ENABLETINTCOLOR_ON _ENABLEWIND_ON _ENABLEWORLDPROJECTION_ON
+        passType: 0
+      - keywords: _ENABLEBACKFACEPROJECTION_ON _ENABLEWIND_ON _ENABLEWORLDPROJECTION_ON
+        passType: 0
+  - first: {fileID: 4800000, guid: 5088862c29f66024fab703054e2e2265, type: 3}
+    second:
+      variants:
+      - keywords: LOD_FADE_CROSSFADE
+        passType: 0
+  - first: {fileID: 4800000, guid: 333b79b1d6be9b4409fdb78a536ea583, type: 3}
+    second:
+      variants:
+      - keywords: 
+        passType: 0
+      - keywords: LOD_FADE_CROSSFADE
+        passType: 0
+      - keywords: LOD_FADE_CROSSFADE _ALPHATEST_ON
+        passType: 0
+  - first: {fileID: 4800000, guid: c1183a7330de2a6429865c62d7a74ed2, type: 3}
+    second:
+      variants:
+      - keywords: 
+        passType: 0

@@ -34,7 +34,7 @@ public class RaceCheckpoint : MonoBehaviour
             _agentCache[other] = agent;
         }
         if (agent.HasFinished) return;
-        if(index == 17 && agent.isPlayer && RacingController.Instance != null)
+        if(index == 21 && agent.isPlayer && RacingController.Instance != null)
         {
             RacingController.Instance.ShowAndHideSpeech("Faster " + agent.displayName + "! You are near finish!");
         }

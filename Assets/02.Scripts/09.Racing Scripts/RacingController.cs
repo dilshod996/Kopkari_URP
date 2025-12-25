@@ -93,6 +93,9 @@ public class RacingController : MonoBehaviour
         }
         else
             Destroy(gameObject);
+
+        Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 0;
     }
     void Start()
     {
