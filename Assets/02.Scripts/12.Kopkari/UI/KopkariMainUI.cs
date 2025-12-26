@@ -105,6 +105,7 @@ public class KopkariMainUI : MonoBehaviour
     private Coroutine canvasRoutine;
     private Coroutine moveBottomRoutine;
 
+    public Sprite obstacleSprite;
     #region Awake/Start/OnEnable/OnDisable
     private void Awake()
     {

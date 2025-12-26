@@ -11,19 +11,17 @@ using static Constants;
 /// </summary>
 public class HorseMine : MonoBehaviour
 {
-    [Header("Horse ning animation componenti")]
-    public MAnimal horseAnimal;
-
-    [Header("Racing ga tegishli bo'lgan componentlar")]
+    [Header("Refs")]
+    [SerializeField] private MAnimal horseAnimal;
     [SerializeField] private ObstacleTouchSensor obstacleSensor;
+
+    [Header("Hit Settings")]
     [SerializeField] private int maxHits = 3;
-    [SerializeField] private float penaltyDuration = 10f; // sekund davomida penalty
+    [SerializeField] private float penaltyDuration = 10f;
 
+    private int hitCount;
+    private bool isPenalized;
 
-    [SerializeField] private int hitCount = 0;
-    private bool isPenalized = false;
-    private Action<GameObject> onHitHandler;
-    public static Action OnObstacleHit;
     [Header("Speed Improver")]
     [SerializeField] private bool maxSpeed = false;
     [SerializeField] private float maxSpeedDuration = 5f;
@@ -39,12 +37,9 @@ public class HorseMine : MonoBehaviour
     public static Action OnReachedStartTarget;
     private void OnEnable()
     {
-        if (obstacleSensor == null) return;
+        if (obstacleSensor != null)
+            obstacleSensor.OnTouched += OnObstacleTouched;
 
-        // bir marta yaratamiz
-        onHitHandler ??= _ => GetPenalty();
-
-        obstacleSensor.OnObstacleHit += onHitHandler;
         BaseManager.OnGameStarted += BeginCheck;
         BaseManager.OnStartPoint += StartPoint;
         if (BaseManager.CurrentStartPoint != null)
@@ -55,53 +50,50 @@ public class HorseMine : MonoBehaviour
 
     private void OnDisable()
     {
-        if (obstacleSensor == null || onHitHandler == null) return;
-
-        obstacleSensor.OnObstacleHit -= onHitHandler;
+        if (obstacleSensor != null)
+            obstacleSensor.OnTouched -= OnObstacleTouched;
         BaseManager.OnGameStarted -= BeginCheck;
         BaseManager.OnStartPoint -= StartPoint;
     }
 
     #region Penalty Section
 
-    public void GetPenalty()
+    private void OnObstacleTouched()
     {
+        if (isPenalized) return;
+
         hitCount++;
-        OnObstacleHit?.Invoke();
+        Sprite sprite;
+        if(UIButtonActions.Instance!=null)
+            sprite = UIButtonActions.Instance.obstacleHitSprite;
+        else
+            sprite = KopkariMainUI.Instance.obstacleSprite;
+        // 🎯 UI BOOSTER ANIM TRIGGER
+        BoosterUIAnimator.RaiseBoosterPicked(
+            Booster.BoosterType.WallObstacle,
+            sprite // icon sprite
+        );
+
         UIButtonActions.Instance.PlayShock();
 
         if (hitCount >= maxHits)
         {
             hitCount = 0;
-            TriggerPenalty();
-        }
-    }
-
-    public void TriggerPenalty()
-    {
-        if (!isPenalized)
-        {
             StartCoroutine(ApplyPenalty());
-            UIButtonActions.Instance.PlaySlow();
         }
     }
 
     private IEnumerator ApplyPenalty()
     {
         isPenalized = true;
-        hitCount = 0;
 
-        // Eski speed ni saqlaymiz
         horseAnimal.Speed_CurrentIndex_Set(4);
-
-        Debug.Log($"{horseAnimal.name} penalized! Speed reduced to Gallop for {penaltyDuration} seconds.");
+        UIButtonActions.Instance.PlaySlow();
 
         yield return new WaitForSeconds(penaltyDuration);
 
-        // Avvalgi speedni qaytaramiz
         horseAnimal.Speed_CurrentIndex_Set(5);
         isPenalized = false;
-        Debug.Log($"{horseAnimal.name} recovered from penalty.");
         UIButtonActions.Instance.SliderValueRestore();
     }
     #endregion

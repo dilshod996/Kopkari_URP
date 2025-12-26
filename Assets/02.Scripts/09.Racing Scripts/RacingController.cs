@@ -59,6 +59,7 @@ public class RacingController : MonoBehaviour
     [SerializeField] GameOver gameOverPanel;
     [Header("Walk Zone Prefab")]
     public GameObject walkZonePrefab;
+    public GameObject oneTimeFlashEffect;
     [Header("Camera Details")]
     [SerializeField] private ThirdPersonFollowTarget mainCam;
     [SerializeField] private ThirdPersonFollowTarget finishCam;
@@ -101,6 +102,7 @@ public class RacingController : MonoBehaviour
     {
         InitLeaderboardPanelHidden();
         SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
+        SimplePool.CreatePool(oneTimeFlashEffect, prewarm: 5, maxSize: 8, expandable: true);
         //GetSetAnimal(HorseMine.Instance.horseAnimal);
     }
     private void OnEnable()

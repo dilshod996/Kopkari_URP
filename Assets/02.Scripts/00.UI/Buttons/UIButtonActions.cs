@@ -91,6 +91,7 @@ public class UIButtonActions : MonoBehaviour
 
     public bool WeaponInHand;
 
+    public Sprite obstacleHitSprite;
     private void Awake()
     {
         if (Instance == null)

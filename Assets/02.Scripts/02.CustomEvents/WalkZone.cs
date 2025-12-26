@@ -10,7 +10,6 @@ public class WalkZone : MonoBehaviour
     [Header("Effect")]
     [SerializeField] private float slowDuration = 2.5f;
     [SerializeField] private int slowSpeedIndex = 3;
-    [SerializeField] private bool onlyAffectHeads = true;
     private bool triggered = false;
     private Collider _collider;
 

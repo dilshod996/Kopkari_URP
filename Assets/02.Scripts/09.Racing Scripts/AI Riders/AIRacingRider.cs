@@ -12,34 +12,37 @@ public class AIRacingRider : MonoBehaviour
     [SerializeField] private NavMeshAgent agent;
     [Header("Obstacle Details")]
     [SerializeField] private ObstacleTouchSensor sensor;
+    [Header("Hit Settings")]
     [SerializeField] private int maxHits = 3;
-    [SerializeField] private float penaltyDuration = 10f; // sekund davomida penalty
+    [SerializeField] private float penaltyDuration = 10f;
 
-
-    [SerializeField] private int hitCount = 0;
-    private bool isPenalized = false;
-    private Action<GameObject> onHitHandler;
+    private int hitCount;
+    private bool isPenalized;
     private void Awake()
     {
         DisableNavmesh();
     }
     private void OnEnable()
     {
-        if (sensor == null) return;
-
-        // bir marta yaratamiz
-        onHitHandler ??= _ => GetPenalty();
-
-        sensor.OnObstacleHit += onHitHandler;
+        if (sensor != null)
+            sensor.OnTouched += OnObstacleTouched;
     }
 
     private void OnDisable()
     {
-        if (sensor == null || onHitHandler == null) return;
+        if (sensor != null)
+            sensor.OnTouched -= OnObstacleTouched;
 
-        sensor.OnObstacleHit -= onHitHandler;
         StopAllCoroutines();
+
+        // safe reset (disable bo'lib qolsa speed 4 da qolmasin)
+        isPenalized = false;
+        hitCount = 0;
+
+        if (aiHorse != null)
+            aiHorse.Speed_CurrentIndex_Set(5);
     }
+
 
     #region Disable and Enable Rider Navmesh
     public void DisableNavmesh()
@@ -59,35 +62,31 @@ public class AIRacingRider : MonoBehaviour
     #endregion
 
     #region Rider Speed Obstacle
-    public void GetPenalty()
+    private void OnObstacleTouched()
     {
+        if (isPenalized) return;
+
         hitCount++;
+
         if (hitCount >= maxHits)
         {
             hitCount = 0;
-            TriggerPenalty();
+            StartCoroutine(ApplyPenalty());
         }
-    }
-
-    public void TriggerPenalty()
-    {
-        if (!isPenalized) StartCoroutine(ApplyPenalty());
     }
 
     private IEnumerator ApplyPenalty()
     {
         isPenalized = true;
-        hitCount = 0;
 
-        // Eski speed ni saqlaymiz
         aiHorse.Speed_CurrentIndex_Set(4);
+        UIButtonActions.Instance.PlaySlow();
 
         yield return new WaitForSeconds(penaltyDuration);
 
-        // Avvalgi speedni qaytaramiz
         aiHorse.Speed_CurrentIndex_Set(5);
         isPenalized = false;
-        Debug.Log($"{aiHorse.name} recovered from penalty.");
+        UIButtonActions.Instance.SliderValueRestore();
     }
     #endregion
 }

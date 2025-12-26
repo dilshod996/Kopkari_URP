@@ -178,25 +178,87 @@ public static class SimplePool
             _defaultHolder = null;
         }
     }
+    /// <summary>
+    /// UI uchun Spawn (RectTransform parent). Screen Space Overlay bo'lsa juda qulay.
+    /// anchoredPos berilmasa Vector2.zero.
+    /// </summary>
+    public static GameObject SpawnUI(GameObject prefab, RectTransform parent, Vector2 anchoredPos, bool worldPositionStays = false)
+    {
+        if (!prefab)
+        {
+            Debug.LogWarning("[SimplePool] Prefab null (SpawnUI).");
+            return null;
+        }
+
+        // UI uchun Spawn: pos/rot baribir local bo'ladi, shunchaki Spawn ishlatib olamiz
+        var go = Spawn(prefab, Vector3.zero, Quaternion.identity, parent, lifeTime: 0f);
+        if (!go) return null;
+
+        // RectTransform reset
+        var rt = go.transform as RectTransform;
+        if (rt != null)
+        {
+            rt.SetParent(parent, worldPositionStays);
+            rt.anchoredPosition = anchoredPos;
+            rt.localRotation = Quaternion.identity;
+            rt.localScale = Vector3.one;
+        }
+        else
+        {
+            // prefab UI bo'lmasa ham ishlasin (fallback)
+            go.transform.SetParent(parent, worldPositionStays);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+        }
+
+        return go;
+    }
+
+    /// <summary>UI Spawn (anchoredPos = Vector2.zero)</summary>
+    public static GameObject SpawnUI(GameObject prefab, RectTransform parent)
+        => SpawnUI(prefab, parent, Vector2.zero);
+
+    /// <summary>UI uchun Despawn (qaytarganda transformni pool parentga qaytaradi)</summary>
+    public static void DespawnUI(GameObject instance)
+    {
+        // Hozirgi Despawn allaqachon parentga qaytaradi, shu yetadi.
+        Despawn(instance);
+    }
+
 
     // Kichik ichki helper komponent (faqat bitta skript ichida)
     class _AutoReturn : MonoBehaviour
     {
         float _time;
         bool _running;
+        bool _realtime;
 
         public void Run(float life)
         {
             _time = life;
+            _realtime = false;
+            if (!_running) StartCoroutine(Co());
+        }
+
+        // --- NEW: realtime variant (timeScale=0 bo'lsa ham ishlaydi)
+        public void RunRealtime(float life)
+        {
+            _time = life;
+            _realtime = true;
             if (!_running) StartCoroutine(Co());
         }
 
         System.Collections.IEnumerator Co()
         {
             _running = true;
-            yield return new WaitForSeconds(_time);
+
+            if (_realtime) yield return new WaitForSecondsRealtime(_time);
+            else yield return new WaitForSeconds(_time);
+
             _running = false;
             SimplePool.Despawn(gameObject);
         }
     }
+
 }

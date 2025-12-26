@@ -4,18 +4,42 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class Booster : MonoBehaviour
 {
-    public enum BoosterType { SprintFull, SetSpeedSprint, Defend, WalkZone, TimeBooster, Hit, WebSnare }
+    public enum BoosterType
+    {
+        SprintFull,
+        SetSpeedSprint,
+        Defend,
+        WalkZone,
+        TimeBooster,
+        Hit,
+        WebSnare,
+        //obstacles
+        WallObstacle,
+        GetUlak,
+        TriggerPoint
+    }
 
     [Header("Booster")]
     public BoosterType boosterType;
 
-    [Header("Refs (optional)")]
-    private Collider triggerCol;
+    [Header("Refs")]
     [SerializeField] private GameObject visuals;
-    public static Action OnSprintFull;   // Event
+    private Collider triggerCol;
+
+    [Header("Pickup Feedback (Player Only)")]
+    [SerializeField] private GameObject pickupVfxPrefab; // universal VFX
+    [SerializeField] private Color pickupColor = Color.white;
+    [SerializeField] private AudioClip pickupSfx;
+    [SerializeField] private float vfxYOffset = 0.15f;
+    [Range(0f, 1f)][SerializeField] private float sfxVolume = 0.7f;
+
+    [SerializeField] private Sprite boosterIcon;
+
+    public static Action OnSprintFull;
 
     private bool picked;
-    private void Reset()
+
+    private void Awake()
     {
         triggerCol = GetComponent<Collider>();
         triggerCol.isTrigger = true;
@@ -36,20 +60,42 @@ public class Booster : MonoBehaviour
         bool isNpc = other.CompareTag("NPC");
         if (!isPlayer && !isNpc) return;
 
-        //boostertype qilib bir korib chiqish kerakda delegate action qilib
         var boosters = other.GetComponentInChildren<BoostersContainer>();
         if (boosters == null) return;
 
         picked = true;
 
-        // 1) Effektni beramiz (Player/NPC farqlab)
+        if (isPlayer)
+            PlayPickupFeedback();
+
         ApplyEffect(boosters, isPlayer);
 
-
-        // 3) Darhol despawn (Destroy emas)
         if (triggerCol) triggerCol.enabled = false;
         if (visuals) visuals.SetActive(false);
         SimplePool.Despawn(gameObject);
+    }
+
+    private void PlayPickupFeedback()
+    {
+        // VFX
+        if (pickupVfxPrefab != null)
+        {
+            Vector3 pos = transform.position + Vector3.up * vfxYOffset;
+            var vfxGo = SimplePool.Spawn(pickupVfxPrefab, pos, Quaternion.identity);
+
+            // VFX prefab ichida PickupVfxColor bo‘lishi kerak
+            var colorSetter = vfxGo.GetComponent<PickupVfxColor>();
+            if (colorSetter != null)
+                colorSetter.SetColor(pickupColor);
+        }
+
+        // SFX
+        if (pickupSfx != null)
+        {
+            AudioSource.PlayClipAtPoint(pickupSfx, transform.position, sfxVolume);
+        }
+        BoosterUIAnimator.RaiseBoosterPicked(boosterType, boosterIcon);
+
     }
 
     private void ApplyEffect(BoostersContainer target, bool isPlayer)
@@ -57,36 +103,32 @@ public class Booster : MonoBehaviour
         switch (boosterType)
         {
             case BoosterType.SprintFull:
-                if (isPlayer) OnSprintFull?.Invoke();   // 🔥 Sprintni to‘liq to‘ldir degan signaltarget.SprintStatFull();
+                if (isPlayer) OnSprintFull?.Invoke();
                 else target.TriggerBoostSpeed();
                 break;
 
             case BoosterType.SetSpeedSprint:
-                if (isPlayer) target.TriggerBoostSpeed();
-                else target.TriggerBoostSpeed();
+                target.TriggerBoostSpeed();
                 break;
 
             case BoosterType.Defend:
-                if (isPlayer) target.AddDefend();
-                else target.AddDefend();
+                target.AddDefend();
                 break;
 
             case BoosterType.WalkZone:
-                if (isPlayer) target.AddWalkZone(); // NPCga kerak bo‘lmasa qoldiramiz
+                if (isPlayer) target.AddWalkZone();
                 break;
 
             case BoosterType.TimeBooster:
-               // if (isPlayer) target.addt(+5f);
                 break;
 
             case BoosterType.Hit:
                 if (isPlayer) target.AddHit();
-               // else target.NpcMinorBuff(2f);
                 break;
+
             case BoosterType.WebSnare:
                 target.AddWebSnare();
                 break;
         }
     }
-
 }

@@ -119,6 +119,7 @@ public class BaseManager : MonoBehaviour
 
     [Header("Room Resources")]
     public GameObject walkZonePrefab;
+    public GameObject oneTimeGetEffect;
 
     [Header("Player Start Point")]
     public Transform startTarget;
@@ -158,6 +159,7 @@ public class BaseManager : MonoBehaviour
             pickableObj.OnPicked.AddListener(OnUloqPicked);
         }
         SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
+        SimplePool.CreatePool(oneTimeGetEffect, prewarm: 10, maxSize: 40, expandable: true);
         RegisterStartPoint(startTarget, warmUpTime);
         DisableMainGameObjects();
     }

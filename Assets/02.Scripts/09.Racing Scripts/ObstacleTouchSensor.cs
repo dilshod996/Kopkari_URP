@@ -5,23 +5,23 @@ using UnityEngine;
 
 public class ObstacleTouchSensor : MonoBehaviour
 {
-    [Header("Detection Settings")]
-    [SerializeField] private LayerMask obstacleLayer;  // faqat shu layer bilan urilsa
-    [SerializeField] private float globalCooldown = 3f; // necha sekunddan keyin qayta sanasin
+    [SerializeField] private LayerMask obstacleLayer;
+    [SerializeField] private float globalCooldown = 3f;
 
-    private float lastGlobalHitTime = -999f; // oxirgi hit vaqti
+    private float lastHitTime = -999f;
 
-    public Action<GameObject> OnObstacleHit;
+    public event Action OnTouched;
+
     private void OnTriggerEnter(Collider other)
     {
-        // faqat obstacle layer bilan urilsa
-        if (((1 << other.gameObject.layer) & obstacleLayer.value) == 0) return;
+        if (((1 << other.gameObject.layer) & obstacleLayer.value) == 0)
+            return;
 
-        // global cooldown ishlasin
-        if (Time.time - lastGlobalHitTime < globalCooldown)
-            return; // hali 3 sekund o‘tmagan — e’tiborga olmaymiz
-        lastGlobalHitTime = Time.time; // yangilaymiz
-        OnObstacleHit?.Invoke(other.gameObject);
-        // Debug.Log($"Obstacle hit: {other.name}");
+        if (Time.time - lastHitTime < globalCooldown)
+            return;
+
+        lastHitTime = Time.time;
+        OnTouched?.Invoke();
     }
 }
+

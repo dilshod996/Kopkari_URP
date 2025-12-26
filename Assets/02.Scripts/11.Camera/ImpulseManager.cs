@@ -53,7 +53,7 @@ public class ImpulseManager : MonoBehaviour
         //BoostersContainer.OnSprintEffectStart += OnBoostStart; // Nitro/Sprint booster
         //BoostersContainer.OnSprintEffectEnd += OnBoostEnd;
 
-        HorseMine.OnObstacleHit += OnObstacleHit;
+       //HorseMine.OnObstacleHit += OnObstacleHit;
 
         //RacingEvents.OnRankedOnePlus += OnRankUp;
         //RacingEvents.OnRankedOneMinus += OnRankDown;
@@ -71,7 +71,7 @@ public class ImpulseManager : MonoBehaviour
         //BoostersContainer.OnSprintEffectStart -= OnBoostStart;
         //BoostersContainer.OnSprintEffectEnd -= OnBoostEnd;
 
-        HorseMine.OnObstacleHit -= OnObstacleHit;
+       // HorseMine.OnObstacleHit -= OnObstacleHit;
 
         //RacingEvents.OnRankedOnePlus -= OnRankUp;
         //RacingEvents.OnRankedOneMinus -= OnRankDown;
