@@ -49,5 +49,10 @@ MonoBehaviour:
     extensionCode: 
     isUseOriginal: 0
     modifiedDate: 12/22/2025 22:26:30.360
+  - shaderName: Universal Render Pipeline/Lit
+    replacementShaderName: GPUInstancerPro/CrowdAnimations/Universal Render Pipeline/Lit
+    extensionCode: CROWD
+    isUseOriginal: 0
+    modifiedDate: 12/30/2025 21:57:24.967
   stripObjectMotionVectorVariants: 0
   stripPerInstanceLightProbeVariants: 0

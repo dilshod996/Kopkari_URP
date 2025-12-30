@@ -10,6 +10,14 @@
         "com.unity.mathematics": "1.2.0"
       }
     },
+    "com.gurbu.gpui-pro.crowd-animations": {
+      "version": "file:com.gurbu.gpui-pro.crowd-animations",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.gurbu.gpui-pro": "0.12.8"
+      }
+    },
     "com.gurbu.gpui-pro.prefab": {
       "version": "file:com.gurbu.gpui-pro.prefab",
       "depth": 0,

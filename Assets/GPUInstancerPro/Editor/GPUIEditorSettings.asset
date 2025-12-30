@@ -21,6 +21,9 @@ MonoBehaviour:
   - packageName: com.gurbu.gpui-pro.terrain
     version: 0.12.8
     processedVersion: 0.12.8
+  - packageName: com.gurbu.gpui-pro.crowd-animations
+    version: 0.9.5
+    processedVersion: 0.9.5
   isGenerateShaderVariantCollection: 1
   isAutoShaderConversion: 1
   _requirePackageReload: 0
