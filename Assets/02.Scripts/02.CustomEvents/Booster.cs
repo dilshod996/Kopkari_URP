@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using MalbersAnimations.Controller;
 
 [RequireComponent(typeof(Collider))]
 public class Booster : MonoBehaviour
@@ -13,31 +16,52 @@ public class Booster : MonoBehaviour
         TimeBooster,
         Hit,
         WebSnare,
-        //obstacles
+
+        // obstacles
         WallObstacle,
         GetUlak,
-        TriggerPoint
+        TriggerPoint,
+        SpeedState
+    }
+
+    public enum BoosterMode
+    {
+        Pickup,   // 1 marta oladi va yo'q bo'ladi
+        Zone      // trap/zone: kirganda effect, durationdan keyin restore + despawn
     }
 
     [Header("Booster")]
     public BoosterType boosterType;
+    [SerializeField] private BoosterMode mode = BoosterMode.Pickup;
 
     [Header("Refs")]
     [SerializeField] private GameObject visuals;
     private Collider triggerCol;
 
     [Header("Pickup Feedback (Player Only)")]
-    [SerializeField] private GameObject pickupVfxPrefab; // universal VFX
+    [SerializeField] private GameObject pickupVfxPrefab;
     [SerializeField] private Color pickupColor = Color.white;
     [SerializeField] private AudioClip pickupSfx;
     [SerializeField] private float vfxYOffset = 0.15f;
     [Range(0f, 1f)][SerializeField] private float sfxVolume = 0.7f;
-
     [SerializeField] private Sprite boosterIcon;
+
+    [Header("WalkZone Settings (Zone Mode)")]
+    [SerializeField] private float slowDuration = 2.5f;
+    [SerializeField] private int slowSpeedIndex = 3;
 
     public static Action OnSprintFull;
 
-    private bool picked;
+    private bool pickedOrTriggered;
+
+    // Zone ichida bir hayvonni 1 marta slow qilish
+    private readonly HashSet<BoostersContainer> _affected = new();
+
+    // ✅ NEW: WalkZone coroutine & handler tracking (1 trigger -> 1 rider)
+    private Coroutine walkZoneCo;
+    private BoostersContainer walkZoneTarget;
+    private Action defendHandlerCached;
+    
 
     private void Awake()
     {
@@ -47,58 +71,119 @@ public class Booster : MonoBehaviour
 
     private void OnEnable()
     {
-        picked = false;
+        pickedOrTriggered = false;
+        _affected.Clear();
+
+        ClearZoneSubscriptions();  // ✅ mana shu yetadi
+
         if (triggerCol) triggerCol.enabled = true;
         if (visuals) visuals.SetActive(true);
+
+        StopAllCoroutines();
     }
+
+    private void OnDisable()
+    {
+        ClearZoneSubscriptions();  // ✅ pool reuse’da event osilib qolmaydi
+    }
+
 
     private void OnTriggerEnter(Collider other)
     {
-        if (picked) return;
-
         bool isPlayer = other.CompareTag("Player");
         bool isNpc = other.CompareTag("NPC");
         if (!isPlayer && !isNpc) return;
 
+        if (mode == BoosterMode.Pickup)
+        {
+            HandlePickup(other, isPlayer, isNpc);
+        }
+        else // Zone
+        {
+            HandleZone(other, isPlayer, isNpc);
+        }
+    }
+
+    private void HandlePickup(Collider other, bool isPlayer, bool isNpc)
+    {
+        if (pickedOrTriggered) return;
+
         var boosters = other.GetComponentInChildren<BoostersContainer>();
         if (boosters == null) return;
 
-        picked = true;
+        pickedOrTriggered = true;
 
         if (isPlayer)
             PlayPickupFeedback();
 
-        ApplyEffect(boosters, isPlayer);
+        ApplyPickupEffect(boosters, isPlayer);
 
+        DisableAndDespawn();
+    }
+
+    private void HandleZone(Collider other, bool isPlayer, bool isNpc)
+    {
+        if (pickedOrTriggered) return;
+
+        var boosters = other.GetComponentInChildren<BoostersContainer>();
+        if (!boosters)
+        {
+            pickedOrTriggered = true;
+            DisableAndDespawn();
+            return;
+        }
+
+        if (boosterType != BoosterType.WalkZone)
+            return;
+
+        // NPC defend bo‘lsa skip
+        if (boosters.isNpc && boosters.defendCount > 0)
+        {
+            boosters.DefendPlayerNpc();
+            return;
+        }
+
+        // Player defend qobiq ON bo‘lsa skip
+        if (boosters.defendQobiq != null && boosters.defendQobiq.activeSelf)
+            return;
+
+        // 🔒 1-marta trigger bo‘ldi
+        pickedOrTriggered = true;
+
+        // ✅ ZONE uchun Player feedback
+        if (isPlayer)
+        {
+            PlayPickupFeedback();
+            
+        }
+
+        boosters.SetDebuff(BoostersContainer.DebuffState.WalkZone);
         if (triggerCol) triggerCol.enabled = false;
         if (visuals) visuals.SetActive(false);
-        SimplePool.Despawn(gameObject);
+
+        TryApplyWalkZoneSlow(boosters);
     }
 
     private void PlayPickupFeedback()
     {
-        // VFX
         if (pickupVfxPrefab != null)
         {
             Vector3 pos = transform.position + Vector3.up * vfxYOffset;
             var vfxGo = SimplePool.Spawn(pickupVfxPrefab, pos, Quaternion.identity);
 
-            // VFX prefab ichida PickupVfxColor bo‘lishi kerak
             var colorSetter = vfxGo.GetComponent<PickupVfxColor>();
             if (colorSetter != null)
                 colorSetter.SetColor(pickupColor);
         }
+        //Hozircha walk zone ga kirganda sound va hech qanday ui anim yoq
 
-        // SFX
         if (pickupSfx != null)
-        {
             AudioSource.PlayClipAtPoint(pickupSfx, transform.position, sfxVolume);
-        }
-        BoosterUIAnimator.RaiseBoosterPicked(boosterType, boosterIcon);
 
+        BoosterUIAnimator.RaiseBoosterPicked(boosterType, boosterIcon);
     }
 
-    private void ApplyEffect(BoostersContainer target, bool isPlayer)
+    private void ApplyPickupEffect(BoostersContainer target, bool isPlayer)
     {
         switch (boosterType)
         {
@@ -116,7 +201,9 @@ public class Booster : MonoBehaviour
                 break;
 
             case BoosterType.WalkZone:
+                // Pickup rejimida WalkZone ishlatmoqchi bo'lsangiz:
                 if (isPlayer) target.AddWalkZone();
+               
                 break;
 
             case BoosterType.TimeBooster:
@@ -131,4 +218,106 @@ public class Booster : MonoBehaviour
                 break;
         }
     }
+    #region Walk Zone
+    private void TryApplyWalkZoneSlow(BoostersContainer boosters)
+    {
+        if (!boosters || !boosters.horseAnimal) { DisableAndDespawn(); return; }
+        if (_affected.Contains(boosters)) { DisableAndDespawn(); return; }
+
+        _affected.Add(boosters);
+
+        var animal = boosters.horseAnimal;
+
+        int originalIndex = 5; // SEN AYTGANIDEK: qolsin
+        int appliedIndex = Mathf.Min(originalIndex, slowSpeedIndex);
+
+        walkZoneTarget = boosters;
+
+        void CancelZone(bool despawn)
+        {
+            if (walkZoneCo != null)
+            {
+                StopCoroutine(walkZoneCo);
+                walkZoneCo = null;
+            }
+
+            if (walkZoneTarget != null && defendHandlerCached != null)
+            {
+                walkZoneTarget.OnDefendActivated -= defendHandlerCached;
+                defendHandlerCached = null;
+            }
+
+
+            _affected.Remove(walkZoneTarget);
+
+            // ✅ debuff OFF (null qilishdan oldin!)
+            walkZoneTarget?.SetDebuff(BoostersContainer.DebuffState.None);
+
+            // UI normal
+            walkZoneTarget?.NormalSpeedInvoke();
+
+            walkZoneTarget = null;
+
+            if (despawn)
+                SimplePool.Despawn(gameObject);
+        }
+
+
+        // ✅ defend handler
+        Action defendHandler = null;
+        defendHandler = () => CancelZone(despawn: true);
+        defendHandlerCached = defendHandler;
+        boosters.OnDefendActivated += defendHandler;
+
+
+        boosters.EnteredSpeedInvoke();
+        animal.Speed_CurrentIndex_Set(appliedIndex);
+
+        if (walkZoneCo != null) StopCoroutine(walkZoneCo);
+        walkZoneCo = StartCoroutine(WalkZoneRoutine(animal, originalIndex, appliedIndex, slowDuration, CancelZone));
+    }
+
+    private IEnumerator WalkZoneRoutine(
+        MAnimal animal,
+        int originalIndex,
+        int appliedIndex,
+        float duration,
+        Action<bool> CancelZone)
+    {
+        yield return new WaitForSeconds(duration);
+
+        // Duration tugadi => restore
+        if (animal != null && animal.CurrentSpeedIndex == appliedIndex)
+            animal.Speed_CurrentIndex_Set(originalIndex);
+
+        // ✅ End naturally => cleanup + despawn
+        CancelZone?.Invoke(true);
+    }
+    #endregion
+
+    private void DisableAndDespawn()
+    {
+        if (triggerCol) triggerCol.enabled = false;
+        if (visuals) visuals.SetActive(false);
+        SimplePool.Despawn(gameObject);
+    }
+    private void ClearZoneSubscriptions()
+    {
+        if (walkZoneTarget != null)
+        {
+            if (defendHandlerCached != null)
+                walkZoneTarget.OnDefendActivated -= defendHandlerCached;
+
+        }
+
+        defendHandlerCached = null;
+        walkZoneTarget = null;
+
+        if (walkZoneCo != null)
+        {
+            StopCoroutine(walkZoneCo);
+            walkZoneCo = null;
+        }
+    }
+
 }

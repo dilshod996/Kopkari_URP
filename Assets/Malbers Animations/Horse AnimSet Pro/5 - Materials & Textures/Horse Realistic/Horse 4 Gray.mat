@@ -65,12 +65,23 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _BottomStrength: 0.3
     - _Cutoff: 0.5
+    - _Emission_Hue: 0
     - _GlossMapScale: 0.23
-    - _Metallic: 0.1
+    - _Hue: 0
+    - _Metallic: 0
+    - _NoiseScale: 5
+    - _NoiseStrength: 0.015
+    - _Roughness: 1
+    - _Saturation: 1.1
+    - _Soft_Mult: 1.36
     m_Colors:
     - _AlbedoTint: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _NewBottomColor: {r: 0.2603773, g: 0.13567033, b: 0.1311712, a: 0}
+    - _Rough_Max: {r: 0.36, g: 0.7, b: 0, a: 0}
+    - _Rough_Min: {r: 1, g: 1.5, b: 0, a: 0}
     - _SpecularTint: {r: 1, g: 0.90075517, b: 0.7830188, a: 1}
   m_BuildTextureStacks: []
 --- !u!114 &4894977956379591478

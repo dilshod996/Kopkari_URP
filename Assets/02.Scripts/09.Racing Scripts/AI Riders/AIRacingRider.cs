@@ -15,6 +15,7 @@ public class AIRacingRider : MonoBehaviour
     [Header("Hit Settings")]
     [SerializeField] private int maxHits = 3;
     [SerializeField] private float penaltyDuration = 10f;
+    [SerializeField] private BoostersContainer boostersContainer;
 
     private int hitCount;
     private bool isPenalized;
@@ -64,29 +65,8 @@ public class AIRacingRider : MonoBehaviour
     #region Rider Speed Obstacle
     private void OnObstacleTouched()
     {
-        if (isPenalized) return;
-
-        hitCount++;
-
-        if (hitCount >= maxHits)
-        {
-            hitCount = 0;
-            StartCoroutine(ApplyPenalty());
-        }
+        boostersContainer.NotifyObstacleTouched_Npc();
     }
 
-    private IEnumerator ApplyPenalty()
-    {
-        isPenalized = true;
-
-        aiHorse.Speed_CurrentIndex_Set(4);
-        UIButtonActions.Instance.PlaySlow();
-
-        yield return new WaitForSeconds(penaltyDuration);
-
-        aiHorse.Speed_CurrentIndex_Set(5);
-        isPenalized = false;
-        UIButtonActions.Instance.SliderValueRestore();
-    }
     #endregion
 }

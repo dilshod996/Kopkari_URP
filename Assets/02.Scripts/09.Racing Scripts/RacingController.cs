@@ -60,6 +60,9 @@ public class RacingController : MonoBehaviour
     [Header("Walk Zone Prefab")]
     public GameObject walkZonePrefab;
     public GameObject oneTimeFlashEffect;
+    public GameObject walkZoneFlash;
+    public GameObject triggerPointProjectile;
+    public GameObject explostionVFX;
     [Header("Camera Details")]
     [SerializeField] private ThirdPersonFollowTarget mainCam;
     [SerializeField] private ThirdPersonFollowTarget finishCam;
@@ -103,6 +106,9 @@ public class RacingController : MonoBehaviour
         InitLeaderboardPanelHidden();
         SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
         SimplePool.CreatePool(oneTimeFlashEffect, prewarm: 5, maxSize: 8, expandable: true);
+        SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 8, expandable: true);
+        SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
+        SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
         //GetSetAnimal(HorseMine.Instance.horseAnimal);
     }
     private void OnEnable()
@@ -365,14 +371,17 @@ public class RacingController : MonoBehaviour
 
     private void HorseSprint()
     {
-        if (horse != null) { horse.Speed_CurrentIndex_Set(boostSpeedIndex);
+        if (horse != null) { 
             SprintCameraEnable();
         }
     }
 
     private void HorseDefaultSpeed()
     {
-        if (horse != null) { horse.Speed_CurrentIndex_Set(defaultSpeedIndex);  SprintCameraDisable(); }
+        if (horse != null) { 
+            SprintCameraDisable();
+            Debug.Log("Camera back");
+        }
     }
     #endregion
 

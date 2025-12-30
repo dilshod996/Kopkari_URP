@@ -35,7 +35,7 @@ public class NpcCullAgent : MonoBehaviour
 
             // Animator'ni butunlay o'chirmaymiz, root motion o'lmasin:
             a.speed = enabled ? 1f : 0f;
-            Debug.Log($"{name} Animator '{a.name}' speed => {a.speed}");
+            //Debug.Log($"{name} Animator '{a.name}' speed => {a.speed}");
             // qo'shimcha: root motion bo'lsa ham yuralsin desang, Apply Root Motion'ni OFF qil
             // a.applyRootMotion = false;
         }

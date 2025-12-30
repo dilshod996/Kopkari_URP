@@ -2,6 +2,7 @@
 using MalbersAnimations.Controller;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class RacingLeaderboard : MonoBehaviour
 {
@@ -94,14 +95,41 @@ public class RacingLeaderboard : MonoBehaviour
 
         int from = Mathf.Min(i, oldIndex);
         int to = Mathf.Max(i, oldIndex);
+
+        var oldY = new Dictionary<RacingAgent, float>();
+        for (int k = from; k <= to; k++)
+        {
+            var ag = standings[k];
+            var rt = rows[ag].transform as RectTransform; // ROOT
+            oldY[ag] = rt.anchoredPosition.y;
+        }
         for (int k = from; k <= to; k++)
         {
             var ag = standings[k];
             ag.Ranking = k + 1;
             rows[ag].transform.SetSiblingIndex(k);
-            UpdateRow(ag, k + 1);
         }
 
+        // ✅ 3) layoutni majburan hisoblatamiz
+        LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent);
+
+        // ✅ 4) endi delta bo'yicha anim + text update
+        for (int k = from; k <= to; k++)
+        {
+            var ag = standings[k];
+            var row = rows[ag];
+            if (row == null) continue;
+
+            var rt = row.transform as RectTransform; // ROOT (layout joyi)
+            float newY = rt.anchoredPosition.y;
+
+            float yDelta = oldY[ag] - newY; // offset: eski joy - yangi joy
+
+            int deltaRank = (oldIndex + 1) - (k + 1);
+
+            UpdateRow(ag, k + 1);
+            row.AnimateRankDelta(yDelta, deltaRank);
+        }
     }
 
 
@@ -146,4 +174,28 @@ public class RacingLeaderboard : MonoBehaviour
         }
         return names;
     }
+    // 🟡 Player rankni qaytaradi
+    // Agar player topilmasa yoki race boshlanmagan bo‘lsa -1 qaytaradi
+    public int PlayerRank()
+    {
+        if (!RaceStarted) return -1;
+
+        for (int i = 0; i < standings.Count; i++)
+        {
+            var agent = standings[i];
+            if (agent != null && agent.isPlayer)
+            {
+                return i + 1; // Rank 1 dan boshlanadi
+            }
+        }
+
+        return -1; // Player yo‘q
+    }
+    public int GetRank(RacingAgent agent)
+    {
+        var list = standings; // sening sorted ro'yxating
+        int idx = list.IndexOf(agent);
+        return idx >= 0 ? idx + 1 : -1;
+    }
+
 }

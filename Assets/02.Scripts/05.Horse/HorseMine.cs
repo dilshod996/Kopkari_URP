@@ -14,6 +14,7 @@ public class HorseMine : MonoBehaviour
     [Header("Refs")]
     [SerializeField] private MAnimal horseAnimal;
     [SerializeField] private ObstacleTouchSensor obstacleSensor;
+    [SerializeField] private BoostersContainer playerBooster;
 
     [Header("Hit Settings")]
     [SerializeField] private int maxHits = 3;
@@ -35,6 +36,7 @@ public class HorseMine : MonoBehaviour
     private Coroutine checkCoroutine;
 
     public static Action OnReachedStartTarget;
+    public static Action OnObstacleTouchedEvent;
     private void OnEnable()
     {
         if (obstacleSensor != null)
@@ -62,66 +64,16 @@ public class HorseMine : MonoBehaviour
     {
         if (isPenalized) return;
 
-        hitCount++;
-        Sprite sprite;
-        if(UIButtonActions.Instance!=null)
-            sprite = UIButtonActions.Instance.obstacleHitSprite;
-        else
-            sprite = KopkariMainUI.Instance.obstacleSprite;
-        // 🎯 UI BOOSTER ANIM TRIGGER
-        BoosterUIAnimator.RaiseBoosterPicked(
-            Booster.BoosterType.WallObstacle,
-            sprite // icon sprite
-        );
+        OnObstacleTouchedEvent?.Invoke();
+        //UIButtonActions.Instance.PlayShock();
 
-        UIButtonActions.Instance.PlayShock();
-
-        if (hitCount >= maxHits)
-        {
-            hitCount = 0;
-            StartCoroutine(ApplyPenalty());
-        }
+        if (playerBooster != null)
+            playerBooster.NotifyObstacleTouched();
     }
 
-    private IEnumerator ApplyPenalty()
-    {
-        isPenalized = true;
 
-        horseAnimal.Speed_CurrentIndex_Set(4);
-        UIButtonActions.Instance.PlaySlow();
-
-        yield return new WaitForSeconds(penaltyDuration);
-
-        horseAnimal.Speed_CurrentIndex_Set(5);
-        isPenalized = false;
-        UIButtonActions.Instance.SliderValueRestore();
-    }
     #endregion
 
-    #region Boost Speed
-
-    public void TriggerBoostSpeed()
-    {
-        if (!maxSpeed)
-        {
-            StartCoroutine(ImproveSpeed());
-        }
-    }
-    private IEnumerator ImproveSpeed()
-    {
-        maxSpeed = true;
-
-        // Eski speed ni saqlaymiz
-        horseAnimal.Speed_CurrentIndex_Set(6);
-
-        yield return new WaitForSeconds(maxSpeedDuration);
-
-        // Avvalgi speedni qaytaramiz
-        horseAnimal.Speed_CurrentIndex_Set(5);
-        maxSpeed = false;
-        //Debug.Log($"{horseAnimal.name} recovered from penalty.");
-    }
-    #endregion
 
     #region Starting Point
     private void StartPoint(Transform point, float time)

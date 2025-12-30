@@ -2,162 +2,283 @@
 using MalbersAnimations.Controller;
 using System;
 using System.Collections;
-using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class BoostersContainer : MonoBehaviour
 {
-    [Header("Player Stats")]
-    [SerializeField] private Stats playerStats;
+    #region ====== Inspector / Base ======
+    [Header("Base Speed")]
+    [SerializeField] private int playerInitialSpeed = 5;
 
-    [SerializeField] private int playerInitialSpeed=5;
-    [SerializeField] private string staminaStatName = "Stamina";
     [Header("Walk Zone Details")]
-   // [SerializeField] private GameObject walkZonePrefab;
-    public float dropDistanceBehind = 3.3f; // Inspector’da sozlasa bo‘ladi
+    public float dropDistanceBehind = 3.3f;
 
+    [Header("Npc info")]
+    public bool isNpc = false;
+
+    [Header("Horse ning animation componenti")]
+    public MAnimal horseAnimal;
+    #endregion
+
+    #region ====== Events (DO NOT REMOVE) ======
     [Header("Defend Objects")]
     public GameObject defendQobiq;
-    public bool isDefend=false;
+    public bool isDefend = false;
     [SerializeField] private float defendTime = 5f;
     public event Action OnDefendActivated;
     public static event Action<bool> OnDefendState;
 
-    private Coroutine defendCoroutine;
-    public int walkZoneCount = 2;
-    public int defendCount = 2;
-    public int hitCount = 0;
     public static event Action<int> OnWalkZoneAdded;
     public static event Action<int> OnWalkZoneRemoved;
-
-    // events for Defend
     public static event Action<int> OnDefendAdded;
     public static event Action<int> OnDefendRemoved;
-
-    // Events for  Web Snare
-
     public static event Action<int> OnWebSnareAdded;
     public static event Action<int> OnWebSnareRemoved;
-    [Header("Npc info")]
-    public bool isNpc = false; // Npc bo‘lsa, bu true bo‘ladi
 
-    [Header("Horse ning animation componenti")]
-    public MAnimal horseAnimal;
+    public static event Action OnNormalState;
+    public static event Action OnSlowState;
+    public static event Action OnVerySlowState;
 
-    [Header("Speed Improver")]
-    [SerializeField] private bool maxSpeed = false;
-    [SerializeField] private float maxSpeedDuration = 5f;
     public static Action OnSprintEffectStart;
     public static Action OnSprintEffectEnd;
-
-    [Header("NPC WalkTrap by Checkpoint (Simple)")]
-    [SerializeField] private bool npcAutoDropByCheckpoint = true;
-    [SerializeField] private int dropEveryN = 2;          // har 2-checkpointda
-    [SerializeField] private float dropChance = 0.6f;     // 60% ehtimol
-    [SerializeField] private float dropCooldown = 2.0f;   // sekund
-    [SerializeField] private float delayAfterCheckpoint = 0.25f; // biroz kechikish
-    [SerializeField] private int[] blacklistCheckpoints;  // (ixtiyoriy) bu checkpointlarda tashlamasin
-    [SerializeField] private float groundRay = 3.0f;
-    [SerializeField] private LayerMask groundMask;
-
-    private float _nextAllowedDropTime = 0f;
-    [Header("Damage / Hit Settings")]
-    [SerializeField] private MDamageable damageable;      // Malbersning damage componenti
-    [SerializeField] private GameObject slowEffectObj;    // Slow effekt uchun UI yoki FX
-    [SerializeField] private float slowDuration = 5f;     // necha sekund sekin yuradi
-    [SerializeField] private int slowSpeedIndex = 2;      // slow paytidagi speed index
-
-    private bool isUnderSlow = false;                     // slow aktivmi yoki yo‘q
 
     public static Action<float> OnPenaltyTime;
     public static Action<float> OnBoostTime;
 
+    //Walk Zone Damage
+    public static Action<bool> OnWalkZoneDamaged;
+    //WebSnare damage
+    public static Action<bool> OnWebSnareDamaged;
+    #endregion
+
+    #region ====== Runtime / Counters ======
+    private Coroutine defendCoroutine;
+    private Coroutine applyHitSlowCoroutine;
+    private Coroutine boostCoroutine;
+
+    public int walkZoneCount = 2;
+    public int defendCount = 2;
+    public int hitCount = 0;
+
     private float boostTime;
     private float penaltyTime;
-    public GameObject walkzonePrefab;
-    #region Starting Events
 
+    public GameObject walkzonePrefab;
+    #endregion
+
+    #region ====== Boost (MaxSpeed) ======
+    [Header("Speed Improver")]
+    private Coroutine boostCo;
+    [SerializeField] private bool maxSpeed = false;
+    [SerializeField] private float maxSpeedDuration = 5f;
+    #endregion
+
+    #region ====== NPC WalkTrap by Checkpoint (Simple) ======
+    [Header("NPC WalkTrap by Checkpoint (Simple)")]
+    [SerializeField] private bool npcAutoDropByCheckpoint = true;
+    [SerializeField] private int dropEveryN = 2;
+    [SerializeField] private float dropChance = 0.6f;
+    [SerializeField] private float dropCooldown = 2.0f;
+    [SerializeField] private float delayAfterCheckpoint = 0.25f;
+    [SerializeField] private int[] blacklistCheckpoints;
+    [SerializeField] private float groundRay = 3.0f;
+    [SerializeField] private LayerMask groundMask;
+
+    private float _nextAllowedDropTime = 0f;
+    #endregion
+
+    #region ====== Damage / Hit Settings ======
+    [Header("Damage / Hit Settings")]
+    [SerializeField] private GameObject slowEffectObj;
+    [SerializeField] private float slowDuration = 5f;
+    [SerializeField] private int slowSpeedIndex = 2;
+
+    private bool isUnderSlow = false;
+
+    [SerializeField] private MDamageable damageable;
+    #endregion
+
+    #region ====== Obstacle Penalty (from HorseMine) ======
+    [Header("Obstacle Penalty (from HorseMine)")]
+    [SerializeField] private int obstacleMaxHits = 3;
+    [SerializeField] private float obstaclePenaltyDuration = 10f;
+    [SerializeField] private int obstaclePenaltySpeedIndex = 4;
+    public static Action<bool> OnObstacleDamage;
+
+    private int obstacleHitCount = 0;
+    private bool obstaclePenalized = false;
+    private Coroutine obstaclePenaltyCoroutine;
+    #endregion
+
+    #region ====== Debuff State (WalkZone/WebSnare) ======
+    public bool IsInWalkZone { get; private set; }
+    public bool IsWebSnareDamage { get; private set; }
+
+    public enum DebuffState { None, WalkZone, WebSnare }
+    public DebuffState CurrentDebuff { get; private set; } = DebuffState.None;
+    #endregion
+
+    #region ====== Unity ======
     private void Start()
     {
-
         if (!isNpc)
         {
             UIButtonActions.OnBindRequested?.Invoke(this);
-            KopkariMainUI.OnBoostersContainerStart?.Invoke(this);
+            KopkariMainUI.OnBindRequested?.Invoke(this);
         }
-       
-
     }
+
+    private int GetPrefs(string key) => PlayerPrefs.GetInt(key);
 
     private void OnEnable()
     {
-        if (!damageable)
-            damageable = GetComponent<MDamageable>();
-
-        if (damageable != null)
+        if (!isNpc)
         {
-            // ⚠️ OnReceiveDamage ning imzosiga qarab moslashtirasan!
-            damageable.events.OnReceivingDamage.AddListener(OnReceiveDamageHandler);
+            UIButtonActions.OnSprintStart += TriggerBoostSpeed; // hozircha sen o'zing ulaysan
+            UIButtonActions.OnSprintEnd += OnSprintButtonReleased;
+        }
+        else
+        {
+            if (damageable != null)
+            {
+                damageable.events.OnReceivingDamage.AddListener(OnReceiveDamageHandler);
+            }
         }
     }
 
     private void OnDisable()
     {
-        if (damageable != null)
+        CancelSlow(forceRestoreSpeed: true);
+        CancelDefend();
+        CancelBoost(false);
+        CancelObstaclePenalty(forceRestoreSpeed: true);
+
+        if (!isNpc)
+        {
+            UIButtonActions.OnSprintStart -= TriggerBoostSpeed;
+            UIButtonActions.OnSprintEnd -= OnSprintButtonReleased;
+        }
+        else
         {
             damageable.events.OnReceivingDamage.RemoveListener(OnReceiveDamageHandler);
         }
     }
-
-    private int GetPrefs(string key)
-    {
-        return PlayerPrefs.GetInt(key);
-    }
-
     #endregion
 
-    #region Boost Speed
+    #region ====== Helpers (Speed Restore RULE) ======
+    // ✅ SEN SO‘RAGAN QOIDA:
+    // Debuff yo‘q bo‘lsa -> maxSpeed true bo‘lsa 6, bo‘lmasa playerInitialSpeed
+    private void RestoreSpeedAfterDebuffClear()
+    {
+        if (horseAnimal == null) return;
 
+        // Agar debuff bor bo‘lsa penalty/slow o‘zi turadi (tegmaymiz)
+        if (!isNpc && CurrentDebuff != DebuffState.None) return;
+
+        // Agar obstacle penalty aktiv bo‘lsa ham tegmaymiz
+        //if (obstaclePenalized) return;
+
+        // Agar slow coroutine ketayotgan bo‘lsa tegmaymiz
+        if (isUnderSlow) return;
+
+        horseAnimal.Speed_CurrentIndex_Set(maxSpeed ? 6 : playerInitialSpeed);
+    }
+    #endregion
+
+    #region ========================= Boost Speed =========================
     public void TriggerBoostSpeed()
     {
+        if (horseAnimal == null) return;
+
+        // ✅ Debuff paytida boost bo‘lmasin
+        if (!isNpc && CurrentDebuff != DebuffState.None)
+            return;
+
+        // refresh
+        if (boostCoroutine != null)
+        {
+            StopCoroutine(boostCoroutine);
+            boostCoroutine = null;
+        }
+
+        // ✅ Start event faqat 1 marta
         if (!maxSpeed)
         {
-            StartCoroutine(ImproveSpeed());
+            maxSpeed = true;
+            if (!isNpc)
+                OnSprintEffectStart?.Invoke();
         }
+
+        if (!isNpc)
+            OnNormalState?.Invoke();
+
+        boostCoroutine = StartCoroutine(ImproveSpeed());
     }
+
     private IEnumerator ImproveSpeed()
     {
-        maxSpeed = true;
-        horseAnimal.Speed_CurrentIndex_Set(6);
-        if(!isNpc) OnSprintEffectStart?.Invoke();
+        // slow effect off (player-only)
+        if (!isNpc && slowEffectObj != null && slowEffectObj.activeSelf)
+            slowEffectObj.SetActive(false);
+
+        if (horseAnimal != null)
+            horseAnimal.Speed_CurrentIndex_Set(6);
+
         yield return new WaitForSeconds(maxSpeedDuration);
-        if (maxSpeed && !isNpc) { boostTime += maxSpeedDuration;
+
+        if (!isNpc)
+        {
+            boostTime += maxSpeedDuration;
             OnBoostTime?.Invoke(boostTime);
         }
-        // Avvalgi speedni qaytaramiz
-        horseAnimal.Speed_CurrentIndex_Set(5);
-        if(!isNpc) OnSprintEffectEnd?.Invoke();
-        maxSpeed = false;
-        //Debug.Log($"{horseAnimal.name} recovered from penalty.");
+
+        // ✅ End event + restore speed shu yerda
+        CancelBoost(forceRestoreSpeed: true);
+    }
+
+    private void OnSprintButtonReleased()
+    {
+        // manual sprint qo‘yib yuborildi -> boost off (sen xohlaganing)
+        CancelBoost(forceRestoreSpeed: true);
+    }
+
+    private void CancelBoost(bool forceRestoreSpeed)
+    {
+        if (boostCoroutine != null)
+        {
+            StopCoroutine(boostCoroutine);
+            boostCoroutine = null;
+        }
+
+        if (maxSpeed)
+        {
+            maxSpeed = false;
+            if (!isNpc)
+                OnSprintEffectEnd?.Invoke();
+        }
+
+        // ✅ OLD: doim 5ga qaytarib yuborardi (defend/debuff paytida ham)
+        // ✅ NEW: faqat kerak bo‘lsa, qoidaga ko‘ra tiklaymiz
+        if (forceRestoreSpeed)
+            RestoreSpeedAfterDebuffClear();
     }
     #endregion
 
-    #region Walk Zone
+    #region ========================= Walk Zone =========================
     public void AddWalkZone()
     {
         walkZoneCount++;
-            
+
         if (!isNpc)
         {
             int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
             playerSlowDown += 1;
             OnWalkZoneAdded?.Invoke(playerSlowDown);
         }
-            
     }
+
     public void DecreaseWalkZone()
     {
-
         if (!isNpc)
         {
             int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
@@ -168,51 +289,44 @@ public class BoostersContainer : MonoBehaviour
         {
             walkZoneCount = Mathf.Max(0, walkZoneCount - 1);
         }
-
     }
+
     public void DropWalkTrap()
     {
         int walkZone = GetPrefs(Constants.PlayerItems.SlowDown);
-        if (walkZone <= 0)
-        {
-            Debug.Log("WalkZone mavjud emas, tushirib bo'lmaydi.");
-            return;
-        }
+        if (walkZone <= 0) return;
+
         DecreaseWalkZone();
         if (TryAlignDropToGround(out var pos, out var rot))
-        {
-            Debug.Log("///////////Drop it////////////");
-            var zone = SimplePool.Spawn(walkzonePrefab, pos, rot);
-            //Instantiate(walkZonePrefab, pos, rot);
-        }
+            SimplePool.Spawn(walkzonePrefab, pos, rot);
     }
-    /// <summary>
-    /// Bu method faqat Npc lar uchun Walk Zone Trap tashlashlari uchun
-    /// </summary>
-    /// <param name="cpIndex"></param>
-    /// <param name="totalCp"></param>
+
+    public void EnteredSpeedInvoke()
+    {
+        if (!isNpc) OnSlowState?.Invoke();
+    }
+
+    public void NormalSpeedInvoke()
+    {
+        if (!isNpc) OnNormalState?.Invoke();
+    }
+
     public void NotifyCheckpointPassed(int cpIndex, int totalCp)
     {
-        
         if (!isNpc) return;
         if (!npcAutoDropByCheckpoint) return;
         if (walkZoneCount <= 0) return;
         if (Time.time < _nextAllowedDropTime) return;
-       
-        // blacklist (ixtiyoriy)
+
         if (blacklistCheckpoints != null && blacklistCheckpoints.Length > 0)
         {
             for (int i = 0; i < blacklistCheckpoints.Length; i++)
                 if (blacklistCheckpoints[i] == cpIndex) return;
         }
 
-        // har N-chi checkpoint
         if (dropEveryN > 0 && (cpIndex % dropEveryN) != 0) return;
-
-        // ehtimol
         if (UnityEngine.Random.value > dropChance) return;
 
-        // trap tashlash (ixtiyoriy kechikish bilan)
         if (delayAfterCheckpoint > 0f)
             StartCoroutine(DropAfterDelay(delayAfterCheckpoint));
         else
@@ -226,35 +340,24 @@ public class BoostersContainer : MonoBehaviour
         yield return new WaitForSeconds(delay);
         DropWalkTrapNpc();
     }
+
     public void DropWalkTrapNpc()
     {
-        if (walkZoneCount <= 0)
-        {
-            return;
-        }
-        
+        if (walkZoneCount <= 0) return;
+
         DecreaseWalkZone();
         if (TryAlignDropToGround(out var pos, out var rot))
-        {
-            Debug.Log("///////////Drop it////////////");
-            var zone = SimplePool.Spawn(walkzonePrefab, pos, rot);
-        }
-            
-        //else
-        //    TrapPoolManager.Instance.Spawn(walkZonePrefab, pos, rot);
-        //Vector3 dropPosition = transform.position - transform.forward * dropDistanceBehind;
-        //Instantiate(walkZonePrefab, dropPosition, Quaternion.identity);
+            SimplePool.Spawn(walkzonePrefab, pos, rot);
     }
+
     private bool TryAlignDropToGround(out Vector3 p, out Quaternion r)
     {
         Vector3 basePos = transform.position - transform.forward * dropDistanceBehind;
         Vector3 rayStart = basePos + Vector3.up * 1.5f;
-        float rayLen = groundRay;
 
-        // Agar groundMask tanlanmagan bo‘lsa -> Everything (hamma layer)
         int mask = (groundMask.value == 0) ? Physics.DefaultRaycastLayers : groundMask.value;
 
-        if (Physics.Raycast(rayStart, Vector3.down, out var hit, rayLen, mask, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(rayStart, Vector3.down, out var hit, groundRay, mask, QueryTriggerInteraction.Ignore))
         {
             p = hit.point + hit.normal * 0.03f;
             Vector3 fwd = Vector3.ProjectOnPlane(-transform.forward, hit.normal);
@@ -268,104 +371,159 @@ public class BoostersContainer : MonoBehaviour
         return false;
     }
 
+    public void SetDebuff(DebuffState state)
+    {
+        if (isNpc) return;
+        if (CurrentDebuff == state) return;
+
+        // old state OFF events
+        if (CurrentDebuff == DebuffState.WalkZone)
+            OnWalkZoneDamaged?.Invoke(false);
+        if (CurrentDebuff == DebuffState.WebSnare)
+            OnWebSnareDamaged?.Invoke(false);
+
+        // reset flags
+        IsInWalkZone = false;
+        IsWebSnareDamage = false;
+
+        // new state ON
+        CurrentDebuff = state;
+
+        if (state == DebuffState.WalkZone)
+        {
+            IsInWalkZone = true;
+            OnWalkZoneDamaged?.Invoke(true);
+        }
+        else if (state == DebuffState.WebSnare)
+        {
+            IsWebSnareDamage = true;
+            OnWebSnareDamaged?.Invoke(true);
+        }
+
+        // ✅ Debuff None bo‘lsa speedni to‘g‘ri tiklash (maxSpeed?6:5)
+        if (state == DebuffState.None)
+            RestoreSpeedAfterDebuffClear();
+    }
     #endregion
 
-    #region Defend Details
+    #region ========================= Defend =========================
     public void AddDefend()
     {
-        
         if (!isNpc)
         {
-            int defendPlayer =  GetPrefs(Constants.PlayerItems.Defense);
+            int defendPlayer = GetPrefs(Constants.PlayerItems.Defense);
             defendPlayer += 1;
             OnDefendAdded?.Invoke(defendPlayer);
-            Debug.Log("Defend Count" +  defendPlayer);
         }
-        else
-        {
-            defendCount++;
-        }
+        else defendCount++;
     }
+
     public void DecreaseDefend()
     {
-        
         if (!isNpc)
         {
             int defendPlayer = GetPrefs(Constants.PlayerItems.Defense);
             defendPlayer -= 1;
             OnDefendRemoved?.Invoke(defendPlayer);
         }
-        else
-        {
-            defendCount = Mathf.Max(0, defendCount - 1);
-        }
-            
+        else defendCount = Mathf.Max(0, defendCount - 1);
     }
+
     public void DefendPlayer()
     {
         int defenderCount = GetPrefs(Constants.PlayerItems.Defense);
-        if (defenderCount <= 0)
-        {
-            return;
-        }
+        if (defenderCount <= 0) return;
+
         DecreaseDefend();
+
+        // ✅ Defend faqat damage/debuffni yechadi (sprint/boostni buzmaydi)
+        SetDebuff(DebuffState.None);
+
+        // ✅ Slow coroutine stop bo‘lsin, lekin speedni 5ga “majbur” qaytarmasin
+        CancelSlow(forceRestoreSpeed: true);
+        CancelObstaclePenalty(forceRestoreSpeed: true);
         if (defendCoroutine != null)
         {
             StopCoroutine(defendCoroutine);
-            defendQobiq.SetActive(false);
+            defendCoroutine = null;
         }
-        if(isUnderSlow) isUnderSlow = false;
+
+        if (defendQobiq != null) defendQobiq.SetActive(false);
+
         defendCoroutine = StartCoroutine(DefendObject());
         OnDefendActivated?.Invoke();
-        if(!isNpc)
+
+        if (!isNpc)
             OnDefendState?.Invoke(false);
     }
+
     public void DefendPlayerNpc()
     {
-        if (defendCount <= 0)
-        {
-            return;
-        }
+        if (defendCount <= 0) return;
+
         DecreaseDefend();
+
+        // NPCda ham slow stop, speedni majburlamasin
+        CancelSlow(forceRestoreSpeed: true);
+        CancelObstaclePenalty(true);
+
         if (defendCoroutine != null)
         {
             StopCoroutine(defendCoroutine);
-            defendQobiq.SetActive(false);
+            defendCoroutine = null;
         }
+
+        if (defendQobiq != null) defendQobiq.SetActive(false);
+
         defendCoroutine = StartCoroutine(DefendObject());
-        OnDefendActivated?.Invoke();   // <-- NPCda ham EVENT shart!
+        OnDefendActivated?.Invoke();
     }
 
     private IEnumerator DefendObject()
     {
         isDefend = true;
-        defendQobiq.SetActive(true);
-        if (horseAnimal != null && horseAnimal.CurrentSpeedIndex != playerInitialSpeed)
-        {
-            horseAnimal.Speed_CurrentIndex_Set(playerInitialSpeed);
-        }
+
+        if (slowEffectObj != null && slowEffectObj.activeSelf)
+            slowEffectObj.SetActive(false);
+
+        if (defendQobiq != null)
+            defendQobiq.SetActive(true);
+
+        // ❌ OLD: doim playerInitialSpeed qilib sprintni buzardi
+        // ✅ NEW: debuff clear bo‘lgani uchun speedni qoidaga ko‘ra tiklaymiz
+        RestoreSpeedAfterDebuffClear();
+
         yield return new WaitForSeconds(defendTime);
-        defendQobiq.SetActive(false);
-        if(!isNpc)
-            OnDefendState.Invoke(true);
+
+        if (defendQobiq != null)
+            defendQobiq.SetActive(false);
+
+        if (!isNpc)
+            OnDefendState?.Invoke(true);
+
         isDefend = false;
         defendCoroutine = null;
-        //OnDefendDeactivated?.Invoke(); // (ixtiyoriy) if kerak bo‘lsa boshqa tizimlarga xabar
     }
-    #endregion
 
-    #region Hit Details(Qamchi)
-    public void AddHit()
+    private void CancelDefend()
     {
-        hitCount++;
+        if (defendCoroutine != null)
+        {
+            StopCoroutine(defendCoroutine);
+            defendCoroutine = null;
+        }
+
+        if (defendQobiq != null)
+            defendQobiq.SetActive(false);
+
+        isDefend = false;
     }
-    public void RemoveHit() { hitCount--; }
     #endregion
 
-    #region Damage / Web Snares
-    /// <summary>
-    /// Bu faqatgina player uchun websnare qushadi lekin ai riderlarga walkzone bilan chegaralanadi hozircha
-    /// </summary>
+    #region ========================= Hit / Web Snare =========================
+    public void AddHit() => hitCount++;
+    public void RemoveHit() => hitCount--;
+
     public void AddWebSnare()
     {
         if (!isNpc)
@@ -374,37 +532,31 @@ public class BoostersContainer : MonoBehaviour
             webSnare += 1;
             OnWebSnareAdded?.Invoke(webSnare);
         }
-        else
-        {
-            walkZoneCount++;
-        }
+        else walkZoneCount++;
     }
 
-    // ⚠️ Parametrlarni MDamageable.OnReceiveDamage imzosiga moslashtir!
-    private void OnReceiveDamageHandler(/* masalan: MDamageable dam, Hit hit */ float dmg)
+    public void OnReceiveDamageHandler(float dam=0)
     {
-        // 1) Agar allaqachon slow ishlayotgan bo‘lsa, boshqasini qo‘ymaymiz
-        if (isUnderSlow)
-            return;
+        if (isUnderSlow) return;
 
-        // 2) Agar defend allaqachon aktiv bo‘lsa -> slow ishlatmaymiz
-        if (isDefend)
+        // Defend aktiv bo‘lsa slow umuman yo‘q
+        if (isDefend) return;
+
+        // NPC’da defend bo‘lsa avtomatik ishlat
+        if (defendCount > 0 && isNpc)
         {
-            // faqat vizual effektlar bo‘lsa shu yerda qilsa bo‘ladi
+            DefendPlayerNpc();
             return;
         }
 
-        // 3) Agar defend count bor bo‘lsa -> avtomatik DefendPlayer chaqiramiz
-        if (defendCount > 0)
-        {
-            DefendPlayer();   // 1 ta defend sarflanadi, shield yoqiladi
-            return;
-        }
+        SetDebuff(DebuffState.WebSnare);
 
-        // 4) Umuman defend yo‘q bo‘lsa -> slow effektni yoqamiz
         if (horseAnimal != null)
         {
-            StartCoroutine(ApplyHitSlow());
+            // ✅ oldingi slow bo‘lsa tozalab, yangisini boshlash
+            CancelSlow(forceRestoreSpeed: false);
+
+            applyHitSlowCoroutine = StartCoroutine(ApplyHitSlow());
         }
     }
 
@@ -412,33 +564,158 @@ public class BoostersContainer : MonoBehaviour
     {
         isUnderSlow = true;
 
-        // Effektni yoqamiz (masalan particle, UI icon va h.k.)
+        // slow kelganda boost cancel bo‘lsin
+        CancelBoost(forceRestoreSpeed: false);
+        CancelObstaclePenalty(forceRestoreSpeed: false);
+
+        if (!isNpc)
+        {
+            OnVerySlowState?.Invoke();
+            horseAnimal.Mode_Activate(3, -99);
+        }
+
         if (slowEffectObj != null)
             slowEffectObj.SetActive(true);
 
-        // Avvalgi speed indexni saqlab qo‘yamiz
-        int prevSpeedIndex = horseAnimal.CurrentSpeedIndex;
-
-        // Slow speedga tushiramiz
-        horseAnimal.Speed_CurrentIndex_Set(slowSpeedIndex);
+        if (horseAnimal != null)
+            horseAnimal.Speed_CurrentIndex_Set(slowSpeedIndex);
 
         yield return new WaitForSeconds(slowDuration);
-        if (!isNpc && isUnderSlow) { penaltyTime += slowDuration;
+
+        // Agar defend bosilib bekor qilingan bo‘lsa, bu yerga kelganda isUnderSlow false bo‘ladi
+        if (!isUnderSlow) yield break;
+
+        if (!isNpc)
+        {
+            penaltyTime += slowDuration;
             OnPenaltyTime?.Invoke(penaltyTime);
+            OnNormalState?.Invoke();
         }
-        // Avvalgi speedga qaytaramiz
-        horseAnimal.Speed_CurrentIndex_Set(prevSpeedIndex);
+
+        if (horseAnimal != null)
+            horseAnimal.Speed_CurrentIndex_Set(playerInitialSpeed);
 
         if (slowEffectObj != null)
             slowEffectObj.SetActive(false);
 
         isUnderSlow = false;
+        applyHitSlowCoroutine = null;
+
+        SetDebuff(DebuffState.None);
     }
 
+    private void CancelSlow(bool forceRestoreSpeed)
+    {
+        if (applyHitSlowCoroutine != null)
+        {
+            StopCoroutine(applyHitSlowCoroutine);
+            applyHitSlowCoroutine = null;
+        }
+
+        isUnderSlow = false;
+
+        // ✅ OLD: forceRestoreSpeed true bo‘lsa doim 5ga qaytarardi (sprintni buzardi)
+        // ✅ NEW: forceRestoreSpeed bo‘lsa ham qoidaga ko‘ra tiklaymiz
+        if (forceRestoreSpeed)
+            RestoreSpeedAfterDebuffClear();
+    }
     #endregion
 
-    #region Reached Final so MoveSecond Warm Up location
+    #region ========================= Obstacle Penalty =========================
+    public void NotifyObstacleTouched()
+    {
+        Sprite obstacleIcon;
+        if (UIButtonActions.Instance != null)
+            obstacleIcon = UIButtonActions.Instance.obstacleHitSprite;
+        else
+            obstacleIcon = KopkariMainUI.Instance.obstacleHitSprite;
+
+        if (!isNpc && obstacleIcon != null)
+        {
+            BoosterUIAnimator.RaiseBoosterPicked(Booster.BoosterType.WallObstacle, obstacleIcon);
+        }
+
+        ProcessObstacleHit();
+    }
+
+    public void NotifyObstacleTouched_Npc()
+    {
+        ProcessObstacleHit();
+    }
+
+    private void ProcessObstacleHit()
+    {
+        if (obstaclePenalized) return;
+
+        obstacleHitCount++;
+
+        if (obstacleHitCount >= obstacleMaxHits)
+        {
+            obstacleHitCount = 0;
+            StartObstaclePenalty();
+        }
+    }
+
+    private void StartObstaclePenalty()
+    {
+        if (obstaclePenalized) return;
+
+        // Defend aktiv bo‘lsa penalty bermaymiz
+        if (isDefend) return;
+
+        CancelBoost(forceRestoreSpeed: false);
+        CancelSlow(forceRestoreSpeed: false);
+
+        if (obstaclePenaltyCoroutine != null)
+            StopCoroutine(obstaclePenaltyCoroutine);
+
+        obstaclePenaltyCoroutine = StartCoroutine(ObstaclePenaltyRoutine());
+    }
+
+    private IEnumerator ObstaclePenaltyRoutine()
+    {
+        obstaclePenalized = true;
+
+        if (!isNpc)
+        {
+            OnSlowState?.Invoke();
+            OnObstacleDamage?.Invoke(true);
+        }
+
+        if (horseAnimal != null)
+            horseAnimal.Speed_CurrentIndex_Set(obstaclePenaltySpeedIndex);
+
+        yield return new WaitForSeconds(obstaclePenaltyDuration);
+
+        obstaclePenalized = false;
+        OnObstacleDamage?.Invoke(false);
+        // ✅ penalty tugadi -> qoidaga ko‘ra tikla (maxSpeed?6:5)
+        RestoreSpeedAfterDebuffClear();
+
+        if (!isNpc && UIButtonActions.Instance != null)
+            UIButtonActions.Instance.SliderValueRestore();
+
+        if (!isNpc) OnNormalState?.Invoke();
+
+        obstaclePenaltyCoroutine = null;
+    }
+
+    private void CancelObstaclePenalty(bool forceRestoreSpeed)
+    {
+        if (obstaclePenaltyCoroutine != null)
+        {
+            StopCoroutine(obstaclePenaltyCoroutine);
+            obstaclePenaltyCoroutine = null;
+        }
+
+        obstaclePenalized = false;
+        obstacleHitCount = 0;
+
+        if (!isNpc && UIButtonActions.Instance != null)
+            UIButtonActions.Instance.SliderValueRestore();
+
+        if (forceRestoreSpeed)
+            RestoreSpeedAfterDebuffClear();
+    }
     #endregion
-
-
 }

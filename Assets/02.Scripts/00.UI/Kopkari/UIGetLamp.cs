@@ -19,6 +19,7 @@ public class UIGetLamp : MonoBehaviour
     private Coroutine runningCR;
     private float buildRate;               // 1/holdTime (precomputed)
     private float decayRate;               // 1/decayTime (precomputed)
+    [SerializeField] private Sprite uloqHeadSprite;
 
 
     public static Action OnPlayerGotLamp;
@@ -118,8 +119,11 @@ public class UIGetLamp : MonoBehaviour
     private void PerformAction()
     {
         BaseManager.Instance.LambOwner = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+        BoosterUIAnimator.RaiseBoosterPicked(
+            Booster.BoosterType.GetUlak,
+            uloqHeadSprite // icon sprite
+        );
         OnPlayerGotLamp?.Invoke();
-        //playerData.PickupObj();
         Debug.Log("✅ Uloq olindi!");
     }
 

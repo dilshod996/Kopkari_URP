@@ -5,11 +5,13 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using static UIButtonActions;
 
 public class KopkariMainUI : MonoBehaviour
 {
     public static KopkariMainUI Instance;
 
+    #region Inspector - Buttons
     [Header("Buttons")]
     [SerializeField] private Button sprintBtn;
     [SerializeField] private Button jumpBtn;
@@ -20,30 +22,55 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private Button chainContainerBtn;
     [SerializeField] private Button pushButton;
     [SerializeField] private Button pauseButton;
- 
+    #endregion
+    #region Inspector - Texts
+    [Header("Buttons Data Texts")]
+    [SerializeField] private TMP_Text defendCountText;
+    [SerializeField] private TMP_Text walkZoneCountText;
+    [SerializeField] private TMP_Text hitCountText;
+    [SerializeField] private TMP_Text chainCounter;
+    #endregion
+
     #region Effects / Sprint/ Hit / Walk
     [SerializeField] private Image sprintImg;
     [SerializeField] private Image slowImg;
     [SerializeField] private Image shockImg;
 
     #endregion
-
-    [Header("Stats/Sprint/Hit")]
-    [SerializeField] private Slider sprintSlider;
-    [SerializeField] private Slider hitCountSlider;
+    #region Inspector - Sprint Timings
     [Header("Sprint Timings")]
-    public float drainDuration = 5f;    // Necha sekundda tugaydi
-    public float refillDelay = 6f;      // Tugagandan keyin necha sekund kutadi
-    public float refillDuration = 3f;   // Necha sekundda qayta to‘ladi
-    private bool isPressing = false;
-    private Coroutine drainRoutine;
-    private Coroutine refillRoutine;
+    public float drainDuration = 5f;
+    public float refillDelay = 6f;
+    public float refillDuration = 3f;
 
-    private float totalHoldTime = 0f;
-    [Header("Pages")]
+    private float refillRate => 1f / Mathf.Max(0.0001f, refillDuration);
+    private float drainRate => 1f / Mathf.Max(0.0001f, drainDuration);
+    [SerializeField] private Slider sprintSlider;
+    #endregion
+    #region Inspector - Others
+    [Header("Hit Count Slider")]
+    public Slider hitCountSlider;
+
     [SerializeField] private GameObject loadingPanel;
-    [SerializeField] private KopkariResultUI resultUI;
+    [Header("Pages")]
+    [SerializeField] private KopkariResultUI resultPage;
     [SerializeField] private UIPauseGame pauseMenu;
+    [SerializeField] private GameObject foodPanel;
+
+    [Header("Scale Settings")]
+    [SerializeField] private float startScale = 0.8f;
+    [SerializeField] private float punchScale = 1.1f;
+    [SerializeField] private float animTime = 0.2f;
+    [SerializeField] private float fadeTime = 0.2f;
+    [SerializeField] private LeanTweenType easeIn = LeanTweenType.easeOutBack;
+    [SerializeField] private LeanTweenType easeOut = LeanTweenType.easeInOutQuad;
+
+    public bool WeaponInHand;
+    public Sprite obstacleHitSprite;
+    #endregion
+
+    [Header("Pages")]
+    [SerializeField] private KopkariResultUI resultUI;
     [Header("Top Slider && BottomUI")]
     [SerializeField] private RectTransform bottomUI;
     [SerializeField] private Slider topUloqSlider;
@@ -54,9 +81,6 @@ public class KopkariMainUI : MonoBehaviour
 
     #region Projectiles
     [Header("Projectiles")]
-    [SerializeField] private TMP_Text defendCountText;
-    [SerializeField] private TMP_Text walkZoneCountText;
-    [SerializeField] private TMP_Text hitCountText;
     [SerializeField] private TMP_Text webSnareCounter;
     [SerializeField] private TMP_Text uloqPushCounterText;
 
@@ -67,16 +91,9 @@ public class KopkariMainUI : MonoBehaviour
     [Header("Scale Animation")]
     [SerializeField] private float punchScaleM = 1.2f;
     [SerializeField] private float scaleTime = 0.2f;
-
-    [Header("Scale Settings")]
-    [SerializeField] private float startScale = 0.8f;
-    [SerializeField] private float punchScale = 1.1f;
-    [SerializeField] private float animTime = 0.2f;
-    [SerializeField] private LeanTweenType easeIn = LeanTweenType.easeOutBack;
-    [SerializeField] private LeanTweenType easeOut = LeanTweenType.easeInOutQuad;
     [Header("Fade Settings For UI Pages")]
     [SerializeField] private bool useFade = true;
-    [SerializeField] private float fadeTime = 0.2f;
+
     #endregion
 
     #region Game Canvases
@@ -88,24 +105,32 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private GoatDistanceUI goalDistanceUI;
     #endregion
 
-    [Header("Events")]
-    public static Action OnSprintStart;     // Speed → 6
-    public static Action OnSprintEnd;       // Speed → 5
+    #region Events (DO NOT REMOVE)
+    public static Action OnSprintStart;   // ✅ QAYTDI
+    public static Action OnSprintEnd;       // Speed restore
     public static Action<float> OnSprintHold;
+
     public static Action OnWebSnareBtnEnable;
     public static Action OnWebSnareStart;
     public static Action OnWebSnareFinish;
-
     public static Action OnEverythingReadyStart;
-    public static Action<BoostersContainer> OnBoostersContainerStart;
-
     public static Action OnHorsePushEffect;
+    public static Action<BoostersContainer> OnBindRequested;
+    #endregion
 
-    public bool WeaponInHand;
+    #region Runtime - Sprint State
+    private bool isPressing;
+    private bool isDamaged;
+    private bool canSprint = true;
+
+    private Coroutine drainRoutine;
+    private Coroutine refillRoutine;
+    private float totalHoldTime = 0f;
+    #endregion
     private Coroutine canvasRoutine;
     private Coroutine moveBottomRoutine;
 
-    public Sprite obstacleSprite;
+    public Sprite tiggerFlag;
     #region Awake/Start/OnEnable/OnDisable
     private void Awake()
     {
@@ -120,17 +145,27 @@ public class KopkariMainUI : MonoBehaviour
     {
         LoadingPanel(3f);
         BaseManager.OnGameStartFinishState += CanvasEnable;
-        OnBoostersContainerStart += Bind;
+        OnBindRequested += Bind;
         Booster.OnSprintFull += HandleSprintFull;
-        BoostersContainer.OnSprintEffectStart += ShowSprintEffect;
-        BoostersContainer.OnSprintEffectEnd += HideSprintEffect;
+
+        BoostersContainer.OnSprintEffectStart += ShowSprintEffectNoForce;
+        BoostersContainer.OnSprintEffectEnd += HideSprintEffectNoForce;
+
         BoostersContainer.OnWalkZoneAdded += UpdateWalkZoneText;
         BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
+
         BoostersContainer.OnDefendAdded += UpdateDefendText;
         BoostersContainer.OnDefendRemoved += UpdateDefendText;
+
         BoostersContainer.OnWebSnareAdded += UpdateWebCount;
 
+       // RacingController.OnRacingFinished += ShowResultPage;
+        //BaseManager.OnGameStarted += GetData;
+
         BoostersContainer.OnDefendState += SetDefendState;
+        BoostersContainer.OnWalkZoneDamaged += EnableSprint;
+        BoostersContainer.OnWebSnareDamaged += EnableSprint;
+        BoostersContainer.OnObstacleDamage += OnObstacleDamageHandler;
         HorseMine.OnReachedStartTarget += MoveUP;
         BaseManager.OnGoatPicked += ShowMeters;
         TargetReachEvent.OnRoundEnded += DisableMeters;
@@ -141,17 +176,29 @@ public class KopkariMainUI : MonoBehaviour
     private void OnDisable()
     {
         BaseManager.OnGameStartFinishState -= CanvasEnable;
-        OnBoostersContainerStart -= Bind;
+        OnBindRequested -= Bind;
+
         Booster.OnSprintFull -= HandleSprintFull;
-        BoostersContainer.OnSprintEffectStart -= ShowSprintEffect;
-        BoostersContainer.OnSprintEffectEnd -= HideSprintEffect;
+
+        BoostersContainer.OnSprintEffectStart -= ShowSprintEffectNoForce;
+        BoostersContainer.OnSprintEffectEnd -= HideSprintEffectNoForce;
+
         BoostersContainer.OnWalkZoneAdded -= UpdateWalkZoneText;
         BoostersContainer.OnWalkZoneRemoved -= UpdateWalkZoneText;
+
         BoostersContainer.OnDefendAdded -= UpdateDefendText;
         BoostersContainer.OnDefendRemoved -= UpdateDefendText;
-        BoostersContainer.OnDefendState -= SetDefendState;
-        HorseMine.OnReachedStartTarget -= MoveUP;
+
         BoostersContainer.OnWebSnareAdded -= UpdateWebCount;
+
+        //BaseManager.OnRacingFinished -= ShowResultPage;
+        //RacingController.OnRacingStarted -= GetData;
+
+        BoostersContainer.OnDefendState -= SetDefendState;
+        BoostersContainer.OnWalkZoneDamaged -= EnableSprint;
+        BoostersContainer.OnWebSnareDamaged -= EnableSprint;
+        BoostersContainer.OnObstacleDamage -= OnObstacleDamageHandler;
+        HorseMine.OnReachedStartTarget -= MoveUP;
         TargetReachEvent.OnRoundEnded -= DisableMeters;
         BaseManager.OnGoatPicked -= ShowMeters;
         pushButton.onClick.RemoveListener(PushEffectStart);
@@ -189,32 +236,49 @@ public class KopkariMainUI : MonoBehaviour
     #endregion
 
     #region Button State Updates
-    public void SetSprintState(bool state) => sprintBtn.interactable = state;
+    public void SetSprintState(bool state)
+    {
+        // canSprint — umumiy ruxsat (page/scene)
+        canSprint = state;
+
+        // ✅ “toki slider to‘lmaguncha bosilmasin”
+        bool sliderFull = (sprintSlider == null) || (sprintSlider.value >= 0.001f);
+
+        // ✅ debuff bo‘lsa ham bosilmasin
+        bool interactable =
+            canSprint &&
+            !isDamaged &&
+            !isPressing &&
+            sliderFull &&
+            CanSprintNow();
+
+        if (sprintBtn != null)
+            sprintBtn.interactable = interactable;
+
+    }
+
     public void SetJumpState(bool state) => jumpBtn.interactable = state;
     public void SetDefendState(bool state) => defendBtn.interactable = state;
     public void SetWalkZoneState(bool state) => walkZoneBtn.interactable = state;
     public void SetHitState(bool state) => hitBtn.interactable = state;
-
     public void SetWebState(bool state) => shootWebBtn.interactable = state;
     #endregion
 
-    #region Player Data
+    #region Data (PlayerPrefs)
     public void GetData()
     {
-        int defentCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
-        int slowDownCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
-        int webCounter = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
-        if (webCounter == 0)
-        {
-            webCounter = 4;
+        int defCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        int slowCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
+        int webCount = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
 
-        }
+        if (webCount == 0) webCount = 4;
+        if (slowCount < 1) slowCount = 5;
+
         int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
-        InitializeData(defentCount, slowDownCount, whipCount, webCounter);
+
+        InitializeData(defCount, slowCount, whipCount, webCount);
     }
-    /// <summary>
-    /// Dastlabki qiymatlar va button holatini sozlash.
-    /// </summary>
+
     public void InitializeData(int defendCount, int walkZoneCount, int hitCount, int webCount)
     {
         UpdateDefendText(defendCount);
@@ -222,11 +286,15 @@ public class KopkariMainUI : MonoBehaviour
         UpdateHitText(hitCount);
         UpdateWebCount(webCount);
     }
+
     private void SaveToPrefs(string prefsName, int value)
     {
         PlayerPrefs.SetInt(prefsName, value);
         PlayerPrefs.Save();
     }
+    #endregion
+
+    #region Bind Player BoostersContainer
     public void Bind(BoostersContainer boosters)
     {
         if (walkZoneBtn)
@@ -238,6 +306,7 @@ public class KopkariMainUI : MonoBehaviour
                     boosters.DropWalkTrap();
             });
         }
+
         if (defendBtn)
         {
             defendBtn.onClick.RemoveAllListeners();
@@ -249,17 +318,24 @@ public class KopkariMainUI : MonoBehaviour
                 }
             });
         }
-        // xohlasangiz boshqa tugmalarni ham shu yerda bog‘laysiz
-        // defendBtn.onClick.AddListener(boosters.DefendPlayer);
-        // ...
-    }
-    public void SliderValueRestore()
-    {
-        hitCountSlider.value = hitCountSlider.maxValue;
     }
     #endregion
 
-    #region Show and Hide UI Pages
+    #region UI Effects (minimal)
+    public void PlayShock()
+    {
+        if (!shockImg) return;
+        if (hitCountSlider != null) hitCountSlider.value--;
+    }
+
+    public void SprintEffect(bool value)
+    {
+        if (sprintImg != null) sprintImg.gameObject.SetActive(value);
+        if (value && slowImg != null) slowImg.gameObject.SetActive(false);
+    }
+    #endregion
+
+    #region UI Pages (Show/Hide)
     public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
     public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
 
@@ -268,22 +344,18 @@ public class KopkariMainUI : MonoBehaviour
         if (!page) return;
 
         RectTransform rt = page.GetComponent<RectTransform>();
-        CanvasGroup cg = page.GetComponent<CanvasGroup>(); // oldindan bor deb faraz qilamiz
+        CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
         page.SetActive(true);
         rt.localScale = Vector3.one * startScale;
         cg.alpha = 0f;
 
-        // fade
         LeanTween.alphaCanvas(cg, 1f, fadeTime);
-
-        // scale
         LeanTween.scale(rt, Vector3.one * punchScale, animTime)
             .setEase(easeIn)
             .setOnComplete(() =>
             {
-                LeanTween.scale(rt, Vector3.one, animTime * 0.7f)
-                    .setEase(easeOut);
+                LeanTween.scale(rt, Vector3.one, animTime * 0.7f).setEase(easeOut);
             });
     }
 
@@ -294,121 +366,162 @@ public class KopkariMainUI : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        // fade
         LeanTween.alphaCanvas(cg, 0f, fadeTime);
-
-        // scale + deactivate
         LeanTween.scale(rt, Vector3.one * startScale, animTime)
             .setEase(easeOut)
-            .setOnComplete(() =>
-            {
-                page.SetActive(false);
-            });
+            .setOnComplete(() => page.SetActive(false));
     }
     #endregion
 
-    #region Sprint Data
-    public void OnSprintButtonDown(BaseEventData data)
-    {
-        HandlePointerDown();
-    }
+    #region Sprint
+    public void OnSprintButtonDown(BaseEventData data) => HandlePointerDown();
+    public void OnSprintButtonUp(BaseEventData data) => HandlePointerUp();
 
-    public void OnSprintButtonUp(BaseEventData data)
-    {
-        HandlePointerUp();
-    }
     private void HandlePointerDown()
     {
+        // ✅ EventTrigger interactable=false bo‘lsa ham callback chaqirishi mumkin
+        if (sprintBtn != null && !sprintBtn.interactable) return;
+        Debug.Log("Pressed");
+        if (isDamaged) return;
+        if (isPressing) return;
+        if (sprintSlider.value <= 0.0001f) return;
+
         isPressing = true;
-        OnSprintStart?.Invoke();   // 🔥 Sprint ON
+        OnSprintStart?.Invoke();
         sprintImg?.gameObject.SetActive(true);
-        if (drainRoutine != null)
-            StopCoroutine(drainRoutine);
-        if (refillRoutine != null)
-            StopCoroutine(refillRoutine);
+
+        StopIfRunning(ref refillRoutine);
+        StopIfRunning(ref drainRoutine);
 
         drainRoutine = StartCoroutine(DrainCoroutine());
+
+        // tugma holatini yangila
+        SetSprintState(canSprint);
     }
 
     private void HandlePointerUp()
     {
-        isPressing = false;
-        OnSprintEnd?.Invoke();     // 🔥 Sprint OFF
-        sprintImg?.gameObject.SetActive(false);
-        if (drainRoutine != null)
-            StopCoroutine(drainRoutine);
-
-        refillRoutine = StartCoroutine(RefillDelayedCoroutine());
-    }
-    private IEnumerator DrainCoroutine()
-    {
-        float startValue = sprintSlider.value;
-        float t = 0f;
-
-        while (t < drainDuration && isPressing)
+        // Agar hozir pressing bo‘lsa — har doim release qilamiz
+        if (isPressing)
         {
-            t += Time.deltaTime;
-            sprintSlider.value = Mathf.Lerp(startValue, 0f, t / drainDuration);
-            totalHoldTime = totalHoldTime + Time.deltaTime;
-            OnSprintHold?.Invoke(totalHoldTime);
-            yield return null;
+            ForceReleaseSprint(startRefill: true);
+            return;
         }
 
-        sprintSlider.value = 0f;
+        // pressing bo'lmasa, shunda interactable false bo'lsa skip qilsa ham bo'ladi
+        if (sprintBtn != null && !sprintBtn.interactable)
+            return;
+    }
 
-        // Agar tugab qolsa -> kutish + refill
+
+    private IEnumerator DrainCoroutine()
+    {
+        while (isPressing)
+        {
+            if (sprintSlider != null)
+                sprintSlider.value = Mathf.Max(0f, sprintSlider.value - drainRate * Time.unscaledDeltaTime);
+
+            totalHoldTime += Time.unscaledDeltaTime;
+            OnSprintHold?.Invoke(totalHoldTime);
+
+            if (sprintSlider != null && sprintSlider.value <= 0.0001f)
+            {
+                sprintSlider.value = 0f;
+
+                // ✅ tugadi: release + refill boshlansin (bosilganda qaytmasin)
+                ForceReleaseSprint(startRefill: true);
+
+                // refill davomida bosilmasin
+                SetSprintState(false);
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    private void ForceReleaseSprint(bool startRefill)
+    {
         if (isPressing)
         {
             isPressing = false;
-            OnSprintEnd?.Invoke();     // 🔥 Sprint OFF
-            SetSprintState(false);
+
+        }
+        OnSprintEnd?.Invoke();
+        sprintImg?.gameObject.SetActive(false);
+        StopIfRunning(ref drainRoutine);
+
+        if (startRefill)
+        {
+            StopIfRunning(ref refillRoutine);
             refillRoutine = StartCoroutine(RefillDelayedCoroutine());
         }
+
+        // holatni qayta hisobla
+        SetSprintState(canSprint);
     }
 
     private IEnumerator RefillDelayedCoroutine()
     {
-        // 6 sekund kutadi
-        yield return new WaitForSeconds(refillDelay);
-        SetSprintState(true);
-        float startValue = sprintSlider.value;
-        float t = 0f;
+        yield return new WaitForSecondsRealtime(refillDelay);
 
-        while (t < refillDuration)
+        // refill jarayonida bosilmasin
+        SetSprintState(false);
+
+        while (!isPressing && sprintSlider != null && sprintSlider.value < 1f)
         {
-            t += Time.deltaTime;
-            sprintSlider.value = Mathf.Lerp(startValue, 1f, t / refillDuration);
+            sprintSlider.value = Mathf.Min(1f, sprintSlider.value + refillRate * Time.unscaledDeltaTime);
             yield return null;
         }
 
-        sprintSlider.value = 1f;
+        if (sprintSlider != null)
+            sprintSlider.value = Mathf.Clamp01(sprintSlider.value);
+
+        // ✅ to‘lgandan keyin (debuff yo‘q bo‘lsa) sprint qaytadi
+        if (!isDamaged)
+            SetSprintState(true);
+
+        refillRoutine = null;
     }
 
-    // 🔥 Booster eliksir eventi – birdan FULL qilish
-    private void HandleSprintFull()
+    public void HandleSprintFull()
     {
-        // Hozirgi barcha harakatlarni to‘xtatamiz
-        if (drainRoutine != null) StopCoroutine(drainRoutine);
-        if (refillRoutine != null) StopCoroutine(refillRoutine);
+        StopIfRunning(ref drainRoutine);
+        StopIfRunning(ref refillRoutine);
 
-        // Cooldown kutmasdan zudlik bilan FULL
-        sprintSlider.value = 1f;
+        if (sprintSlider != null)
+            sprintSlider.value = 1f;
 
-        // Agar hozir ham player bosib turgan bo‘lsa, yana drainni qayta boshlab yuborsak ham bo‘ladi:
-        if (isPressing)
-        {
-            drainRoutine = StartCoroutine(DrainCoroutine());
-        }
-    }
-    private void ShowSprintEffect()
-    {
-        sprintImg.gameObject.SetActive(true);
-        SetSprintState(false);
-    }
-    private void HideSprintEffect()
-    {
-        sprintImg?.gameObject.SetActive(false);
+        // full bo‘lganda tugma qaytsin (agar debuff bo‘lmasa)
         SetSprintState(true);
+
+        // agar user bosib turgan bo‘lsa drain davom etadi
+        if (isPressing && CanSprintNow())
+            drainRoutine = StartCoroutine(DrainCoroutine());
+    }
+
+    private bool CanSprintNow()
+    {
+        if (!canSprint) return false;
+        if (sprintSlider != null && sprintSlider.value <= 0.0001f) return false;
+        return true;
+    }
+    #endregion
+
+    #region Damage / Debuff
+    private void EnableSprint(bool debuffOn)
+    {
+        // debuff tushganda bosib turgan bo'lsa avval release
+        if (debuffOn && isPressing)
+            ForceReleaseSprint(startRefill: true);
+
+        isDamaged = debuffOn;
+
+        if (debuffOn && sprintImg != null && sprintImg.gameObject.activeSelf)
+            sprintImg.gameObject.SetActive(false);
+
+        // ✅ debuff ON paytida sprint bosilmasin, OFF bo‘lsa slider holatiga qarab qaytsin
+        SetSprintState(!debuffOn);
     }
     #endregion
 
@@ -470,43 +583,35 @@ public class KopkariMainUI : MonoBehaviour
     }
     #endregion
 
-    #region Chain Section
-    /// <summary>
-    /// Bular ikkalasi ham Btn ga ulangan
-    /// </summary>
-    public void WebSnareBtnEvent()
-    {
-        OnWebSnareBtnEnable?.Invoke();
-    }
+    #region Chain
+    public void WebSnareBtnEvent() => OnWebSnareBtnEnable?.Invoke();
+
     public void OnWebSnoreButtonDown(BaseEventData data)
     {
         int countSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
-        if (countSnare > 0)
-        {
-            countSnare--;
-        }
-        Debug.Log("Web Snare COunt: " + countSnare);
+        if (countSnare > 0) countSnare--;
+
         UpdateWebCount(countSnare);
         OnWebSnareStart?.Invoke();
         StartCoroutine(OnShootCooling(countSnare));
-        //if (countSnare <= 0) { OnClickChain(); }
     }
 
     private IEnumerator OnShootCooling(int snareCount)
     {
         chainContainerBtn.interactable = false;
         yield return new WaitForSeconds(1f);
-        if (snareCount <= 0) { OnClickChain(); }
+
+        if (snareCount <= 0) OnClickChain();
         else chainContainerBtn.interactable = true;
     }
-    public void OnWebSnoreButtonUp(BaseEventData data)
-    {
-        OnWebSnareFinish?.Invoke();
-    }
+
+    public void OnWebSnoreButtonUp(BaseEventData data) => OnWebSnareFinish?.Invoke();
+
     public void OnClickChain()
     {
         bool newState = !chainContainerBtn.gameObject.activeSelf;
-        if (chainContainerBtn.interactable == false) { chainContainerBtn.interactable = true; }
+        if (!chainContainerBtn.interactable) chainContainerBtn.interactable = true;
+
         WeaponInHand = newState;
         chainContainerBtn.gameObject.SetActive(newState);
         OnWebSnareBtnEnable?.Invoke();
@@ -576,6 +681,10 @@ public class KopkariMainUI : MonoBehaviour
         sliderCount = Mathf.Clamp(sliderCount, 0, 4);
 
         topUloqSlider.value = sliderCount;
+        BoosterUIAnimator.RaiseBoosterPicked(
+            Booster.BoosterType.TriggerPoint,
+            tiggerFlag // icon sprite
+        );
         UpdateFlag(sliderCount);
     }
 
@@ -636,6 +745,49 @@ public class KopkariMainUI : MonoBehaviour
     private void PauseMenu()
     {
         ShowUI(pauseMenu);
+    }
+    #endregion
+
+    #region Utils
+    private void StopIfRunning(ref Coroutine c)
+    {
+        if (c != null)
+        {
+            StopCoroutine(c);
+            c = null;
+        }
+    }
+
+    private void ShowSprintEffectNoForce()
+    {
+        if (sprintImg != null) sprintImg.gameObject.SetActive(true);
+        SetSprintState(false);
+    }
+
+    private void HideSprintEffectNoForce()
+    {
+        if (sprintImg != null) sprintImg.gameObject.SetActive(false);
+        SetSprintState(true);
+    }
+    private void OnObstacleDamageHandler(bool isDamaged)
+    {
+        // slow visual (xohlasang)
+        if (isDamaged)
+            PlaySlow();
+
+        // sprintni bloklash / qaytarish
+        EnableSprint(isDamaged);
+    }
+
+    public void PlaySlow()
+    {
+
+    }
+
+    public void SliderValueRestore()
+    {
+        if (hitCountSlider == null) return;
+        hitCountSlider.value = hitCountSlider.maxValue;
     }
     #endregion
 }

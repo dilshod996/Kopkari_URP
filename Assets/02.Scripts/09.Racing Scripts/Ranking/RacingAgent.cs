@@ -9,7 +9,9 @@ public class RacingAgent : MonoBehaviour
     public string displayName = "Rider";
     public string teamName = "Team A";       // 🔹 yangi
 
-    public Transform pivot;
+    //public Transform pivot;
+    public Transform webSnareTarget;
+    public Transform shootOriginPoint;
     public bool isPlayer;
     public BoostersContainer boosterContainer;
     public int CheckpointIndex { get; set; } = -1;    // hali o‘tmagan
@@ -53,7 +55,7 @@ public class RacingAgent : MonoBehaviour
     }
     private void Awake()
     {
-        if (!pivot) pivot = transform;
+       // if (!pivot) pivot = transform;
     }
 
     private void OnEnable()

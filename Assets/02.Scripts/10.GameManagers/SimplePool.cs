@@ -1,7 +1,5 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-// --- NEW: kerak emas bo'lsa ham qoldirsa bo'ladi (atributlar UnityEngine'da)
-// using UnityEngine.SceneManagement;
 
 public static class SimplePool
 {
@@ -17,15 +15,11 @@ public static class SimplePool
         public int Count => inactive.Count + active.Count;
     }
 
-    // prefab -> pool
     static readonly Dictionary<GameObject, Pool> _pools = new();
-    // instance -> pool
     static readonly Dictionary<GameObject, Pool> _owner = new();
 
-    // --- NEW: default holder kesh (destroy bo'lsa qayta tiklash uchun)
     static Transform _defaultHolder;
 
-    // --- NEW: domain/scene reloadda statiklarni tozalash
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -34,7 +28,6 @@ public static class SimplePool
         _defaultHolder = null;
     }
 
-    // --- NEW: holderni kafolatlash (agar yo'q bo'lsa yaratadi)
     static Transform EnsureHolder()
     {
         if (_defaultHolder == null)
@@ -46,22 +39,21 @@ public static class SimplePool
         return _defaultHolder;
     }
 
-    /// <summary>Pool yaratish (bir marta). parent=null bo‘lsa avtomatik "—Pool—" yaratadi</summary>
+    /// <summary>Pool yaratish (bir marta). parent=null bo‘lsa avtomatik "--Pool--" yaratadi</summary>
     public static void CreatePool(GameObject prefab, int prewarm = 8, int maxSize = 30, bool expandable = true, Transform parent = null)
     {
         if (!prefab || _pools.ContainsKey(prefab)) return;
 
-        if (!parent)
+        parent ??= EnsureHolder();
+
+        var p = new Pool
         {
-            // OLD:
-            // var holder = GameObject.Find("--Pool--") ?? new GameObject("--Pool--");
-            // parent = holder.transform;
+            prefab = prefab,
+            parent = parent,
+            maxSize = Mathf.Max(1, maxSize),
+            expandable = expandable
+        };
 
-            // --- NEW: holderni kesh orqali kafolatlaymiz
-            parent = EnsureHolder();
-        }
-
-        var p = new Pool { prefab = prefab, parent = parent, maxSize = Mathf.Max(1, maxSize), expandable = expandable };
         _pools[prefab] = p;
 
         for (int i = 0; i < Mathf.Max(0, prewarm); i++)
@@ -88,24 +80,19 @@ public static class SimplePool
             p = _pools[prefab];
         }
 
-        GameObject go = null;
+        GameObject go;
+
         if (p.inactive.Count > 0)
         {
             go = p.inactive.Dequeue();
         }
         else
         {
-            if (p.expandable || p.Count < p.maxSize)
-            {
-                go = Object.Instantiate(p.prefab, p.parent);
-                _owner[go] = p;
-                go.SetActive(false);
-            }
-            else
-            {
-                // limit to‘ldi
-                return null;
-            }
+            if (!p.expandable && p.Count >= p.maxSize) return null;
+
+            go = Object.Instantiate(p.prefab, p.parent);
+            _owner[go] = p;
+            go.SetActive(false);
         }
 
         p.active.Add(go);
@@ -114,12 +101,15 @@ public static class SimplePool
         t.SetParent(parent ? parent : p.parent, false);
         t.SetPositionAndRotation(pos, rot);
 
+        // eski lifetime coroutine qolib ketmasin
+        var runner = go.GetComponent<_AutoReturn>();
+        if (runner != null) runner.StopAllCoroutines();
+
         go.SetActive(true);
 
         if (lifeTime > 0f)
         {
-            // Auto-despawn korutini
-            var runner = go.GetComponent<_AutoReturn>() ?? go.AddComponent<_AutoReturn>();
+            runner ??= go.AddComponent<_AutoReturn>();
             runner.Run(lifeTime);
         }
 
@@ -129,19 +119,18 @@ public static class SimplePool
     public static void Despawn(GameObject instance)
     {
         if (!instance) return;
+
         if (!_owner.TryGetValue(instance, out var p))
         {
             Object.Destroy(instance);
             return;
         }
 
-        if (p.active.Remove(instance))
-        {
-            instance.SetActive(false);
-            instance.transform.SetParent(p.parent, false);
-            p.inactive.Enqueue(instance);
-        }
-        else if (!p.inactive.Contains(instance))
+        // eski lifetime coroutine qolib ketmasin
+        var runner = instance.GetComponent<_AutoReturn>();
+        if (runner != null) runner.StopAllCoroutines();
+
+        if (p.active.Remove(instance) || !p.inactive.Contains(instance))
         {
             instance.SetActive(false);
             instance.transform.SetParent(p.parent, false);
@@ -156,7 +145,6 @@ public static class SimplePool
         foreach (var go in copy) Despawn(go);
     }
 
-    // --- NEW: sahna almashtirishda yoki restartda hamma narsani tozalash uchun
     public static void ClearAll(bool destroyInstances = true)
     {
         if (destroyInstances)
@@ -178,10 +166,8 @@ public static class SimplePool
             _defaultHolder = null;
         }
     }
-    /// <summary>
-    /// UI uchun Spawn (RectTransform parent). Screen Space Overlay bo'lsa juda qulay.
-    /// anchoredPos berilmasa Vector2.zero.
-    /// </summary>
+
+    // ---------- UI helpers (xohlasang qoldir) ----------
     public static GameObject SpawnUI(GameObject prefab, RectTransform parent, Vector2 anchoredPos, bool worldPositionStays = false)
     {
         if (!prefab)
@@ -190,11 +176,9 @@ public static class SimplePool
             return null;
         }
 
-        // UI uchun Spawn: pos/rot baribir local bo'ladi, shunchaki Spawn ishlatib olamiz
         var go = Spawn(prefab, Vector3.zero, Quaternion.identity, parent, lifeTime: 0f);
         if (!go) return null;
 
-        // RectTransform reset
         var rt = go.transform as RectTransform;
         if (rt != null)
         {
@@ -205,7 +189,6 @@ public static class SimplePool
         }
         else
         {
-            // prefab UI bo'lmasa ham ishlasin (fallback)
             go.transform.SetParent(parent, worldPositionStays);
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Quaternion.identity;
@@ -215,50 +198,44 @@ public static class SimplePool
         return go;
     }
 
-    /// <summary>UI Spawn (anchoredPos = Vector2.zero)</summary>
     public static GameObject SpawnUI(GameObject prefab, RectTransform parent)
         => SpawnUI(prefab, parent, Vector2.zero);
 
-    /// <summary>UI uchun Despawn (qaytarganda transformni pool parentga qaytaradi)</summary>
-    public static void DespawnUI(GameObject instance)
-    {
-        // Hozirgi Despawn allaqachon parentga qaytaradi, shu yetadi.
-        Despawn(instance);
-    }
+    public static void DespawnUI(GameObject instance) => Despawn(instance);
 
-
-    // Kichik ichki helper komponent (faqat bitta skript ichida)
+    // ---------- lifetime helper ----------
     class _AutoReturn : MonoBehaviour
     {
         float _time;
-        bool _running;
         bool _realtime;
+        int _token;
 
         public void Run(float life)
         {
             _time = life;
             _realtime = false;
-            if (!_running) StartCoroutine(Co());
+            _token++;
+            StopAllCoroutines();
+            StartCoroutine(Co(_token));
         }
 
-        // --- NEW: realtime variant (timeScale=0 bo'lsa ham ishlaydi)
         public void RunRealtime(float life)
         {
             _time = life;
             _realtime = true;
-            if (!_running) StartCoroutine(Co());
+            _token++;
+            StopAllCoroutines();
+            StartCoroutine(Co(_token));
         }
 
-        System.Collections.IEnumerator Co()
+        System.Collections.IEnumerator Co(int token)
         {
-            _running = true;
-
             if (_realtime) yield return new WaitForSecondsRealtime(_time);
             else yield return new WaitForSeconds(_time);
 
-            _running = false;
+            if (token != _token) yield break;
+
             SimplePool.Despawn(gameObject);
         }
     }
-
 }

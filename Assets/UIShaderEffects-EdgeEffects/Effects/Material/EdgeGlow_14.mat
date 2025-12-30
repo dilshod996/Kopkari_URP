@@ -93,12 +93,12 @@ Material:
     - _AlphaClip: 0
     - _Blend: 0
     - _BumpScale: 1
-    - _ChromaticAberration_Opacity: 0
+    - _ChromaticAberration_Opacity: 0.422
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
-    - _ColorIntensity: 2
+    - _ColorIntensity: 1.22
     - _ColorMask: 15
-    - _ColorPower: 0.8
+    - _ColorPower: 0.29
     - _Cull: 2
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
@@ -124,7 +124,7 @@ Material:
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _QueueOffset: 0
-    - _RadialUV_Power: 0.1
+    - _RadialUV_Power: 1.88
     - _ReceiveShadows: 1
     - _RotationSpeed: 100
     - _ScrollSpeed_X: 1

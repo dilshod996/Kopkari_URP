@@ -29,8 +29,14 @@ MonoBehaviour:
     m_SerializedLabels:
     - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: bfa6f52b0fc2a9646abc0f3adadfbad4
+  - m_GUID: 8abe43561eb05e04fafc0bc7df4731ff
     m_Address: HorseManeBlack
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9b83b9ebc5303384eaed909442f6bc01
+    m_Address: Saddle3
     m_ReadOnly: 0
     m_SerializedLabels:
     - HorseMaterials

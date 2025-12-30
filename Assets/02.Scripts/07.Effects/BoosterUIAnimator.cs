@@ -27,6 +27,9 @@ public class BoosterUIAnimator : MonoBehaviour
     [SerializeField] private RectTransform setSpeedSprintBtn;
     [SerializeField] private RectTransform sprintFullBtn;
     [SerializeField] private RectTransform hitCounterSliderRect;
+    [SerializeField] private RectTransform uloqGetSliderRect;
+    [SerializeField] private RectTransform uloqTriggerPassRect;
+    [SerializeField] private RectTransform speedStateIconRect;
 
     [Header("Text BG (optional)")]
     [SerializeField] private RectTransform hitTextBg;
@@ -37,6 +40,9 @@ public class BoosterUIAnimator : MonoBehaviour
     [SerializeField] private RectTransform setSpeedSprintTextBg;
     [SerializeField] private RectTransform sprintFullTextBg;
     [SerializeField] private RectTransform hitCounterSliderTextBg;
+    [SerializeField] private RectTransform uloqGetSliderTextBg;
+    [SerializeField] private RectTransform uloqTriggerPassTextBg;
+    [SerializeField] private RectTransform speedStateTextBg;
 
     [Header("Fly Start Offset (from center)")]
     [SerializeField] private Vector2 startOffset = new Vector2(0f, 120f);
@@ -127,6 +133,9 @@ public class BoosterUIAnimator : MonoBehaviour
             { Booster.BoosterType.SetSpeedSprint, setSpeedSprintBtn },
             { Booster.BoosterType.SprintFull, sprintFullBtn },
             { Booster.BoosterType.WallObstacle, hitCounterSliderRect },
+            { Booster.BoosterType.GetUlak, uloqGetSliderRect },
+            { Booster.BoosterType.TriggerPoint, uloqTriggerPassRect },
+            { Booster.BoosterType.SpeedState, speedStateIconRect },
         };
 
         _bgMap = new Dictionary<Booster.BoosterType, RectTransform>(8)
@@ -139,6 +148,9 @@ public class BoosterUIAnimator : MonoBehaviour
             { Booster.BoosterType.SetSpeedSprint, setSpeedSprintTextBg },
             { Booster.BoosterType.SprintFull, sprintFullTextBg },
             { Booster.BoosterType.WallObstacle, hitCounterSliderTextBg },
+            { Booster.BoosterType.GetUlak, uloqGetSliderTextBg },
+            { Booster.BoosterType.TriggerPoint, uloqTriggerPassTextBg },
+            { Booster.BoosterType.SpeedState, speedStateTextBg },
         };
 
         _waitBetween = betweenDelay > 0f ? new WaitForSecondsRealtime(betweenDelay) : null;

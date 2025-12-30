@@ -64,6 +64,7 @@ public class StartPowerBar : MonoBehaviour
 
     private void OnClickConfirm()
     {
+        Debug.Log("Selected");
         if (hasSelected) return;
 
         hasSelected = true;

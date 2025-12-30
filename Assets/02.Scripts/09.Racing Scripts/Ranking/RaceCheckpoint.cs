@@ -1,4 +1,4 @@
-﻿// RaceCheckpoint.cs
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,15 +6,33 @@ using UnityEngine;
 public class RaceCheckpoint : MonoBehaviour
 {
     [Header("Order")]
-    public int index;              // 0..N-1
-    public RaceCheckpoint next;    // ixtiyoriy (zanjir uchun)
+    public int index; // 0..N-1
 
     // Collider -> RacingAgent cache
     private static readonly Dictionary<Collider, RacingAgent> _agentCache = new();
 
-    // Agentga bog'liq holatlar (GLOBAL EMAS)
+    // Per-agent state (static bo'lgani yaxshi: bir xil agent hamma checkpointlarda ishlaydi)
     private static readonly Dictionary<RacingAgent, int> _lastIndexByAgent = new();
     private static readonly Dictionary<RacingAgent, bool> _reverseByAgent = new();
+
+    [Header("WebSnare (Optional)")]
+    public bool canShootWebSnare = false;
+
+    [Range(0f, 1f)] public float shootChance = 0.6f;   // default chance
+    public float top3AiChance = 0.5f;                  // AI top-3 uchun
+
+    public float delayMin = 1f;
+    public float delayMax = 3f;
+
+    [Tooltip("Agent bu checkpointda ketma-ket otmasligi uchun (sec)")]
+    public float shootCooldown = 5f;
+
+    public GameObject webSnarePrefab;
+    public float shootSpeed = 20f;
+
+    // Per-agent cooldown (bu checkpoint instance ichida; xohlasang static ham qilsa bo‘ladi)
+    private readonly Dictionary<RacingAgent, float> _lastShootTimeByAgent = new();
+    private readonly HashSet<RacingAgent> _shootInProgress = new();
 
     private void Reset()
     {
@@ -25,60 +43,52 @@ public class RaceCheckpoint : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("RacingHead")) return;
-        
-        // Cache
+
+        // Agent cache
         if (!_agentCache.TryGetValue(other, out var agent) || agent == null)
         {
             agent = other.GetComponentInParent<RacingAgent>();
             if (agent == null) return;
             _agentCache[other] = agent;
         }
+
         if (agent.HasFinished) return;
-        if(index == 21 && agent.isPlayer && RacingController.Instance != null)
-        {
-            RacingController.Instance.ShowAndHideSpeech("Faster " + agent.displayName + "! You are near finish!");
-        }
+
         var lb = RacingLeaderboard.Instance;
         int total = lb?.CheckpointCount ?? 0;
         if (total <= 0) return;
 
-        // Agent uchun last index va reverse flagini init qilamiz
-        if (!_lastIndexByAgent.TryGetValue(agent, out var last))
+        // init last + reverse
+        if (!_lastIndexByAgent.TryGetValue(agent, out int lastIndex))
         {
-            // agentning hozirgi CheckpointIndex'ini boshlang'ich sifatida olamiz
-            last = agent.CheckpointIndex;
-            _lastIndexByAgent[agent] = last;
+            lastIndex = agent.CheckpointIndex;
+            _lastIndexByAgent[agent] = lastIndex;
         }
-        if (!_reverseByAgent.TryGetValue(agent, out var reverseActive))
+
+        if (!_reverseByAgent.TryGetValue(agent, out bool reverseActive))
         {
             reverseActive = false;
             _reverseByAgent[agent] = false;
         }
 
-        // Yo'nalishni aniqlash: last -> index
-        int diff = (index - last + total) % total;
+        // diff: lastIndex -> this.index (circular)
+        int diff = (index - lastIndex + total) % total;
 
-        // diff == 0  -> shu checkpointni qayta urish (e’tibor bermasa ham bo‘ladi)
-        // diff == 1  -> oldinga 1 qadam
-        // diff == total-1 -> orqaga 1 qadam
-        // boshqa diff -> sakrash (2+ checkpoint sakrab o’tish) — odatda e’tiborsiz qoldiriladi
-
-        // 🔻 Orqaga ketdi
+        // 1) Reverse start: 1 qadam orqaga ketdi
         if (diff == total - 1 && !reverseActive)
         {
             _reverseByAgent[agent] = true;
             RacingController.Instance?.StartReverse();
         }
 
-        // 🔺 Oldinga qaytdi — reverse’ni o‘chirish sharti:
-        // faqat diff == 1 bo‘lganda (ya’ni 1 qadam oldinga)
+        // 2) Reverse clear: reverse holatda 1 qadam oldinga qaytdi
         if (reverseActive && diff == 1)
         {
             _reverseByAgent[agent] = false;
             RacingController.Instance?.ClearReverse();
         }
 
-        // 🔹 Normal progress faqat diff == 1 holatda
+        // 3) Normal progress faqat diff == 1 bo'lsa
         if (diff == 1)
         {
             agent.PrevCheckpointIndex = agent.CheckpointIndex;
@@ -86,18 +96,111 @@ public class RaceCheckpoint : MonoBehaviour
             agent.Passed++;
             agent.RecordSplit();
 
-            // Agar finish oxirgi checkpoint bo'lsa
+            // ✅ WebSnare faqat normal oldinga o'tishda va reverse yo'q bo'lsa
+            if (canShootWebSnare && !_reverseByAgent[agent])
+            {
+                int rank = lb != null ? lb.GetRank(agent) : -1; // 1..N bo'lishi kerak
+                TryScheduleWebSnare(agent, rank);
+            }
+
+            // Finish
             if (index == total - 1)
                 agent.EndRace();
 
             lb?.NotifyCheckpoint(agent);
-            // ✅ WalkTrap: faqat normal oldinga qadamda xabar beramiz
+
+            // WalkTrap notify
             agent.boosterContainer?.NotifyCheckpointPassed(index, total);
         }
 
-        // Teleport yoki diff == 0 bo‘lsa — progress bermaymiz, faqat last’ni yangilaymiz
+        // last index update (teleport / qayta urish bo'lsa ham)
         _lastIndexByAgent[agent] = index;
+    }
+
+    // -------------------- WEB SNARE --------------------
+    private void TryScheduleWebSnare(RacingAgent agent, int rank)
+    {
+        if (webSnarePrefab == null) return;
+        if (agent == null || agent.HasFinished) return;
+
+        if (_shootInProgress.Contains(agent)) return;
+
+        // Rank rules
+        if (rank == 6 || rank == 7) return; // umuman otmaydi
+
+        bool forceShoot = (rank >= 1 && rank <= 3); // top-3: "auto urish" (player/ai farqsiz)
+
+        float effectiveChance = shootChance;
+
+        // AI top-3: 0.5 chance bo'lsin (sen xohlaganing)
+        if (!agent.isPlayer && (rank >= 1 && rank <= 3))
+            effectiveChance = top3AiChance;
+
+        // Force bo'lmasa chance ishlaydi
+        if (!forceShoot)
+        {
+            if (Random.value > effectiveChance) return;
+        }
+
+        // Cooldown (force bo'lsa ham cooldownni saqlaymiz — spam bo'lmasin)
+        if (_lastShootTimeByAgent.TryGetValue(agent, out float lastTime))
+        {
+            if (Time.time - lastTime < shootCooldown) return;
+        }
+
+        float delay = Random.Range(delayMin, delayMax);
+        StartCoroutine(WebSnareRoutine(agent, delay));
+    }
+
+    private IEnumerator WebSnareRoutine(RacingAgent agent, float delay)
+    {
+        _shootInProgress.Add(agent);
+        yield return new WaitForSeconds(delay);
+
+        // validate
+        if (agent == null || agent.HasFinished)
+        {
+            _shootInProgress.Remove(agent);
+            yield break;
+        }
+
+        // delay ichida reverse yoqilib qolsa otmaymiz
+        if (_reverseByAgent.TryGetValue(agent, out bool rev) && rev)
+        {
+            _shootInProgress.Remove(agent);
+            yield break;
+        }
+
+        if (webSnarePrefab == null || agent.webSnareTarget == null || agent.shootOriginPoint == null)
+        {
+            _shootInProgress.Remove(agent);
+            yield break;
+        }
+
+        Vector3 origin = agent.shootOriginPoint.position;
+        Vector3 target = agent.webSnareTarget.position;
+
+        Vector3 dir = (target - origin);
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.0001f)
+            dir = agent.webSnareTarget.forward;
+
+        dir.Normalize();
+        Quaternion rot = Quaternion.LookRotation(dir);
+
+        // ✅ Instantiate o'rniga SimplePool
+        var go = SimplePool.Spawn(webSnarePrefab, origin, Quaternion.LookRotation(dir), lifeTime: 4f);
+        if (go != null && go.TryGetComponent<WebSnareProjectile>(out var proj))
+        {
+            proj.LaunchArc(dir, shootSpeed,7f);
+        }
 
 
+        var rb = go.GetComponent<Rigidbody>();
+        if (rb != null)
+            rb.velocity = dir * shootSpeed;
+
+        _lastShootTimeByAgent[agent] = Time.time;
+        _shootInProgress.Remove(agent);
     }
 }

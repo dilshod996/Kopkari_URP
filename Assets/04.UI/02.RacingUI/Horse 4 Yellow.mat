@@ -24,7 +24,8 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Horse 4 Yellow
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: 38fbdfc05eb118b439cadf4899477678,
+    type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -32,7 +33,7 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
+  m_CustomRenderQueue: -1
   stringTagMap:
     MotionVector: User
     RenderType: Opaque
@@ -116,7 +117,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _AO: 1
+    - _AO: 0
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaCutoffEnable: 0
@@ -138,6 +139,7 @@ Material:
     - _Blend: 0
     - _BlendMode: 0
     - _BlendModePreserveSpecular: 1
+    - _BottomStrength: 0.55
     - _BumpScale: 1
     - _CastShadows: 1
     - _ClearCoatMask: 0
@@ -166,6 +168,8 @@ Material:
     - _GlossyReflections: 0
     - _Hue: 0
     - _Metallic: 0
+    - _NoiseScale: 5
+    - _NoiseStrength: 0.015
     - _Normal_Power: 1
     - _OcclusionStrength: 1
     - _OpaqueCullMode: 2
@@ -180,10 +184,10 @@ Material:
     - _RenderQueueType: 1
     - _RequireSplitLighting: 0
     - _Roughness: 1
-    - _Saturation: 1
+    - _Saturation: 1.08
     - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
-    - _Soft_Mult: 0
+    - _Soft_Mult: 0.22
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
@@ -222,9 +226,10 @@ Material:
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _Metallic_Max: {r: 0, g: 1, b: 0, a: 0}
     - _Metallic_Min: {r: 0, g: 1, b: 0, a: 0}
+    - _NewBottomColor: {r: 0.08679241, g: 0.08679241, b: 0.08679241, a: 0}
     - _Offset: {r: 0, g: 0, b: 0, a: 0}
     - _Rough_Max: {r: 0.1, g: 0.7, b: 0, a: 0}
-    - _Rough_Min: {r: 0.2, g: 1.5, b: 0, a: 0}
+    - _Rough_Min: {r: 1, g: 1.5, b: 0, a: 0}
     - _Soft_Light_Tint: {r: 1, g: 1, b: 1, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _Tiling: {r: 1, g: 1, b: 0, a: 0}

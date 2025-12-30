@@ -16,13 +16,7 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: 9833c4268debe8f439c2121d4ea38336
-  m_SerializeEntries:
-  - m_GUID: b5aafbd3c162e1a46a415db31ea0678c
-    m_Address: Chopar
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Player
-    FlaggedDuringContentUpdateRestriction: 0
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
   m_SchemaSet:

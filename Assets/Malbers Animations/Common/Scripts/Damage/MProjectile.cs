@@ -7,6 +7,7 @@ using UnityEngine.Pool;
 
 
 
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -404,6 +405,22 @@ namespace MalbersAnimations.Weapons
             Debug.Log("exit one");
             yield return null;
         }
+        /// <summary>
+        /// Malbers pool bo'lsa -> Release.
+        /// Bo'lmasa -> SimplePool.Despawn (spawn qilingan bo'lsa poolga qaytadi, bo'lmasa Destroy qiladi).
+        /// </summary>
+        private void ReturnToPoolOrDestroy()
+        {
+            if (Pool != null)
+            {
+                Pool.Release(gameObject);
+            }
+            else
+            {
+                // juda ehtiyot fallback
+                Destroy(gameObject);
+            }
+        }
 
 
         public virtual void ProjectileImpact(Rigidbody targetRB, Collider collider, Vector3 HitPosition, Vector3 normal)
@@ -420,7 +437,7 @@ namespace MalbersAnimations.Weapons
             if (MissAttack())
             {
                 Debugging("Destroy Projectile Missed", null);
-                Destroy(gameObject);
+                ReturnToPoolOrDestroy();
                 return;
             }
 

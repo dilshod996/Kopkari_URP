@@ -335,7 +335,7 @@ namespace Kopkari
                 PlayerPrefs.SetString(Constants.Horse.HorseManeKey, "HorseManeBlack");
                 PlayerPrefs.SetString(Constants.Horse.HorseTailKey, "HorseManeBlack");
                 PlayerPrefs.SetString(Constants.Horse.HorseReinsKey, "Saddle");
-                PlayerPrefs.SetString(Constants.Horse.HorseSaddleKey, "Saddle");
+                PlayerPrefs.SetString(Constants.Horse.HorseSaddleKey, "Saddle3");
                 PlayerPrefs.SetString(Constants.Horse.HorseReinsHeadKey, "Saddle");
                 PlayerPrefs.Save();
             }
