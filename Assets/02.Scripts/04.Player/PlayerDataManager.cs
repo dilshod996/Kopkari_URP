@@ -57,17 +57,17 @@ public class PlayerDataManager : MonoBehaviour
         string username = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerInstance.name = username;
         // 2. Ichidan PlayerSkinLoader scriptni topamiz
-        PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        // 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
-        if (skinLoader != null)
-        {
-            // await skinLoader.ApplyMaterials();
-            await skinLoader.ApplySkins();
-        }
-        else
-        {
-            Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-        }
+        //PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+        //// 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
+        //if (skinLoader != null)
+        //{
+        //    // await skinLoader.ApplyMaterials();
+        //    await skinLoader.ApplySkins();
+        //}
+        //else
+        //{
+        //    Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
+        //}
 
         // 2. Component sifatida MRider ni olamiz
         riderInstance = playerInstance.GetComponent<MRider>();

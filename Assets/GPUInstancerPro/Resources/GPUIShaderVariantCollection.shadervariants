@@ -70,3 +70,7 @@ ShaderVariantCollection:
         passType: 0
       - keywords: LOD_FADE_CROSSFADE
         passType: 0
+      - keywords: LOD_FADE_CROSSFADE _METALLICSPECGLOSSMAP _NORMALMAP
+        passType: 0
+      - keywords: _METALLICSPECGLOSSMAP _NORMALMAP
+        passType: 0
