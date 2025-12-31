@@ -105,7 +105,7 @@ public class BoostersContainer : MonoBehaviour
     [SerializeField] private int obstaclePenaltySpeedIndex = 4;
     public static Action<bool> OnObstacleDamage;
 
-    private int obstacleHitCount = 0;
+    public int obstacleHitCount = 0;
     private bool obstaclePenalized = false;
     private Coroutine obstaclePenaltyCoroutine;
     #endregion
@@ -659,10 +659,15 @@ public class BoostersContainer : MonoBehaviour
     private void StartObstaclePenalty()
     {
         if (obstaclePenalized) return;
-
+        Debug.Log("Obstacle penalty");
         // Defend aktiv bo‘lsa penalty bermaymiz
         if (isDefend) return;
-
+        if (defendCount > 0 && isNpc)
+        {
+            DefendPlayerNpc();
+            return;
+        }
+        Debug.Log("Obstacle penalty1");
         CancelBoost(forceRestoreSpeed: false);
         CancelSlow(forceRestoreSpeed: false);
 
@@ -675,7 +680,7 @@ public class BoostersContainer : MonoBehaviour
     private IEnumerator ObstaclePenaltyRoutine()
     {
         obstaclePenalized = true;
-
+        Debug.Log("Obstacle penalty 3");
         if (!isNpc)
         {
             OnSlowState?.Invoke();
@@ -688,7 +693,7 @@ public class BoostersContainer : MonoBehaviour
         yield return new WaitForSeconds(obstaclePenaltyDuration);
 
         obstaclePenalized = false;
-        OnObstacleDamage?.Invoke(false);
+        if (!isNpc) { OnObstacleDamage?.Invoke(false); }
         // ✅ penalty tugadi -> qoidaga ko‘ra tikla (maxSpeed?6:5)
         RestoreSpeedAfterDebuffClear();
 
@@ -702,6 +707,7 @@ public class BoostersContainer : MonoBehaviour
 
     private void CancelObstaclePenalty(bool forceRestoreSpeed)
     {
+        bool hadPenalty = obstaclePenalized;  // old holatni saqlab ol
         if (obstaclePenaltyCoroutine != null)
         {
             StopCoroutine(obstaclePenaltyCoroutine);
@@ -711,8 +717,8 @@ public class BoostersContainer : MonoBehaviour
         obstaclePenalized = false;
         obstacleHitCount = 0;
 
-        if (!isNpc && UIButtonActions.Instance != null)
-            UIButtonActions.Instance.SliderValueRestore();
+        if (forceRestoreSpeed && hadPenalty && !isNpc)
+            UIButtonActions.Instance?.SliderValueRestore(); 
 
         if (forceRestoreSpeed)
             RestoreSpeedAfterDebuffClear();

@@ -26,6 +26,7 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private Button hitBtn;
     [SerializeField] private Button shootWebBtn;
     [SerializeField] private Button chainContainerBtn;
+    [SerializeField] private Button pauseButton;
     #endregion
 
     #region Inspector - Texts
@@ -70,6 +71,7 @@ public class UIButtonActions : MonoBehaviour
     [Header("Pages")]
     [SerializeField] private GameObject resultPage;
     [SerializeField] private GameObject foodPanel;
+    [SerializeField] private UIPauseGame pauseMenu;
 
     [Header("Scale Settings")]
     [SerializeField] private float startScale = 0.8f;
@@ -160,6 +162,7 @@ public class UIButtonActions : MonoBehaviour
 
         // ✅ UI start holatini to‘g‘ri qo‘yib olamiz
         SetSprintState(true);
+        pauseButton.onClick.AddListener(PauseMenu);
     }
 
     private void OnDisable()
@@ -199,6 +202,7 @@ public class UIButtonActions : MonoBehaviour
         StopIfRunning(ref refillRoutine);
         isPressing = false;
         totalHoldTime = 0f;
+        pauseButton.onClick.RemoveListener(PauseMenu);
     }
     #endregion
 
@@ -665,6 +669,13 @@ public class UIButtonActions : MonoBehaviour
     {
         if (hitCountSlider == null) return;
         hitCountSlider.value = hitCountSlider.maxValue;
+    }
+    #endregion
+
+    #region Other Button Actions
+    private void PauseMenu()
+    {
+        ShowUI(pauseMenu);
     }
     #endregion
 }

@@ -40,7 +40,15 @@ public class UIPauseGame : MonoBehaviour
     {
         Time.timeScale = 1f;
         _paused = false;
-        KopkariMainUI.Instance.HideUI(this);
+        if(KopkariMainUI.Instance != null)
+        {
+            KopkariMainUI.Instance.HideUI(this);
+        }
+        else
+        {
+            UIButtonActions.Instance.HideUI(this);
+        }
+        
     }
 
     void BackLobby()
@@ -51,11 +59,14 @@ public class UIPauseGame : MonoBehaviour
 
     private void UpdateTexts()
     {
-        titlePause.text = LanguageManager.Instance.GetText(301);
-        resumeText.text = LanguageManager.Instance.GetText(253);
-        backLobbyText.text = LanguageManager.Instance.GetText(302);
-        settingsText.text = LanguageManager.Instance.GetText(26);
-        changeHorseText.text = LanguageManager.Instance.GetText(344);
+        if(LanguageManager.Instance != null)
+        {
+            titlePause.text = LanguageManager.Instance.GetText(301);
+            resumeText.text = LanguageManager.Instance.GetText(253);
+            backLobbyText.text = LanguageManager.Instance.GetText(302);
+            settingsText.text = LanguageManager.Instance.GetText(26);
+            changeHorseText.text = LanguageManager.Instance.GetText(344);
+        }
     }
     private IEnumerator PauseNextFrame()
     {
@@ -66,6 +77,9 @@ public class UIPauseGame : MonoBehaviour
 
     private void EnableHowToPlay()
     {
-        howToPlayPage.gameObject.SetActive(true);
+        if (howToPlayPage != null)
+        {
+            howToPlayPage.gameObject.SetActive(true);
+        }
     }
 }
