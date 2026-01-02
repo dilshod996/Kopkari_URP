@@ -32,7 +32,11 @@ public class PlayerDataManager : MonoBehaviour
     public static Action OnDropObjectEvent;
     public static Action OnPickObjectEventl;
     public static Action<GameObject> OnLocalPlayerObject;
+    [SerializeField] private Transform winSafeZone;
+    [SerializeField] private Transform loseSafeZone;
+    [SerializeField] private Transform horseSafeZone;
 
+    public static Action OnShowFinalPage;
     //public MAnimal playerAnimal;
     private async void Start()
     {
@@ -42,11 +46,13 @@ public class PlayerDataManager : MonoBehaviour
     private void OnEnable()
     {
         UIGetLamp.OnPlayerGotLamp += PickupObj;
+        RacingController.OnRacingFinished += DismountPlayer;
         //BaseManager.OnGoatPicked += DropState;
     }
     private void OnDisable()
     {
         UIGetLamp.OnPlayerGotLamp -= PickupObj;
+        RacingController.OnRacingFinished -= DismountPlayer;
         //BaseManager.OnGoatPicked -= DropState;
     }
     private async Task InitializePlayerAndMountAsync()
@@ -57,17 +63,17 @@ public class PlayerDataManager : MonoBehaviour
         string username = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerInstance.name = username;
         // 2. Ichidan PlayerSkinLoader scriptni topamiz
-        //PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        //// 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
-        //if (skinLoader != null)
-        //{
-        //    // await skinLoader.ApplyMaterials();
-        //    await skinLoader.ApplySkins();
-        //}
-        //else
-        //{
-        //    Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-        //}
+        PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+        // 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
+        if (skinLoader != null)
+        {
+            // await skinLoader.ApplyMaterials();
+            await skinLoader.ApplySkins();
+        }
+        else
+        {
+            Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
+        }
 
         // 2. Component sifatida MRider ni olamiz
         riderInstance = playerInstance.GetComponent<MRider>();
@@ -118,7 +124,114 @@ public class PlayerDataManager : MonoBehaviour
             //horseAnimal.CurrentSpeedSet.LockIndex = 2;
         }
     }
-    
+    public void PlayFinishCinematic(bool isWin)
+    {
+        StartCoroutine(FinishCinematic(isWin));
+    }
+    private IEnumerator FinishCinematic(bool isWin)
+    {
+        // 1) Blink IN (ko‘z yumish)
+        yield return StartCoroutine(UIButtonActions.Instance.FadeBlink(0f, 1f, 1f));
+        //horseAnimal.gameObject.SetActive(false);
+
+        // 2) Qorong‘ida — teleport + setup
+        if (riderInstance != null)
+        {
+            riderInstance.ForceDismount();   // yoki DismountAnimal()
+            yield return null;
+
+            Transform target = isWin ? winSafeZone : loseSafeZone;
+
+            // rider’ni safe zone ga ko‘chirish
+            riderInstance.transform.SetPositionAndRotation(target.position, target.rotation);
+            horseAnimal.transform.SetPositionAndRotation(horseSafeZone.position, horseSafeZone.rotation);
+            // root motion bo‘lsa, o‘chirib qo‘y (sirpanmasin)
+            if (riderInstance.Anim != null) riderInstance.Anim.applyRootMotion = false;
+
+            // ixtiyoriy: rigidbody’ni kinematic qilib qo‘y (barqaror)
+            var rb = riderInstance.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.useGravity = false;
+                rb.isKinematic = true;
+            }
+        }
+
+        // 3) Blink OUT (ko‘z ochish)
+        yield return StartCoroutine(UIButtonActions.Instance.FadeBlink(1f, 0f, 1f));
+        bool ok =riderAnimal.Mode_TryActivate(18, 1);
+        riderAnimal.Mode_Activate(18, 1);
+
+        // 5) Anim ko‘rinsin
+        yield return new WaitForSecondsRealtime(3.5f);
+
+        // 6) Endi UI
+        OnShowFinalPage?.Invoke();
+    }
+    private void DismountPlayer()
+    {
+        PlayFinishCinematic(true);
+        //StartCoroutine(DismountStructure());
+    }
+    private IEnumerator DismountStructure()
+    {
+        if (riderInstance != null)
+        {
+
+            riderInstance.ForceDismount();
+            yield return null;
+
+            // 1) Horse’dan chetga chiqar (overlap bo'lmasin)
+            Transform t = riderInstance.transform;
+            Vector3 safePos = horseAnimal.transform.position
+                            + horseAnimal.transform.right * 1.0f   // o'ngga 1m
+                            + Vector3.up * 0.2f;                   // biroz tepaga
+
+            t.position = safePos;
+
+            // 2) Yerga snap (raycast)
+            SnapRiderToGround(t);
+
+            // 3) Endi MAnimal o'chiramiz
+            if (riderAnimal != null) riderAnimal.enabled = false;
+
+            // 4) Rigidbody: finish uchun eng stabil variant — kinematic qilib qo'yish
+            Rigidbody rb = riderInstance.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.useGravity = false;
+                rb.isKinematic = true; // 🔥 shu "uchish"ni 100% yo'q qiladi
+            }
+        }
+
+
+    }
+    private void SnapRiderToGround(Transform t)
+    {
+        Vector3 origin = t.position + Vector3.up * 2f;
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 10f))
+        {
+            t.position = hit.point + Vector3.up * 0.02f;
+        }
+    }
+    private IEnumerator MoveSmooth(Transform t, Vector3 from, Vector3 to, float duration)
+    {
+        float time = 0f;
+        while (time < duration)
+        {
+            time += Time.deltaTime;
+            float k = time / duration;
+            t.position = Vector3.Lerp(from, to, k);
+            yield return null;
+        }
+        t.position = to;
+    }
+
+
     #region PickUp And Drop
     public void PickupObj()
     {

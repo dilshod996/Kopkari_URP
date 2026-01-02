@@ -72,6 +72,7 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private GameObject resultPage;
     [SerializeField] private GameObject foodPanel;
     [SerializeField] private UIPauseGame pauseMenu;
+    [SerializeField] private Image blinkOverlay;      // UI Image
 
     [Header("Scale Settings")]
     [SerializeField] private float startScale = 0.8f;
@@ -142,7 +143,7 @@ public class UIButtonActions : MonoBehaviour
 
         BoostersContainer.OnWebSnareAdded += UpdateWebCount;
 
-        RacingController.OnRacingFinished += ShowResultPage;
+        PlayerDataManager.OnShowFinalPage += ShowResultPage;
         RacingController.OnRacingStarted += GetData;
 
         BoostersContainer.OnDefendState += SetDefendState;
@@ -180,7 +181,7 @@ public class UIButtonActions : MonoBehaviour
 
         BoostersContainer.OnWebSnareAdded -= UpdateWebCount;
 
-        RacingController.OnRacingFinished -= ShowResultPage;
+        PlayerDataManager.OnShowFinalPage -= ShowResultPage;
         RacingController.OnRacingStarted -= GetData;
 
         BoostersContainer.OnDefendState -= SetDefendState;
@@ -676,6 +677,28 @@ public class UIButtonActions : MonoBehaviour
     private void PauseMenu()
     {
         ShowUI(pauseMenu);
+    }
+    #endregion
+
+    #region Blink Image Effect
+    public IEnumerator FadeBlink(float from, float to, float duration)
+    {
+        if (blinkOverlay == null) yield break;
+
+        float t = 0f;
+        var c = blinkOverlay.color;
+
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime; // UI uchun timeScale’dan mustaqil
+            float k = Mathf.Clamp01(t / duration);
+            c.a = Mathf.Lerp(from, to, k);
+            blinkOverlay.color = c;
+            yield return null;
+        }
+
+        c.a = to;
+        blinkOverlay.color = c;
     }
     #endregion
 }

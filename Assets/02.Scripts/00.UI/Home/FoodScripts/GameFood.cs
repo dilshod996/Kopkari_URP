@@ -38,6 +38,8 @@ public class GameFood : MonoBehaviour
     [SerializeField] private RectTransform nyufiyBgObj;
     [SerializeField] private RectTransform slidersBgObj;
     [SerializeField] private TMP_Text notEnoughResourceText;
+
+    public SceneLoadManager.SceneType sceneType;
     private void OnEnable()
     {
         HookButtons(true);
@@ -45,11 +47,13 @@ public class GameFood : MonoBehaviour
         GetCoins();
         UITransilation();
         GetResources();
+        replayBtn.onClick.AddListener(PlayMore);
     }
 
     private void OnDisable()
     {
         HookButtons(false);
+        replayBtn.onClick.RemoveListener(PlayMore);
     }
 
     #region UI Transilations
@@ -218,8 +222,21 @@ public class GameFood : MonoBehaviour
         }
         else
         {
-            KopkariMainUI.Instance.HideUI(this);
+            if (KopkariMainUI.Instance != null)
+            {
+                KopkariMainUI.Instance.HideUI(this);
+            }
+            else
+            {
+                UIButtonActions.Instance.HideUI(this);
+            }
+            Clear();
+            SceneLoadManager.Instance.LoadScene(sceneType);
         }
+    }
+    public void Clear()
+    {
+        StopAllCoroutines();
     }
     #endregion
 }

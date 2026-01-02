@@ -1,5 +1,6 @@
 ﻿using MalbersAnimations;
 using MalbersAnimations.Controller;
+using MalbersAnimations.HAP;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -88,6 +89,7 @@ public class RacingController : MonoBehaviour
     public static Action OnRacingFinished;
     public static Action OnRacingStarted;
 
+    [SerializeField] private GameObject winningPanelBG;
     #region Starting Functions
     private void Awake()
     {
@@ -121,7 +123,7 @@ public class RacingController : MonoBehaviour
         UIButtonActions.OnSprintEnd += HorseDefaultSpeed;
         BoostersContainer.OnSprintEffectStart += SprintCameraEnable;
         BoostersContainer.OnSprintEffectEnd += SprintCameraDisable;
-        RacingResultPage.OnGetRiderRank += PlayFinalAnim;
+        //RacingResultPage.OnGetRiderRank += PlayFinalAnim;
         UILookBackButton.OnCameraPressedState += CameraBackState;
 
     }
@@ -137,7 +139,7 @@ public class RacingController : MonoBehaviour
         UIButtonActions.OnSprintEnd -= HorseDefaultSpeed;
         BoostersContainer.OnSprintEffectStart -= SprintCameraEnable;
         BoostersContainer.OnSprintEffectEnd -= SprintCameraDisable;
-        RacingResultPage.OnGetRiderRank -= PlayFinalAnim;
+       // RacingResultPage.OnGetRiderRank -= PlayFinalAnim;
         UILookBackButton.OnCameraPressedState -= CameraBackState;
         riderAnimal = null;
         horse = null;
@@ -360,12 +362,20 @@ public class RacingController : MonoBehaviour
         // 3 soniyadan so‘ng to‘xtatamiz misol uchun
         horse.Always_Forward(false);
         horse.Speed_CurrentIndex_Set(2);
-        CameraPostionCheck();
+
+        CameraPostionCheck(-189f, -3f);
         HideLeaderboardPanel();
         mobileCanvasPanel.gameObject.SetActive(false);
-        yield return new WaitForSeconds(3f);
-        horse.StopMoving();
+        int playerRank = RacingLeaderboard.Instance.PlayerRank();
+        PlayFinalAnim(playerRank);
+        winningPanelBG.SetActive(true);
+        yield return new WaitForSeconds(3f);     
         OnRacingFinished?.Invoke();
+        CameraPostionCheck(-98f, -8f);
+
+        yield return new WaitForSeconds(1f);
+        horse.StopMoving();
+
         action?.Invoke();
     }
 
@@ -536,13 +546,13 @@ public class RacingController : MonoBehaviour
         sprintCam.SetPriority(true);
     }
     private void SprintCameraDisable() { sprintCam.SetPriority(false); }
-    public void CameraPostionCheck()
+    public void CameraPostionCheck(float yMove, float xMove)
     {
         horse.UseCameraInput = false;
         finishCam.SetFinishViewSmooth(
             cameraDistance,  // masofa
-            -32f,             // yaw -> Inspector’da 18 bo'lishi uchun
-            -4f,             // pitch (istaganingcha o'zgartirishing mumkin)
+            yMove,             // yaw -> Inspector’da 18 bo'lishi uchun
+            xMove,             // pitch (istaganingcha o'zgartirishing mumkin)
             -0.85f,  // pastga/pasga offset kerak bo'lsa
             1f               // 1 soniyada aylanib borsin, xohlasang 0.5 / 2f qil
         );

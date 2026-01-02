@@ -98,7 +98,20 @@ MonoBehaviour:
   - m_GUID: b4027b896cb5ddd478b6815a54f033e2
     m_Address: Hat3
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6126bcb18e701314cbae8c30f4369f72
+    m_Address: UpperBody2_1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c7e0cd33279719c459b42df987323b93
+    m_Address: LowerBody1_2
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}

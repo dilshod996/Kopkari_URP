@@ -47,6 +47,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d4b0ae5dd029ee64b807cf9806edf455
+    m_Address: HorseYellowBlack
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
   m_SchemaSet:

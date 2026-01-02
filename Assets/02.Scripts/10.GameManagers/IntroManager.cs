@@ -323,14 +323,14 @@ namespace Kopkari
                 //Save default player materials
                 PlayerPrefs.SetString(Constants.Player.PlayerFaceHairKey, "FaceHair4");
                 PlayerPrefs.SetString(Constants.Player.PlayerHeadKey, "Head");
-                PlayerPrefs.SetString(Constants.Player.PlayerHelmetKey, "Hat");
+                PlayerPrefs.SetString(Constants.Player.PlayerHelmetKey, "Hat3");
                 PlayerPrefs.SetString(Constants.Player.PlayerHand, "Hands");
-                PlayerPrefs.SetString(Constants.Player.PlayerUpperBodyKey, "UpperBody4");
-                PlayerPrefs.SetString(Constants.Player.PlayerLowerBodyKey, "LowerBody1");
+                PlayerPrefs.SetString(Constants.Player.PlayerUpperBodyKey, "UpperBody2_1");
+                PlayerPrefs.SetString(Constants.Player.PlayerLowerBodyKey, "LowerBody1_2");
  
                 //Save default horse materials
 
-                PlayerPrefs.SetString(Constants.Horse.HorseBodyKey, "HorseBrown");
+                PlayerPrefs.SetString(Constants.Horse.HorseBodyKey, "HorseYellowBlack");
                 PlayerPrefs.SetString(Constants.Horse.HorseEyesKey, "HorseEyes");
                 PlayerPrefs.SetString(Constants.Horse.HorseManeKey, "HorseManeBlack");
                 PlayerPrefs.SetString(Constants.Horse.HorseTailKey, "HorseManeBlack");

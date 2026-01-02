@@ -12,7 +12,12 @@ public class FinalCollider : MonoBehaviour
     }
     private void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("Player")) return;
-        RacingController.Instance.StopHorseRun();
+        if (!other.CompareTag("RacingHead")) return;
+        var agent = other.GetComponentInParent<RacingAgent>();
+        if (agent.isPlayer)
+        {
+            RacingController.Instance.StopHorseRun();
+        }
+
     }
 }

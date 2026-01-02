@@ -76,6 +76,7 @@ public static class Constants
     public static class Record
     {
         public const string BaxmalRacing = "baxmal";
+        public const string Zarafshan = "zarafshan";
         public const string Registon = "registon";
         public const string JomboyKopkari = "jomboyk";
     }

@@ -61,6 +61,7 @@ public class KopkariResultUI : MonoBehaviour
     [Header("Foods")]
     [SerializeField] private GameFood gameFoodPage;
     [SerializeField] private Button gameFoodBtn;
+    [SerializeField] private TMP_Text gameFoodBtnText;
     [SerializeField] private TMP_Text notenoughResource;
 
 
@@ -463,6 +464,7 @@ public class KopkariResultUI : MonoBehaviour
         if (horsePowerMain < 30f || horseCoolingMain < 30f || horseStaminaMain < 30f)
         {
             gameFoodBtn.gameObject.SetActive(true);
+            gameFoodBtnText.text =  LanguageManager.Instance?.GetText(369);
             EnableResourceText();
         }
         else
@@ -475,7 +477,8 @@ public class KopkariResultUI : MonoBehaviour
     private void FoodNeeded()
     {
         gameFoodBtn.gameObject.SetActive(false);
-        notenoughResource.text = string.Empty;
+        notenoughResource.text = LanguageManager.Instance?.GetText(368);
     }
+
     #endregion
 }

@@ -4,6 +4,7 @@ using MalbersAnimations.HAP;
 using MalbersAnimations;
 using MalbersAnimations.Controller;
 using MalbersAnimations.Utilities;
+using System;
 
 public class HorseDataManager : MonoBehaviour
 {
@@ -16,22 +17,22 @@ public class HorseDataManager : MonoBehaviour
     public MaterialChanger MaterialChanger { get; private set; }
 
     public KopkariHorseBomb currentBomb { get; private set; }
-
+    public static Action<Transform> OnHorseTransorm;
     public async Task<Mount> SpawnHorseAsync()
     {
         horseInstance = Instantiate(horsePrefab, spawnPoint.position, spawnPoint.rotation, spawnPoint.transform);
-
+        OnHorseTransorm?.Invoke(horseInstance.transform);
         // 4.Ichidan HorseSkinLoader scriptni topamiz
-        //HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
-        //if (horseSkinLoader != null)
-        //{
-        //    await horseSkinLoader.ApplySkins();
-        //}
-        //else
-        //{
-        //    Debug.Log("❌ HorseSkinLoader component not found on instantiated horse.");
-        //}
-        //await Task.Yield(); // Wait 1 frame
+        HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
+        if (horseSkinLoader != null)
+        {
+            await horseSkinLoader.ApplySkins();
+        }
+        else
+        {
+            Debug.Log("❌ HorseSkinLoader component not found on instantiated horse.");
+        }
+        await Task.Yield(); // Wait 1 frame
 
         // Wait until Mount component and its MountPoint are ready
         Mount mount = null;

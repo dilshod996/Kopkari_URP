@@ -19,8 +19,9 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text mainMenuText, raceAgainText;
     [SerializeField] private TMP_Text allNyufiyText, allCoinText;
-    [SerializeField] private GameObject resourcesField;
+    [SerializeField] private GameObject foodPanel;
     [SerializeField] private Button foodPanelEnablerBtn;
+    [SerializeField] private TMP_Text foodResourcesBtnText;
     [Header("Details")]
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text horseName;
@@ -77,13 +78,14 @@ public class RacingResultPage : MonoBehaviour
         {
             backToHome.onClick.AddListener(BackLobby);
         }
-        foodPanelEnablerBtn?.gameObject.SetActive(false);
+        FoodNotNeeded();
         UIButtonActions.OnSprintHold += GetOverallBoostTime;
         RacingController.OnOverallBoostTime += GetOverallBoostTime;
-        FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
-        FoodShowerPopup.OnBuyBtnPressed += UpdateNyufiy;
+       // FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
+        //FoodShowerPopup.OnBuyBtnPressed += UpdateNyufiy;
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
+        foodPanelEnablerBtn.onClick.AddListener(EnableFoodPage);
     }
     private void OnDisable()
     {
@@ -92,8 +94,9 @@ public class RacingResultPage : MonoBehaviour
         UIButtonActions.OnSprintHold -= GetOverallBoostTime;
         RacingController.OnOverallPenaltyTime -= GetOverallPenaltyTime;
         RacingController.OnOverallBoostTime -= GetOverallBoostTime;
-        FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
-        FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
+        //FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
+       // FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
+        foodPanelEnablerBtn.onClick.RemoveListener(EnableFoodPage);
     }
     #region Player List && Racing Stats && Records
     public void ShowResults()
@@ -160,10 +163,10 @@ public class RacingResultPage : MonoBehaviour
 
                 switch (e.Ranking)
                 {
-                    case 1: taqaPrize = 2; nyufiyPrize = 1500; break;
-                    case 2: taqaPrize = 1; nyufiyPrize = 1100; break;
-                    case 3: taqaPrize = 0; nyufiyPrize = 700; break;
-                    default: taqaPrize = 0; nyufiyPrize = 300; break;
+                    case 1: taqaPrize = 4; nyufiyPrize = 2200; break;
+                    case 2: taqaPrize = 2; nyufiyPrize = 1700; break;
+                    case 3: taqaPrize = 1; nyufiyPrize = 1300; break;
+                    default: taqaPrize = 0; nyufiyPrize = 500; break;
                 }
 
                 OnGetRiderRank?.Invoke(e.Ranking);
@@ -179,13 +182,13 @@ public class RacingResultPage : MonoBehaviour
                 allCoinText.text = $"{allCoin:N0}";
                 PlayerPrefs.SetInt(Constants.Coins.Nyufiy, allNyufiy);
                 PlayerPrefs.SetInt(Constants.Coins.Coin, allCoin);
-                float savedTime = PlayerPrefs.GetFloat(Constants.Record.BaxmalRacing);
+                float savedTime = PlayerPrefs.GetFloat(Constants.Record.Zarafshan);
 
                 if (savedTime == 0 || savedTime > e.LastSplitTime)
                 {
                     recordText.text = LanguageManager.Instance?.GetText(315);
                     savedTime = e.LastSplitTime;
-                    PlayerPrefs.SetFloat(Constants.Record.BaxmalRacing, savedTime);
+                    PlayerPrefs.SetFloat(Constants.Record.Zarafshan, savedTime);
                 }
                 else
                 {
@@ -210,7 +213,7 @@ public class RacingResultPage : MonoBehaviour
         float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-
+        Debug.Log($"Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
         float nonPenaltyTime = overAllTime - overAllPenaltyTime;     // penalty bo‘lmagan vaqt
@@ -220,7 +223,7 @@ public class RacingResultPage : MonoBehaviour
         float newCooling = horseCoolingMain - (overAllPenaltyTime * 0.5f + nonPenaltyTime * 0.05f);
 
         newPower = Mathf.Max(0, newPower);
-        newStamina = Mathf.Max(0, newStamina);
+        newStamina = Mathf.Max(0, newStamina);//Hard coded now
         newCooling = Mathf.Max(0, newCooling);
 
 
@@ -285,11 +288,12 @@ public class RacingResultPage : MonoBehaviour
     {
         StartCoroutine(PulseRoutine());
         foodPanelEnablerBtn?.gameObject.SetActive(true);
+        foodResourcesBtnText.text = LanguageManager.Instance?.GetText(369);
     }
     private IEnumerator PulseRoutine()
     {
         float t = 0f;
-        RectTransform rt = resourcesField.GetComponent<RectTransform>();
+        RectTransform rt = foodPanelEnablerBtn.GetComponent<RectTransform>();
 
         while (t < duration)
         {
@@ -350,17 +354,17 @@ public class RacingResultPage : MonoBehaviour
         float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
         int langId = -1;
-        if (currentPower < 10)
+        if (currentPower < 20)
             langId = 334;
 
-        if (currentCooling < 10)
+        if (currentCooling < 20)
             langId = 335;
 
-        if (currentStamina < 10)
+        if (currentStamina < 30)
             langId = 336;
 
 
-        if (currentPower < 10 || currentCooling < 10 || currentStamina < 10)
+        if (currentPower < 20 || currentCooling < 20 || currentStamina < 30)
         {
             SHowResourcesNotEnough();
             alarmMessage.text = LanguageManager.Instance.GetText(langId);
@@ -372,6 +376,16 @@ public class RacingResultPage : MonoBehaviour
     public void BackLobby()
     {
         SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Home);
+    }
+    private void FoodNotNeeded()
+    {
+        foodPanelEnablerBtn.gameObject.SetActive(false);
+        alarmMessage.text = LanguageManager.Instance?.GetText(368);
+    }
+    private void EnableFoodPage()
+    {
+        this.gameObject.SetActive(false);
+        UIButtonActions.Instance.ShowUI(foodPanel);
     }
 
 }
