@@ -53,8 +53,7 @@ public class RacingController : MonoBehaviour
     private bool reverseActive;
     private float tLeft;
 
-    [Header("Popup Data")]
-    [SerializeField] UISpeechBuble speechBubble;
+
 
     [Header("Game Over")]
     [SerializeField] GameOver gameOverPanel;
@@ -408,7 +407,7 @@ public class RacingController : MonoBehaviour
     {
         // Timer reset (agar allaqachon aktiv bo‘lsa ham yangilaymiz)
         tLeft = reverseGraceTime;
-        SpeechBubbleEnable("Ogohlantirish orqaga yugurayapsan!");
+        UIButtonActions.Instance?.SpeechBubbleEnable("Ogohlantirish orqaga yugurayapsan!");
         if (!reverseActive)
         {
             reverseActive = true;
@@ -423,7 +422,7 @@ public class RacingController : MonoBehaviour
     public void ClearReverse()
     {
         if (!reverseActive) return;
-        SpeechBubbleDisable();
+        UIButtonActions.Instance?.SpeechBubbleDisable();
         reverseActive = false;
         if (reverseCo != null) { StopCoroutine(reverseCo); reverseCo = null; }
         HidePanel(); // slide out + SetActive(false)
@@ -507,7 +506,7 @@ public class RacingController : MonoBehaviour
         // var animal = FindObjectOfType<MalbersAnimations.Controller.MAnimal>();
         // if (animal) animal.Lock(true);
         StartCoroutine(HorseStopAction(GameOverPanel));
-        SpeechBubbleDisable();
+        UIButtonActions.Instance?.SpeechBubbleDisable();
         Debug.Log("[RacingController] Reverse timeout -> DQ");
     }
 
@@ -517,27 +516,7 @@ public class RacingController : MonoBehaviour
     }
     #endregion
 
-    #region Popup Speech Bubble
-    public void ShowAndHideSpeech(string speech)
-    {
-        StartCoroutine(SpeechCoroutine(speech));
-    }
-    private IEnumerator SpeechCoroutine(string text)
-    {
-        SpeechBubbleEnable(text);
-        yield return new WaitForSeconds(3.5f);
-        SpeechBubbleDisable();
-    }
-    public void SpeechBubbleEnable(string text)
-    {
-       // speechBubble.gameObject.SetActive(true);
-        speechBubble.Show(text);
-    }
-    public void SpeechBubbleDisable()
-    {
-        speechBubble.Hide();
-    }
-    #endregion
+   
 
     #region Camera Details
 

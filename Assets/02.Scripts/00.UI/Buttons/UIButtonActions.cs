@@ -125,6 +125,9 @@ public class UIButtonActions : MonoBehaviour
     public HorseSpeedState speedState = HorseSpeedState.Run;
     #endregion
 
+    [Header("Popup Data")]
+    [SerializeField] UISpeechBuble speechBubble;
+
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
     {
@@ -699,6 +702,29 @@ public class UIButtonActions : MonoBehaviour
 
         c.a = to;
         blinkOverlay.color = c;
+    }
+    #endregion
+
+    #region Popup Speech Bubble
+    public void ShowAndHideSpeech(string speech)
+    {
+        StartCoroutine(SpeechCoroutine(speech));
+    }
+    private IEnumerator SpeechCoroutine(string text)
+    {
+        Debug.Log("Call 3");
+        SpeechBubbleEnable(text);
+        yield return new WaitForSeconds(3.5f);
+        SpeechBubbleDisable();
+    }
+    public void SpeechBubbleEnable(string text)
+    {
+        // speechBubble.gameObject.SetActive(true);
+        speechBubble.Show(text);
+    }
+    public void SpeechBubbleDisable()
+    {
+        speechBubble.Hide();
     }
     #endregion
 }
