@@ -198,6 +198,7 @@ public class RacingResultPage : MonoBehaviour
                 timeText.text = $"{e.LastSplitTime:0.00}s";
                 currentRecordTime.text = $"{savedTime:0.00}s";
                 overAllTime = savedTime;
+                //Debug.Log($"Split time {e.LastSplitTime}");
             }
         }
 

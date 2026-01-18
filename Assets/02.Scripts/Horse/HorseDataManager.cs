@@ -22,7 +22,7 @@ public class HorseDataManager : MonoBehaviour
     {
         horseInstance = Instantiate(horsePrefab, spawnPoint.position, spawnPoint.rotation, spawnPoint.transform);
         OnHorseTransorm?.Invoke(horseInstance.transform);
-        // 4.Ichidan HorseSkinLoader scriptni topamiz
+        //4.Ichidan HorseSkinLoader scriptni topamiz
         HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
         if (horseSkinLoader != null)
         {

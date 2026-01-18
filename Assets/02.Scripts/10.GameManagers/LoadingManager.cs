@@ -1,99 +1,137 @@
 ﻿using Michsky.UI.ModernUIPack;
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class LoadingManager : MonoBehaviour
 {
-  
-    public ProgressBar progressBar;
-    private float loadTime;
+    [Header("UI")]
+    [SerializeField] private ProgressBar progressBar;
     [SerializeField] private TMP_Text randomText;
+
+    [Header("Panels")]
     [SerializeField] private GameObject homePanel;
     [SerializeField] private GameObject baxmalRacingPanel;
     [SerializeField] private GameObject jomboyKopkariPanel;
+    [SerializeField] private GameObject egyptPanel;
 
-    private void Awake()
-    {
-        
-    }
+    private Coroutine progressRoutine;
+    private Coroutine textRoutine;
 
-    void Start()
-    {
-        loadTime = AddressablesManager.Instance.loadingTime;
-        SoundManager.Instance.StopMusicEvent();
-        
-    }
     private void OnEnable()
     {
-        PanelActivation();
-        
+        SoundManager.Instance?.StopMusicEvent();
+        ApplyScenePanel(SceneLoadManager.Instance != null
+            ? SceneLoadManager.Instance.CurrentSceneType
+            : SceneLoadManager.SceneType.Home);
     }
-    private void PanelActivation()
+
+    private void OnDisable()
     {
-        switch(SceneLoadManager.Instance.CurrentSceneType)
+        StopLoadingRoutines();
+    }
+
+    private void ApplyScenePanel(SceneLoadManager.SceneType sceneType)
+    {
+        // 1) hammasini o'chiramiz (clean slate)
+        SetAllPanels(false);
+
+        // 2) oldingi coroutine'larni to'xtatamiz
+        StopLoadingRoutines();
+
+        // 3) kerakli panel + kerakli rutinalar
+        switch (sceneType)
         {
             case SceneLoadManager.SceneType.Home:
-                if (baxmalRacingPanel.activeSelf) baxmalRacingPanel.SetActive(false);
-                if(jomboyKopkariPanel.activeSelf) jomboyKopkariPanel.SetActive(false);
                 homePanel.SetActive(true);
-                StartCoroutine(ChangeTextRoutine());
-                StartCoroutine(ProgressbarTime());
+                StartLoadingRoutines();
                 break;
+
             case SceneLoadManager.SceneType.SecondRacing:
-                if(homePanel.activeSelf) homePanel.SetActive(false);
-                if (jomboyKopkariPanel.activeSelf) jomboyKopkariPanel.SetActive(false);
                 baxmalRacingPanel.SetActive(true);
                 break;
+
             case SceneLoadManager.SceneType.Beginer:
-                if (homePanel.activeSelf) homePanel.SetActive(false);
-                if (baxmalRacingPanel.activeSelf) baxmalRacingPanel.SetActive(false);
                 jomboyKopkariPanel.SetActive(true);
                 break;
+
+            case SceneLoadManager.SceneType.EgyptRacing:
+                egyptPanel.SetActive(true);
+                break;
+
             default:
-                homePanel.SetActive(true );
-                if (baxmalRacingPanel.activeSelf) baxmalRacingPanel.SetActive(false);
-                if (jomboyKopkariPanel.activeSelf) jomboyKopkariPanel.SetActive(false);
-                StartCoroutine(ChangeTextRoutine());
-                StartCoroutine(ProgressbarTime());
+                homePanel.SetActive(true);
+                StartLoadingRoutines();
                 break;
         }
     }
 
-    IEnumerator ProgressbarTime()
+    private void SetAllPanels(bool state)
     {
-        Debug.Log("🟡 ProgressbarTime coroutine started.");
+        if (homePanel != null) homePanel.SetActive(state);
+        if (baxmalRacingPanel != null) baxmalRacingPanel.SetActive(state);
+        if (jomboyKopkariPanel != null) jomboyKopkariPanel.SetActive(state);
+        if (egyptPanel != null) egyptPanel.SetActive(state);
+    }
 
+    private void StartLoadingRoutines()
+    {
+        if (progressBar != null)
+        {
+            progressRoutine = StartCoroutine(ProgressbarRoutine());
+        }
+
+        if (randomText != null)
+        {
+            textRoutine = StartCoroutine(ChangeTextRoutine());
+        }
+    }
+
+    private void StopLoadingRoutines()
+    {
+        if (progressRoutine != null)
+        {
+            StopCoroutine(progressRoutine);
+            progressRoutine = null;
+        }
+
+        if (textRoutine != null)
+        {
+            StopCoroutine(textRoutine);
+            textRoutine = null;
+        }
+    }
+
+    private IEnumerator ProgressbarRoutine()
+    {
+        // loadingTime 0..100 deb faraz qildim (sening koding shunaqa)
         while (true)
         {
-            float current = AddressablesManager.Instance?.loadingTime ?? 0f;
+            float current = AddressablesManager.Instance != null
+                ? AddressablesManager.Instance.loadingTime
+                : 0f;
+
+            // clamp qilib qo'yamiz (xatolar bo'lmasin)
+            current = Mathf.Clamp(current, 0f, 100f);
 
             progressBar.currentPercent = current;
             progressBar.UpdateUI();
 
             if (current >= 100f)
-            {
-                Debug.Log("✅ Progress reached 100%. Exiting coroutine.");
-                break;
-            }
+                yield break;
 
             yield return null;
         }
     }
 
-
-    IEnumerator ChangeTextRoutine()
+    private IEnumerator ChangeTextRoutine()
     {
-        while (true)
+        // safety: manager yo'q bo'lsa loopni to'xtatamiz
+        while (LanguageManager.Instance != null)
         {
             int randomIndex = Random.Range(6, 20);
-            randomText.text = LanguageManager.Instance.GetText(randomIndex); 
+            randomText.text = LanguageManager.Instance.GetText(randomIndex);
             yield return new WaitForSeconds(3f);
         }
     }
-
 }

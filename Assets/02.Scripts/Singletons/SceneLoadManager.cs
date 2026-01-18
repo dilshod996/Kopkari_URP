@@ -26,7 +26,8 @@ public class SceneLoadManager : MonoBehaviour
         Jomboy,
         PastDargom,
         FirstRacing,
-        SecondRacing
+        SecondRacing,
+        EgyptRacing
     }
 
     public SceneType CurrentSceneType  = SceneType.None;

@@ -6,6 +6,9 @@ using Michsky.UI.ModernUIPack;
 
 public class MapCard : MonoBehaviour
 {
+
+    [SerializeField] private Sprite backgroundSprite;
+    public Sprite BackgroundSprite => backgroundSprite;
     [Header("UI Elements")]
  
     public Image shadowImage;

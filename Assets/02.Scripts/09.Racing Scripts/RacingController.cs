@@ -362,15 +362,63 @@ public class RacingController : MonoBehaviour
         horse.Always_Forward(false);
         horse.Speed_CurrentIndex_Set(2);
 
-        CameraPostionCheck(-189f, -3f);
+        if (SceneLoadManager.Instance != null)
+        {
+            float x;
+            float y;
+            switch (SceneLoadManager.Instance.CurrentSceneType)
+            {
+                case SceneLoadManager.SceneType.SecondRacing:
+                    x = -189f;
+                    y = -3f;
+                    break;
+                default:
+                    x = 10f;
+                    y = -3f;
+                    break;
+            }
+            CameraPostionCheck(x, y);           
+        }
+        else
+        {
+            CameraPostionCheck(-10f, -3f);
+        }
+            
+        //CameraPostionCheck(-189f, -3f); changed here
         HideLeaderboardPanel();
         mobileCanvasPanel.gameObject.SetActive(false);
         int playerRank = RacingLeaderboard.Instance.PlayerRank();
         PlayFinalAnim(playerRank);
-        winningPanelBG.SetActive(true);
+        if (winningPanelBG != null) { winningPanelBG.SetActive(true); }
         yield return new WaitForSeconds(3f);     
         OnRacingFinished?.Invoke();
-        CameraPostionCheck(-98f, -8f);
+
+
+        if (SceneLoadManager.Instance != null)
+        {
+            float x;
+            float y;
+            switch (SceneLoadManager.Instance.CurrentSceneType)
+            {
+                case SceneLoadManager.SceneType.SecondRacing:
+                    x = -98f;
+                    y = -8f;
+                    break;
+                default:
+                    x = 10f;
+                    y = -5f;
+                    break;
+            }
+            CameraPostionCheck(x, y);
+        }
+        else
+        {
+            CameraPostionCheck(10, -5);
+        }
+
+        
+
+
 
         yield return new WaitForSeconds(1f);
         horse.StopMoving();

@@ -85,3 +85,8 @@ ShaderVariantCollection:
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _NORMALMAP
         passType: 0
+  - first: {fileID: 4800000, guid: b9c7c1fa1b05472438bd30e8a3543734, type: 3}
+    second:
+      variants:
+      - keywords: LOD_FADE_CROSSFADE _EMISSION _NORMALMAP
+        passType: 0

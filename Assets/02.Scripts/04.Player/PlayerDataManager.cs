@@ -161,8 +161,26 @@ public class PlayerDataManager : MonoBehaviour
 
         // 3) Blink OUT (ko‘z ochish)
         yield return StartCoroutine(UIButtonActions.Instance.FadeBlink(1f, 0f, 1f));
-        bool ok =riderAnimal.Mode_TryActivate(18, 1);
-        riderAnimal.Mode_Activate(18, 1);
+        if (SceneLoadManager.Instance != null)
+        {
+            int abilityIndex = SceneLoadManager.Instance.CurrentSceneType switch
+            {
+                SceneLoadManager.SceneType.EgyptRacing => 2,
+                SceneLoadManager.SceneType.FirstRacing => 3,
+                SceneLoadManager.SceneType.SecondRacing => 1,
+                _ => -99
+            };
+
+            bool ok = riderAnimal.Mode_TryActivate(18, abilityIndex);
+            riderAnimal.Mode_Activate(18, abilityIndex);
+        }
+        else
+        {
+            bool ok = riderAnimal.Mode_TryActivate(18, 2);
+            riderAnimal.Mode_Activate(18, 2);
+        }
+
+
 
         // 5) Anim ko‘rinsin
         yield return new WaitForSecondsRealtime(3.5f);

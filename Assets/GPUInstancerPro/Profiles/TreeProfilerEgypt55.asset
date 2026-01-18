@@ -25,7 +25,7 @@ MonoBehaviour:
   isCalculateInstancingBounds: 1
   minCullingDistance: 0
   minShadowCullingDistance: 20
-  minMaxDistance: {x: 0, y: 55}
+  minMaxDistance: {x: 0, y: 60}
   frustumOffset: 0.1
   occlusionOffset: 0.0001
   occlusionOffsetSizeMultiplier: 0

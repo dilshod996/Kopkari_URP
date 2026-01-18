@@ -56,6 +56,8 @@ public class HomeMainUI : MonoBehaviour
 
     [Header("UI Buttons")]
     [SerializeField] private Button playBtn;
+    [SerializeField] private Button nyufiyButton;
+    [SerializeField] private Button korakButton;
 
     [Header("UI Pages")]
 
@@ -64,8 +66,10 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject dailyUIRewards;
     [SerializeField] private RewardPopup rewardPopup;
     [SerializeField] private GameObject foodPanel;
+    [SerializeField] private GameObject suppliesPanel;
 
     [SerializeField] private GameObject horseResourcesObject;
+    [SerializeField] private GameObject coinsPage;
 
 
     #region Reward System Parametrs
@@ -142,6 +146,8 @@ public class HomeMainUI : MonoBehaviour
     private const float StaminaRegenMinutes = 180f; // 3 hours
 
     #endregion
+
+    public event Action<bool> OnCoinsButtonPressed;
     private void Awake()
     {
         if (Instance == null)
@@ -166,41 +172,77 @@ public class HomeMainUI : MonoBehaviour
 
     private void OnEnable()
     {
-        Debug.Log("HOME UI SCRIPT ENABLED !");
         ApplyOfflineRegen();
         OnNewDayAvailable += HandleNewDay;
         lastInputTime = Time.realtimeSinceStartup;
 
-        if (touchAction != null)
-        {
-            touchAction.Enable();
-            touchAction.performed += OnTouch;
-        }
-
-        //InvokeRepeating(nameof(CheckIdle), 1f, 1f);
+        //if (touchAction != null)
+        //{
+        //    touchAction.Enable();
+        //    touchAction.performed += OnTouch;
+        //}
         RiderStatistcs();
         HorseStatistcs();
         if(LanguageManager.Instance != null) UITransilations();
+        //PlayerResourse.OnNyufiyUpdated += UpdateNyufiy;
         FoodShowerPopup.OnBuyBtnPressed += UpdateNyufiy;
+        PlayerResourse.OnResourseUpdated += UpdatePlayerResource;
         FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
         StartingInfo();
-
+        nyufiyButton.onClick.AddListener(NyufiyClicked);
+        korakButton.onClick.AddListener(QorakClicked);
     }
     private void OnDisable()
     {
         OnNewDayAvailable -= HandleNewDay;
-        if (touchAction != null)
-        {
-            touchAction.performed -= OnTouch;
-            touchAction.Disable();
-        }
+        //if (touchAction != null)
+        //{
+        //    touchAction.performed -= OnTouch;
+        //    touchAction.Disable();
+        //}
 
         CancelInvoke(nameof(CheckIdle));
+        //PlayerResourse.OnNyufiyUpdated -= UpdateNyufiy;
+        PlayerResourse.OnResourseUpdated -= UpdatePlayerResource;
         FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
         FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
+        nyufiyButton.onClick.RemoveListener(NyufiyClicked);
+        korakButton.onClick.RemoveListener(QorakClicked);
     }
+    #region Player Supplies
+
+    private void UpdatePlayerResource(string itemkey)
+    {
+        switch (itemkey)
+        { 
+            case Constants.PlayerItems.Defense:
+                defenseAmountText.text = $"X{GetInt(Constants.PlayerItems.Defense)}";
+                break;
+            case Constants.PlayerItems.SlowDown:
+                slowDownAmountText.text = $"X{GetInt(Constants.PlayerItems.SlowDown)}";
+                break;
+            case Constants.PlayerItems.WebSnare:
+                webAmountText.text = $"X{GetInt(Constants.PlayerItems.WebSnare)}";
+                break;
+            case Constants.PlayerItems.Whip:
+                break;
+            case Constants.PlayerItems.Horsedust:
+                break;
+            default: break;
+        }
+        UpdateNyufiy();
+    }
+    public void ShowSuppliesPanel()
+    {
+        ShowUI(suppliesPanel);
+    }
+    public void HideSuppliesPanel()
+    {
+        HideUI(suppliesPanel);
+    }
+    #endregion
 
     #region Prefs Data
     private void RiderStatistcs()
@@ -272,7 +314,15 @@ public class HomeMainUI : MonoBehaviour
         PlayerPrefs.SetInt(key, defaultValue);
         return defaultValue;
     }
+    int GetInt(string key)
+    {
+        if (PlayerPrefs.HasKey(key))
+        {
+            return PlayerPrefs.GetInt(key);
+        }
 
+        return 0;
+    }
     // Local helper: string qiymatni yo'qligida default qo'yib ketadi
     void EnsureString(string key, string defaultValue)
     {
@@ -327,6 +377,8 @@ public class HomeMainUI : MonoBehaviour
     }
 
     #endregion
+
+
 
     #region Transilations
     public void UITransilations()
@@ -778,5 +830,18 @@ public class HomeMainUI : MonoBehaviour
         Debug.Log($"Regen applied. New stats: P={power}, C={cooling}, S={stamina}");
     }
 
+    #endregion
+
+    #region Coins
+    private void QorakClicked()
+    {
+        ShowUI(coinsPage);
+        OnCoinsButtonPressed?.Invoke(true);
+    }
+    private void NyufiyClicked()
+    {
+        ShowUI(coinsPage);
+        OnCoinsButtonPressed?.Invoke(false);
+    }
     #endregion
 }

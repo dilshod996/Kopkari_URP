@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Build.Pipeline.Tasks;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -116,11 +115,10 @@ public class RaceCheckpoint : MonoBehaviour
 
         // last index update (teleport / qayta urish bo'lsa ham)
         _lastIndexByAgent[agent] = index;
-        if (agent.isPlayer && index is 5 or 18 or 20)
+        if (agent.isPlayer && index is 5 or 13 or 16)
         {
             int rank = RacingLeaderboard.Instance.PlayerRank();
             Speech(index, rank);
-            Debug.Log("Call 1");
         }
 
     }
@@ -224,13 +222,13 @@ public class RaceCheckpoint : MonoBehaviour
                 textData = LanguageManager.Instance?.GetText(373);
                 break;
 
-            case 18:
+            case 13:
                 textData = (rank == 1)
                     ? LanguageManager.Instance?.GetText(370)
                     : LanguageManager.Instance?.GetText(372);
                 break;
 
-            case 20:
+            case 16:
                 textData = LanguageManager.Instance?.GetText(371);
                 break;
 

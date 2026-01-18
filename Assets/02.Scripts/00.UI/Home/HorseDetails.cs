@@ -9,15 +9,42 @@ public class HorseDetails : MonoBehaviour
 {
     [Header("UI Texts")]
     [SerializeField] private TMP_Text title;
+    [SerializeField] private TMP_Text backText;
+    [SerializeField] private TMP_Text playerSuppliesText;
+    [SerializeField] private Button backButton;
+    [SerializeField] private Button playerSuppliesButton;
 
     private void OnEnable()
     {
         TextTransilations();
+        backButton.onClick.AddListener(ClosePage);
+        playerSuppliesButton.onClick.AddListener(OpenPlayerSuppliesPage);
     }
-
+    private void OnDisable()
+    {
+        backButton.onClick.RemoveListener(ClosePage);
+        playerSuppliesButton.onClick.RemoveListener(OpenPlayerSuppliesPage);
+    }
     private void TextTransilations()
     {
-        title.text = LanguageManager.Instance.GetText(105);
+        if(LanguageManager.Instance != null)
+        {
+            title.text = LanguageManager.Instance.GetText(105);
+            backText.text = LanguageManager.Instance.GetText(362);
+            playerSuppliesText.text = LanguageManager.Instance.GetText(386);
+        }
+    }
+    private void ClosePage()
+    {
+        HomeMainUI.Instance.HideUI(this);
+    }
+    private void OpenPlayerSuppliesPage()
+    {
+        HomeMainUI.Instance.ShowSuppliesPanel();
+        if (this.gameObject.activeSelf)
+        {
+            ClosePage();
+        }
     }
 
 }

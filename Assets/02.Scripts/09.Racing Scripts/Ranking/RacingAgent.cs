@@ -40,6 +40,7 @@ public class RacingAgent : MonoBehaviour
         StartTime = globalStartTime;
         FinishTime = 0f;
         HasFinished = false;
+        Debug.Log("Race Started");
     }
 
     public void EndRace()

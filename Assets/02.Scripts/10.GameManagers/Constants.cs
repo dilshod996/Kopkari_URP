@@ -77,6 +77,7 @@ public static class Constants
     {
         public const string BaxmalRacing = "baxmal";
         public const string Zarafshan = "zarafshan";
+        public const string Egypt = "egypt";
         public const string Registon = "registon";
         public const string JomboyKopkari = "jomboyk";
     }
@@ -106,5 +107,6 @@ public static class Constants
         public const string SlowDown = "slowdown";
         public const string WebSnare = "websnare";
         public const string Whip = "whip";
+        public const string Horsedust = "horsedust";
     }
 }

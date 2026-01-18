@@ -170,17 +170,17 @@ public class LobbyManager : MonoBehaviour
         float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
         int langId=-1;
-        if (currentPower < 10)
+        if (currentPower < 30)
             langId = 334;
 
-        if (currentCooling < 10)
+        if (currentCooling < 30)
             langId = 335;
 
-        if (currentStamina < 10)
+        if (currentStamina < 30)
             langId = 336;
         
 
-        if (currentPower < 10 || currentCooling < 10 || currentStamina < 10)
+        if (currentPower < 30 || currentCooling < 30 || currentStamina < 30)
         {
             HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
             return;  // Racing boshlanmaydi
@@ -188,6 +188,31 @@ public class LobbyManager : MonoBehaviour
            
 
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.SecondRacing, preloadAddresses);
+    }
+    public void EgyptRacing()
+    {
+        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
+        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
+        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        int langId = -1;
+        if (currentPower < 30)
+            langId = 334;
+
+        if (currentCooling < 30)
+            langId = 335;
+
+        if (currentStamina < 30)
+            langId = 336;
+
+
+        if (currentPower < 30 || currentCooling < 30 || currentStamina < 30)
+        {
+            HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            return;  // Racing boshlanmaydi
+        }
+
+
+        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.EgyptRacing, preloadAddresses);
     }
     #endregion
 
