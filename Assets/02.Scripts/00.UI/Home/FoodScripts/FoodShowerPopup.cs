@@ -193,6 +193,8 @@ public class FoodShowerPopup : MonoBehaviour
         amount++;
 
         PlayerPrefs.SetInt(key, amount);
+        string popupMessage = $"+1 {LanguageManager.Instance.GetText(GetFoodName(food))}";
+        HomeMainUI.Instance.ShowRightPopup(popupMessage, foodIcon.sprite);
     }
 
     private string GetFoodKey(HorseFood food)
@@ -223,6 +225,31 @@ public class FoodShowerPopup : MonoBehaviour
 
         PlayerPrefs.SetInt(key, current);
     }
+
+    private int GetFoodName(HorseFood food)
+    {
+        switch (food)
+        {
+            case HorseFood.Water:
+                return 111;
+
+            case HorseFood.Apple:
+                return 110;
+
+            case HorseFood.Wheat:
+                return 108;
+
+            case HorseFood.Barley:
+                return 109;
+
+            case HorseFood.StaminWater:
+                return 112;
+
+            default:
+                return -1; // safety
+        }
+    }
+
 
 
 }

@@ -9,12 +9,13 @@ public class UserDetails : MonoBehaviour
 {
     [Header("UI Texts")]    
     [SerializeField] private TMP_Text titleText;
-    [SerializeField] private TMP_Text nameLabelText;
     [SerializeField] private TMP_InputField nameInputField;
     [SerializeField] private TMP_Text levelLabelText;
     [SerializeField] private TMP_Text teamLabelText;
     [SerializeField] private TMP_Text versionLabelText;
-    [SerializeField] private TMP_Text saveBtn;
+    [SerializeField] private TMP_Text saveBtnText;
+    [SerializeField] private TMP_Text statusLabelText;
+    [SerializeField] private TMP_Text rankingLabelText;
 
 
     [Header("UI Buttons")]
@@ -23,6 +24,7 @@ public class UserDetails : MonoBehaviour
     [SerializeField] private CustomDropdown countryDropdown;
     [SerializeField] private TMP_Text levelCountText;
     [SerializeField] private TMP_Text playerName;
+    [SerializeField] private TMP_Text closeText;
 
     [SerializeField] private PlayerPrefsData playerPrefsObj;
     //[SerializeField] private LobbyManager lobbyManager;
@@ -53,11 +55,11 @@ public class UserDetails : MonoBehaviour
             PlayerPrefs.SetInt(Constants.Player.CountryName, countryDropdown.selectedItemIndex);
             PlayerPrefs.Save();
             gameObject.SetActive(false);
-            if (!PlayerPrefs.HasKey("horseData"))
-            {
-                playerPrefsObj.gameObject.SetActive(true);
-                playerPrefsObj.HorseDataCheck();
-            }
+            //if (!PlayerPrefs.HasKey("horseData"))
+            //{
+            //    playerPrefsObj.gameObject.SetActive(true);
+            //    playerPrefsObj.HorseDataCheck();
+            //}
         }
         else
         {
@@ -76,19 +78,20 @@ public class UserDetails : MonoBehaviour
 
     private void CloseEvent()
     {
+        HomeMainUI.Instance.HideUI(this);
         if (!PlayerPrefs.HasKey(Constants.Player.UsernameKey))
         {
             StartScaleLoop(nameContainerObj);
         }
-        else
-        {
-            gameObject.SetActive(false);
-            if (!PlayerPrefs.HasKey("horseData"))
-            {
-                playerPrefsObj.gameObject.SetActive(true);
-                playerPrefsObj.HorseDataCheck();
-            }
-        }
+        //else
+        //{
+        //    gameObject.SetActive(false);
+        //    if (!PlayerPrefs.HasKey("horseData"))
+        //    {
+        //        playerPrefsObj.gameObject.SetActive(true);
+        //        playerPrefsObj.HorseDataCheck();
+        //    }
+        //}
     }
 
     private void CountrySelection()
@@ -99,11 +102,13 @@ public class UserDetails : MonoBehaviour
     private void UITransilations()
     {
         titleText.text = LanguageManager.Instance.GetText(99);
-        nameLabelText.text = LanguageManager.Instance.GetText(100)+ ":";
+        statusLabelText.text = LanguageManager.Instance.GetText(276);
         levelLabelText.text = LanguageManager.Instance.GetText(101);
-        teamLabelText.text = LanguageManager.Instance.GetText(102) + ":";
+        teamLabelText.text = LanguageManager.Instance.GetText(102);
         versionLabelText.text = LanguageManager.Instance.GetText(103);
-        saveBtn.text = LanguageManager.Instance.GetText(39);
+        saveBtnText.text = LanguageManager.Instance.GetText(39);
+        closeText.text = LanguageManager.Instance.GetText(362);
+        rankingLabelText.text = LanguageManager.Instance.GetText(247);
     }
     #region Scale Animation
     public void StartScaleLoop(GameObject targetObj)

@@ -212,7 +212,8 @@ public class MapCardScaler : MonoBehaviour
 
     private void ClosePage()
     {
-        HomeMainUI.Instance.HideUI(this);
+        this.gameObject.SetActive(false);
+        HomeMainUI.Instance.OpenGameMainPanel();
     }
 
     void OnDisable()

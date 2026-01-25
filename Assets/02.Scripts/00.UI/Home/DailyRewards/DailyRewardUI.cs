@@ -1,22 +1,32 @@
-﻿using UnityEngine;
+﻿using TMPro;
+using UnityEngine;
 using UnityEngine.UI;
 
 public class DailyRewardUI : MonoBehaviour
 {
-    [Header("1–6 kunlik itemlar")]
-    [SerializeField] private RewardDayUI[] first6Days;   // size = 6
+    [Header("1–7 kunlik itemlar")]
+    [SerializeField] private RewardDayUI[] first7Days;   // size = 7
 
-    [Header("7-kun item")]
-    [SerializeField] private RewardDayUI day7;
+    [Header("8-kun BIG prize item")]
+    [SerializeField] private RewardDayUI day8;
 
     [Header("Monthly Slider")]
     [SerializeField] private Slider monthlySlider;
-    [SerializeField] private GameObject monthlyReadyFx; // optional
+    [SerializeField] private GameObject monthlyReadyFx;
 
     private HomeMainUI Core => HomeMainUI.Instance;
 
+    [SerializeField] private TMP_Text titleText;
+    [SerializeField] private TMP_Text claimText;
+    [SerializeField] private Button claimButton;
+
     private void OnEnable()
     {
+        if(LanguageManager.Instance!=null)
+        {
+            titleText.text = LanguageManager.Instance.GetText(394); 
+            claimText.text = LanguageManager.Instance.GetText(392);
+        }
         if (Core != null)
         {
             Core.OnClaimCompleted += OnClaimCompleted;
@@ -25,6 +35,8 @@ public class DailyRewardUI : MonoBehaviour
 
         RefreshDaysUI();
         UpdateMonthlySliderVisual();
+        claimButton.onClick.AddListener(OnClickClaim);
+
     }
 
     private void OnDisable()
@@ -34,43 +46,39 @@ public class DailyRewardUI : MonoBehaviour
             Core.OnClaimCompleted -= OnClaimCompleted;
             Core.OnMonthlyRewardReady -= OnMonthlyRewardReady;
         }
+        claimButton.onClick.RemoveListener(OnClickClaim);
     }
 
-    /// <summary>
-    /// 1–7 kun UI larini yangilash (faqat claimed/unclaimed bo‘yicha)
-    /// </summary>
     private void RefreshDaysUI()
     {
         if (Core == null) return;
 
-        int lastClaimed = Core.LastClaimedDay;   // masalan: 0 yoki 1..7
-        int todayIndex = Core.TodayDayIndex;    // bugungi kun indeksi 1..7
+        int lastClaimed = Core.LastClaimedDay;   // 0 yoki 1..8
+        int todayIndex = Core.TodayDayIndex;    // 1..8
 
-        // 1–6 kun
-        for (int i = 0; i < first6Days.Length; i++)
+        // 1–7 kun
+        for (int i = 0; i < first7Days.Length; i++)
         {
-            var ui = first6Days[i];
+            var ui = first7Days[i];
             if (ui == null) continue;
 
-            int dayIndex = i + 1; // 1..6
-
+            int dayIndex = i + 1; // 1..7
             bool claimed = (lastClaimed > 0 && dayIndex <= lastClaimed);
             bool isToday = (dayIndex == todayIndex && Core.CanClaimToday);
 
-            ui.Setup(claimed, isToday);
+            ui.Setup(claimed, isToday, dayIndex);
         }
 
-        // 7-kun
-        if (day7 != null)
+        // 8-kun
+        if (day8 != null)
         {
-            int dayIndex = 7;
+            int dayIndex = 8;
             bool claimed = (lastClaimed > 0 && dayIndex <= lastClaimed);
             bool isToday = (dayIndex == todayIndex && Core.CanClaimToday);
 
-            day7.Setup(claimed, isToday);
+            day8.Setup(claimed, isToday, dayIndex);
         }
     }
-
 
     private void UpdateMonthlySliderVisual()
     {
@@ -83,7 +91,6 @@ public class DailyRewardUI : MonoBehaviour
             monthlyReadyFx.SetActive(Core.CurrentMonthProgress >= Core.MonthCycleLength);
     }
 
-    // Claim tugmasi UI dan shu methodga ulangan bo‘ladi
     public void OnClickClaim()
     {
         if (Core == null) return;
@@ -94,14 +101,11 @@ public class DailyRewardUI : MonoBehaviour
     {
         RefreshDaysUI();
         UpdateMonthlySliderVisual();
-
-        // Claim tugagach, bu UI’ni yopamiz
         gameObject.SetActive(false);
     }
 
     private void OnMonthlyRewardReady()
     {
-        // Xohlasang alohida popup yoki efekt
         Debug.Log("Monthly to‘ldi – katta sovga UIda ko‘rsat!");
     }
 }

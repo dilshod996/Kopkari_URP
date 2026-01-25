@@ -109,4 +109,20 @@ public static class Constants
         public const string Whip = "whip";
         public const string Horsedust = "horsedust";
     }
+    public static class DailyPrizes
+    {
+        public const string PREF_LAST_CLAIM_DATE = "DR_LastClaimDate";
+        public const string PREF_DAY_IN_CYCLE = "DR_DayInCycle";     // 1..7 (oxirgi olingan kun)
+        public const string PREF_MONTH_PROGRESS = "DR_MonthProgress";  // 0..monthCycleLength
+        public const string PREF_STREAK_DAY = "PREF_STREAK_DAY";
+    }
+    public static class MapNames
+    {
+        public const string Zarafshan = "zarafmap";
+        public const string Registan = "regismap";
+        public const string Egypt = "egyptmap";
+        public const string Japan = "japanmap";
+        public const string PastDargom = "pastmap";
+        public const string Chiroqchi = "chiroqmap";
+    }
 }

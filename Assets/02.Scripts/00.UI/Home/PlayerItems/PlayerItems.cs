@@ -38,7 +38,7 @@ public class PlayerItems : MonoBehaviour
         {
             titleText.text = LanguageManager.Instance.GetText(386);
             backText.text = LanguageManager.Instance.GetText(362);
-            horseNutritionText.text = LanguageManager.Instance.GetText(105);
+            horseNutritionText.text = LanguageManager.Instance.GetText(395);
         }
     }
     private void ClosePage()

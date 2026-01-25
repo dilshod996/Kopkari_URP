@@ -29,7 +29,7 @@ public class HorseDetails : MonoBehaviour
     {
         if(LanguageManager.Instance != null)
         {
-            title.text = LanguageManager.Instance.GetText(105);
+            title.text = LanguageManager.Instance.GetText(395);
             backText.text = LanguageManager.Instance.GetText(362);
             playerSuppliesText.text = LanguageManager.Instance.GetText(386);
         }

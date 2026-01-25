@@ -20,16 +20,17 @@ public class Settings : MonoBehaviour
     [SerializeField] private TMP_Text vibrationOpen;
     [SerializeField] private TMP_Text vibrationClose;
     [SerializeField] private TMP_Text deleteAccountTitle;
-    [SerializeField] private TMP_Text saveChangesTitle;
 
     [Header("Settings Details")]
     [SerializeField] private CustomDropdown languageDropdown;
     [SerializeField] private SliderManager soundSlider;
     [SerializeField] private Button saveButton;
     [SerializeField] private Button deleteButton;
+    [SerializeField] private Button closeButton;
 
     [SerializeField] private TMP_Text saveBtnText;
     [SerializeField] private TMP_Text deleteBtnText;
+    [SerializeField] private TMP_Text closeText;
     public enum Language
     {
         Uzbek,
@@ -43,14 +44,18 @@ public class Settings : MonoBehaviour
         Russian
     }
 
-    void Start()
-    {
-        saveButton.onClick.AddListener(GetSelectedItem);
-    }
+
 
     private void OnEnable()
     {
         SettingsPanelText();
+        saveButton.onClick.AddListener(GetSelectedItem);
+        closeButton.onClick.AddListener(ClosePage);
+    }
+    private void OnDisable()
+    {
+        saveButton.onClick.RemoveListener(GetSelectedItem);
+        closeButton.onClick.RemoveListener(ClosePage);
     }
     private void SettingsPanelText()
     {
@@ -70,6 +75,7 @@ public class Settings : MonoBehaviour
 
         deleteBtnText.text = LanguageManager.Instance.GetText(38);
         saveBtnText.text = LanguageManager.Instance.GetText(39);
+        closeText.text = LanguageManager.Instance.GetText(362);
         GetLanguageCode();
     }
     private void GetLanguageCode()
@@ -99,7 +105,7 @@ public class Settings : MonoBehaviour
         SetLanguage(languageDropdown.selectedItemIndex);
         HomeMainUI.Instance?.UITransilations();
         //lobbyManager.MainLobbyText();
-        gameObject.SetActive(false);
+        HomeMainUI.Instance.HideUI(this);
         //LanguageManager.Instance.SetLanguage(languageDropdown.selectedItemIndex);
     }
     public void SetLanguage(int langNum)
@@ -124,5 +130,10 @@ public class Settings : MonoBehaviour
                 break;
         }
         LanguageManager.Instance.SetLanguage(lang);
+    }
+
+    private void ClosePage()
+    {
+        HomeMainUI.Instance.HideUI(this);
     }
 }

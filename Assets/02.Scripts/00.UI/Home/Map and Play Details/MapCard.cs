@@ -6,7 +6,13 @@ using Michsky.UI.ModernUIPack;
 
 public class MapCard : MonoBehaviour
 {
-
+    public enum MapType
+    {
+        Kopkari,
+        Racing,
+        Archery
+    }
+    public MapType mapType;
     [SerializeField] private Sprite backgroundSprite;
     public Sprite BackgroundSprite => backgroundSprite;
     [Header("UI Elements")]
@@ -37,6 +43,7 @@ public class MapCard : MonoBehaviour
 
     [SerializeField] private int mapInfoCode = -1;
     [SerializeField] private int costMap;
+    [SerializeField] private int playCost;
     private MapCardScaler manager;
 
     //[Header("Moving Scene Details")]
@@ -50,14 +57,14 @@ public class MapCard : MonoBehaviour
         LockeMap();
         mapNameText.text = LanguageManager.Instance.GetText(mapLangCode);
         blockBtn.onClick.AddListener(MapDetails);
-        
+
     }
 
     private void MapDetails()
     {
-        string cost  = costMap.ToString() /*+ LanguageManager.Instance.GetText(58)*/;
+        //string cost  = costMap.ToString() /*+ LanguageManager.Instance.GetText(58)*/;
         HomeMainUI.Instance.ShowUI(popupMapInfo);
-        popupMapInfo.SetMapData(mapNameText.text, mapImage.sprite, cost, LanguageManager.Instance.GetText(mapInfoCode));
+        popupMapInfo.SetMapData(LanguageManager.Instance.GetText(mapLangCode), mapImage.sprite, costMap, LanguageManager.Instance.GetText(mapInfoCode), mapLangName, mapType);
     }
     public void Initialize(MapCardScaler cardManager)
     {
@@ -73,13 +80,14 @@ public class MapCard : MonoBehaviour
     public void SetAsMain(bool isMain)
     {
         targetScale = isMain ? selectedScale : normalScale;
+
         if (isUnlocked)
         {
             targetAlpha = isMain ? 0f : 0.85f;
 
             if (shadowImage != null)
                 shadowImage.gameObject.SetActive(!isMain);
-            //Debug.Log("Card is main?" + gameObject.name);
+            Debug.Log("Card is main?" + gameObject.name);
         }
         else
         {
@@ -89,14 +97,25 @@ public class MapCard : MonoBehaviour
     }
     private void LockeMap()
     {
-        if (!isUnlocked)
+        int mapOpen = PlayerPrefs.GetInt(mapLangName, 0);
+        if (mapOpen != 0)
         {
-            blockBtn.gameObject.SetActive(true);
+            blockBtn.gameObject.SetActive(false);
+            isUnlocked = true;
         }
         else
         {
-            blockBtn.gameObject.SetActive(false);
+            blockBtn.gameObject.SetActive(true);
+            isUnlocked= false;
         }
+        //if (!isUnlocked)
+        //{
+        //    blockBtn.gameObject.SetActive(true);
+        //}
+        //else
+        //{
+        //    blockBtn.gameObject.SetActive(false);
+        //}
     }
 
     void Update()

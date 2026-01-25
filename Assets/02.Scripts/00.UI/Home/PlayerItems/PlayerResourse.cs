@@ -16,12 +16,13 @@ public class PlayerResourse : MonoBehaviour
         Whiplash,
         HorseDust
     }
-    public Resources playerResources = Resources.None;
-    public Button buyButton;
-    public TMP_Text resourseName;
-    public TMP_Text resourseCost;
-    public int resourseTransilationId;
-    public int costOfResource;
+    [SerializeField] private Resources playerResources = Resources.None;
+    [SerializeField] private Button buyButton;
+    [SerializeField] private TMP_Text resourseName;
+    [SerializeField] private TMP_Text resourseCost;
+    [SerializeField] private Image iconImage;
+    [SerializeField] private int resourseTransilationId;
+    [SerializeField] private int costOfResource;
     public static event Action OnMoneyNotEnough;
     public static event Action OnNyufiyUpdated;
     public static event Action<string> OnResourseUpdated;
@@ -60,14 +61,42 @@ public class PlayerResourse : MonoBehaviour
         int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
         if (nyufiyAmount < costOfResource)
         {
+           
             // money not enough text
             OnMoneyNotEnough?.Invoke();
             return;
         }
-
+        ResourceName();
         BuyResourceSave(nyufiyAmount);
     }
+    private void ResourceName(int amount = 1)
+    {
+        int textId = -1;
 
+        switch (playerResources)
+        {
+            case Resources.Defender:
+                textId = 324;
+                break;
+
+            case Resources.WebSnare:
+                textId = 322;
+                break;
+
+            case Resources.WalkZone:
+                textId = 323;
+                break;
+
+            default:
+                Debug.LogWarning($"Unknown resource: {playerResources}");
+                return;
+        }
+
+        string resourceName =
+            $"+{amount} {LanguageManager.Instance.GetText(textId)}";
+
+        HomeMainUI.Instance.ShowRightPopup(resourceName, iconImage.sprite);
+    }
     private void BuyResourceSave(int nyufiyAmount)
     {
         string itemKey = GetItemKey(playerResources);

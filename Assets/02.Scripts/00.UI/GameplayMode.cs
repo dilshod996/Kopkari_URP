@@ -49,10 +49,12 @@ public class GameplayMode : MonoBehaviour
     private void OpenLeaguePanel()
     {
         HomeMainUI.Instance.ShowUI(leaguePanel);
+        this.gameObject.SetActive(false);
     }
     private void OpenRacingMaps()
     {
         HomeMainUI.Instance.ShowUI(racingMaps);
+        this.gameObject.SetActive(false);
     }
     public void CloseGameObject()
     {
