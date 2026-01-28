@@ -12,7 +12,16 @@ using UnityEngine.UI;
 
 public class HomeMainUI : MonoBehaviour
 {
+    public enum HomeEnvironment
+    {
+        ZarafshanEnvironment,
+        EgyptEnvironment,
+        TexasEnvironment,
+        ChinaEnvironment
+    }
     public static HomeMainUI Instance { get; private set; }
+
+    public HomeEnvironment environment;
     [Header("MainUI Parent Object")]
     [SerializeField] private GameObject mainUIPanel;
 
@@ -62,6 +71,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private Button competationsBtn;
     [SerializeField] private Button nyufiyButton;
     [SerializeField] private Button korakButton;
+    [SerializeField] private Button envChangeBtn;
 
     [Header("UI Pages")]
 
@@ -78,6 +88,8 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject competationsPanel;
     [SerializeField] private GameObject horseResourcesObject;
     [SerializeField] private GameObject coinsPage;
+    [SerializeField] private EnvironmentChangeUI environmentChangePanel;
+    [SerializeField] private EnvironmentLoadingUI environmentLoadingUI;
 
 
     #region Reward System Parametrs
@@ -183,10 +195,11 @@ public class HomeMainUI : MonoBehaviour
         else
             Destroy(gameObject);
         LoadState();
-        if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
-        {
-            fadeImage.gameObject.SetActive(true);
-        }
+        //if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
+        //{
+        //    fadeImage.gameObject.SetActive(true);
+        //}
+        SetEnvironmentLoading();
     }
 
     private void Start()
@@ -218,11 +231,13 @@ public class HomeMainUI : MonoBehaviour
         PlayerResourse.OnResourseUpdated += UpdatePlayerResource;
         FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
+        LobbyManager.OnNameChanged += LobbyName;
         StartingInfo();
         nyufiyButton.onClick.AddListener(NyufiyClicked);
         korakButton.onClick.AddListener(QorakClicked);
         collectionBtn.onClick.AddListener(OpenCollectionPage);
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
+        envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
     }
     private void OnDisable()
     {
@@ -239,10 +254,12 @@ public class HomeMainUI : MonoBehaviour
         FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
         FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
+        LobbyManager.OnNameChanged -= LobbyName;
         nyufiyButton.onClick.RemoveListener(NyufiyClicked);
         korakButton.onClick.RemoveListener(QorakClicked);
         collectionBtn.onClick.RemoveListener(OpenCollectionPage);
         competationsBtn.onClick.RemoveListener(OpenCompetationsPanel);
+        envChangeBtn.onClick.RemoveListener(OpenEnvironmentChangePanel);
     }
     #region Player Supplies
 
@@ -435,7 +452,6 @@ public class HomeMainUI : MonoBehaviour
         playText.text = LanguageManager.Instance.GetText(23);
         collections.text = LanguageManager.Instance.GetText(320);
         storeText.text = LanguageManager.Instance.GetText(25);
-        lobbyName.text = LanguageManager.Instance.GetText(27);
     }
     #endregion
 
@@ -443,10 +459,11 @@ public class HomeMainUI : MonoBehaviour
 
     public void RemoveInitialImage()
     {
-        if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
-        {
-            StartCoroutine(FadeOut());
-        }
+        environmentLoadingUI.gameObject.SetActive(false);
+        //if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
+        //{
+        //    StartCoroutine(FadeOut());
+        //}
     }
     public IEnumerator FadeOut()  // 1 -> 0
     {
@@ -1018,6 +1035,12 @@ public class HomeMainUI : MonoBehaviour
     {
         ShowUI(collectionsPage);
     }
+    public void OpenEnvironmentChangePanel()
+    {
+        if (!environmentChangePanel.gameObject.activeSelf)
+            environmentChangePanel.gameObject.SetActive(true);
+        environmentChangePanel.Toggle();
+    }
     #endregion
 
     #region Right Popup
@@ -1093,6 +1116,32 @@ public class HomeMainUI : MonoBehaviour
             return;
         }
         PlayerPrefs.SetInt(Constants.MapNames.Zarafshan, 1);
+    }
+    private void LobbyName(string name)
+    {
+        switch (name)
+        {
+            case Constants.MapNames.Zarafshan:
+                lobbyName.text = LanguageManager.Instance.GetText(27);
+                break;
+            case Constants.MapNames.Egypt:
+                lobbyName.text= LanguageManager.Instance.GetText(410);
+                break;
+            default:
+                lobbyName.text = "Unknown";
+                break;
+        }
+        
+    }
+    public void SetEnvironmentLoading()
+    {
+        string getEnvrionmentName = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
+        if (!environmentLoadingUI.gameObject.activeSelf)
+        {
+            environmentLoadingUI.gameObject.SetActive(true);
+        }
+        environmentLoadingUI.SetMapData(getEnvrionmentName);
+        LobbyName(getEnvrionmentName);
     }
     #endregion
 }

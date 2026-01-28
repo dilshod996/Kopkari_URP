@@ -34,7 +34,7 @@ public class HorseSkinLoader : MonoBehaviour
         }
         else
         {
-            var mat = await AddressablesManager.Instance.LoadAssetAsync<Material>(materialAddress);
+            var mat = await AddressablesService.Instance.LoadAssetAsync<Material>(materialAddress);
             if (mat != null)
             {
                 MaterialCacheManager.Add(materialAddress, mat);

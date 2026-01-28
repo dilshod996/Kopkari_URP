@@ -35,7 +35,7 @@ namespace Kopkari
         [SerializeField] private Button startButton;
         //[SerializeField] private Button skipButton;
         //Intro scene addressable addresses
-        private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
+        private List<string> myAddresses = new List<string> { /*"IntroSound",*/ "IntroVideo" };
 
         [Header("User Details")]
         // private const string UsernameKey = "username";
@@ -138,74 +138,161 @@ namespace Kopkari
         {
             SoundManager.Instance.PlayMusic(clip);
         }
-
         public async void GetAddressableData()
         {
-            handles = await AddressablesManager.Instance.LoadAssetsWithHandlesAsync<Object>(
+            // 1) Preload/download + progress
+            bool ok = await AddressablesService.Instance.PreloadDependenciesAsync(
                 myAddresses,
-                progress =>
+                p =>
                 {
-                    
-                    progressBar.currentPercent = progress * 100f;
+                    progressBar.currentPercent = p * 100f;
                     progressBar.UpdateUI();
                 },
                 fakeDurationIfCached: 2f
             );
-            if (handles.Count > 0)
+
+            if (!ok)
             {
-                foreach (var handle in handles)
-                {
-                    if (handle.Status == AsyncOperationStatus.Succeeded)
-                    {
-                        Object loadedAsset = handle.Result;
-
-                        // 🎬 Agar bu VideoClip bo‘lsa
-                        if (loadedAsset is VideoClip video)
-                        {
-                            videoPlayer.clip = video;
-                            videoPlayer.Play();
-                            Debug.Log("▶️ Video played");
-                        }
-
-                        // 🔊 Agar bu AudioClip bo‘lsa
-                        else if (loadedAsset is AudioClip audio)
-                        {
-                            SoundEffect(audio);
-                            Debug.Log("🔊 Audio played");
-                        }
-                        if(startingPage.activeSelf)
-                            startingPage.SetActive(false);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("❌ One of the assets failed to load.");
-                    }
-                }
+                Debug.LogWarning("❌ Preload failed (no internet or download error).");
+                return;
             }
 
+            // 2) Keylar bo‘yicha assetlarni load qilib ishlatamiz
+            foreach (var address in myAddresses)
+            {
+                // Video bo‘lishi mumkin
+                var video = await AddressablesService.Instance.LoadAssetAsync<VideoClip>(address);
+                if (video != null)
+                {
+                    videoPlayer.clip = video;
+                    videoPlayer.Play();
+                    Debug.Log($"▶️ Video played: {address}");
+
+                    if (startingPage.activeSelf)
+                        startingPage.SetActive(false);
+
+                    continue;
+                }
+
+                // Audio bo‘lishi mumkin
+                //var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
+                //if (audio != null)
+                //{
+                //    SoundEffect(audio);
+                //    Debug.Log($"🔊 Audio played: {address}");
+
+                //    if (startingPage.activeSelf)
+                //        startingPage.SetActive(false);
+
+                //    continue;
+                //}
+
+                // Hech bo‘lmasa Object qilib ko‘ramiz (agar kerak bo‘lsa)
+                var any = await AddressablesService.Instance.LoadAssetAsync<Object>(address);
+                if (any == null)
+                {
+                    Debug.LogWarning($"❌ Failed to load or unknown type: {address}");
+                }
+            }
         }
         public async void GetIntroVideo()
         {
-            handle = await AddressablesManager.Instance.LoadAssetWithHandleAsync<VideoClip>(
+            bool ok = await AddressablesService.Instance.PreloadDependenciesAsync(
                 "IntroVideo",
-                progress =>
+                p =>
                 {
-                    float percent = progress * 100f;
-                    progressBar.currentPercent = percent;
+                    progressBar.currentPercent = p * 100f;
                     progressBar.UpdateUI();
                 },
                 fakeDurationIfCached: 3f
             );
 
-            if (handle.Status == AsyncOperationStatus.Succeeded)
+            if (!ok)
             {
-                videoPlayer.clip = handle.Result;
-                videoPlayer.Play();
-                if (startingPage.activeSelf)
-                    startingPage.SetActive(false);
+                Debug.LogWarning("❌ IntroVideo preload failed.");
+                return;
             }
 
+            var clip = await AddressablesService.Instance.LoadAssetAsync<VideoClip>("IntroVideo");
+            if (clip == null)
+            {
+                Debug.LogWarning("❌ IntroVideo failed to load.");
+                return;
+            }
+
+            videoPlayer.clip = clip;
+            videoPlayer.Play();
+
+            if (startingPage.activeSelf)
+                startingPage.SetActive(false);
         }
+        //public async void GetAddressableData()
+        //{
+        //    handles = await AddressablesManager.Instance.LoadAssetsWithHandlesAsync<Object>(
+        //        myAddresses,
+        //        progress =>
+        //        {
+
+        //            progressBar.currentPercent = progress * 100f;
+        //            progressBar.UpdateUI();
+        //        },
+        //        fakeDurationIfCached: 2f
+        //    );
+        //    if (handles.Count > 0)
+        //    {
+        //        foreach (var handle in handles)
+        //        {
+        //            if (handle.Status == AsyncOperationStatus.Succeeded)
+        //            {
+        //                Object loadedAsset = handle.Result;
+
+        //                // 🎬 Agar bu VideoClip bo‘lsa
+        //                if (loadedAsset is VideoClip video)
+        //                {
+        //                    videoPlayer.clip = video;
+        //                    videoPlayer.Play();
+        //                    Debug.Log("▶️ Video played");
+        //                }
+
+        //                // 🔊 Agar bu AudioClip bo‘lsa
+        //                else if (loadedAsset is AudioClip audio)
+        //                {
+        //                    SoundEffect(audio);
+        //                    Debug.Log("🔊 Audio played");
+        //                }
+        //                if(startingPage.activeSelf)
+        //                    startingPage.SetActive(false);
+        //            }
+        //            else
+        //            {
+        //                Debug.LogWarning("❌ One of the assets failed to load.");
+        //            }
+        //        }
+        //    }
+
+        //}
+        //public async void GetIntroVideo()
+        //{
+        //    handle = await AddressablesManager.Instance.LoadAssetWithHandleAsync<VideoClip>(
+        //        "IntroVideo",
+        //        progress =>
+        //        {
+        //            float percent = progress * 100f;
+        //            progressBar.currentPercent = percent;
+        //            progressBar.UpdateUI();
+        //        },
+        //        fakeDurationIfCached: 3f
+        //    );
+
+        //    if (handle.Status == AsyncOperationStatus.Succeeded)
+        //    {
+        //        videoPlayer.clip = handle.Result;
+        //        videoPlayer.Play();
+        //        if (startingPage.activeSelf)
+        //            startingPage.SetActive(false);
+        //    }
+
+        //}
         #endregion
 
         #region Notification Popup
@@ -271,15 +358,16 @@ namespace Kopkari
         }
         private void OnDisable()
         {
-            foreach (var handle in handles)
-            {
-                if (handle.IsValid())
-                {
-                    Debug.Log("Addressables released");
-                    Addressables.Release(handle);
-                }
-            }
-
+            //foreach (var handle in handles)
+            //{
+            //    if (handle.IsValid())
+            //    {
+            //        Debug.Log("Addressables released");
+            //        Addressables.Release(handle);
+            //    }
+            //}
+            foreach (var addr in myAddresses)
+                AddressablesService.Instance.ReleaseLoadedAsset(addr);
         }
         /// Fade-in → 0 dan 1 ga (ekran qora bo‘ladi)
         /// </summary>
@@ -383,7 +471,36 @@ namespace Kopkari
             // Boshqa material addresslarini qo‘shish
 
             // Yana kerak bo‘lsa boshqa obyektlar
-            preload.Add(Constants.Environment.Utov);
+            //preload.Add(Constants.Environment.Utov);
+            string selectedEnv = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment );// default
+                                                                                                        // 1️⃣ Default map
+            if (string.IsNullOrEmpty(selectedEnv))
+            {
+                selectedEnv = Constants.MapNames.Zarafshan;
+                PlayerPrefs.SetString(
+                    Constants.HomeEnivronments.SelectedEnvironment,
+                    selectedEnv
+                );
+            }
+
+            // 2️⃣ Map bo‘yicha terrain layer’larni qo‘shamiz
+            switch (selectedEnv)
+            {
+                case Constants.MapNames.Zarafshan:
+                    preload.Add(Constants.ZarafshanMapLayers.GrassLayer);
+                    preload.Add(Constants.ZarafshanMapLayers.DryGrassLayer);
+                    preload.Add(Constants.ZarafshanMapLayers.MudLayer);
+                    preload.Add(Constants.ZarafshanMapLayers.CliffLayer);
+                    break;
+
+                    // keyin boshqa maplar qo‘shiladi:
+                    // case Constants.MapNames.Registan:
+                    //     preload.Add(Constants.RegistanMapLayers.SandLayer);
+                    //     preload.Add(Constants.RegistanMapLayers.StoneLayer);
+                    //     break;
+            }
+
+            preload.Add(selectedEnv);
 
             return preload;
         }

@@ -136,42 +136,64 @@ public class PlayerSkinLoader : MonoBehaviour
         await ActivateAndApplyMaterial(upperBodyVariants, upperKey);
         await ActivateAndApplyMaterial(lowerBodyVariants, lowerKey);
     }
-
     private async Task ActivateAndApplyMaterial(GameObject[] variants, params string[] materialAddresses)
     {
+        if (variants == null || variants.Length == 0) return;
+        if (materialAddresses == null || materialAddresses.Length == 0)
+        {
+            // Hamma variantlarni o'chirish (xohlasang)
+            foreach (var v in variants) if (v) v.SetActive(false);
+            return;
+        }
+
+        // Addressables init (agar kerak bo‘lsa)
+        await AddressablesService.Instance.EnsureInitializedAsync();
+
         bool activated = false;
+
+        // Tez match uchun
+        var addressSet = materialAddresses
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Select(a => a.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var variant in variants)
         {
+            if (variant == null) continue;
+
             string variantName = variant.name;
 
-            if (materialAddresses.Any(addr => variantName.Equals(addr, StringComparison.OrdinalIgnoreCase)))
+            // Variant nomi addresslardan biriga mos kelsa
+            if (addressSet.Contains(variantName))
             {
                 variant.SetActive(true);
 
-                // Faqat bitta Renderer bo‘lishi kutilmoqda
                 var renderer = variant.GetComponent<Renderer>();
-
                 if (renderer == null)
                 {
                     Debug.LogWarning($"⚠️ Renderer not found on {variant.name}");
-                    return;
+                    continue; // return emas, boshqa variantlarni ham tekshir
                 }
 
-                string matchedAddress = materialAddresses.FirstOrDefault(addr => variantName.Equals(addr, StringComparison.OrdinalIgnoreCase));
+                string matchedAddress = materialAddresses
+                    .First(a => variantName.Equals(a, StringComparison.OrdinalIgnoreCase));
 
-                if (MaterialCacheManager.TryGet(matchedAddress, out var cachedMat))
+                // 1) Cache bor-mi?
+                if (MaterialCacheManager.TryGet(matchedAddress, out var cachedMat) && cachedMat != null)
                 {
-                    renderer.material = cachedMat;
-                    Debug.Log($"✅ Applied cached material: {matchedAddress} to {variant.name}");
+                    // IMPORTANT: sharedMaterial (material emas)
+                    renderer.sharedMaterial = cachedMat;
+                    // Debug.Log($"✅ Applied cached material: {matchedAddress} to {variant.name}");
                 }
                 else
                 {
-                    var loadedMat = await AddressablesManager.Instance.LoadAssetAsync<Material>(matchedAddress);
+                    // 2) AddressablesService orqali load
+                    var loadedMat = await AddressablesService.Instance.LoadAssetAsync<Material>(matchedAddress);
+
                     if (loadedMat != null)
                     {
                         MaterialCacheManager.Add(matchedAddress, loadedMat);
-                        renderer.material = loadedMat;
+                        renderer.sharedMaterial = loadedMat;
                     }
                     else
                     {
@@ -190,6 +212,59 @@ public class PlayerSkinLoader : MonoBehaviour
         if (!activated)
             Debug.LogWarning($"⚠️ No matching variant found for materials: [{string.Join(", ", materialAddresses)}]");
     }
+    //private async Task ActivateAndApplyMaterial(GameObject[] variants, params string[] materialAddresses)
+    //{
+    //    bool activated = false;
+
+    //    foreach (var variant in variants)
+    //    {
+    //        string variantName = variant.name;
+
+    //        if (materialAddresses.Any(addr => variantName.Equals(addr, StringComparison.OrdinalIgnoreCase)))
+    //        {
+    //            variant.SetActive(true);
+
+    //            // Faqat bitta Renderer bo‘lishi kutilmoqda
+    //            var renderer = variant.GetComponent<Renderer>();
+
+    //            if (renderer == null)
+    //            {
+    //                Debug.LogWarning($"⚠️ Renderer not found on {variant.name}");
+    //                return;
+    //            }
+
+    //            string matchedAddress = materialAddresses.FirstOrDefault(addr => variantName.Equals(addr, StringComparison.OrdinalIgnoreCase));
+
+    //            if (MaterialCacheManager.TryGet(matchedAddress, out var cachedMat))
+    //            {
+    //                renderer.material = cachedMat;
+    //                Debug.Log($"✅ Applied cached material: {matchedAddress} to {variant.name}");
+    //            }
+    //            else
+    //            {
+    //                var loadedMat = await AddressablesManager.Instance.LoadAssetAsync<Material>(matchedAddress);
+    //                if (loadedMat != null)
+    //                {
+    //                    MaterialCacheManager.Add(matchedAddress, loadedMat);
+    //                    renderer.material = loadedMat;
+    //                }
+    //                else
+    //                {
+    //                    Debug.LogError($"❌ Failed to load material: {matchedAddress}");
+    //                }
+    //            }
+
+    //            activated = true;
+    //        }
+    //        else
+    //        {
+    //            variant.SetActive(false);
+    //        }
+    //    }
+
+    //    if (!activated)
+    //        Debug.LogWarning($"⚠️ No matching variant found for materials: [{string.Join(", ", materialAddresses)}]");
+    //}
 
     private void OnDestroy()
     {

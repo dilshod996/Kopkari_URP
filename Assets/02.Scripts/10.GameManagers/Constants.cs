@@ -125,4 +125,16 @@ public static class Constants
         public const string PastDargom = "pastmap";
         public const string Chiroqchi = "chiroqmap";
     }
+    public static class HomeEnivronments
+    {
+        public const string SelectedEnvironment = "selectedEnv";
+    }
+    public static class ZarafshanMapLayers 
+    {
+        public const string GrassLayer = "grassLayer";
+        public const string DryGrassLayer = "drygrassLayer";
+        public const string MudLayer = "mudLayer";
+        public const string CliffLayer = "cliffLayer";
+    }
+
 }

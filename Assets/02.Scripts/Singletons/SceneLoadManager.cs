@@ -100,55 +100,109 @@ public class SceneLoadManager : MonoBehaviour
     {
         StartCoroutine(HandleSceneLoadWithoutAdditive(targetScene, preloadAddresses));
     }
-
     private IEnumerator HandleSceneLoad(SceneType targetScene, List<string> preloadAddresses)
     {
+        loadingTime = 0f;
 
-        AddressablesManager.Instance.loadingTime = 0f;
+        // 0) Loading scene
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(SceneType.Loading.ToString());
         while (!asyncLoad.isDone)
             yield return null;
 
-        // Scene loaded, wait a frame for safety
         yield return null;
 
-        // Start actual addressable preload with progress bar
-        AsyncOperationHandle preloadHandle = default;
-        Task<AsyncOperationHandle> preloadTask = AddressablesManager.Instance.PreloadWithProgressBarAsync(
-            preloadAddresses, fakeDurationIfCached);
+        // 1) Addressables preload (cached bo‘lsa fake progress)
+        bool preloadOK = true;
 
-        while (!preloadTask.IsCompleted)
-            yield return null;
+        var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+            preloadAddresses,
+            p => loadingTime = p * 100f,
+            fakeDurationIfCached
+        );
 
-        preloadHandle = preloadTask.Result;
+        yield return WaitTask(preloadTask);
+        preloadOK = preloadTask.Result;
 
-        // 1. Target sahifani load qil
+        if (!preloadOK)
+        {
+            // internet yo‘q (download kerak bo‘lsa) yoki download failed
+            // shu yerda popup ko‘rsatib qaytib ketasan
+            //IntroManager.Instance?.ShowPopup();
+            yield break;
+        }
+
+        // 2) Target scene ADDITIVE load
         AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Additive);
         while (!sceneLoadOp.isDone)
             yield return null;
 
-        // 2. Uni active sahifa deb belgilab qo‘y
+        // 3) Active qilish
         Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
-        // Sahifa load bo‘lguncha kuting
         while (!loadedScene.isLoaded)
             yield return null;
 
         SceneManager.SetActiveScene(loadedScene);
 
-        // 3. Assetlar tugaguncha kut
+        // 4) Instantiation finished kutish
         while (!AssetInstantiationFinished)
             yield return null;
 
-        // 4. Loading sahifani unload qil
-        AsyncOperation unloadOp = SceneManager.UnloadSceneAsync("Loading");
+        // 5) Loading scene unload
+        AsyncOperation unloadOp = SceneManager.UnloadSceneAsync(SceneType.Loading.ToString());
         while (!unloadOp.isDone)
             yield return null;
 
-        //CurrentSceneType = targetScene;
-        SetAssetInstantiationFinished(false); // Reset for future scenes
-
-
+        SetAssetInstantiationFinished(false);
     }
+
+    //private IEnumerator HandleSceneLoad(SceneType targetScene, List<string> preloadAddresses)
+    //{
+
+    //    AddressablesManager.Instance.loadingTime = 0f;
+    //    AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(SceneType.Loading.ToString());
+    //    while (!asyncLoad.isDone)
+    //        yield return null;
+
+    //    // Scene loaded, wait a frame for safety
+    //    yield return null;
+
+    //    // Start actual addressable preload with progress bar
+    //    AsyncOperationHandle preloadHandle = default;
+    //    Task<AsyncOperationHandle> preloadTask = AddressablesManager.Instance.PreloadWithProgressBarAsync(
+    //        preloadAddresses, fakeDurationIfCached);
+
+    //    while (!preloadTask.IsCompleted)
+    //        yield return null;
+
+    //    preloadHandle = preloadTask.Result;
+
+    //    // 1. Target sahifani load qil
+    //    AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Additive);
+    //    while (!sceneLoadOp.isDone)
+    //        yield return null;
+
+    //    // 2. Uni active sahifa deb belgilab qo‘y
+    //    Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+    //    // Sahifa load bo‘lguncha kuting
+    //    while (!loadedScene.isLoaded)
+    //        yield return null;
+
+    //    SceneManager.SetActiveScene(loadedScene);
+
+    //    // 3. Assetlar tugaguncha kut
+    //    while (!AssetInstantiationFinished)
+    //        yield return null;
+
+    //    // 4. Loading sahifani unload qil
+    //    AsyncOperation unloadOp = SceneManager.UnloadSceneAsync("Loading");
+    //    while (!unloadOp.isDone)
+    //        yield return null;
+
+    //    //CurrentSceneType = targetScene;
+    //    SetAssetInstantiationFinished(false); // Reset for future scenes
+
+
+    //}
     #region Introdan Lobby ga
     public void LoadSmartSceneIntro(SceneType scene, List<string> preloadKeys)
     {
@@ -174,48 +228,86 @@ public class SceneLoadManager : MonoBehaviour
     }
     private IEnumerator HandleSceneLoadIntro(SceneType targetScene, List<string> preloadAddresses)
     {
-        AddressablesManager.Instance.loadingTime = 0f;
+        loadingTime = 0f;
 
-        // 1. Avval Addressables preload (progress bar'ni hozirgi sahnadagi UI orqali ko‘rsatishing mumkin)
-        Task<AsyncOperationHandle> preloadTask =
-            AddressablesManager.Instance.PreloadWithProgressBarAsync(preloadAddresses, fakeDurationIfCached);
+        var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+            preloadAddresses,
+            p => loadingTime = p * 100f,
+            fakeDurationIfCached
+        );
 
-        while (!preloadTask.IsCompleted)
-            yield return null;
+        yield return WaitTask(preloadTask);
 
-        AsyncOperationHandle preloadHandle = preloadTask.Result;
+        if (!preloadTask.Result)
+        {
+           // IntroManager.Instance?.ShowPopup();
+            yield break;
+        }
 
-        // 2. Joriy active sahnani eslab qolamiz
         Scene oldScene = SceneManager.GetActiveScene();
 
-        // 3. Target sahnani ADDITIVE rejimda load qilamiz
-        AsyncOperation sceneLoadOp =
-            SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
-
+        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
         while (!sceneLoadOp.isDone)
             yield return null;
 
-        // 4. Target sahna to‘liq load bo‘lguncha kutamiz va uni active qilamiz
         Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
         while (!loadedScene.isLoaded)
             yield return null;
 
         SceneManager.SetActiveScene(loadedScene);
 
-        // 5. Addressables instantiation tugashini kutamiz
         while (!AssetInstantiationFinished)
             yield return null;
 
-        // 6. Eski sahnani unload qilamiz (Loading emas, balki oldingi active sahna)
-        if (oldScene.IsValid())
-        {
-            AsyncOperation unloadOld = SceneManager.UnloadSceneAsync(oldScene);
-            while (!unloadOld.isDone)
-                yield return null;
-        }
-
-        SetAssetInstantiationFinished(false); // keyingi sahnalar uchun reset
+        // Single bo‘lgani uchun old scene unload shart emas (u allaqachon ketgan bo‘ladi),
+        // lekin qoldirsang ham zarar qilmaydi. Xohlasang olib tashla.
+        SetAssetInstantiationFinished(false);
     }
+
+    //private IEnumerator HandleSceneLoadIntro(SceneType targetScene, List<string> preloadAddresses)
+    //{
+    //    AddressablesManager.Instance.loadingTime = 0f;
+
+    //    // 1. Avval Addressables preload (progress bar'ni hozirgi sahnadagi UI orqali ko‘rsatishing mumkin)
+    //    Task<AsyncOperationHandle> preloadTask =
+    //        AddressablesManager.Instance.PreloadWithProgressBarAsync(preloadAddresses, fakeDurationIfCached);
+
+    //    while (!preloadTask.IsCompleted)
+    //        yield return null;
+
+    //    AsyncOperationHandle preloadHandle = preloadTask.Result;
+
+    //    // 2. Joriy active sahnani eslab qolamiz
+    //    Scene oldScene = SceneManager.GetActiveScene();
+
+    //    // 3. Target sahnani ADDITIVE rejimda load qilamiz
+    //    AsyncOperation sceneLoadOp =
+    //        SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+
+    //    while (!sceneLoadOp.isDone)
+    //        yield return null;
+
+    //    // 4. Target sahna to‘liq load bo‘lguncha kutamiz va uni active qilamiz
+    //    Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+    //    while (!loadedScene.isLoaded)
+    //        yield return null;
+
+    //    SceneManager.SetActiveScene(loadedScene);
+
+    //    // 5. Addressables instantiation tugashini kutamiz
+    //    while (!AssetInstantiationFinished)
+    //        yield return null;
+
+    //    // 6. Eski sahnani unload qilamiz (Loading emas, balki oldingi active sahna)
+    //    if (oldScene.IsValid())
+    //    {
+    //        AsyncOperation unloadOld = SceneManager.UnloadSceneAsync(oldScene);
+    //        while (!unloadOld.isDone)
+    //            yield return null;
+    //    }
+
+    //    SetAssetInstantiationFinished(false); // keyingi sahnalar uchun reset
+    //}
     public void LoadSceneIntro(SceneType newScene)
     {
         StartCoroutine(LoadSceneDirect(newScene));
@@ -227,7 +319,7 @@ public class SceneLoadManager : MonoBehaviour
         CurrentSceneType = newScene;
 
         // Fake progress bar uchun
-        AddressablesManager.Instance.loadingTime = 0f;
+        //AddressablesManager.Instance.loadingTime = 0f;
         StartCoroutine(FakeLoadingTimeProgress());
 
         // Agar fakeDuration ishlatilsa — kutamiz
@@ -240,51 +332,96 @@ public class SceneLoadManager : MonoBehaviour
     #endregion
     private IEnumerator HandleSceneLoadWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
     {
-        // 1. Oldingi sahifani saqlaymiz
-        //PreviousSceneType = CurrentSceneType;
-        //CurrentSceneType = SceneType.Loading;
-        AddressablesManager.Instance.loadingTime = 0f;
-        // 2. Loading sahifani to‘liq yuklaymiz (SceneMode.Single)
+        loadingTime = 0f;
+
+        // 1) Loading scene SINGLE
         AsyncOperation loadingOp = SceneManager.LoadSceneAsync(SceneType.Loading.ToString(), LoadSceneMode.Single);
         while (!loadingOp.isDone)
             yield return null;
 
-        // 3. Bir frame kutamiz
         yield return null;
 
-        // 4. Addressable preloadni boshlaymiz
+        // 2) Preload
+        var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+            preloadAddresses,
+            p => loadingTime = p * 100f,
+            fakeDurationIfCached
+        );
 
-        Task<AsyncOperationHandle> preloadTask = AddressablesManager.Instance.PreloadWithProgressBarAsync(
-            preloadAddresses, fakeDurationIfCached);
+        yield return WaitTask(preloadTask);
 
-        while (!preloadTask.IsCompleted)
-            yield return null;
+        if (!preloadTask.Result)
+        {
+            //IntroManager.Instance?.ShowPopup();
+            yield break;
+        }
 
-        var preloadHandle = preloadTask.Result;
-
-        // 5. Target sahifani yuklaymiz (Single: Loading sahifasini o‘chiradi)
+        // 3) Target SINGLE (Loading sahnasini almashtiradi)
         AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
         while (!sceneLoadOp.isDone)
             yield return null;
 
-        // 6. Sahifa yuklanguncha kutamiz
+        // 4) Active
         Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
         while (!loadedScene.isLoaded)
             yield return null;
 
-        // 7. Uni active sahifa deb belgilaymiz
         SceneManager.SetActiveScene(loadedScene);
 
-        // 8. Agar Player va Horse instantiate qilinishi kutilayotgan bo‘lsa
+        // 5) Instantiation finished
         while (!AssetInstantiationFinished)
             yield return null;
 
-        // 9. Yangi sahifaga o‘tamiz
         CurrentSceneType = targetScene;
-
-        // 10. Keyingi sahifalar uchun flagni reset qilish mumkin (agar kerak bo‘lsa)
-        // SetAssetInstantiationFinished(false);
     }
+
+    //private IEnumerator HandleSceneLoadWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
+    //{
+    //    // 1. Oldingi sahifani saqlaymiz
+    //    //PreviousSceneType = CurrentSceneType;
+    //    //CurrentSceneType = SceneType.Loading;
+    //    AddressablesManager.Instance.loadingTime = 0f;
+    //    // 2. Loading sahifani to‘liq yuklaymiz (SceneMode.Single)
+    //    AsyncOperation loadingOp = SceneManager.LoadSceneAsync(SceneType.Loading.ToString(), LoadSceneMode.Single);
+    //    while (!loadingOp.isDone)
+    //        yield return null;
+
+    //    // 3. Bir frame kutamiz
+    //    yield return null;
+
+    //    // 4. Addressable preloadni boshlaymiz
+
+    //    Task<AsyncOperationHandle> preloadTask = AddressablesManager.Instance.PreloadWithProgressBarAsync(
+    //        preloadAddresses, fakeDurationIfCached);
+
+    //    while (!preloadTask.IsCompleted)
+    //        yield return null;
+
+    //    var preloadHandle = preloadTask.Result;
+
+    //    // 5. Target sahifani yuklaymiz (Single: Loading sahifasini o‘chiradi)
+    //    AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+    //    while (!sceneLoadOp.isDone)
+    //        yield return null;
+
+    //    // 6. Sahifa yuklanguncha kutamiz
+    //    Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+    //    while (!loadedScene.isLoaded)
+    //        yield return null;
+
+    //    // 7. Uni active sahifa deb belgilaymiz
+    //    SceneManager.SetActiveScene(loadedScene);
+
+    //    // 8. Agar Player va Horse instantiate qilinishi kutilayotgan bo‘lsa
+    //    while (!AssetInstantiationFinished)
+    //        yield return null;
+
+    //    // 9. Yangi sahifaga o‘tamiz
+    //    CurrentSceneType = targetScene;
+
+    //    // 10. Keyingi sahifalar uchun flagni reset qilish mumkin (agar kerak bo‘lsa)
+    //    // SetAssetInstantiationFinished(false);
+    //}
 
 
 
@@ -293,14 +430,9 @@ public class SceneLoadManager : MonoBehaviour
         AssetInstantiationFinished = status;
     }
 
-
-
-    ///test
     public void LoadScene(SceneType newScene)
     {
-        if (newScene == SceneType.Loading)
-            return;
-
+        if (newScene == SceneType.Loading) return;
         StartCoroutine(LoadSceneWithTransition(newScene));
     }
 
@@ -308,16 +440,21 @@ public class SceneLoadManager : MonoBehaviour
     {
         PreviousSceneType = CurrentSceneType;
         CurrentSceneType = newScene;
+
+        loadingTime = 0f;
+
+        // Loading scene
         SceneManager.LoadScene(SceneType.Loading.ToString());
-        AddressablesManager.Instance.loadingTime = 0f; // 💡 boshlanishida 0
-        StartCoroutine(FakeLoadingTimeProgress());     // 💡 loadingTime ni sekin ko‘taradi
-        // SoundManager.Instance.StopMusicEvent();
+
+        // Fake progress
+        StartCoroutine(FakeLoadingTimeProgress());
+
         yield return new WaitForSeconds(fakeDurationIfCached);
 
-        SceneManager.LoadScene(newScene.ToString());
-        
+        SceneManager.LoadScene(newScene.ToString(), LoadSceneMode.Single);
     }
-    IEnumerator FakeLoadingTimeProgress()
+
+    private IEnumerator FakeLoadingTimeProgress()
     {
         float timer = 0f;
         float duration = fakeDurationIfCached;
@@ -325,12 +462,49 @@ public class SceneLoadManager : MonoBehaviour
         while (timer < duration)
         {
             timer += Time.deltaTime;
-            AddressablesManager.Instance.loadingTime = Mathf.Clamp01(timer / duration) * 100f;
+            loadingTime = Mathf.Clamp01(timer / duration) * 100f;
             yield return null;
         }
 
-        AddressablesManager.Instance.loadingTime = 100f;
+        loadingTime = 100f;
     }
+
+    ///test
+    //public void LoadScene(SceneType newScene)
+    //{
+    //    if (newScene == SceneType.Loading)
+    //        return;
+
+    //    StartCoroutine(LoadSceneWithTransition(newScene));
+    //}
+
+    //private IEnumerator LoadSceneWithTransition(SceneType newScene)
+    //{
+    //    PreviousSceneType = CurrentSceneType;
+    //    CurrentSceneType = newScene;
+    //    SceneManager.LoadScene(SceneType.Loading.ToString());
+    //    AddressablesManager.Instance.loadingTime = 0f; // 💡 boshlanishida 0
+    //    StartCoroutine(FakeLoadingTimeProgress());     // 💡 loadingTime ni sekin ko‘taradi
+    //    // SoundManager.Instance.StopMusicEvent();
+    //    yield return new WaitForSeconds(fakeDurationIfCached);
+
+    //    SceneManager.LoadScene(newScene.ToString());
+
+    //}
+    //IEnumerator FakeLoadingTimeProgress()
+    //{
+    //    float timer = 0f;
+    //    float duration = fakeDurationIfCached;
+
+    //    while (timer < duration)
+    //    {
+    //        timer += Time.deltaTime;
+    //        AddressablesManager.Instance.loadingTime = Mathf.Clamp01(timer / duration) * 100f;
+    //        yield return null;
+    //    }
+
+    //    AddressablesManager.Instance.loadingTime = 100f;
+    //}
     //Single scene load uchun ishlaydi lekin instantiate objectlar borligi uchun ux ga tasiri juda katta hisoblanadi
 
     //private IEnumerator HandleSceneLoad(SceneType targetScene, List<string> preloadAddresses)
@@ -363,4 +537,18 @@ public class SceneLoadManager : MonoBehaviour
     //    CurrentSceneType = targetScene;
 
     //}
+    private IEnumerator WaitTask(Task task)
+    {
+        while (task != null && !task.IsCompleted)
+            yield return null;
+    }
+
+    private IEnumerator WaitTask<T>(Task<T> task, Action<T> onCompleted)
+    {
+        while (task != null && !task.IsCompleted)
+            yield return null;
+
+        onCompleted?.Invoke(task.Result);
+    }
+
 }

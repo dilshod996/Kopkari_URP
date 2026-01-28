@@ -150,10 +150,14 @@ namespace MalbersAnimations
                             var main = newtrack.main;
                             main.simulationSpace = ParticleSystemSimulationSpace.Local;
                             newtrack.Emit(tr, 1);
-                            this.Delay_Action(() => newtrack.isPlaying, () =>
-                            {
-                                if (ParentFixer != null) Destroy(ParentFixer.gameObject);
-                            });
+                            this.Delay_Action(
+                                () => newtrack != null && newtrack.isPlaying,
+                                () =>
+                                {
+                                    if (ParentFixer != null)
+                                        Destroy(ParentFixer.gameObject);
+                                }
+                            );
                         }
                     }
                     else

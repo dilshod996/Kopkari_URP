@@ -1,13 +1,16 @@
-﻿using MalbersAnimations.Controller;
+﻿using DG.Tweening;
+using MalbersAnimations.Controller;
 using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -15,6 +18,18 @@ public class LobbyManager : MonoBehaviour
 {
 
     public ModalWindowManager detailsPopupManager;
+    [Header("Scene Refs")]
+    [SerializeField] private Transform environmentRoot;
+    private GameObject _currentEnvInstance;
+    private string _currentEnvAddress;
+    [Header("Tuning")]
+    [SerializeField] private float fakeDurationIfCached = 1.2f;
+    [SerializeField] private RectTransform loadingRT;
+    [SerializeField] private float wipeDuration = 1f;
+    [SerializeField] private Ease wipeEase = Ease.OutExpo;
+
+    private Tween loadingTween;
+    private bool isLoadingVisible;
 
     [SerializeField] private AudioClip lobbySound;
     [Header("Addressable")]
@@ -57,54 +72,57 @@ public class LobbyManager : MonoBehaviour
     private List<string> preloadAddresses;
     private bool isSleeping = false;
 
+    [Header("GPUI managers")]
+    [SerializeField] GPUInstancerPro.TerrainModule.GPUITreeManager treeManager;
+    [SerializeField] GPUInstancerPro.TerrainModule.GPUIDetailManager detailManager;
+    public static event Action<string> OnNameChanged;
 
     private async void Start()
     {
         SceneLoadManager.Instance.SetAssetInstantiationFinished(false);
-        playerInstance = Instantiate(playerPrefab, playerSpawnPos.position, playerSpawnPos.rotation, PlayerParent.transform);
-
-        // 2. Ichidan PlayerSkinLoader scriptni topamiz
-        PlayerSkinLoader skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        // 3. Agar mavjud bo‘lsa — Addressable materiallarni qo‘llaymiz
-        if (skinLoader != null)
-        {
-            // await skinLoader.ApplyMaterials();
-            await skinLoader.ApplySkins();
-        }
-        else
-        {
-            Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-        }
-        horseInstance = Instantiate(horsePrefab, horseSpawnPos.position, horseSpawnPos.rotation, HorseParent.transform);
-
-        // 4. Ichidan HorseSkinLoader scriptni topamiz
-        HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
-        if(horseSkinLoader != null)
-        {
-            await horseSkinLoader.ApplySkins();
-        }
-        else
-        {
-            Debug.Log("❌ HorseSkinLoader component not found on instantiated horse.");
-        }
-
-        utov = await AddressablesManager.Instance.LoadAndInstantiateCachedAsync(
-            Constants.Environment.Utov,
-            position: utovPos.position,
-            rotation: utovPos.rotation,
-            parent: null
+        _currentEnvAddress = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
+        _currentEnvInstance = await AddressablesService.Instance.InstantiateAsync(
+            _currentEnvAddress,
+            Vector3.zero,
+            Quaternion.identity,
+            environmentRoot
         );
+
+        // 2️⃣ Player spawn
+        playerInstance = Instantiate(
+            playerPrefab,
+            playerSpawnPos.position,
+            playerSpawnPos.rotation,
+            PlayerParent.transform
+        );
+
+        var skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+        if (skinLoader != null)
+            await skinLoader.ApplySkins();
+
+        // 3️⃣ Horse spawn
+        horseInstance = Instantiate(
+            horsePrefab,
+            horseSpawnPos.position,
+            horseSpawnPos.rotation,
+            HorseParent.transform
+        );
+
+        var horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
+        if (horseSkinLoader != null)
+            await horseSkinLoader.ApplySkins();
+
+        // 4️⃣ Scene ready
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
-        //Removing Boshidagi FadeImgae Intro Scene dan kelayotganda
+
         HomeMainUI.Instance.RemoveInitialImage();
-        //Horse Animator Details
         HorseAnimGet();
         GetPlayerAnimator();
-        if (SoundManager.Instance != null)
-             SoundManager.Instance.PlayMusic(lobbySound);
-        preloadAddresses = GetPreloadMaterialAddresses();
 
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayMusic(lobbySound);
     }
+
     private void OnEnable()
     {
         if (eatAbility != null)
@@ -119,11 +137,32 @@ public class LobbyManager : MonoBehaviour
         }
         FoodShowerPopup.OnWaterDrink += PlayDrink;
         FoodShowerPopup.OnFoodEat += PlayEat;
+
     }
     private void OnDisable()
     {
         FoodShowerPopup.OnWaterDrink -= PlayDrink;
         FoodShowerPopup.OnFoodEat -= PlayEat;
+
+    }
+    private List<string> BuildPreloadKeys(string envAddress)
+    {
+        var preload = new List<string>();
+
+        switch (envAddress)
+        {
+            case Constants.MapNames.Zarafshan:
+                preload.Add(Constants.ZarafshanMapLayers.GrassLayer);
+                preload.Add(Constants.ZarafshanMapLayers.DryGrassLayer);
+                preload.Add(Constants.ZarafshanMapLayers.MudLayer);
+                preload.Add(Constants.ZarafshanMapLayers.CliffLayer);
+                break;
+
+                // keyin boshqa maplar...
+        }
+
+        preload.Add(envAddress); // env prefab
+        return preload;
     }
 
     #region Popup va Infolar
@@ -455,11 +494,131 @@ public class LobbyManager : MonoBehaviour
     {
         playerAnimator = playerInstance.GetComponent<MAnimal>();
     }
+    public void ChangeMap(string mapKey)
+    {
+         SwitchEnvironment(mapKey);
+    }
+
+    public async void SwitchEnvironment(string envAddress)
+    {
+        await SwitchEnvironmentAsync(envAddress);
+    }
+
+    public async Task SwitchEnvironmentAsync(string envAddress)
+    {
+        await SetLoading(true);
+
+        // ✅ 0) Old envni aniq unload qil
+        if (_currentEnvInstance != null)
+        {
+            AddressablesService.Instance.ReleaseInstance(_currentEnvInstance);
+            _currentEnvInstance = null;
+        }
+
+        var preloadKeys = BuildPreloadKeys(envAddress);
+
+        // ✅ 1) Yangi envni preload+load
+        _currentEnvInstance = await AddressablesService.Instance.LoadEnvironmentAsync(
+            preloadKeys,
+            envAddress,
+            environmentRoot,
+            onProgress: null,
+            fakeDurationIfCached: fakeDurationIfCached
+        );
+
+        if (_currentEnvInstance == null)
+        {
+            await SetLoading(false);
+            Debug.LogWarning("❌ Environment instantiate failed.");
+            return;
+        }
+
+        StartCoroutine(EnableManagersNextFrame());
+
+        Teleport(playerInstance.transform, playerSpawnPos);
+        Teleport(horseInstance.transform, horseSpawnPos);
+
+        OnNameChanged?.Invoke(envAddress);
+        _currentEnvAddress = envAddress;
+
+        await SetLoading(false);
+    }
+
+
+    public void TeleportPlayer()
+    {
+        Teleport(playerInstance.transform, playerSpawnPos);
+    }
+    public void TeleportHorse()
+    {
+        Teleport(horseInstance.transform, horseSpawnPos);
+    }
+    private void Teleport(Transform target, Transform spawn)
+    {
+        if (target == null || spawn == null) return;
+        target.SetPositionAndRotation(spawn.position, spawn.rotation);
+    }
+
+
+    public async Task SetLoading(bool show)
+    {
+        if (isLoadingVisible == show)
+            return;
+
+        isLoadingVisible = show;
+
+        loadingTween?.Kill();
+
+        float screenW = Screen.width;
+
+        if (show)
+        {
+            // 🔒 Input block
+            loadingRT.gameObject.SetActive(true);
+            // Start: right side (fast entry)
+            loadingRT.anchoredPosition = new Vector2(screenW, 0f);
+
+            loadingTween = loadingRT
+                .DOAnchorPosX(0f, wipeDuration)
+                .SetEase(wipeEase);
+
+            await loadingTween.AsyncWaitForCompletion();
+        }
+        else
+        {
+            // Exit: left side (speed out)
+            loadingTween = loadingRT
+                .DOAnchorPosX(-screenW, wipeDuration * 0.85f)
+                .SetEase(Ease.InExpo);
+
+            await loadingTween.AsyncWaitForCompletion();
+
+            loadingRT.gameObject.SetActive(false);
+        }
+    }
+
+
+    private IEnumerator EnableManagersNextFrame()
+    {
+        // 1) Hard reset
+        if (treeManager != null) treeManager.Dispose();
+        if (detailManager != null) detailManager.Dispose();
+
+        yield return null; // terrain fully registered bo‘lsin
+
+        if (treeManager != null) treeManager.Initialize();
+        if (detailManager != null) detailManager.Initialize();
+
+        // 2) Force update
+        if (treeManager != null) treeManager.RequireUpdate(true);
+        if (detailManager != null) detailManager.RequireUpdate(true);
+    }
 
     private void OnDestroy()
     {
-        //if (player != null) Addressables.ReleaseInstance(player);
-       // if (horse != null) Addressables.ReleaseInstance(horse);
-        if (utov != null) Addressables.ReleaseInstance(utov);
+        if (_currentEnvInstance != null)
+        {
+            AddressablesService.Instance.ReleaseInstance(_currentEnvInstance);
+        }
     }
 }

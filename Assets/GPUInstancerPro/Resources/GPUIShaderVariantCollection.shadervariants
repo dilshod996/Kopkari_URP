@@ -60,6 +60,8 @@ ShaderVariantCollection:
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _NORMALMAP
         passType: 0
+      - keywords: _NORMALMAP
+        passType: 0
   - first: {fileID: 4800000, guid: c1183a7330de2a6429865c62d7a74ed2, type: 3}
     second:
       variants:
@@ -84,6 +86,8 @@ ShaderVariantCollection:
       - keywords: LOD_FADE_CROSSFADE _ALPHATEST_ON _EMISSION _NORMALMAP
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _NORMALMAP
+        passType: 0
+      - keywords: _ALPHATEST_ON _EMISSION _NORMALMAP
         passType: 0
   - first: {fileID: 4800000, guid: b9c7c1fa1b05472438bd30e8a3543734, type: 3}
     second:

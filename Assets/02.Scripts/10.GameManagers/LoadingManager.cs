@@ -104,14 +104,12 @@ public class LoadingManager : MonoBehaviour
 
     private IEnumerator ProgressbarRoutine()
     {
-        // loadingTime 0..100 deb faraz qildim (sening koding shunaqa)
         while (true)
         {
-            float current = AddressablesManager.Instance != null
-                ? AddressablesManager.Instance.loadingTime
+            float current = SceneLoadManager.Instance != null
+                ? SceneLoadManager.Instance.loadingTime
                 : 0f;
 
-            // clamp qilib qo'yamiz (xatolar bo'lmasin)
             current = Mathf.Clamp(current, 0f, 100f);
 
             progressBar.currentPercent = current;
@@ -123,6 +121,7 @@ public class LoadingManager : MonoBehaviour
             yield return null;
         }
     }
+
 
     private IEnumerator ChangeTextRoutine()
     {
