@@ -23,6 +23,9 @@ ShaderVariantCollection:
       variants:
       - keywords: 
         passType: 0
+      - keywords: LOD_FADE_CROSSFADE _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON
+          _ENABLETINTVARIATIONCOLOR_ON _ENABLEWIND_ON
+        passType: 0
       - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLETINTVARIATIONCOLOR_ON
           _ENABLEWIND_ON
         passType: 0

@@ -1,9 +1,11 @@
 ﻿using DG.Tweening;
+using GPUInstancerPro.PrefabModule;
 using MalbersAnimations.Controller;
 using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using TMPro;
@@ -75,6 +77,7 @@ public class LobbyManager : MonoBehaviour
     [Header("GPUI managers")]
     [SerializeField] GPUInstancerPro.TerrainModule.GPUITreeManager treeManager;
     [SerializeField] GPUInstancerPro.TerrainModule.GPUIDetailManager detailManager;
+    [SerializeField] private GPUIPrefabManager prefabManager;
     public static event Action<string> OnNameChanged;
 
     private async void Start()
@@ -111,6 +114,7 @@ public class LobbyManager : MonoBehaviour
         var horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
         if (horseSkinLoader != null)
             await horseSkinLoader.ApplySkins();
+        RegisterEnvPrefabs(_currentEnvInstance.transform);
 
         // 4️⃣ Scene ready
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
@@ -540,7 +544,7 @@ public class LobbyManager : MonoBehaviour
 
         OnNameChanged?.Invoke(envAddress);
         _currentEnvAddress = envAddress;
-
+        RegisterEnvPrefabs(_currentEnvInstance.transform);
         await SetLoading(false);
     }
 
@@ -612,6 +616,21 @@ public class LobbyManager : MonoBehaviour
         // 2) Force update
         if (treeManager != null) treeManager.RequireUpdate(true);
         if (detailManager != null) detailManager.RequireUpdate(true);
+    }
+    public void RegisterEnvPrefabs(Transform envRoot)
+    {
+        if (prefabManager == null || envRoot == null) return;
+
+        var instances = envRoot.GetComponentsInChildren<GPUIPrefab>(true);
+
+        // 0 ID bo'lganlarini filtr qilamiz (aks holda error spam)
+        var valid = instances.Where(p => p != null && p.GetPrefabID() != 0 && !p.IsInstanced).ToArray();
+
+        // Queue'ga qo'shadi, manager LateUpdate'da instancelaydi
+        GPUIPrefabManager.AddPrefabInstances(valid);
+
+        // Agar Transform updates o'chirilgan bo'lsa, bir marta update talab qilsa bo'ladi
+        prefabManager.RequireTransformUpdate();
     }
 
     private void OnDestroy()

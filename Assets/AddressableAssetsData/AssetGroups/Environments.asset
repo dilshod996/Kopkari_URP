@@ -17,7 +17,7 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 2e7ade963c9f6de48897a55a0a63ff5c
   m_SerializeEntries:
-  - m_GUID: ecce1f1001cf6854a89fc81cbad84b79
+  - m_GUID: 8a0dfa47cfd9da947b0288f10e2ddaab
     m_Address: zarafmap
     m_ReadOnly: 0
     m_SerializedLabels:
@@ -25,30 +25,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d1ab37246bf172a4e873bddc90dbf379
     m_Address: egyptmap
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Environment
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: fbb05c2ce95544e43890e4d77b1ea158
-    m_Address: grassLayer
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Environment
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 9617662c7cc7c074eab0196507c38b15
-    m_Address: drygrassLayer
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Environment
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 71aa0d476033ef741bbc7a8946cd3031
-    m_Address: mudLayer
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Environment
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: fb12f7049acbd5a4a8129834dd262ede
-    m_Address: cliffLayer
     m_ReadOnly: 0
     m_SerializedLabels:
     - Environment

@@ -54,10 +54,9 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private LeanTweenType easeOut = LeanTweenType.easeInOutQuad;
 
     [Header("Fade Settings For UI Pages")]
-    [SerializeField] private bool useFade = true;
+
     [SerializeField] private float fadeTime = 0.2f;
-    [SerializeField] private Image fadeImage;      // rangini inspector’da berasan
-    [SerializeField] private float fadeDuration = 1f;
+
 
     [SerializeField] private float durationHorseResouceBg = 5f;     // qancha davom etadi
     [SerializeField] private float scaleMin = 1f;     // boshlanish scale
@@ -459,35 +458,12 @@ public class HomeMainUI : MonoBehaviour
 
     public void RemoveInitialImage()
     {
-        environmentLoadingUI.gameObject.SetActive(false);
-        //if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
-        //{
-        //    StartCoroutine(FadeOut());
-        //}
+        StartCoroutine(FadeOut());
     }
     public IEnumerator FadeOut()  // 1 -> 0
     {
-        float t = 0f;
-        Color c = fadeImage.color;
-
-        while (t < fadeDuration)
-        {
-            t += Time.deltaTime;
-            float a = Mathf.Lerp(1f, 0f, t / fadeDuration);
-
-            c = fadeImage.color;
-            c.a = a;
-            fadeImage.color = c;
-
-            yield return null;
-        }
-
-        c = fadeImage.color;
-        c.a = 0f;
-        fadeImage.color = c;
-
-        // Oxirida umuman ko‘rinmasin desang:
-        fadeImage.gameObject.SetActive(false);
+        yield return new WaitForSeconds(0.6f);
+        environmentLoadingUI.gameObject.SetActive(false);
     }
 
     #endregion
