@@ -80,7 +80,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject marketPage;
     [SerializeField] private GameObject racingFields;
     [SerializeField] private GameObject kopkariFields;
-    [SerializeField] private GameObject dailyUIRewards;
+    [SerializeField] private DailyRewardUI dailyRewardUI; 
     [SerializeField] private RewardPopup rewardPopup;
     [SerializeField] private GameObject foodPanel;
     [SerializeField] private GameObject suppliesPanel;
@@ -91,34 +91,6 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject coinsPage;
     [SerializeField] private EnvironmentChangeUI environmentChangePanel;
     [SerializeField] private EnvironmentLoadingUI environmentLoadingUI;
-
-
-    #region Reward System Parametrs
-
-    [Header("Monthly Settings")]
-    [SerializeField] private int monthCycleLength = 31;
-    public int MonthCycleLength => monthCycleLength;
-
-
-    private int lastDayInCycle = 0;   // oxirgi olingan daily kun (1..7) yoki 0
-    private int streakDay = 1; // default
-    private const int WEEK_CYCLE_LENGTH = 8; // 1..8 (8 - BIG)
-    public int TodayDayIndex { get; private set; } = 1;
-    public bool CanClaimToday { get; private set; } = false;
-
-    public int CurrentMonthProgress { get; private set; } = 0;
-    public int LastClaimedDay => lastDayInCycle;
-
-    public event Action OnNewDayAvailable;
-    public event Action<int> OnClaimCompleted;
-    public event Action OnMonthlyRewardReady;
-
-    private Sprite cachedRewardIcon;
-    private string cachedRewardAmount;
-    private string cacheRewardName;
-    private string cacheRewardTitle;
-
-    #endregion
 
     #region Horse and Player Data
 
@@ -195,7 +167,6 @@ public class HomeMainUI : MonoBehaviour
             Instance = this;
         else
             Destroy(gameObject);
-        LoadState();
         //if (SceneLoadManager.Instance.PreviousSceneType == SceneLoadManager.SceneType.Intro)
         //{
         //    fadeImage.gameObject.SetActive(true);
@@ -205,15 +176,14 @@ public class HomeMainUI : MonoBehaviour
 
     private void Start()
     {
-
-        CheckNewDayAndNotify();
     }
 
     private void OnEnable()
     {
         ApplyOfflineRegen();
         AvailableMap();
-        OnNewDayAvailable += HandleNewDay;
+        TryOpenDailyRewardIfAvailable();
+        saleBtn.onClick.AddListener(OnClickNextDayDebug);
         lastInputTime = Time.realtimeSinceStartup;
 
         //if (touchAction != null)
@@ -241,7 +211,7 @@ public class HomeMainUI : MonoBehaviour
     }
     private void OnDisable()
     {
-        OnNewDayAvailable -= HandleNewDay;
+       // OnNewDayAvailable -= HandleNewDay;
         //if (touchAction != null)
         //{
         //    touchAction.performed -= OnTouch;
@@ -249,7 +219,6 @@ public class HomeMainUI : MonoBehaviour
         //}
 
         CancelInvoke(nameof(CheckIdle));
-        //PlayerResourse.OnNyufiyUpdated -= UpdateNyufiy;
         PlayerResourse.OnResourseUpdated -= UpdatePlayerResource;
         FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
         FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
@@ -285,6 +254,26 @@ public class HomeMainUI : MonoBehaviour
             default: break;
         }
         UpdateNyufiy();
+    }
+    public void UpdatePlayerResources(string itemkey, int amount)
+    {
+        switch (itemkey)
+        {
+            case Constants.PlayerItems.Defense:
+                defenseAmountText.text = $"X{amount}";
+                break;
+            case Constants.PlayerItems.SlowDown:
+                slowDownAmountText.text = $"X{amount}";
+                break;
+            case Constants.PlayerItems.WebSnare:
+                webAmountText.text = $"X{amount}";
+                break;
+            case Constants.PlayerItems.Whip:
+                break;
+            case Constants.PlayerItems.Horsedust:
+                break;
+            default: break;
+        }
     }
     public void ShowSuppliesPanel()
     {
@@ -445,9 +434,9 @@ public class HomeMainUI : MonoBehaviour
         slowDownText.text = LanguageManager.Instance.GetText(323);
         whipText.text = LanguageManager.Instance.GetText(325);
 
-        powerText.text = LanguageManager.Instance.GetText(326);
-        staminaText.text = LanguageManager.Instance.GetText(328);
-        coolingText.text = LanguageManager.Instance.GetText(327);
+        powerText.text = $"{LanguageManager.Instance.GetText(326)}...";
+        staminaText.text = $"{LanguageManager.Instance.GetText(328)}...";
+        coolingText.text = $"{LanguageManager.Instance.GetText(327)}...";
         saleText.text = LanguageManager.Instance.GetText(329);
         customText.text = LanguageManager.Instance.GetText(21);
         tournoment.text = LanguageManager.Instance.GetText(24);
@@ -519,265 +508,34 @@ public class HomeMainUI : MonoBehaviour
     }
     #endregion
 
-    #region Monthly & Daily Rewards
-    private void HandleNewDay()
+    #region Daily Reward
+    public void TryOpenDailyRewardIfAvailable()
     {
-        if (dailyUIRewards != null)
-            ShowUI(dailyUIRewards);
+        if (dailyRewardUI == null) return;
+
+        // UI inactive bo‘lsa ham, canClaimni hisoblab beradi:
+        bool canClaim = dailyRewardUI.PeekCanClaimToday();
+
+        dailyRewardUI.gameObject.SetActive(canClaim);
     }
-    private void LoadState()
+    public void OnClickNextDayDebug()
     {
-        streakDay = PlayerPrefs.GetInt(Constants.DailyPrizes.PREF_STREAK_DAY, 1);
-        CurrentMonthProgress = PlayerPrefs.GetInt(Constants.DailyPrizes.PREF_MONTH_PROGRESS, 0); // xohlasang olib tashlaymiz
-    }
+#if UNITY_EDITOR
+        if (dailyRewardUI == null) return;
 
-    private void SaveState()
-    {
-        PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_STREAK_DAY, streakDay);
-        PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_MONTH_PROGRESS, CurrentMonthProgress);
-        PlayerPrefs.Save();
-    }
-
-    /// <summary>
-    /// Boshqa scriptdan: GameManager.Start() dan chaqiriladi
-    /// </summary>
-    public void CheckNewDayAndNotify()
-    {
-        CanClaimToday = false;
-
-        string lastClaimStr = PlayerPrefs.GetString(Constants.DailyPrizes.PREF_LAST_CLAIM_DATE, string.Empty);
-        DateTime today = DateTime.UtcNow.Date;
-
-        if (string.IsNullOrEmpty(lastClaimStr))
-        {
-            streakDay = Mathf.Clamp(streakDay, 1, monthCycleLength);
-            TodayDayIndex = ((streakDay - 1) % 8) + 1;
-            CanClaimToday = true;
-
-            OnNewDayAvailable?.Invoke();
-            return;
-        }
-
-        if (!DateTime.TryParseExact(lastClaimStr, "yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None,
-            out DateTime lastClaimDate))
-        {
-            // parse fail -> reset
-            streakDay = 1;
-            TodayDayIndex = 1;
-            CanClaimToday = true;
-            SaveState();
-            OnNewDayAvailable?.Invoke();
-            return;
-        }
-
-        int diffDays = (today - lastClaimDate.Date).Days;
-
-        if (diffDays <= 0)
-        {
-            CanClaimToday = false;
-            return;
-        }
-
-        if (diffDays == 1)
-        {
-            // continue streak (lekin 31 dan oshsa yana 1)
-            if (streakDay >= monthCycleLength) streakDay = 1;
-
-            TodayDayIndex = ((streakDay - 1) % 8) + 1;
-            CanClaimToday = true;
-            SaveState();
-        }
-        else
-        {
-            // missed day -> reset streak
-            streakDay = 1;
-            TodayDayIndex = 1;
-            CanClaimToday = true;
-            SaveState();
-        }
-
-        OnNewDayAvailable?.Invoke();
+        dailyRewardUI.Debug_ForceNextDay();
+        TryOpenDailyRewardIfAvailable();
+#endif
     }
 
-
-    /// <summary>
-    /// UI dagi Claim tugmasidan chaqiriladi
-    /// </summary>
-    public void ClaimToday()
-    {
-        if (!CanClaimToday) return;
-
-        // 31-kun bo‘lsa daily emas, monthly beramiz (daily UI ko‘rsatmaslik ham shu yerda)
-        if (streakDay >= monthCycleLength)
-        {
-            GiveMonthlyReward();
-            PlayerPrefs.SetString(Constants.DailyPrizes.PREF_LAST_CLAIM_DATE, DateTime.UtcNow.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
-
-            // monthly claim bo‘lgach reset
-            streakDay = 1;
-            SaveState();
-
-            CanClaimToday = false;
-            OnMonthlyRewardReady?.Invoke();
-            // xohlasang monthly popup ko‘rsat
-            return;
-        }
-
-        // Daily reward absolute day bo‘yicha:
-        GiveRewardForStreakDay(streakDay);
-
-        PlayerPrefs.SetString(Constants.DailyPrizes.PREF_LAST_CLAIM_DATE, DateTime.UtcNow.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
-
-        // keyingi kunga tayyorlab qo‘yamiz
-        streakDay++;
-        if (streakDay > monthCycleLength) streakDay = 1;
-
-        SaveState();
-
-        CanClaimToday = false;
-        OnClaimCompleted?.Invoke(TodayDayIndex); // UI uchun cycle index qaytarsang ham bo‘ladi
-        DisplayRewardPopup();
-    }
-
-    #region Reward logika
-    private void GiveRewardForStreakDay(int day)
-    {
-        // Safety
-        if (day <= 0)
-        {
-            Debug.LogWarning($"[DailyReward] Invalid day: {day}");
-            return;
-        }
-
-        // 1) BIG prize (8, 16, 24, 32...)
-        if (day % 8 == 0)
-        {
-            Debug.Log($"🎁 [DailyReward] Day {day} => BIG PRIZE (rule: day%8==0)");
-            GiveBigPrize(day);
-            return;
-        }
-
-        // 2) Random prize (7, 14, 21, 28...)
-        if (day % 7 == 0)
-        {
-            int seed = day * 9973; // deterministic seed (xohlasang olib tashla)
-            int pick = Mathf.Abs(seed) % 4; // 0..3
-            Debug.Log($"🎲 [DailyReward] Day {day} => RANDOM PRIZE (rule: day%7==0, pick={pick})");
-            GiveRandomPrize(day, pick);
-            return;
-        }
-
-        // 3) Player resources (4, 12, 20...)
-        if (day % 4 == 0)
-        {
-            Debug.Log($"🧰 [DailyReward] Day {day} => PLAYER RESOURCES (rule: day%4==0)");
-            GivePlayerResources(day);
-            return;
-        }
-
-        // 4) Horse foods (3, 6, 9, 15...)
-        if (day % 3 == 0)
-        {
-            Debug.Log($"🥕 [DailyReward] Day {day} => HORSE FOODS (rule: day%3==0)");
-            GiveHorseFoods(day);
-            return;
-        }
-
-        // 5) Odd days => Coins
-        if ((day & 1) == 1)
-        {
-            int coins = 100 + (day * 15); // formula: xohlasang balans qilamiz
-            Debug.Log($"🪙 [DailyReward] Day {day} => COINS {coins} (rule: odd day)");
-            GiveCoins(coins);
-            return;
-        }
-
-        // 6) Remaining days
-        Debug.Log($"✅ [DailyReward] Day {day} => DEFAULT REWARD (rule: none matched)");
-        GiveDefaultReward(day);
-    }
-
-    // --- Reward handlers (hozircha log, keyin real economy qo‘shasan) ---
-
-    private void GiveBigPrize(int day)
-    {
-        // masalan: skin shard / big booster / taqa+nyufiy bundle
-        Debug.Log($"🌟 [Reward] BIG prize granted for day {day}");
-    }
-
-    private void GiveRandomPrize(int day, int pick)
-    {
-        // pick 0..3: o‘zing xohlagan random turlari
-        switch (pick)
-        {
-            case 0:
-                Debug.Log($"🎲 [Reward] Random => Coins bundle");
-                GiveCoins(250 + day * 10);
-                break;
-            case 1:
-                Debug.Log($"🎲 [Reward] Random => Horse food pack");
-                GiveHorseFoods(day); // yoki alohida pack
-                break;
-            case 2:
-                Debug.Log($"🎲 [Reward] Random => Player resources pack");
-                GivePlayerResources(day);
-                break;
-            default:
-                Debug.Log($"🎲 [Reward] Random => Booster/Fragment");
-                GiveDefaultReward(day);
-                break;
-        }
-    }
-
-    private void GivePlayerResources(int day)
-    {
-        // masalan: Taqa / Energy / Tickets / Gems
-        int amount = 1 + (day / 4);
-        Debug.Log($"🧰 [Reward] Player resources pack x{amount} (day={day})");
-    }
-
-    private void GiveHorseFoods(int day)
-    {
-        // masalan: apple/wheat/barley/water
-        int amount = 2 + (day / 3);
-        Debug.Log($"🥕 [Reward] Horse foods pack x{amount} (day={day})");
-    }
-
-    private void GiveCoins(int amount)
-    {
-        Debug.Log($"🪙 [Reward] Coins +{amount}");
-    }
-
-    private void GiveDefaultReward(int day)
-    {
-        // masalan: fragment, small booster, cosmetic token
-        Debug.Log($"✅ [Reward] Default reward for day {day} (e.g., fragment/booster)");
-    }
-
-
-    private void GiveMonthlyReward()
-    {
-        Debug.Log("🌟 MONTHLY BIG REWARD");
-        // Bu yerga monthly sovga logikasi
-    }
-    #endregion
 
     #endregion
 
     #region Reward Popup
-    public void CacheReward(Sprite icon, string title, string amount, string nameReward)
-    {
-        cachedRewardIcon = icon;
-        cachedRewardAmount = amount;
-        cacheRewardName = nameReward;
-        cacheRewardTitle = title;
-    }
-    public void DisplayRewardPopup()
+    public void DisplayRewardPopup(Sprite rewarIcon,string amountReward, string name)
     {
         rewardPopup.gameObject.SetActive(true);
-        rewardPopup.PlaySuccess(cachedRewardIcon, cacheRewardTitle,cachedRewardAmount, cacheRewardName);
+        rewardPopup.PlaySuccess(rewarIcon, LanguageManager.Instance.GetText(408), amountReward, name);
         //ShowUI(rewardPopup);
     }
     public void DisplayAutoReward(Sprite rewardSprite, string title, string amount, string nameReward)

@@ -1,30 +1,43 @@
-using System;
+ï»¿using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class RewardDayUI : MonoBehaviour
 {
+    [Header("Reward Data (only one will be not-None)")]
+    public FoodInfo.HorseFood horseFood = FoodInfo.HorseFood.None;
+    public PlayerResourse.Resources playerSupplies = PlayerResourse.Resources.None;
+
     [Header("UI Refs")]
     [SerializeField] private GameObject blockPanel;
     [SerializeField] private GameObject openPanel;
 
-    //Open panel inside details
+    [Header("Open panel inside details")]
     [SerializeField] private Image rewardIcon;
     [SerializeField] private TMP_Text rewardAmount;
     [SerializeField] private TMP_Text dayText;
     [SerializeField] private TMP_Text dayText2;
 
+    [Header("Amount")]
+    [SerializeField] private int amountPrize = 1;
+
     private bool isClaimed;
     private bool isToday;
+    public static event Action<RewardType, int, FoodInfo.HorseFood, PlayerResourse.Resources, int, Sprite, string> OnTodayRewardPrepared;
+    // (type, amountInt, food, resource, languageId, icon, amountText)
+
+    // args: (type, amount, horseFood, playerResource, languageId, icon)
+
+    // args: (type, amount, horseFood, playerResource, languageId, icon)
 
     /// <summary>
     /// claimed  = oldin olingan kun
-    /// isToday  = bugungi kun (hozir claim qilish mumkin bo¡®lgan)
-    /// 
+    /// isToday  = bugungi kun (hozir claim qilish mumkin boâ€˜lgan)
+    ///
     /// blockPanel:
-    ///  - claimed  true  -> blok yo¡®q     (ochiq)
-    ///  - isToday true   -> blok yo¡®q     (ochiq)
+    ///  - claimed  true  -> blok yoâ€˜q (ochiq)
+    ///  - isToday true   -> blok yoâ€˜q (ochiq)
     ///  - ikkalasi ham false -> blok BOR (kelajak kun)
     /// </summary>
     public void Setup(bool claimed, bool isToday, int dayNumber)
@@ -32,22 +45,107 @@ public class RewardDayUI : MonoBehaviour
         this.isClaimed = claimed;
         this.isToday = isToday;
 
-        if (dayNumber <= 7)
-            dayText.text = dayText2.text = $"{LanguageManager.Instance?.GetText(391)} {dayNumber}";
+        // Day text
+        if (LanguageManager.Instance != null)
+        {
+            dayText.text = dayText2.text = $"{LanguageManager.Instance.GetText(391)} {dayNumber}";
+        }
         else
-            dayText.text = dayText2.text = LanguageManager.Instance.GetText(392); // xohlasang LanguageManager key qo¡®shamiz
+        {
+            dayText.text = dayText2.text = $"Day {dayNumber}";
+        }
 
+        // Amount text must be +X
+        if (rewardAmount != null)
+            rewardAmount.text = $"+{amountPrize}";
+
+        // Claimed or Today => OPEN, future => BLOCK
         bool shouldBlock = !(claimed || isToday);
-
         if (blockPanel != null) blockPanel.SetActive(shouldBlock);
         if (openPanel != null) openPanel.SetActive(!shouldBlock);
 
+        // If today -> cache popup + save reward info to prefs
         if (isToday)
         {
+            int languageId;
+            RewardType type = GetRewardType(out languageId);
+            Debug.Log("today");
             Sprite icon = rewardIcon != null ? rewardIcon.sprite : null;
-            string amount = rewardAmount != null ? rewardAmount.text : "";
-            HomeMainUI.Instance.CacheReward(icon,LanguageManager.Instance.GetText(408), amount, null);
+            string amountText = rewardAmount != null ? rewardAmount.text : $"+{amountPrize}";
+
+            // âœ… save today reward (DailyRewardUI claim bosganda shundan oâ€˜qiydi)
+            SaveTodayRewardToPrefs(type, languageId, amountPrize);
+            Debug.Log($"[RewardDayUI] Invoke today event. Subscribers? {(OnTodayRewardPrepared == null ? "NO" : "YES")}", this);
+
+            OnTodayRewardPrepared?.Invoke(
+                    type,
+                    amountPrize,
+                    horseFood,
+                    playerSupplies,
+                    languageId,
+                    icon,
+                    amountText
+                );
         }
     }
 
+    private void SaveTodayRewardToPrefs(RewardType type, int languageId, int amount)
+    {
+        PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_TODAY_REWARD_TYPE, (int)type);
+        PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_TODAY_REWARD_LANG_ID, languageId);
+        PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_TODAY_REWARD_AMOUNT, amount);
+
+        // enum value
+        int enumValue = 0;
+        if (type == RewardType.HorseFood) enumValue = (int)horseFood;
+        else if (type == RewardType.PlayerSupplies) enumValue = (int)playerSupplies;
+
+        //PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_TODAY_REWARD_ENUM, enumValue); boshqatdan qilinadi
+        PlayerPrefs.Save();
+    }
+
+    // âœ… rewardNameKeyOrText emas, languageId qaytaradi
+    private RewardType GetRewardType(out int languageId)
+    {
+        languageId = 0;
+
+        // 1) HorseFood bo'lsa
+        if (horseFood != FoodInfo.HorseFood.None)
+        {
+            switch (horseFood)
+            {
+                case FoodInfo.HorseFood.Wheat: languageId = 108; break;
+                case FoodInfo.HorseFood.Barley: languageId = 109; break;
+                case FoodInfo.HorseFood.Apple: languageId = 110; break;
+                case FoodInfo.HorseFood.Water: languageId = 111; break;
+                case FoodInfo.HorseFood.StaminWater: languageId = 112; break;
+                default: languageId = 0; break;
+            }
+            return RewardType.HorseFood;
+        }
+
+        // 2) PlayerSupplies bo'lsa
+        if (playerSupplies != PlayerResourse.Resources.None)
+        {
+            switch (playerSupplies)
+            {
+                case PlayerResourse.Resources.WalkZone: languageId = 323; break;
+                case PlayerResourse.Resources.Defender: languageId = 324; break;
+                case PlayerResourse.Resources.WebSnare: languageId = 322; break;
+                case PlayerResourse.Resources.Whiplash: languageId = 384; break;
+                case PlayerResourse.Resources.HorseDust: languageId = 387; break;
+                default: languageId = 0; break;
+            }
+            return RewardType.PlayerSupplies;
+        }
+
+        return RewardType.None;
+    }
+}
+
+public enum RewardType
+{
+    None = 0,
+    HorseFood = 1,
+    PlayerSupplies = 2
 }

@@ -111,10 +111,17 @@ public static class Constants
     }
     public static class DailyPrizes
     {
-        public const string PREF_LAST_CLAIM_DATE = "DR_LastClaimDate";
-        public const string PREF_DAY_IN_CYCLE = "DR_DayInCycle";     // 1..7 (oxirgi olingan kun)
-        public const string PREF_MONTH_PROGRESS = "DR_MonthProgress";  // 0..monthCycleLength
-        public const string PREF_STREAK_DAY = "PREF_STREAK_DAY";
+        public const string PREF_STREAK_DAY = "DR_STREAK_DAY";
+        public const string PREF_MONTH_PROGRESS = "DR_MONTH_PROGRESS";
+        public const string PREF_LAST_CLAIM_DATE = "DR_LAST_CLAIM_DATE";
+        public const string PREF_LAST_CLAIMED_CYCLE_DAY = "DR_LAST_CLAIMED_CYCLE_DAY";
+
+        // Today reward (RewardDayUI save qiladi, DailyRewardUI claimda o¡®qiydi)
+        public const string PREF_TODAY_REWARD_TYPE = "DR_TODAY_TYPE";
+        public const string PREF_TODAY_REWARD_ENUM = "DR_TODAY_ENUM";
+        public const string PREF_TODAY_REWARD_AMOUNT = "DR_TODAY_AMOUNT";
+        public const string PREF_TODAY_REWARD_LANG_ID = "DR_TODAY_LANG";
+
     }
     public static class MapNames
     {

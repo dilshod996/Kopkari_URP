@@ -149,25 +149,6 @@ public class LobbyManager : MonoBehaviour
         FoodShowerPopup.OnFoodEat -= PlayEat;
 
     }
-    private List<string> BuildPreloadKeys(string envAddress)
-    {
-        var preload = new List<string>();
-
-        switch (envAddress)
-        {
-            case Constants.MapNames.Zarafshan:
-                preload.Add(Constants.ZarafshanMapLayers.GrassLayer);
-                preload.Add(Constants.ZarafshanMapLayers.DryGrassLayer);
-                preload.Add(Constants.ZarafshanMapLayers.MudLayer);
-                preload.Add(Constants.ZarafshanMapLayers.CliffLayer);
-                break;
-
-                // keyin boshqa maplar...
-        }
-
-        preload.Add(envAddress); // env prefab
-        return preload;
-    }
 
     #region Popup va Infolar
 
@@ -519,11 +500,9 @@ public class LobbyManager : MonoBehaviour
             _currentEnvInstance = null;
         }
 
-        var preloadKeys = BuildPreloadKeys(envAddress);
 
         // ✅ 1) Yangi envni preload+load
         _currentEnvInstance = await AddressablesService.Instance.LoadEnvironmentAsync(
-            preloadKeys,
             envAddress,
             environmentRoot,
             onProgress: null,

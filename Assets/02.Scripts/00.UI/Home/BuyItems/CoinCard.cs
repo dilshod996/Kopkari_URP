@@ -79,7 +79,7 @@ public class CoinCard : MonoBehaviour
                 PlayerPrefs.SetInt(Constants.Coins.Coin , qorakAmount);
                 //HomeMainUI.Instance.UpdateNyufiy();
                 string amount = $"{mainAmountNum + bonusAmountNum}";
-                HomeMainUI.Instance.DisplayAutoReward(mainImage.sprite, LanguageManager.Instance.GetText(409), amount, LanguageManager.Instance.GetText(389));
+                HomeMainUI.Instance.DisplayAutoReward(mainImage.sprite, LanguageManager.Instance.GetText(409), amount, LanguageManager.Instance.GetText(390));
                 HomeMainUI.Instance.CloseCoinsPage();
             }
         }

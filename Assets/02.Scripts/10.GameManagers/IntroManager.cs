@@ -483,22 +483,6 @@ namespace Kopkari
                 );
             }
 
-            // 2️⃣ Map bo‘yicha terrain layer’larni qo‘shamiz
-            switch (selectedEnv)
-            {
-                case Constants.MapNames.Zarafshan:
-                    preload.Add(Constants.ZarafshanMapLayers.GrassLayer);
-                    preload.Add(Constants.ZarafshanMapLayers.DryGrassLayer);
-                    preload.Add(Constants.ZarafshanMapLayers.MudLayer);
-                    preload.Add(Constants.ZarafshanMapLayers.CliffLayer);
-                    break;
-
-                    // keyin boshqa maplar qo‘shiladi:
-                    // case Constants.MapNames.Registan:
-                    //     preload.Add(Constants.RegistanMapLayers.SandLayer);
-                    //     preload.Add(Constants.RegistanMapLayers.StoneLayer);
-                    //     break;
-            }
 
             preload.Add(selectedEnv);
 

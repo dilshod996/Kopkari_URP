@@ -43,7 +43,8 @@ public class MarketItemCardUI : MonoBehaviour
             case MarketItems.Coins:
                 firstItemText.text = $"+{firstItemAmount:N0}";
                 secondItemText.text = $"+{secondItemAmount:N0}";
-                if(topCornerText != null)
+                costText.text = $"${costAmount}";
+                if (topCornerText != null)
                 {
                     topCornerText.text = LanguageManager.Instance?.GetText(411);
                 }
