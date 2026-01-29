@@ -68,6 +68,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private Button playBtn;
     [SerializeField] private Button collectionBtn;
     [SerializeField] private Button competationsBtn;
+    [SerializeField] private Button marketBtn;
     [SerializeField] private Button nyufiyButton;
     [SerializeField] private Button korakButton;
     [SerializeField] private Button envChangeBtn;
@@ -76,6 +77,7 @@ public class HomeMainUI : MonoBehaviour
 
     [SerializeField] private GameplayMode playMode;
     [SerializeField] private GameObject collectionsPage;
+    [SerializeField] private GameObject marketPage;
     [SerializeField] private GameObject racingFields;
     [SerializeField] private GameObject kopkariFields;
     [SerializeField] private GameObject dailyUIRewards;
@@ -203,10 +205,7 @@ public class HomeMainUI : MonoBehaviour
 
     private void Start()
     {
-        playBtn.onClick.AddListener(() =>
-        {
-            OpenGameMainPanel();
-        });
+
         CheckNewDayAndNotify();
     }
 
@@ -232,6 +231,8 @@ public class HomeMainUI : MonoBehaviour
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
         LobbyManager.OnNameChanged += LobbyName;
         StartingInfo();
+        playBtn.onClick.AddListener(OpenGameMainPanel);
+        marketBtn.onClick.AddListener(OpenMarketPage);
         nyufiyButton.onClick.AddListener(NyufiyClicked);
         korakButton.onClick.AddListener(QorakClicked);
         collectionBtn.onClick.AddListener(OpenCollectionPage);
@@ -254,11 +255,13 @@ public class HomeMainUI : MonoBehaviour
         FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
         LobbyManager.OnNameChanged -= LobbyName;
-        nyufiyButton.onClick.RemoveListener(NyufiyClicked);
-        korakButton.onClick.RemoveListener(QorakClicked);
-        collectionBtn.onClick.RemoveListener(OpenCollectionPage);
-        competationsBtn.onClick.RemoveListener(OpenCompetationsPanel);
-        envChangeBtn.onClick.RemoveListener(OpenEnvironmentChangePanel);
+        playBtn.onClick.RemoveAllListeners();
+        nyufiyButton.onClick.RemoveAllListeners();
+        korakButton.onClick.RemoveAllListeners();
+        collectionBtn.onClick.RemoveAllListeners();
+        competationsBtn.onClick.RemoveAllListeners();
+        envChangeBtn.onClick.RemoveAllListeners();
+        marketBtn.onClick.RemoveAllListeners();
     }
     #region Player Supplies
 
@@ -760,6 +763,7 @@ public class HomeMainUI : MonoBehaviour
         // Bu yerga monthly sovga logikasi
     }
     #endregion
+
     #endregion
 
     #region Reward Popup
@@ -983,6 +987,10 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     #region Other Pages
+    public void OpenMarketPage()
+    {
+        ShowUI(marketPage);
+    }
     public void OpenCompetationsPanel()
     {
         ShowUI(competationsPanel);
