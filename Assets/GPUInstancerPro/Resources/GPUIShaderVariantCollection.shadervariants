@@ -27,6 +27,8 @@ ShaderVariantCollection:
           _ENABLETINTVARIATIONCOLOR_ON _ENABLEWIND_ON
         passType: 0
       - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLETINTVARIATIONCOLOR_ON
+        passType: 0
+      - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLETINTVARIATIONCOLOR_ON
           _ENABLEWIND_ON
         passType: 0
       - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLEWIND_ON
@@ -50,6 +52,8 @@ ShaderVariantCollection:
   - first: {fileID: 4800000, guid: 5088862c29f66024fab703054e2e2265, type: 3}
     second:
       variants:
+      - keywords: 
+        passType: 0
       - keywords: LOD_FADE_CROSSFADE
         passType: 0
   - first: {fileID: 4800000, guid: 333b79b1d6be9b4409fdb78a536ea583, type: 3}
@@ -64,6 +68,8 @@ ShaderVariantCollection:
       - keywords: LOD_FADE_CROSSFADE _NORMALMAP
         passType: 0
       - keywords: _NORMALMAP
+        passType: 0
+      - keywords: _RECEIVE_SHADOWS_OFF
         passType: 0
   - first: {fileID: 4800000, guid: c1183a7330de2a6429865c62d7a74ed2, type: 3}
     second:
@@ -81,6 +87,8 @@ ShaderVariantCollection:
         passType: 0
       - keywords: _METALLICSPECGLOSSMAP _NORMALMAP
         passType: 0
+      - keywords: _RECEIVE_SHADOWS_OFF
+        passType: 0
   - first: {fileID: 4800000, guid: 4d12612a6d6bca248b6acde427f5f507, type: 3}
     second:
       variants:
@@ -96,4 +104,9 @@ ShaderVariantCollection:
     second:
       variants:
       - keywords: LOD_FADE_CROSSFADE _EMISSION _NORMALMAP
+        passType: 0
+  - first: {fileID: 4800000, guid: 232f1f0285b25844089437f9161eb36f, type: 3}
+    second:
+      variants:
+      - keywords: 
         passType: 0

@@ -19,6 +19,8 @@ TagManager:
   - NPC
   - RacingHead
   - Chest
+  - PlayerSpot
+  - HorseSpot
   layers:
   - Default
   - TransparentFX
@@ -32,7 +34,7 @@ TagManager:
   - Trophy
   - NewUI
   - AIHorse
-  - 
+  - Clickable
   - 
   - 
   - BodyPart

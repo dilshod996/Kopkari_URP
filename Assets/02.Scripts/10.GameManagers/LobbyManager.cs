@@ -33,7 +33,7 @@ public class LobbyManager : MonoBehaviour
     private Tween loadingTween;
     private bool isLoadingVisible;
 
-    [SerializeField] private AudioClip lobbySound;
+
     [Header("Addressable")]
     [SerializeField] private Transform playerSpawnPos;
     [SerializeField] private Transform horseSpawnPos;
@@ -69,7 +69,7 @@ public class LobbyManager : MonoBehaviour
 
 
     [Header("Other room addressables")]
-    private List<string> customSceneAddressableAddresses = new List<string> { "Chopar"};
+    private List<string> customSceneAddressableAddresses = new List<string> { "CustomRoomEnvironment", "CustomRoomSound" };
 
     private List<string> preloadAddresses;
     private bool isSleeping = false;
@@ -101,7 +101,7 @@ public class LobbyManager : MonoBehaviour
 
         var skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
         if (skinLoader != null)
-            await skinLoader.ApplySkins();
+            await skinLoader.ApplyAllSkins();
 
         // 3️⃣ Horse spawn
         horseInstance = Instantiate(
@@ -123,8 +123,10 @@ public class LobbyManager : MonoBehaviour
         HorseAnimGet();
         GetPlayerAnimator();
 
-        if (SoundManager.Instance != null)
-            SoundManager.Instance.PlayMusic(lobbySound);
+        RoomSound();
+       // if (SoundManager.Instance != null)
+            //SoundManager.Instance.PlayMusic(lobbySound);
+
     }
 
     private void OnEnable()
@@ -172,10 +174,7 @@ public class LobbyManager : MonoBehaviour
     {
         SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.PastDargom, preloadAddresses);
     }
-    public void AvatarCustom()
-    {
-        SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
-    }
+
     public void TrainingRoom()
     {
         
@@ -475,10 +474,13 @@ public class LobbyManager : MonoBehaviour
         }
     }
     #endregion
+
     private void GetPlayerAnimator()
     {
         playerAnimator = playerInstance.GetComponent<MAnimal>();
     }
+
+    #region Changing Environment
     public void ChangeMap(string mapKey)
     {
          SwitchEnvironment(mapKey);
@@ -611,7 +613,25 @@ public class LobbyManager : MonoBehaviour
         // Agar Transform updates o'chirilgan bo'lsa, bir marta update talab qilsa bo'ladi
         prefabManager.RequireTransformUpdate();
     }
+    #endregion
 
+    #region Avatar Custom Scene ga o'tish
+    public void AvatarCustom()
+    {
+        SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
+    }
+    #endregion
+
+    #region Room Sound
+    private async void RoomSound()
+    {
+        var clip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.HomeRoomSound);
+        if(clip != null && SoundManager.Instance !=null)
+        {
+            SoundManager.Instance.PlayRoom(clip);
+        }
+    }
+    #endregion
     private void OnDestroy()
     {
         if (_currentEnvInstance != null)

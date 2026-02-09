@@ -1,0 +1,235 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: AvatarCustomPlayerUI
+  m_EditorClassIdentifier: 
+  m_GroupName: AvatarCustomPlayerUI
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 66085d4540400904bbe49351b93f6d5e
+  m_SerializeEntries:
+  - m_GUID: 415ec51911320294995d217bdc266fdf
+    m_Address: player_01/ui/upper/tshirt_black_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 732af7fd213679c458d88ea83b2a68d3
+    m_Address: player_01/ui/upper/tshirt_blue_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3123218ec01f4204da02e213e0b2cce0
+    m_Address: player_01/ui/upper/tshirt_red_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6deaf0597d8ad7641ad24792377be124
+    m_Address: player_01/ui/upper/tshirt_white_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1adfd19121870434b893de7445607367
+    m_Address: player_01/ui/upper/tshirt_yellow_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 34b9d265198bf2d4eb8053a95067842d
+    m_Address: player_01/ui/upper/hoodie_black_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e12659a38024a794593264213e3a61ce
+    m_Address: player_01/ui/upper/hoodie_blue_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bd1e8db9b272a9c40a6e71bbd404510f
+    m_Address: player_01/ui/upper/hoodie_orange_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 796a2d257e58b944eba9800a6ab3fc5a
+    m_Address: player_01/ui/upper/hoodie_red_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b5a072478fcea614a9e0c76019dbc606
+    m_Address: player_01/ui/upper/hoodie_yellow_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 73be688fdd49ece41a44af17d5e96964
+    m_Address: player_01/ui/upper/jacket_black_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bd583c6c03c41f04fa08529f45bf7955
+    m_Address: player_01/ui/upper/jacket_blue_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1c04268aee8fb0543a24d650985e5334
+    m_Address: player_01/ui/upper/jacket_red_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b227efc0277354946b529bab74e52392
+    m_Address: player_01/ui/upper/jacket_white_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4b4908b8ab52c5e42ad775e57c1d7f6e
+    m_Address: player_01/ui/upper/jacket_yellow_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 041dec3645c6e8442a53dd008acbc24b
+    m_Address: player_01/ui/lower/pant_01_black_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ec04c56bf279a8d4490f307e3754926b
+    m_Address: player_01/ui/lower/pant_01_blue_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 942a2aaad8013c641afa9587215e9aa2
+    m_Address: player_01/ui/lower/pant_01_orange_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cdd9afb11d8976b4e8daa3436864573e
+    m_Address: player_01/ui/lower/pant_01_red_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d3603674a071a4249951e5f410f7feb5
+    m_Address: player_01/ui/lower/pant_01_white_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d64849d3fb652ac46821cd243115189a
+    m_Address: player_01/ui/lower/pant_02_black_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 16702aefd24bb77459af004422232d65
+    m_Address: player_01/ui/lower/pant_02_blue_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c6919f7cf90cecd48b7bf1ec0cd6b087
+    m_Address: player_01/ui/lower/pant_02_green_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fef4532836ec2074a859d24aa214976a
+    m_Address: player_01/ui/lower/pant_02_orange_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bfd88ab6a3d4e58439cbde93ec6ff028
+    m_Address: player_01/ui/lower/pant_02_white_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c6db5abb346c9ad4fb255d6fca53965d
+    m_Address: player_01/ui/facehair/facehair_01_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 592b7d3cb1e5b104bb2ee1e2967b523d
+    m_Address: player_01/ui/facehair/facehair_02_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6c10bdf4b202ef742a9a5a4c2c744008
+    m_Address: player_01/ui/facehair/facehair_03_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5d464fca7efa92e4a837193c203c2f2c
+    m_Address: player_01/ui/facehair/facehair_04_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b60b0bc800d49c9489edd0c1f87736ae
+    m_Address: player_01/ui/hair/hair_01_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5f1ba2f768c1559499181c5b4c24b8f5
+    m_Address: player_01/ui/hair/hair_02_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e22082e34a3a8fa44b75e74c9f625058
+    m_Address: player_01/ui/hair/hair_03_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c9d33f9187b635d4abe2b5a8361ce909
+    m_Address: player_01/ui/hair/hair_04_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cf7d5cc20615cf341828d2f8ca17cffd
+    m_Address: player_01/ui/hair/hair_05_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 23f73517c898d654698e84df638bcf52
+    m_Address: player_01/ui/hair/hair_06_icon
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - CustomUI
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 967e57c98f9c6fa4cac1669fc7d56f94, type: 2}
+    - {fileID: 11400000, guid: dba6521c27b33ac4ba0a52619752707e, type: 2}

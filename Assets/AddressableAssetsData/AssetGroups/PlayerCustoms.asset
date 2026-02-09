@@ -18,97 +18,205 @@ MonoBehaviour:
   m_GUID: 828cc208e0a30514a82ad084872312ab
   m_SerializeEntries:
   - m_GUID: 0ceb6c10017a20a4ca6d5deac63a27d5
-    m_Address: FaceHair1
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 5864167e70592f34b861917f4933c3de
-    m_Address: Head2
+    m_Address: player_01/mat/facehair/facehair_01
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4260b241650180243b8944bffe88cf4d
-    m_Address: Hat
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 56131308eeda1ea4e8ae0aa65d33d4c0
-    m_Address: UpperBody1
+    m_Address: player_01/mat/hair/hair_04
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e42752fc1a8126449a57978d07e8cc1a
-    m_Address: LowerBody1
+    m_Address: player_01/mat/lower/pant_01_orange
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 23d4d28b88dabc34890daf5ac2fbdb56
-    m_Address: FaceHair4
+    m_Address: player_01/mat/facehair/facehair_04
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 923540df6c9888d4188af70087efcc54
-    m_Address: UpperBody2
+    m_Address: player_01/mat/upper/tshirt_white
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 23de5890e836db04bbaa935a71529dbd
-    m_Address: Hands
+    m_Address: player_01/mat/hands/Hands_default
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 31a7acdf7236c9f4f9e0717c5acfb69a
-    m_Address: UpperBody3
+    m_Address: player_01/mat/upper/hoodie_blue
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f196c81fbfe57084fa054acca1a06075
-    m_Address: Head
+    m_Address: player_01/mat/head/Head_default
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d7d0ebe64a31f8545b7f7dde95de3fdf
-    m_Address: UpperBody4
+    m_Address: player_01/mat/upper/jacket_black
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7dac9172eadad2b4eb4eb4fd12318b04
-    m_Address: LowerBody2
+    m_Address: player_01/mat/lower/pant_02_blue
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 74260b9514ecd7647ae56e93be08b42f
-    m_Address: Hat2
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - PlayerMaterials
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: b4027b896cb5ddd478b6815a54f033e2
-    m_Address: Hat3
+    m_Address: player_01/mat/hair/hair_05
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 6126bcb18e701314cbae8c30f4369f72
-    m_Address: UpperBody2_1
+    m_Address: player_01/mat/upper/tshirt_black
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c7e0cd33279719c459b42df987323b93
-    m_Address: LowerBody1_2
+    m_Address: player_01/mat/lower/pant_01_blue
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2240b433f91ad5f43bf556d5716154b2
+    m_Address: player_01/mat/lower/pant_01_white
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 96503572231002140a18627c7a4a33f9
+    m_Address: player_01/mat/hair/hair_01
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cdf8d4f95a0b3cd48bc5abfb5ad5f906
+    m_Address: player_01/mat/lower/pant_01_red
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e3bcc3b4f73ec5f4c8c24480baba9f0c
+    m_Address: player_01/mat/lower/pant_01_black
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0d2b02a2bc9fd304c95eb8b7609c0293
+    m_Address: player_01/mat/lower/pant_02_black
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 16e13e98a9672f046925467b0f5072a1
+    m_Address: player_01/mat/lower/pant_02_green
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 569121128adea2f4bae22cdc2103c977
+    m_Address: player_01/mat/lower/pant_02_orange
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 74e66855f50a0f840ada114496bf8735
+    m_Address: player_01/mat/lower/pant_02_white
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ebebb1e75b6433643addbe8526fa7763
+    m_Address: player_01/mat/hair/hair_03
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bd13aaea86c32dc46a0c550cafa264ba
+    m_Address: player_01/mat/hair/hair_02
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 88f84f66c8c59c246bfa1b903ed08577
+    m_Address: player_01/mat/upper/jacket_blue
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c02e15c4e064c184095d1f6ba7d233eb
+    m_Address: player_01/mat/upper/jacket_yellow
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 77c5b43484efb924590835fb8fc65c94
+    m_Address: player_01/mat/upper/hoodie_orange
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bf37ce03f10f61749b52bbb855a64404
+    m_Address: player_01/mat/upper/hoodie_yellow
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9ad4b9dd5d507b64da95d13ba7e6a564
+    m_Address: player_01/mat/upper/hoodie_black
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8e466ae325df6ee4d94858296ca51812
+    m_Address: player_01/mat/upper/hoodie_red
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 30d3dfe3d60afd843b392a4f1d3ffc9c
+    m_Address: player_01/mat/upper/tshirt_blue
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5a220d3d0931918488a0e02029d02111
+    m_Address: player_01/mat/upper/tshirt_red
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a73dff6e09d32284db928c051f17cf42
+    m_Address: player_01/mat/upper/tshirt_yellow
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7893825ebc6438441b5f4ebdf8486f4d
+    m_Address: player_01/mat/upper/jacket_red
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - PlayerMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 09daec66b929f3341aa0c3014033e860
+    m_Address: player_01/mat/upper/jacket_white
     m_ReadOnly: 0
     m_SerializedLabels:
     - PlayerMaterials

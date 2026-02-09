@@ -239,10 +239,30 @@ public class SceneLoadManager : MonoBehaviour
         yield return WaitTask(preloadTask);
 
         if (!preloadTask.Result)
-        {
-           // IntroManager.Instance?.ShowPopup();
             yield break;
+
+        var uiPairs = new (string address, UISoundType type)[]
+          {
+            (Constants.UISounds.Click, UISoundType.Click),
+            (Constants.UISounds.Confirm, UISoundType.Confirm),
+            (Constants.UISounds.Error, UISoundType.Error),
+            (Constants.UISounds.Success, UISoundType.Success),
+            (Constants.UISounds.PopupOpen, UISoundType.PopupOpen),
+            (Constants.UISounds.PopupClose, UISoundType.PopupClose),
+          };
+
+        for (int i = 0; i < uiPairs.Length; i++)
+        {
+            var (address, type) = uiPairs[i];
+
+            var clipTask = AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
+            yield return WaitTask(clipTask);
+
+            AudioClip clip = clipTask.Result;
+            if (clip != null && SoundManager.Instance != null)
+                SoundManager.Instance.RegisterUIClip(type, clip);
         }
+
 
         Scene oldScene = SceneManager.GetActiveScene();
 
@@ -259,10 +279,9 @@ public class SceneLoadManager : MonoBehaviour
         while (!AssetInstantiationFinished)
             yield return null;
 
-        // Single bo‘lgani uchun old scene unload shart emas (u allaqachon ketgan bo‘ladi),
-        // lekin qoldirsang ham zarar qilmaydi. Xohlasang olib tashla.
         SetAssetInstantiationFinished(false);
     }
+
 
     //private IEnumerator HandleSceneLoadIntro(SceneType targetScene, List<string> preloadAddresses)
     //{
@@ -333,6 +352,7 @@ public class SceneLoadManager : MonoBehaviour
     private IEnumerator HandleSceneLoadWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
     {
         loadingTime = 0f;
+        preloadAddresses ??= new List<string>();
 
         // 1) Loading scene SINGLE
         AsyncOperation loadingOp = SceneManager.LoadSceneAsync(SceneType.Loading.ToString(), LoadSceneMode.Single);
@@ -341,22 +361,43 @@ public class SceneLoadManager : MonoBehaviour
 
         yield return null;
 
-        // 2) Preload
+        // 2) Preload env/sound/etc
         var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
             preloadAddresses,
-            p => loadingTime = p * 100f,
+            p => loadingTime = p * 70f,
             fakeDurationIfCached
         );
 
         yield return WaitTask(preloadTask);
 
         if (!preloadTask.Result)
-        {
-            //IntroManager.Instance?.ShowPopup();
             yield break;
+
+        // 2.5) AvatarCustom bo'lsa — active player barcha skin keys preload
+        if (targetScene == SceneType.AvatarCustom)
+        {
+            // catalog ready: eng ishonchli yo'l
+            var ensureCatalogTask = PlayerCatalogProvider.Instance.EnsureCatalogAsync();
+            yield return WaitTask(ensureCatalogTask);
+
+            string playerId = PlayerPrefs.GetString("ActivePlayerId", "player_01");
+
+            var playerPreloadTask = PlayerCatalogProvider.Instance.PreloadAllForPlayerAsync(
+                playerId,
+                p => loadingTime = 70f + p * 30f,
+                includeIcons: true
+            );
+
+            yield return WaitTask(playerPreloadTask);
+
+            if (!playerPreloadTask.Result)
+                yield break;
         }
 
-        // 3) Target SINGLE (Loading sahnasini almashtiradi)
+        //// IMPORTANT: reset before target load (agar manager DDOL bo'lsa)
+        //AssetInstantiationFinished = false;
+
+        // 3) Target SINGLE
         AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
         while (!sceneLoadOp.isDone)
             yield return null;
@@ -374,6 +415,7 @@ public class SceneLoadManager : MonoBehaviour
 
         CurrentSceneType = targetScene;
     }
+
 
     //private IEnumerator HandleSceneLoadWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
     //{

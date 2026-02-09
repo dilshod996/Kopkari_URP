@@ -143,5 +143,17 @@ public static class Constants
         public const string MudLayer = "mudLayer";
         public const string CliffLayer = "cliffLayer";
     }
-
+    public static class UISounds 
+    {
+        public const string Click = "Click";
+        public const string Confirm = "Confirm";
+        public const string Error = "Error";
+        public const string Success = "Success";
+        public const string PopupClose = "PopupClose";
+        public const string PopupOpen = "PopupOpen";
+    }
+    public static class RoomSound 
+    {
+        public const string HomeRoomSound = "HomeSound";
+    }
 }

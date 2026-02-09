@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 3f7e4bd2404c9b84eb12bcaefb51e1eb
   m_currentHash:
     serializedVersion: 2
-    Hash: 00000000000000000000000000000000
+    Hash: 7a69376412c439c0fbe578586c02016d
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 1
   m_BundleLocalCatalog: 0
@@ -54,6 +54,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d480692bb680f2f45b07508c32862e0f, type: 2}
   - {fileID: 11400000, guid: 4f74dc1220f94f34f80fd34579068a10, type: 2}
   - {fileID: 11400000, guid: 7fa251cabbb8e764f83c5866252ae21e, type: 2}
+  - {fileID: 11400000, guid: ff743f87a95914141b83068a6f38eaa6, type: 2}
+  - {fileID: 11400000, guid: 664776fcc3b899447836a8f0ef152c0a, type: 2}
   m_BuildSettings:
     m_CompileScriptsInVirtualMode: 0
     m_CleanupStreamingAssetsAfterBuilds: 1
@@ -117,6 +119,7 @@ MonoBehaviour:
     - PlayerMaterials
     - HorseMaterials
     - Textures
+    - CustomUI
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: c7a25b5789f8cf249a336f52b3505585, type: 2}

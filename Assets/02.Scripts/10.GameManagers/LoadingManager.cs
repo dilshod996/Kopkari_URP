@@ -20,7 +20,8 @@ public class LoadingManager : MonoBehaviour
 
     private void OnEnable()
     {
-        SoundManager.Instance?.StopMusicEvent();
+        //SoundManager.Instance?.StopMusicEvent();
+        SoundManager.Instance?.StopRoomSmooth();
         ApplyScenePanel(SceneLoadManager.Instance != null
             ? SceneLoadManager.Instance.CurrentSceneType
             : SceneLoadManager.SceneType.Home);

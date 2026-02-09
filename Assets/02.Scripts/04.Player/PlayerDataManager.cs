@@ -68,7 +68,7 @@ public class PlayerDataManager : MonoBehaviour
         if (skinLoader != null)
         {
             // await skinLoader.ApplyMaterials();
-            await skinLoader.ApplySkins();
+            await skinLoader.ApplyAllSkins();
         }
         else
         {

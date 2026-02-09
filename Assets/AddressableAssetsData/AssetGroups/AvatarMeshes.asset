@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: AvatarMeshes
+  m_EditorClassIdentifier: 
+  m_GroupName: AvatarMeshes
+  m_Data:
+    m_SerializedData: []
+  m_GUID: bdee2907fd02058489edea6eafc9875f
+  m_SerializeEntries:
+  - m_GUID: cba22ead58dace34fbe64f8d66e3c9c3
+    m_Address: player_01/mesh/facehair/facehair_04
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 08b4de049cb4617438b3497770083ba2
+    m_Address: player_01/mesh/facehair/facehair_03
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c3268b8cf228f1a4fbffad50e6ffb2e1
+    m_Address: player_01/mesh/facehair/facehair_02
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3522f62fef63c45459398853e7cf2c5c
+    m_Address: player_01/mesh/facehair/facehair_01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9050143da1e6a70448e5c32c7bb98de6
+    m_Address: player_01/mesh/hair/hair_01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a3f2deacb389161418a6f15ecf932187
+    m_Address: player_01/mesh/hair/hair_02
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 60ee3da589fe53d46ba900d521561f87
+    m_Address: player_01/mesh/hair/hair_03
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8dc283eb84fab4e41a7a9cea381d5ee5
+    m_Address: player_01/mesh/hair/hair_04
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 75a978f3cd4fa8c4487d819e61853066
+    m_Address: player_01/mesh/hair/hair_05
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 61ede6fe503e86c4fa9f71fd4a3ead13
+    m_Address: player_01/mesh/hair/hair_06
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 696281331e803b443b6acdfec462778e
+    m_Address: Hands_default
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d1a2b0d6fcd5944eafecad871d0645a
+    m_Address: Head_default
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6c31a078f9a125b45b4913989bc08326
+    m_Address: player_01/mesh/lower/pant_01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c5212b98948e89c4a8ef28b87f1c60fc
+    m_Address: player_01/mesh/lower/pant_02
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 81edc7e33e1ce3944a7e1fd68089b035
+    m_Address: player_01/mesh/upper/hoodie
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 90cf83f6a7387fc45874da172f7ac4a4
+    m_Address: player_01/mesh/upper/tshirt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 812f85443029bef4faf4d2414ed12a86
+    m_Address: player_01/mesh/upper/jacket
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 2f7d187c6f0e8a1478a7234c4433e513, type: 2}
+    - {fileID: 11400000, guid: d330f7bbc5a5f6b48ae6c0b35713f7fa, type: 2}

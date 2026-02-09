@@ -35,7 +35,7 @@ namespace Kopkari
         [SerializeField] private Button startButton;
         //[SerializeField] private Button skipButton;
         //Intro scene addressable addresses
-        private List<string> myAddresses = new List<string> { /*"IntroSound",*/ "IntroVideo" };
+        private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
 
         [Header("User Details")]
         // private const string UsernameKey = "username";
@@ -136,7 +136,7 @@ namespace Kopkari
         #region Get Intro Video
         public void SoundEffect(AudioClip clip)
         {
-            SoundManager.Instance.PlayMusic(clip);
+            SoundManager.Instance?.PlayRoom(clip);
         }
         public async void GetAddressableData()
         {
@@ -174,18 +174,18 @@ namespace Kopkari
                     continue;
                 }
 
-                // Audio bo‘lishi mumkin
-                //var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
-                //if (audio != null)
-                //{
-                //    SoundEffect(audio);
-                //    Debug.Log($"🔊 Audio played: {address}");
+                //Audio bo‘lishi mumkin
+                var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
+                if (audio != null)
+                {
+                    SoundEffect(audio);
+                    Debug.Log($"🔊 Audio played: {address}");
 
-                //    if (startingPage.activeSelf)
-                //        startingPage.SetActive(false);
+                    if (startingPage.activeSelf)
+                        startingPage.SetActive(false);
 
-                //    continue;
-                //}
+                    continue;
+                }
 
                 // Hech bo‘lmasa Object qilib ko‘ramiz (agar kerak bo‘lsa)
                 var any = await AddressablesService.Instance.LoadAssetAsync<Object>(address);
@@ -219,7 +219,7 @@ namespace Kopkari
                 Debug.LogWarning("❌ IntroVideo failed to load.");
                 return;
             }
-
+           // var audioClip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>("IntroSound");
             videoPlayer.clip = clip;
             videoPlayer.Play();
 
@@ -366,6 +366,10 @@ namespace Kopkari
             //        Addressables.Release(handle);
             //    }
             //}
+            if(SoundManager.Instance != null)
+            {
+                SoundManager.Instance.StopRoomSmooth();
+            }
             foreach (var addr in myAddresses)
                 AddressablesService.Instance.ReleaseLoadedAsset(addr);
         }
@@ -407,14 +411,14 @@ namespace Kopkari
         {
             if (!PlayerPrefs.HasKey(FirstTimeKey))
             {
-                PlayerPrefs.SetInt(Constants.Player.FirstTimeKey, 1);
-                //Save default player materials
-                PlayerPrefs.SetString(Constants.Player.PlayerFaceHairKey, "FaceHair4");
-                PlayerPrefs.SetString(Constants.Player.PlayerHeadKey, "Head");
-                PlayerPrefs.SetString(Constants.Player.PlayerHelmetKey, "Hat3");
-                PlayerPrefs.SetString(Constants.Player.PlayerHand, "Hands");
-                PlayerPrefs.SetString(Constants.Player.PlayerUpperBodyKey, "UpperBody2_1");
-                PlayerPrefs.SetString(Constants.Player.PlayerLowerBodyKey, "LowerBody1_2");
+                //PlayerPrefs.SetInt(Constants.Player.FirstTimeKey, 1);
+                ////Save default player materials
+                //PlayerPrefs.SetString(Constants.Player.PlayerFaceHairKey, "FaceHair4");
+                //PlayerPrefs.SetString(Constants.Player.PlayerHeadKey, "Head");
+                //PlayerPrefs.SetString(Constants.Player.PlayerHelmetKey, "Hat3");
+                //PlayerPrefs.SetString(Constants.Player.PlayerHand, "Hands");
+                //PlayerPrefs.SetString(Constants.Player.PlayerUpperBodyKey, "UpperBody2_1");
+                //PlayerPrefs.SetString(Constants.Player.PlayerLowerBodyKey, "LowerBody1_2");
  
                 //Save default horse materials
 
@@ -437,12 +441,12 @@ namespace Kopkari
             List<string> preload = new List<string>();
 
             //PlayerPrefs dan material addresslarini olish
-            string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
-            string head = PlayerPrefs.GetString(Constants.Player.PlayerHeadKey);
-            string faceHair = PlayerPrefs.GetString(Constants.Player.PlayerFaceHairKey);
-            string hand = PlayerPrefs.GetString(Constants.Player.PlayerHand);
-            string upper = PlayerPrefs.GetString(Constants.Player.PlayerUpperBodyKey);
-            string lower = PlayerPrefs.GetString(Constants.Player.PlayerLowerBodyKey);
+            //string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
+            //string head = PlayerPrefs.GetString(Constants.Player.PlayerHeadKey);
+            //string faceHair = PlayerPrefs.GetString(Constants.Player.PlayerFaceHairKey);
+            //string hand = PlayerPrefs.GetString(Constants.Player.PlayerHand);
+            //string upper = PlayerPrefs.GetString(Constants.Player.PlayerUpperBodyKey);
+            //string lower = PlayerPrefs.GetString(Constants.Player.PlayerLowerBodyKey);
 
 
             //PlayerPrefs dan ot material addresslarini olish
@@ -455,12 +459,12 @@ namespace Kopkari
             string horseSaddle = PlayerPrefs.GetString(Constants.Horse.HorseSaddleKey);
             string horseReinsHead = PlayerPrefs.GetString(Constants.Horse.HorseReinsHeadKey);
 
-            preload.Add(head);
-            preload.Add(hand);
-            preload.Add(faceHair);
-            preload.Add(upper);
-            preload.Add(lower);
-            preload.Add(helmet);
+            //preload.Add(head);
+            //preload.Add(hand);
+            //preload.Add(faceHair);
+            //preload.Add(upper);
+            //preload.Add(lower);
+            //preload.Add(helmet);
             preload.Add(horseBody);
             preload.Add(horseEyes);
             preload.Add(horseMane);
@@ -486,6 +490,14 @@ namespace Kopkari
 
             preload.Add(selectedEnv);
 
+            //Home Room Sound and ui sounds
+            preload.Add(Constants.UISounds.Confirm);
+            preload.Add(Constants.UISounds.Error);
+            preload.Add(Constants.UISounds.Success);
+            preload.Add(Constants.UISounds.Click);
+            preload.Add(Constants.UISounds.PopupOpen);
+            preload.Add(Constants.UISounds.PopupClose);
+            preload.Add(Constants.RoomSound.HomeRoomSound);
             return preload;
         }
         #endregion

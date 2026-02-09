@@ -17,8 +17,56 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 766d32c68b0ebc648955c088636cbb36
   m_SerializeEntries:
-  - m_GUID: 18bcfb5e478940c4dacd9cd821052229
+  - m_GUID: b2aeab7bafd06b4418489f71e8a1bee3
     m_Address: IntroSound
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0994c12e202f342459a4212e7287f7e8
+    m_Address: Click
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 52320e590bf774734a288886eba557ba
+    m_Address: Confirm
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7478151cf36724a7dada558f746c3633
+    m_Address: Error
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7e9ee6dc04a5d40d1a5dfc4beb9865e7
+    m_Address: PopupClose
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a0ca8964c08d54c5dbebf245bdc474ca
+    m_Address: PopupOpen
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2667a0a008b044e218b63df62e2be749
+    m_Address: Success
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fc5b93b7471b5ec45b8107b73398a7e7
+    m_Address: CustomRoomSound
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Sound
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ccd8bc38c27e5434b8d35ea0bbc528b9
+    m_Address: HomeSound
     m_ReadOnly: 0
     m_SerializedLabels:
     - Sound

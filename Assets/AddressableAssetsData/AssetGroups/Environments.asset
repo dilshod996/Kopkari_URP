@@ -29,6 +29,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Environment
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7d92300b29b6f745829d6972ee16855
+    m_Address: CustomRoomEnvironment
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Environment
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
   m_SchemaSet:

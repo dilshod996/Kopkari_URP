@@ -8,7 +8,7 @@ public class BeginerRoomManager : BaseManager
     {
         base.Awake();
         if (SoundManager.Instance != null)
-            SoundManager.Instance.PlayMusic(jomboySound);
+           // SoundManager.Instance.PlayMusic(jomboySound);
         modalWindowPopup.onConfirm.AddListener(MoveLobby);
     }
     protected override void OnEnable()

@@ -137,3 +137,71 @@ public class Settings : MonoBehaviour
         HomeMainUI.Instance.HideUI(this);
     }
 }
+//[Header("UI Refs")]
+//[SerializeField] private Slider volumeSlider; // 0..100
+//[SerializeField] private Toggle soundToggle;  // on/off
+
+//private bool _ignoreEvents;
+
+//private void OnEnable()
+//{
+//    SyncFromPrefs();
+//    HookUI();
+//}
+
+//private void OnDisable()
+//{
+//    UnhookUI();
+//}
+
+//private void SyncFromPrefs()
+//{
+//    _ignoreEvents = true;
+
+//    int state = PlayerPrefs.GetInt(SoundManager.PREF_SOUND_STATE, 1);
+//    int vol100 = PlayerPrefs.GetInt(SoundManager.PREF_SOUND_VOL_100, 100);
+
+//    if (soundToggle != null) soundToggle.isOn = (state == 1);
+
+//    if (volumeSlider != null)
+//    {
+//        volumeSlider.minValue = 0;
+//        volumeSlider.maxValue = 100;
+//        volumeSlider.wholeNumbers = true;
+//        volumeSlider.value = vol100;
+//        volumeSlider.interactable = (state == 1); // OFF bo'lsa slider disable
+//    }
+
+//    _ignoreEvents = false;
+//}
+
+//private void HookUI()
+//{
+//    if (volumeSlider != null) volumeSlider.onValueChanged.AddListener(OnVolumeChanged);
+//    if (soundToggle != null) soundToggle.onValueChanged.AddListener(OnSoundToggleChanged);
+//}
+
+//private void UnhookUI()
+//{
+//    if (volumeSlider != null) volumeSlider.onValueChanged.RemoveListener(OnVolumeChanged);
+//    if (soundToggle != null) soundToggle.onValueChanged.RemoveListener(OnSoundToggleChanged);
+//}
+
+//private void OnVolumeChanged(float v)
+//{
+//    if (_ignoreEvents) return;
+//    if (SoundManager.Instance == null) return;
+
+//    SoundManager.Instance.SetVolume100(Mathf.RoundToInt(v));
+//}
+
+//private void OnSoundToggleChanged(bool on)
+//{
+//    if (_ignoreEvents) return;
+//    if (SoundManager.Instance == null) return;
+
+//    SoundManager.Instance.SetSoundState(on);
+
+//    if (volumeSlider != null)
+//        volumeSlider.interactable = on;
+//}
