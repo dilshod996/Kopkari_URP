@@ -97,6 +97,7 @@ public class RacingResultPage : MonoBehaviour
         //FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
        // FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
         foodPanelEnablerBtn.onClick.RemoveListener(EnableFoodPage);
+        Clear();
     }
     #region Player List && Racing Stats && Records
     public void ShowResults()
@@ -371,12 +372,26 @@ public class RacingResultPage : MonoBehaviour
             alarmMessage.text = LanguageManager.Instance.GetText(langId);
             return;  // Racing davom etmaydi
         }
-        Clear();
-        SceneLoadManager.Instance.LoadScene(sceneType);
+        //Clear();
+        PlayAgainText();
+        SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
+    }
+    public void PlayAgainText()
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.SecondRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "This time is your win!");
+                break;
+            case SceneLoadManager.SceneType.EgyptRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
+                break;
+        }
     }
     public void BackLobby()
     {
-        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Home);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
     private void FoodNotNeeded()
     {

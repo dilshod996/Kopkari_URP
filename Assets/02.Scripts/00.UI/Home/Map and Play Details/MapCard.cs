@@ -63,6 +63,7 @@ public class MapCard : MonoBehaviour
     private void MapDetails()
     {
         //string cost  = costMap.ToString() /*+ LanguageManager.Instance.GetText(58)*/;
+        SoundManager.Instance?.PlayUI(UISoundType.PopupOpen);
         HomeMainUI.Instance.ShowUI(popupMapInfo);
         popupMapInfo.SetMapData(LanguageManager.Instance.GetText(mapLangCode), mapImage.sprite, costMap, LanguageManager.Instance.GetText(mapInfoCode), mapLangName, mapType);
     }

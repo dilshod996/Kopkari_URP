@@ -18,40 +18,178 @@ MonoBehaviour:
   m_GUID: 072c74e3c0f5af245b112f6f861282fb
   m_SerializeEntries:
   - m_GUID: 48a3ff7d81b735a47aaa910a8a1df49f
-    m_Address: HorseBrown
+    m_Address: horse_01/mat/body/body_02
     m_ReadOnly: 0
     m_SerializedLabels:
     - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d72f275ed72cb9549bbddf7300e78d17
-    m_Address: HorseEyes
+    m_Address: eyesMaterial_default
     m_ReadOnly: 0
     m_SerializedLabels:
     - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8abe43561eb05e04fafc0bc7df4731ff
-    m_Address: HorseManeBlack
+    m_Address: horse_01/mat/mane/mane_01
     m_ReadOnly: 0
     m_SerializedLabels:
     - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9b83b9ebc5303384eaed909442f6bc01
-    m_Address: Saddle3
+    m_Address: horse_01/mat/saddle/saddle_06
     m_ReadOnly: 0
     m_SerializedLabels:
     - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 40e1ad78d17981c43b148efa9105b11e
-    m_Address: Saddle
+  - m_GUID: 63c1fcb402effef43bbc2f227bd96841
+    m_Address: horse_01/mat/saddle/saddle_07
     m_ReadOnly: 0
-    m_SerializedLabels:
-    - HorseMaterials
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d4b0ae5dd029ee64b807cf9806edf455
-    m_Address: HorseYellowBlack
+    m_Address: horse_01/mat/body/body_01
     m_ReadOnly: 0
     m_SerializedLabels:
     - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e6a9299247781dd4ab0b258191767f62
+    m_Address: horse_01/mat/body/body_09
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: efb91c0dec4611e40b81e1a7c0977c34
+    m_Address: horse_01/mat/body/body_08
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b939f967722803e4783faeeca9cb18c4
+    m_Address: horse_01/mat/body/body_07
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 397994313bde76e4abece32af18777a5
+    m_Address: horse_01/mat/body/body_06
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f362ccfcee1305449b0789cf19178fae
+    m_Address: horse_01/mat/body/body_05
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 60443507e73a2f4408c73b469c3cab55
+    m_Address: horse_01/mat/body/body_04
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5120b901560dcad408aa1361836cbd16
+    m_Address: horse_01/mat/body/body_03
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e9ffb01cb751bce44ba1d6aa8aaa030b
+    m_Address: horse_01/mat/body/body_10
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 40fa59b42e77d2146b7bf86f3f092ce8
+    m_Address: horse_01/mat/body/body_11
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b089a42838cc7584bb1397ab8f327091
+    m_Address: horse_01/mat/body/body_12
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ab0883ee0c461d04fad6b974177c6795
+    m_Address: horse_01/mat/body/body_13
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 54ad3b95c9183104183a98b7a3c490e2
+    m_Address: horse_01/mat/body/body_14
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0be25669804856b459f936f1306e58a7
+    m_Address: horse_01/mat/body/body_15
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 411626f5c037f094eac99b8c59da5f8d
+    m_Address: horse_01/mat/body/body_16
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: df04feca3c56ea249aeee92a48e9b0cc
+    m_Address: horse_01/mat/mane/mane_06
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 33bd8ff887fcd5b49a046279d26c9266
+    m_Address: horse_01/mat/mane/mane_05
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3fdce1107477010488626f915570ca1b
+    m_Address: horse_01/mat/mane/mane_04
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 127b5c607986dcc4586829a8d4900e4c
+    m_Address: horse_01/mat/mane/mane_03
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3a0d30248c0b7414fa80af0c45140e3e
+    m_Address: horse_01/mat/mane/mane_02
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 30a9e1074dda2d242a979393dfab8f30
+    m_Address: horse_01/mat/saddle/saddle_05
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 60b3809e8d655eb41a88603d5f18fbe0
+    m_Address: horse_01/mat/saddle/saddle_04
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d32373953ea9296439ee646ef6b88f72
+    m_Address: horse_01/mat/saddle/saddle_03
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c7b22a14db15a964dad3f38f0fa93696
+    m_Address: horse_01/mat/saddle/saddle_02
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 17786de788fa69f42a4e07fe11bc6439
+    m_Address: horse_01/mat/saddle/saddle_01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}

@@ -1,5 +1,7 @@
 ﻿// RacingAgent.cs
+using MalbersAnimations.Controller.AI;
 using UnityEngine;
+using UnityEngine.AI;
 /// <summary>
 /// This script located head of horse
 /// </summary>
@@ -8,6 +10,7 @@ public class RacingAgent : MonoBehaviour
     [Header("Identity")]
     public string displayName = "Rider";
     public string teamName = "Team A";       // 🔹 yangi
+    public string countryName = "Uzb";
 
     //public Transform pivot;
     public Transform webSnareTarget;
@@ -30,7 +33,7 @@ public class RacingAgent : MonoBehaviour
 
     // 🧭 Oxirgi checkpointdan o‘tgan ON (split) vaqti
     public float LastSplitTime { get; private set; } = 0f;
-
+    [SerializeField] private MAnimalAIControl agent;
 
     // ⬇️ Global start vaqtini berish uchun overload
     public void BeginRace(float globalStartTime)
@@ -66,6 +69,20 @@ public class RacingAgent : MonoBehaviour
             displayName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
             teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
         }
+    }
+    public void DisableNavmesh()
+    {
+        if (agent == null) return;
+
+        agent.Stop();
+        agent.enabled = false;
+    }
+
+    public void EnableNavmesh()
+    {
+        if (agent == null) return;
+
+        agent.enabled = true;
     }
 
 }

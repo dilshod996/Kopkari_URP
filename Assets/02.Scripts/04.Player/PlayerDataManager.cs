@@ -166,8 +166,8 @@ public class PlayerDataManager : MonoBehaviour
             int abilityIndex = SceneLoadManager.Instance.CurrentSceneType switch
             {
                 SceneLoadManager.SceneType.EgyptRacing => 2,
-                SceneLoadManager.SceneType.FirstRacing => 3,
-                SceneLoadManager.SceneType.SecondRacing => 1,
+                SceneLoadManager.SceneType.FirstRacing => 1,
+                SceneLoadManager.SceneType.SecondRacing => 3,
                 _ => -99
             };
 
@@ -183,7 +183,7 @@ public class PlayerDataManager : MonoBehaviour
 
 
         // 5) Anim ko‘rinsin
-        yield return new WaitForSecondsRealtime(3.5f);
+        yield return new WaitForSecondsRealtime(4f);
 
         // 6) Endi UI
         OnShowFinalPage?.Invoke();

@@ -19,6 +19,7 @@ public class RacingLeaderboard : MonoBehaviour
     private readonly Dictionary<RacingAgent, UIRankingView> rows = new();      // agent -> UI qatori
     public bool RaceStarted { get; private set; }
     public float RaceStartTime { get; private set; }
+    public bool RaceFinished { get; private set; }
 
     private void Awake()
     {
@@ -76,6 +77,7 @@ public class RacingLeaderboard : MonoBehaviour
     public void NotifyCheckpoint(RacingAgent agent)
     {
         if (agent == null) return;
+        if (RaceFinished) return; // ✅ lock
         if (!agentSet.Contains(agent)) Register(agent);
 
         // ⛔ Poyga boshlanmaguncha ranking/log ishlamasin
@@ -143,7 +145,7 @@ public class RacingLeaderboard : MonoBehaviour
     {
         if (!rows.TryGetValue(a, out var row) || row == null) return;
         int cpShow = Mathf.Max(0, a.CheckpointIndex);
-        row.SetData($"{rank}. {a.displayName}", $"CP {cpShow} • Passed {a.Passed}");
+        row.SetData( $"{rank}.", $"{a.displayName}", $"{a.teamName}");/*$"CP {cpShow} • Passed {a.Passed}"*/
         if (a.isPlayer) // yoki o‘zingda qanday belgilang bo‘lsa
         {
             if (ColorUtility.TryParseHtmlString("#FFBF34", out Color highlightColor))
@@ -196,6 +198,61 @@ public class RacingLeaderboard : MonoBehaviour
         var list = standings; // sening sorted ro'yxating
         int idx = list.IndexOf(agent);
         return idx >= 0 ? idx + 1 : -1;
+    }
+    /// <summary>
+    /// Race yakunlanadi (ranking lock).
+    /// Xohlasang UI win/lose screen shu yerdan trigger qilasan.
+    /// </summary>
+    public void FinishRace()
+    {
+        if (!RaceStarted || RaceFinished) return;
+
+        RaceFinished = true;
+
+        // Final cleanup: elim bo'lgan / scene'dan chiqib ketgan agentlarni olib tashlash
+        UnregisterDroppedAgents();
+
+        // Optional: yakuniy rowlarni bir marta yangilab qo'yamiz
+        for (int i = 0; i < standings.Count; i++)
+        {
+            var a = standings[i];
+            if (a == null) continue;
+            a.Ranking = i + 1;
+            UpdateRow(a, i + 1);
+        }
+
+        // Optional: Final standings log
+        // Debug.Log("Race Finished. Final standings:\n" + string.Join("\n", GetStandingsNames()));
+    }
+
+    /// <summary>
+    /// Disable/Destroy bo'lib ketgan agentlarni leaderboarddan olib tashlaydi.
+    /// (AI eliminate qilinganda ko'pincha agent.gameObject inactive bo'ladi)
+    /// </summary>
+    public void UnregisterDroppedAgents()
+    {
+        // standings ni aylanib, o'chganlarni yig'ib olamiz (modification safe)
+        List<RacingAgent> toRemove = null;
+
+        for (int i = 0; i < standings.Count; i++)
+        {
+            var a = standings[i];
+
+            // a null bo'lsa (destroy) yoki inactive bo'lsa (SetActive(false))
+            if (a == null || !a.gameObject.activeInHierarchy)
+            {
+                toRemove ??= new List<RacingAgent>(8);
+                toRemove.Add(a);
+            }
+        }
+
+        if (toRemove == null) return;
+
+        for (int i = 0; i < toRemove.Count; i++)
+        {
+            // a null bo'lsa ham Unregister ichida null check bor
+            Unregister(toRemove[i]);
+        }
     }
 
 }

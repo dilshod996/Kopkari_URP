@@ -13,7 +13,7 @@ public class SceneLoadManager : MonoBehaviour
 
 
     public bool AssetInstantiationFinished { get; set; } = false;
-
+    private static bool _introInitDone;
     public enum SceneType
     {
         None,
@@ -364,7 +364,7 @@ public class SceneLoadManager : MonoBehaviour
         // 2) Preload env/sound/etc
         var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
             preloadAddresses,
-            p => loadingTime = p * 70f,
+            p => loadingTime = p * 50f,
             fakeDurationIfCached
         );
 
@@ -384,15 +384,48 @@ public class SceneLoadManager : MonoBehaviour
 
             var playerPreloadTask = PlayerCatalogProvider.Instance.PreloadAllForPlayerAsync(
                 playerId,
-                p => loadingTime = 70f + p * 30f,
+                p => loadingTime = 50f + p * 30f,
                 includeIcons: true
             );
 
             yield return WaitTask(playerPreloadTask);
+            string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
+            var horsePreloadTask = PlayerCatalogProvider.Instance.PreloadAllForHorseAsync(
+                horseId,
+                 p => loadingTime = 80f + p * 20f,
+                 includeIcons: true);
+            yield return WaitTask(horsePreloadTask);
 
             if (!playerPreloadTask.Result)
                 yield break;
         }
+        if (targetScene == SceneType.SecondRacing || targetScene == SceneType.EgyptRacing)
+        {
+            var ensureCatalogTask = PlayerCatalogProvider.Instance.EnsureCatalogAsync();
+            yield return WaitTask(ensureCatalogTask);
+
+            // -------- AI HORSE MATERIAL POOL --------
+            string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
+
+            var slotIds = new List<string>
+            {
+                "Body",
+                "Eyes",
+                "Mane",
+                "Saddle"
+            };
+
+            var aiHorsePoolTask = PlayerCatalogProvider.Instance.PreloadMaterialPoolAsync(
+                horseId,
+                slotIds,
+                p => loadingTime = 50f + p * 50f
+            );
+
+            yield return WaitTask(aiHorsePoolTask);
+            if (!aiHorsePoolTask.Result)
+                yield break;
+        }
+
 
         //// IMPORTANT: reset before target load (agar manager DDOL bo'lsa)
         //AssetInstantiationFinished = false;
@@ -417,53 +450,7 @@ public class SceneLoadManager : MonoBehaviour
     }
 
 
-    //private IEnumerator HandleSceneLoadWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
-    //{
-    //    // 1. Oldingi sahifani saqlaymiz
-    //    //PreviousSceneType = CurrentSceneType;
-    //    //CurrentSceneType = SceneType.Loading;
-    //    AddressablesManager.Instance.loadingTime = 0f;
-    //    // 2. Loading sahifani to‘liq yuklaymiz (SceneMode.Single)
-    //    AsyncOperation loadingOp = SceneManager.LoadSceneAsync(SceneType.Loading.ToString(), LoadSceneMode.Single);
-    //    while (!loadingOp.isDone)
-    //        yield return null;
 
-    //    // 3. Bir frame kutamiz
-    //    yield return null;
-
-    //    // 4. Addressable preloadni boshlaymiz
-
-    //    Task<AsyncOperationHandle> preloadTask = AddressablesManager.Instance.PreloadWithProgressBarAsync(
-    //        preloadAddresses, fakeDurationIfCached);
-
-    //    while (!preloadTask.IsCompleted)
-    //        yield return null;
-
-    //    var preloadHandle = preloadTask.Result;
-
-    //    // 5. Target sahifani yuklaymiz (Single: Loading sahifasini o‘chiradi)
-    //    AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
-    //    while (!sceneLoadOp.isDone)
-    //        yield return null;
-
-    //    // 6. Sahifa yuklanguncha kutamiz
-    //    Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
-    //    while (!loadedScene.isLoaded)
-    //        yield return null;
-
-    //    // 7. Uni active sahifa deb belgilaymiz
-    //    SceneManager.SetActiveScene(loadedScene);
-
-    //    // 8. Agar Player va Horse instantiate qilinishi kutilayotgan bo‘lsa
-    //    while (!AssetInstantiationFinished)
-    //        yield return null;
-
-    //    // 9. Yangi sahifaga o‘tamiz
-    //    CurrentSceneType = targetScene;
-
-    //    // 10. Keyingi sahifalar uchun flagni reset qilish mumkin (agar kerak bo‘lsa)
-    //    // SetAssetInstantiationFinished(false);
-    //}
 
 
 
@@ -511,74 +498,7 @@ public class SceneLoadManager : MonoBehaviour
         loadingTime = 100f;
     }
 
-    ///test
-    //public void LoadScene(SceneType newScene)
-    //{
-    //    if (newScene == SceneType.Loading)
-    //        return;
-
-    //    StartCoroutine(LoadSceneWithTransition(newScene));
-    //}
-
-    //private IEnumerator LoadSceneWithTransition(SceneType newScene)
-    //{
-    //    PreviousSceneType = CurrentSceneType;
-    //    CurrentSceneType = newScene;
-    //    SceneManager.LoadScene(SceneType.Loading.ToString());
-    //    AddressablesManager.Instance.loadingTime = 0f; // 💡 boshlanishida 0
-    //    StartCoroutine(FakeLoadingTimeProgress());     // 💡 loadingTime ni sekin ko‘taradi
-    //    // SoundManager.Instance.StopMusicEvent();
-    //    yield return new WaitForSeconds(fakeDurationIfCached);
-
-    //    SceneManager.LoadScene(newScene.ToString());
-
-    //}
-    //IEnumerator FakeLoadingTimeProgress()
-    //{
-    //    float timer = 0f;
-    //    float duration = fakeDurationIfCached;
-
-    //    while (timer < duration)
-    //    {
-    //        timer += Time.deltaTime;
-    //        AddressablesManager.Instance.loadingTime = Mathf.Clamp01(timer / duration) * 100f;
-    //        yield return null;
-    //    }
-
-    //    AddressablesManager.Instance.loadingTime = 100f;
-    //}
-    //Single scene load uchun ishlaydi lekin instantiate objectlar borligi uchun ux ga tasiri juda katta hisoblanadi
-
-    //private IEnumerator HandleSceneLoad(SceneType targetScene, List<string> preloadAddresses)
-    //{
-    //    PreviousSceneType = CurrentSceneType;
-    //    CurrentSceneType = SceneType.Loading;
-
-    //    AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(SceneType.Loading.ToString());
-    //    while (!asyncLoad.isDone)
-    //        yield return null;
-
-    //    // Scene loaded, wait a frame for safety
-    //    yield return null;
-
-    //    // Start actual addressable preload with progress bar
-    //    AsyncOperationHandle preloadHandle = default;
-    //    Task<AsyncOperationHandle> preloadTask = AddressablesManager.Instance.PreloadWithProgressBarAsync(
-    //        preloadAddresses, fakeDurationIfCached);
-
-    //    while (!preloadTask.IsCompleted)
-    //        yield return null;
-
-    //    preloadHandle = preloadTask.Result;
-
-    //    // Load the target scene
-    //    AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString());
-    //    while (!sceneLoadOp.isDone)
-    //        yield return null;
-
-    //    CurrentSceneType = targetScene;
-
-    //}
+   
     private IEnumerator WaitTask(Task task)
     {
         while (task != null && !task.IsCompleted)
@@ -592,5 +512,245 @@ public class SceneLoadManager : MonoBehaviour
 
         onCompleted?.Invoke(task.Result);
     }
+    #region new Inro Load
+    public void LoadHomeFromIntro(SceneType homeScene, List<string> preloadKeys)
+    {
+        StartCoroutine(HandleSceneLoadIntro_ToHome(homeScene, preloadKeys));
+    }
+
+    private IEnumerator HandleSceneLoadIntro_ToHome(SceneType targetScene, List<string> preloadAddresses)
+    {
+        loadingTime = 0f;
+        preloadAddresses ??= new List<string>();
+
+        // ✅ 0) Loading panel show (DontDestroy)
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Welcome Back", instant: false, exclusive: true);
+
+
+        // ✅ 1) Preload (intro paytida)
+        var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+            preloadAddresses,
+            p => loadingTime = p * 100f,
+            fakeDurationIfCached
+        );
+
+        yield return WaitTask(preloadTask);
+        if (!preloadTask.Result)
+        {
+            UIOverlayRoot.I.HidePanel(UIPanelType.Home, false);
+            yield break;
+        }
+
+        // ✅ 2) UI Sounds register — faqat 1 marta
+        if (!_introInitDone)
+        {
+            _introInitDone = true;
+
+            var uiPairs = new (string address, UISoundType type)[]
+            {
+                (Constants.UISounds.Click, UISoundType.Click),
+                (Constants.UISounds.Confirm, UISoundType.Confirm),
+                (Constants.UISounds.Error, UISoundType.Error),
+                (Constants.UISounds.Success, UISoundType.Success),
+                (Constants.UISounds.PopupOpen, UISoundType.PopupOpen),
+                (Constants.UISounds.PopupClose, UISoundType.PopupClose),
+            };
+
+            for (int i = 0; i < uiPairs.Length; i++)
+            {
+                var (address, type) = uiPairs[i];
+
+                var clipTask = AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
+                yield return WaitTask(clipTask);
+
+                var clip = clipTask.Result;
+                if (clip != null && SoundManager.Instance != null)
+                    SoundManager.Instance.RegisterUIClip(type, clip);
+            }
+        }
+
+        // ✅ 3) Home scene load (Single)
+        var sceneOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+        while (!sceneOp.isDone)
+            yield return null;
+
+        // ✅ 4) Scene ichidagi addressable instantiate'lar tugaguncha kutamiz
+        while (!AssetInstantiationFinished)
+            yield return null;
+
+        // ✅ 5) Panel hide + flag reset
+        //UIOverlayRoot.I.HidePanel(UIPanelType.Home, false);
+
+        SetAssetInstantiationFinished(false);
+
+        // ✅ 6) Endi real loaded bo'ldi deb event chaqirsangiz shu yerda
+        OnSceneLoaded?.Invoke();
+    }
+    #endregion
+
+    #region Loading Scene Removed
+
+    public void LoadSceneNew(SceneType scene, List<string> preloadKeys)
+    {
+        PreviousSceneType = CurrentSceneType;
+        CurrentSceneType = scene;
+
+        // ❌ bu yerda OnSceneLoaded chaqirilmaydi (hali yuklanmadi)
+
+        if (!assetAlreadyInstantiated.Contains(scene))
+        {
+            LoadSceneCoroutine(scene, preloadKeys);
+            assetAlreadyInstantiated.Add(scene);
+        }
+        else
+        {
+            // Agar siz "cached scene" deb o'ylab to'g'ridan-to'g'ri load qilsangiz
+            // bu ham Single bo'lgani uchun baribir load bo'ladi.
+            StartCoroutine(LoadOnlySceneSingle(scene));
+        }
+    }
+
+    private IEnumerator LoadOnlySceneSingle(SceneType scene)
+    {
+        var op = SceneManager.LoadSceneAsync(scene.ToString(), LoadSceneMode.Single);
+        while (!op.isDone) yield return null;
+
+        OnSceneLoaded?.Invoke();
+    }
+    private void LoadSceneCoroutine(SceneType targetScene, List<string> preloadAddresses)
+    {
+        StartCoroutine(HandleScene(targetScene, preloadAddresses));
+    }
+
+    private IEnumerator HandleScene(SceneType targetScene, List<string> preloadAddresses)
+    {
+        loadingTime = 0f;
+        preloadAddresses ??= new List<string>();
+
+        // ✅ 0) Loading panel allaqachon Show bo'lgan (buttonda),
+        // xohlasangiz bu yerda ham safety uchun:
+        //UIOverlayRoot.I.ShowLoading();
+
+        // ✅ 1) Preload env/sound/etc
+        var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+            preloadAddresses,
+            p => loadingTime = p * 50f,
+            fakeDurationIfCached
+        );
+
+        yield return WaitTask(preloadTask);
+        if (!preloadTask.Result)
+        {
+           // UIOverlayRoot.I.HideLoading();
+            yield break;
+        }
+
+        // ✅ 2) Sizdagi extra preloadlar (o'zgarmaydi)
+        if (targetScene == SceneType.AvatarCustom)
+        {
+            var ensureCatalogTask = PlayerCatalogProvider.Instance.EnsureCatalogAsync();
+            yield return WaitTask(ensureCatalogTask);
+
+            string playerId = PlayerPrefs.GetString("ActivePlayerId", "player_01");
+
+            var playerPreloadTask = PlayerCatalogProvider.Instance.PreloadAllForPlayerAsync(
+                playerId,
+                p => loadingTime = 50f + p * 30f,
+                includeIcons: true
+            );
+
+            yield return WaitTask(playerPreloadTask);
+
+            string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
+
+            var horsePreloadTask = PlayerCatalogProvider.Instance.PreloadAllForHorseAsync(
+                horseId,
+                p => loadingTime = 80f + p * 20f,
+                includeIcons: true
+            );
+
+            yield return WaitTask(horsePreloadTask);
+
+            if (!playerPreloadTask.Result || !horsePreloadTask.Result)
+            {
+                //UIOverlayRoot.I.HideLoading();
+                yield break;
+            }
+        }
+
+        if (targetScene == SceneType.SecondRacing || targetScene == SceneType.EgyptRacing)
+        {
+            var ensureCatalogTask = PlayerCatalogProvider.Instance.EnsureCatalogAsync();
+            yield return WaitTask(ensureCatalogTask);
+
+            string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
+            var slotIds = new List<string> { "Body", "Eyes", "Mane", "Saddle" };
+
+            var aiHorsePoolTask = PlayerCatalogProvider.Instance.PreloadMaterialPoolAsync(
+                horseId,
+                slotIds,
+                p => loadingTime = 50f + p * 50f
+            );
+
+            yield return WaitTask(aiHorsePoolTask);
+
+            if (!aiHorsePoolTask.Result)
+            {
+                UIOverlayRoot.I.HideLoading();
+                yield break;
+            }
+        }
+
+        // ✅ 3) Endi target scene load (SINGLE)
+        var sceneOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+        while (!sceneOp.isDone)
+            yield return null;
+        // ✅ 3.5) Scene ichidagi async instantiate tugaguncha kutamiz
+        while (!AssetInstantiationFinished)
+            yield return null;
+
+        SetAssetInstantiationFinished(false);
+
+        // ✅ 4) Scene REAL loaded
+        OnSceneLoaded?.Invoke();
+
+        // ✅ 5) Loading panel yopiladi
+        UIOverlayRoot.I.HideLoading();
+    }
+    #endregion
+
+    #region Back Scene or Scene Reload again
+    public void ReloadOrBackScene(SceneType newScene)
+    {
+        StartCoroutine(LoadSceneWithPanel(newScene));
+    }
+
+    private IEnumerator LoadSceneWithPanel(SceneType newScene)
+    {
+        PreviousSceneType = CurrentSceneType;
+        CurrentSceneType = newScene;
+
+        loadingTime = 0f;
+
+        // ✅ Home'ga qaytayotganda HomePanel ko'rsatamiz (yoki Loading panel)
+        //UIOverlayRoot.I.ShowPanel(UIPanelType.Home, instant: false, exclusive: true, message: "Home loading...");
+
+        // ✅ Scene load (Single)
+        var op = SceneManager.LoadSceneAsync(newScene.ToString(), LoadSceneMode.Single);
+        while (!op.isDone)
+            yield return null;
+
+        // ✅ Scene ichidagi async instantiate tugaguncha kutamiz
+        while (!AssetInstantiationFinished)
+            yield return null;
+
+        SetAssetInstantiationFinished(false);
+
+        // ✅ Tayyor bo'ldi -> panelni yopasiz (yoki Home UI'ni ko'rsatishga o'tasiz)
+
+        OnSceneLoaded?.Invoke();
+    }
+
+    #endregion
 
 }

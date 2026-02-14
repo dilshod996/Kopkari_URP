@@ -67,6 +67,8 @@ ShaderVariantCollection:
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _NORMALMAP
         passType: 0
+      - keywords: _ENVIRONMENTREFLECTIONS_OFF
+        passType: 0
       - keywords: _NORMALMAP
         passType: 0
       - keywords: _RECEIVE_SHADOWS_OFF
@@ -81,9 +83,13 @@ ShaderVariantCollection:
       variants:
       - keywords: 
         passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _METALLICSPECGLOSSMAP _NORMALMAP
+        passType: 0
       - keywords: LOD_FADE_CROSSFADE
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _METALLICSPECGLOSSMAP _NORMALMAP
+        passType: 0
+      - keywords: _EMISSION _METALLICSPECGLOSSMAP _NORMALMAP _OCCLUSIONMAP _SPECGLOSSMAP
         passType: 0
       - keywords: _METALLICSPECGLOSSMAP _NORMALMAP
         passType: 0

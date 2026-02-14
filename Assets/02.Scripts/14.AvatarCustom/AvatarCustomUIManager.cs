@@ -2,6 +2,7 @@
 using DG.Tweening;
 using UnityEngine.UI;
 using TMPro;
+using System;
 
 public class AvatarCustomUIManager : MonoBehaviour
 {
@@ -56,20 +57,36 @@ public class AvatarCustomUIManager : MonoBehaviour
     private AvatarCustomManager _gm;
     [Header("Top Details(Coins)")]
     [SerializeField] private TMP_Text coinText;
+    [SerializeField] private Image coinImage;
     [SerializeField] private TMP_Text nyufiyText;
+    [SerializeField] RectTransform bottomObj;
+    [SerializeField] CanvasGroup bottomCanvasGroup;
+    [SerializeField] RectTransform topObj;
+   // [SerializeField] GameObject startingPage;
+
+    public static event Action OnSavedBtnClicked;
+    private bool isBottomTopShowed=false;
+
+    [SerializeField] private RightPopup rightPopup;
     private void Awake()
     {
         SetPanelX(closeX);
         SetCanvasVisible(false);
         GetSetCoins();
+        //if(!startingPage.activeSelf)
+        //    startingPage.SetActive(true);
     }
     private void OnEnable()
     {
         OptionItemUI.OnCoinUpdated += GetSetCoins;
+        //AvatarCustomManager.OnAllSet += RemovStartPage;
+        OptionItemUI.OnNotEnoughCoins += MoneyNotEnough;
     }
     private void OnDestroy()
     {
         OptionItemUI.OnCoinUpdated -= GetSetCoins;
+        //AvatarCustomManager.OnAllSet -= RemovStartPage;
+        OptionItemUI.OnNotEnoughCoins -= MoneyNotEnough;
     }
 
     #region Button Events
@@ -107,7 +124,7 @@ public class AvatarCustomUIManager : MonoBehaviour
             backLobby.onClick.AddListener(() => _gm.BackPublic());
 
         if (saveBtn != null)
-            saveBtn.onClick.AddListener(() => _gm.SavePublic()); // agar sende Save yo'q bo'lsa, remove qil
+            saveBtn.onClick.AddListener(SaveSkins); // agar sende Save yo'q bo'lsa, remove qil
 
         // Player skin buttons
         if (playerSkinButtons != null)
@@ -170,6 +187,8 @@ public class AvatarCustomUIManager : MonoBehaviour
         SelectPlayerSkinPage(0);
 
         OpenRightPanel();
+        if (!isBottomTopShowed)
+            StartingDetails();
     }
 
     public void OnHorseArrived()
@@ -181,6 +200,8 @@ public class AvatarCustomUIManager : MonoBehaviour
         SelectHorseSkinPage(0);
 
         OpenRightPanel();
+        if(!isBottomTopShowed)
+            StartingDetails();
     }
 
     // -------------------------
@@ -203,6 +224,18 @@ public class AvatarCustomUIManager : MonoBehaviour
     // Index bo'yicha (Hair=0 default)
     public void SelectPlayerSkinPage(int idx)
     {
+        //switch (idx)
+        //{
+        //    case 1:
+        //        _gm.GoToSpot(AvatarCustomTypes.CamSpot.HeadPlayer);
+        //        break;
+        //    case 2:
+        //        _gm.GoToSpot(AvatarCustomTypes.CamSpot.UpperBodyPlayer);
+        //        break;
+        //    case 3:
+        //        _gm.GoToSpot(AvatarCustomTypes.CamSpot.Player);
+        //        break;
+        //}
         SelectPageInternal(idx, ref _currentPlayerSkinIndex, clickedObjsPlayerSkins, playerSkinPages);
     }
 
@@ -302,6 +335,94 @@ public class AvatarCustomUIManager : MonoBehaviour
         int nyufiy = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
         nyufiyText.text = nyufiy > 0 ? $"{nyufiy:N0}" : "0";
         coinText.text = coin > 0 ? $"{coin:N0}" : "0";
+    }
+    private void StartingDetails()
+    {
+        PlayMoveY(bottomObj, fromY:-50, toY:37, t:0.5f,stayTime:5f, cg:bottomCanvasGroup);
+        PlayMoveY(topObj, fromY: 70, toY: -50, t: 1f);
+        isBottomTopShowed = true;
+    }
+
+    // ===============================
+    // 1️⃣ FAQAT CHIQISH (isBack = false)
+    // ===============================
+    private Tween PlayMoveY(
+        RectTransform rect,
+        float fromY,
+        float toY,
+        float t,
+        CanvasGroup cg = null,
+        Ease ease = Ease.OutCubic)
+    {
+        if (rect == null) return null;
+
+        rect.DOKill();
+        cg?.DOKill();
+
+        rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, fromY);
+        if (cg != null) cg.alpha = 0f;
+
+        Sequence seq = DOTween.Sequence().SetUpdate(true);
+
+        seq.Append(rect.DOAnchorPosY(toY, t).SetEase(ease));
+
+        if (cg != null)
+            seq.Join(cg.DOFade(1f, t));
+
+        return seq;
+    }
+
+    // =========================================
+    // 2️⃣ CHIQISH + KUTISH + QAYTISH (isBack=true)
+    // =========================================
+    private Tween PlayMoveY(
+        RectTransform rect,
+        float fromY,
+        float toY,
+        float t,
+        float stayTime,
+        CanvasGroup cg = null,
+        Ease ease = Ease.OutCubic)
+    {
+        if (rect == null) return null;
+
+        rect.DOKill();
+        cg?.DOKill();
+
+        rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, fromY);
+        if (cg != null) cg.alpha = 0f;
+
+        Sequence seq = DOTween.Sequence().SetUpdate(true);
+
+        // chiqish
+        seq.Append(rect.DOAnchorPosY(toY, t).SetEase(ease));
+        if (cg != null) seq.Join(cg.DOFade(1f, t));
+
+        // kutish
+        if (stayTime > 0f)
+            seq.AppendInterval(stayTime);
+
+        // qaytish
+        seq.Append(rect.DOAnchorPosY(fromY, t).SetEase(Ease.InCubic));
+        if (cg != null) seq.Join(cg.DOFade(0f, t));
+
+        return seq;
+    }
+    #endregion
+
+    private void SaveSkins()
+    {
+        OnSavedBtnClicked?.Invoke();
+    }
+    private void RemovStartPage()
+    {
+        //startingPage.SetActive(false);
+    }
+
+    #region Right Popup Detials
+    private void MoneyNotEnough()
+    {
+        rightPopup.ShowRightPopup("Coin is not enough", coinImage.sprite);
     }
     #endregion
 }

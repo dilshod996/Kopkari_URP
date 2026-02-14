@@ -5,7 +5,8 @@ public class UIRankingView : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private TMP_Text nameText;
-    [SerializeField] private TMP_Text metaText;
+    [SerializeField] private TMP_Text ranking;
+    [SerializeField] private TMP_Text teamName;
 
     [Header("Anim Wrapper (child)")]
     [SerializeField] private RectTransform animContainer; // <-- child (AnimContainer)
@@ -26,15 +27,19 @@ public class UIRankingView : MonoBehaviour
         }
     }
 
-    public void SetData(string name, string meta)
+    public void SetData( string rank, string name, string teamname)
     {
         if (nameText) nameText.text = name;
-        if (metaText) metaText.text = meta;
+        if (ranking) ranking.text = rank;
+        if (teamName) teamName.text = teamname.ToUpper()[..Mathf.Min(3, teamname.Length)];
+
     }
 
     public void SetColor(Color nameColor)
     {
         if (nameText) nameText.color = nameColor;
+        if (ranking) ranking.color = nameColor;
+        if (teamName) teamName.color = nameColor;
     }
 
     /// <summary>

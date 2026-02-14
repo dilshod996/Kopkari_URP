@@ -2,6 +2,7 @@ using MalbersAnimations.Controller;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -16,12 +17,14 @@ public class AIRacingRider : MonoBehaviour
     [SerializeField] private int maxHits = 3;
     [SerializeField] private float penaltyDuration = 10f;
     [SerializeField] private BoostersContainer boostersContainer;
+    public AIRiderRandomSkin randomSkin;
 
     private int hitCount;
     private bool isPenalized;
     private void Awake()
     {
         DisableNavmesh();
+
     }
     private void OnEnable()
     {
@@ -67,6 +70,10 @@ public class AIRacingRider : MonoBehaviour
     {
         boostersContainer.NotifyObstacleTouched_Npc();
     }
+
+    #endregion
+
+    #region Skins
 
     #endregion
 }

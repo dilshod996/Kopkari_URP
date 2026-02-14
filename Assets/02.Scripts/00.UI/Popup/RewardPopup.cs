@@ -62,6 +62,7 @@ public class RewardPopup : MonoBehaviour
         // Agar popup show bo'lganda avtomatik ishlasin desang:
         // PlayAutoSuccess();
         closeButton.onClick.AddListener(CloseTween);
+        SoundManager.Instance?.PlayUI(UISoundType.Success);
     }
 
     private void OnDisable()

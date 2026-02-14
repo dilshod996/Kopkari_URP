@@ -102,6 +102,7 @@ Material:
     - _Blend: 0
     - _BlendMode: 0
     - _BlendModePreserveSpecular: 1
+    - _BottomStrength: 0
     - _CastShadows: 1
     - _ConservativeDepthOffsetEnable: 0
     - _Cull: 2
@@ -119,6 +120,8 @@ Material:
     - _ExcludeFromTUAndAA: 0
     - _Hue: 0
     - _Metallic: 1
+    - _NoiseScale: 4
+    - _NoiseStrength: 0.4
     - _Normal_Power: 1
     - _OpaqueCullMode: 2
     - _QueueControl: 1
@@ -167,6 +170,7 @@ Material:
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _Metallic_Max: {r: 0, g: 1, b: 0, a: 0}
     - _Metallic_Min: {r: 0, g: 1, b: 0, a: 0}
+    - _NewBottomColor: {r: 0, g: 0, b: 0, a: 0}
     - _Offset: {r: 0, g: 0, b: 0, a: 0}
     - _Rough_Max: {r: 0.1, g: 0.7, b: 0, a: 0}
     - _Rough_Min: {r: 0.2, g: 1.5, b: 0, a: 0}

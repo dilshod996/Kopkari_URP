@@ -47,9 +47,11 @@ public class RaceCheckpoint : MonoBehaviour
         // Agent cache
         if (!_agentCache.TryGetValue(other, out var agent) || agent == null)
         {
+
             agent = other.GetComponentInParent<RacingAgent>();
             if (agent == null) return;
             _agentCache[other] = agent;
+            RacingController.Instance.RegisterAgent(agent);
         }
 
         if (agent.HasFinished) return;
@@ -78,14 +80,14 @@ public class RaceCheckpoint : MonoBehaviour
         if (diff == total - 1 && !reverseActive)
         {
             _reverseByAgent[agent] = true;
-            RacingController.Instance?.StartReverse();
+            UIButtonActions.Instance?.StartReverse();
         }
 
         // 2) Reverse clear: reverse holatda 1 qadam oldinga qaytdi
         if (reverseActive && diff == 1)
         {
             _reverseByAgent[agent] = false;
-            RacingController.Instance?.ClearReverse();
+            UIButtonActions.Instance?.ClearReverse();
         }
 
         // 3) Normal progress faqat diff == 1 bo'lsa

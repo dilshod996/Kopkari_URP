@@ -26,7 +26,7 @@ public class HorseDataManager : MonoBehaviour
         HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
         if (horseSkinLoader != null)
         {
-            await horseSkinLoader.ApplySkins();
+            await horseSkinLoader.ApplyAllSkins();
         }
         else
         {

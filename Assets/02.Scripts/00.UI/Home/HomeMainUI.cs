@@ -142,22 +142,8 @@ public class HomeMainUI : MonoBehaviour
 
     #region Right Popup
     [Header("UI")]
-    [SerializeField] private GameObject rightPopup;
-    [SerializeField] private RectTransform popupRT;
-    [SerializeField] private CanvasGroup canvasGroup;
-    [SerializeField] private TMP_Text messageText;
-    [SerializeField] private Image icon;
-
-    [Header("Positions")]
-    [SerializeField] private float showX = 301f;
-    [SerializeField] private float hideX = -315f;
-
-    [Header("Timings")]
-    [SerializeField] private float showDuration = 0.32f;
-    [SerializeField] private float hideDuration = 0.25f;
-    [SerializeField] private float stayTime = 2.2f;
-
-    private Tween sequenceTween;
+    [SerializeField] private RightPopup rightPopup;
+    
     #endregion
 
     public event Action<bool> OnCoinsButtonPressed;
@@ -171,12 +157,9 @@ public class HomeMainUI : MonoBehaviour
         //{
         //    fadeImage.gameObject.SetActive(true);
         //}
-        SetEnvironmentLoading();
+        //SetEnvironmentLoading();
     }
 
-    private void Start()
-    {
-    }
 
     private void OnEnable()
     {
@@ -791,61 +774,7 @@ public class HomeMainUI : MonoBehaviour
     /// </summary>
     public void ShowRightPopup(string message, Sprite iconSprite)
     {
-        // Text set
-        messageText.text = message;
-        icon.sprite = iconSprite; 
-
-        // Kill old tweens
-        popupRT.DOKill();
-        canvasGroup.DOKill();
-        sequenceTween?.Kill();
-
-        // Initial state (hidden)
-        popupRT.anchoredPosition =
-            new Vector2(hideX, popupRT.anchoredPosition.y);
-
-        popupRT.localScale = Vector3.one * 0.96f;
-        canvasGroup.alpha = 0f;
-
-        rightPopup.gameObject.SetActive(true);
-
-        // Sequence
-        Sequence seq = DOTween.Sequence();
-
-        // SHOW
-        seq.Append(
-            popupRT.DOAnchorPosX(showX, showDuration)
-                   .SetEase(Ease.OutCubic)
-        );
-
-        seq.Join(
-            popupRT.DOScale(1f, 0.25f)
-                   .SetEase(Ease.OutBack)
-        );
-
-        seq.Join(
-            canvasGroup.DOFade(1f, 0.15f)
-        );
-
-        // STAY
-        seq.AppendInterval(stayTime);
-
-        // HIDE
-        seq.Append(
-            popupRT.DOAnchorPosX(hideX, hideDuration)
-                   .SetEase(Ease.InCubic)
-        );
-
-        seq.Join(
-            canvasGroup.DOFade(0f, 0.15f)
-        );
-
-        seq.OnComplete(() =>
-        {
-            rightPopup.gameObject.SetActive(false);
-        });
-
-        sequenceTween = seq;
+       rightPopup.ShowRightPopup(message, iconSprite);
     }
     #endregion
 

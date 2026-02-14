@@ -1,0 +1,170 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: HorseCustomUI
+  m_EditorClassIdentifier: 
+  m_GroupName: HorseCustomUI
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 1dd52e5694fa6534db97abf62deca96d
+  m_SerializeEntries:
+  - m_GUID: f7700065e9737cd47b4984a96316d41c
+    m_Address: horse_01/ui/body/body_14_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0897635e88566304f9330c5080be7c20
+    m_Address: horse_01/ui/body/body_13_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 823ab6580decca043bc56b680a299354
+    m_Address: horse_01/ui/body/body_12_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9dbac8e1a4b0c894389c2fb5233a1e8c
+    m_Address: horse_01/ui/body/body_11_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4dcce27beae2c2242b472c90a91b1622
+    m_Address: horse_01/ui/body/body_10_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 94e35f5d01a398c41be5530ab2ede8f4
+    m_Address: horse_01/ui/body/body_09_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c71859b5dde8aec4c84e299fb1eb2931
+    m_Address: horse_01/ui/body/body_08_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ab7f2df8a24e0374fb85c47149fa504d
+    m_Address: horse_01/ui/body/body_07_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e8fc96dbacdefc24ea731df9ae29767f
+    m_Address: horse_01/ui/body/body_06_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4741622f325c39844b84a394b5376bdf
+    m_Address: horse_01/ui/body/body_05_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4ba8e5ee80752d34190d90ea33e13936
+    m_Address: horse_01/ui/body/body_04_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4897784bf56bf9445a2f415e7d0bf574
+    m_Address: horse_01/ui/body/body_03_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 83454aa7b07efbd4ebc0b12b5fa28bb5
+    m_Address: horse_01/ui/body/body_02_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ab8dcbdfd617dcc419822758a8e7b829
+    m_Address: horse_01/ui/body/body_01_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3e95cff548d4d2d41a98cd5b9e49b18b
+    m_Address: horse_01/ui/body/body_15_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0fbe4b070c2207f43929f45de84b82af
+    m_Address: horse_01/ui/body/body_16_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5d095f8bdd67a6f4b92f50fa7a379ba4
+    m_Address: horse_01/ui/mane/mane_06_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fe787adde00023542b8d9ced3124086f
+    m_Address: horse_01/ui/mane/mane_05_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a0f3916ab3136f645b1598286a622eeb
+    m_Address: horse_01/ui/mane/mane_04_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4a87c23f327767343a83cd89549d806c
+    m_Address: horse_01/ui/mane/mane_03_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6edf70ccb6154a04287923df65e49518
+    m_Address: horse_01/ui/mane/mane_02_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 72fbfa9f5df11a240800a696701a4d33
+    m_Address: horse_01/ui/mane/mane_01_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e575ce1aa8e6aa44f9c3af3bfab19fa4
+    m_Address: horse_01/ui/saddle/saddle_07_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7371c683b933fe844888629aecf74613
+    m_Address: horse_01/ui/saddle/saddle_06_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ae82a4a6eb02583489758215485f06d0
+    m_Address: horse_01/ui/saddle/saddle_05_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0e3f8ba7d5c8b6649966ecacdf16e893
+    m_Address: horse_01/ui/saddle/saddle_04_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fe385593a7c9f5549baa49eb1c4644b0
+    m_Address: horse_01/ui/saddle/saddle_03_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c0138be4763550b4eb4c7df078ad4737
+    m_Address: horse_01/ui/saddle/saddle_02_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0627d08281ad4e64390cb9cf57448e5d
+    m_Address: horse_01/ui/saddle/saddle_01_icon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 44da4a3548bb45049a2b600e55b05bd1, type: 2}
+    - {fileID: 11400000, guid: 81e27a9a357b3144fa50c2e2a68ea505, type: 2}

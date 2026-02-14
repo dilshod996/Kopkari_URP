@@ -44,6 +44,8 @@ public class AvatarCustomManager : MonoBehaviour
     [Header("Targets (Camera Positions)")]
     [SerializeField] private Transform playerCamPos;
     [SerializeField] private Transform horseCamPos;
+    [SerializeField] private Transform headCameraPos;
+    [SerializeField] private Transform upperBodyCameraPos;
     [SerializeField] private Transform camStartPos;
 
     [Header("Raycast")]
@@ -73,6 +75,9 @@ public class AvatarCustomManager : MonoBehaviour
     [SerializeField] private GPUIPrefabManager prefabManager;
     public static PlayerSkinLoader CurrentPlayerSkinLoader { get; private set; }
     public static event Action<PlayerSkinLoader> OnPlayerSkinLoad;
+    public static event Action<HorseSkinLoader> OnHorseSkinLoad;
+
+    public static event Action OnAllSet;
     private void Reset()
     {
         cam = Camera.main;
@@ -116,7 +121,6 @@ public class AvatarCustomManager : MonoBehaviour
         // eski Start'ingni saqlab qoldim (commentlar ham)
         await InitializePlayerAndHorse();
         PlaySound();
-        SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
         RegisterEnvPrefabs(_currentEnvInstance.transform);
         //Popup.confirmButton.onClick.AddListener(LoadLobbyScene);
     }
@@ -152,15 +156,23 @@ public class AvatarCustomManager : MonoBehaviour
 
         HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
         if (horseSkinLoader != null)
-            await horseSkinLoader.ApplySkins();
+            await horseSkinLoader.ApplyAllSkins();
         else
             Debug.Log("❌ HorseSkinLoader component not found on instantiated horse.");
+        OnAllSet?.Invoke();
+        SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
+        UIOverlayRoot.I.HidePanel(UIPanelType.Custom);
     }
 
     public static void RaisePlayerSkinLoad(PlayerSkinLoader loader)
     {
         CurrentPlayerSkinLoader = loader;
         OnPlayerSkinLoad?.Invoke(loader);
+    }
+    public static void RaiseHorseSkinLoad(HorseSkinLoader loader)
+    {
+        //CurrentPlayerSkinLoader = loader;
+        OnHorseSkinLoad?.Invoke(loader);
     }
     #endregion
 
@@ -211,6 +223,8 @@ public class AvatarCustomManager : MonoBehaviour
         switch (spot)
         {
             case AvatarCustomTypes.CamSpot.Start: target = camStartPos; break;
+            case AvatarCustomTypes.CamSpot.HeadPlayer: target = headCameraPos; break;
+            case AvatarCustomTypes.CamSpot.UpperBodyPlayer: target = upperBodyCameraPos; break;
             case AvatarCustomTypes.CamSpot.Player: target = playerCamPos; break;
             case AvatarCustomTypes.CamSpot.Horse: target = horseCamPos; break;
         }
@@ -277,7 +291,8 @@ public class AvatarCustomManager : MonoBehaviour
         }
         else
         {
-            SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Home);
+            UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Home loading...", instant: false,  true);
+            SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
         }
     }
 

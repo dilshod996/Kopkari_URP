@@ -1,6 +1,7 @@
 ﻿using Michsky.UI.ModernUIPack;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
 using TMPro;
 using Unity.VisualScripting;
@@ -76,7 +77,7 @@ namespace Kopkari
             GetAddressableData();
             //PlayerPrefs.DeleteAll();
 
-            PlayerMaterialsData();
+            //PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
             SetInitialLanguage();
             startButton.onClick.AddListener(() =>
@@ -158,42 +159,25 @@ namespace Kopkari
             }
 
             // 2) Keylar bo‘yicha assetlarni load qilib ishlatamiz
-            foreach (var address in myAddresses)
+            var video = await AddressablesService.Instance.LoadAssetAsync<VideoClip>(Constants.VideoClips.IntroVideo);
+            if (video != null)
             {
-                // Video bo‘lishi mumkin
-                var video = await AddressablesService.Instance.LoadAssetAsync<VideoClip>(address);
-                if (video != null)
-                {
-                    videoPlayer.clip = video;
-                    videoPlayer.Play();
-                    Debug.Log($"▶️ Video played: {address}");
+                videoPlayer.clip = video;
+                videoPlayer.Play();
+                Debug.Log($"▶️ Video played: {Constants.VideoClips.IntroVideo}");
 
-                    if (startingPage.activeSelf)
-                        startingPage.SetActive(false);
-
-                    continue;
-                }
-
-                //Audio bo‘lishi mumkin
-                var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
-                if (audio != null)
-                {
-                    SoundEffect(audio);
-                    Debug.Log($"🔊 Audio played: {address}");
-
-                    if (startingPage.activeSelf)
-                        startingPage.SetActive(false);
-
-                    continue;
-                }
-
-                // Hech bo‘lmasa Object qilib ko‘ramiz (agar kerak bo‘lsa)
-                var any = await AddressablesService.Instance.LoadAssetAsync<Object>(address);
-                if (any == null)
-                {
-                    Debug.LogWarning($"❌ Failed to load or unknown type: {address}");
-                }
             }
+            var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.IntroSound);
+            if (audio != null)
+            {
+                SoundEffect(audio);
+                Debug.Log($"🔊 Audio played: {Constants.RoomSound.IntroSound}");
+
+                if (startingPage.activeSelf)
+                    startingPage.SetActive(false);
+
+            }
+
         }
         public async void GetIntroVideo()
         {
@@ -327,12 +311,6 @@ namespace Kopkari
             notificationManager.UpdateUICustom("Internetda xatolik", "Internet mavjud emas. Iltimos internetni yoqilganiga ishonch hosil qiling");
         }
 
-        IEnumerator ShowPopCor()
-        {
-            yield return new WaitForEndOfFrame();
-            Debug.Log("Open it");
-            ShowPopup();
-        }
         #endregion
 
         #region Moving To Lobby
@@ -340,22 +318,16 @@ namespace Kopkari
         public void LoadLobbyScene()
         {
             List<string> preloadAddresses = GetPreloadMaterialAddresses();
-            SceneLoadManager.Instance.LoadSmartSceneIntro(SceneLoadManager.SceneType.Home, preloadAddresses);
+            SceneLoadManager.Instance.LoadHomeFromIntro(SceneLoadManager.SceneType.Home, preloadAddresses);
         }
         #endregion
 
         void OnVideoFinished(VideoPlayer vp)
         {
-            StartCoroutine(GoToLobbyAfterSmallDelay());
-        }
-
-        private IEnumerator GoToLobbyAfterSmallDelay()
-        {
-            yield return StartCoroutine(FadeIn());
-
             LoadLobbyScene();
-            Debug.Log("Video finished → Lobby scene");
+            //StartCoroutine(GoToLobbyAfterSmallDelay());
         }
+
         private void OnDisable()
         {
             //foreach (var handle in handles)
@@ -422,14 +394,14 @@ namespace Kopkari
  
                 //Save default horse materials
 
-                PlayerPrefs.SetString(Constants.Horse.HorseBodyKey, "HorseYellowBlack");
-                PlayerPrefs.SetString(Constants.Horse.HorseEyesKey, "HorseEyes");
-                PlayerPrefs.SetString(Constants.Horse.HorseManeKey, "HorseManeBlack");
-                PlayerPrefs.SetString(Constants.Horse.HorseTailKey, "HorseManeBlack");
-                PlayerPrefs.SetString(Constants.Horse.HorseReinsKey, "Saddle");
-                PlayerPrefs.SetString(Constants.Horse.HorseSaddleKey, "Saddle3");
-                PlayerPrefs.SetString(Constants.Horse.HorseReinsHeadKey, "Saddle");
-                PlayerPrefs.Save();
+                //PlayerPrefs.SetString(Constants.Horse.HorseBodyKey, "HorseYellowBlack");
+                //PlayerPrefs.SetString(Constants.Horse.HorseEyesKey, "HorseEyes");
+                //PlayerPrefs.SetString(Constants.Horse.HorseManeKey, "HorseManeBlack");
+                //PlayerPrefs.SetString(Constants.Horse.HorseTailKey, "HorseManeBlack");
+                //PlayerPrefs.SetString(Constants.Horse.HorseReinsKey, "Saddle");
+                //PlayerPrefs.SetString(Constants.Horse.HorseSaddleKey, "Saddle3");
+                //PlayerPrefs.SetString(Constants.Horse.HorseReinsHeadKey, "Saddle");
+                //PlayerPrefs.Save();
             }
             else
             {
@@ -451,13 +423,13 @@ namespace Kopkari
 
             //PlayerPrefs dan ot material addresslarini olish
 
-            string horseBody = PlayerPrefs.GetString(Constants.Horse.HorseBodyKey);
-            string horseEyes = PlayerPrefs.GetString(Constants.Horse.HorseEyesKey);
-            string horseMane = PlayerPrefs.GetString(Constants.Horse.HorseManeKey);
-            string horseTail = PlayerPrefs.GetString(Constants.Horse.HorseTailKey);
-            string horseReins = PlayerPrefs.GetString(Constants.Horse.HorseReinsKey);
-            string horseSaddle = PlayerPrefs.GetString(Constants.Horse.HorseSaddleKey);
-            string horseReinsHead = PlayerPrefs.GetString(Constants.Horse.HorseReinsHeadKey);
+            //string horseBody = PlayerPrefs.GetString(Constants.Horse.HorseBodyKey);
+            //string horseEyes = PlayerPrefs.GetString(Constants.Horse.HorseEyesKey);
+            //string horseMane = PlayerPrefs.GetString(Constants.Horse.HorseManeKey);
+            //string horseTail = PlayerPrefs.GetString(Constants.Horse.HorseTailKey);
+            //string horseReins = PlayerPrefs.GetString(Constants.Horse.HorseReinsKey);
+            //string horseSaddle = PlayerPrefs.GetString(Constants.Horse.HorseSaddleKey);
+            //string horseReinsHead = PlayerPrefs.GetString(Constants.Horse.HorseReinsHeadKey);
 
             //preload.Add(head);
             //preload.Add(hand);
@@ -465,13 +437,13 @@ namespace Kopkari
             //preload.Add(upper);
             //preload.Add(lower);
             //preload.Add(helmet);
-            preload.Add(horseBody);
-            preload.Add(horseEyes);
-            preload.Add(horseMane);
-            preload.Add(horseTail);
-            preload.Add(horseReins);
-            preload.Add(horseSaddle);
-            preload.Add(horseReinsHead);
+            //preload.Add(horseBody);
+            //preload.Add(horseEyes);
+            //preload.Add(horseMane);
+            //preload.Add(horseTail);
+            //preload.Add(horseReins);
+            //preload.Add(horseSaddle);
+            //preload.Add(horseReinsHead);
             // Boshqa material addresslarini qo‘shish
 
             // Yana kerak bo‘lsa boshqa obyektlar

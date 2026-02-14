@@ -71,7 +71,8 @@ public class LobbyManager : MonoBehaviour
     [Header("Other room addressables")]
     private List<string> customSceneAddressableAddresses = new List<string> { "CustomRoomEnvironment", "CustomRoomSound" };
 
-    private List<string> preloadAddresses;
+    private List<string> preloadAddresses = new List<string> { };
+    private List<string> preloadRacing = new List<string> { Constants.RoomSound.RacingSound};
     private bool isSleeping = false;
 
     [Header("GPUI managers")]
@@ -113,20 +114,18 @@ public class LobbyManager : MonoBehaviour
 
         var horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
         if (horseSkinLoader != null)
-            await horseSkinLoader.ApplySkins();
+            await horseSkinLoader.ApplyAllSkins();
         RegisterEnvPrefabs(_currentEnvInstance.transform);
 
         // 4️⃣ Scene ready
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
 
-        HomeMainUI.Instance.RemoveInitialImage();
+        //HomeMainUI.Instance.RemoveInitialImage();
         HorseAnimGet();
         GetPlayerAnimator();
 
         RoomSound();
-       // if (SoundManager.Instance != null)
-            //SoundManager.Instance.PlayMusic(lobbySound);
-
+        UIOverlayRoot.I.HidePanel(UIPanelType.Home, instant: false);
     }
 
     private void OnEnable()
@@ -168,24 +167,24 @@ public class LobbyManager : MonoBehaviour
 
     public void Jomboy()
     {
-        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.Jomboy, preloadAddresses);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.Jomboy, preloadAddresses);
     }
     public void PastDargom()
     {
-        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.PastDargom, preloadAddresses);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.PastDargom, preloadAddresses);
     }
 
     public void TrainingRoom()
     {
         
-        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.Beginer, preloadAddresses);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.Beginer, preloadAddresses);
     }
     #endregion
 
     #region Racing Rooms
     public void FirstRoom()
     {
-        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.FirstRacing, preloadAddresses);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.FirstRacing, preloadAddresses);
     }
     public void BaxmalRacing()
     {
@@ -208,9 +207,9 @@ public class LobbyManager : MonoBehaviour
             HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
             return;  // Racing boshlanmaydi
         }
-           
-
-        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.SecondRacing, preloadAddresses);
+        // ;
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "Racing Field - Zarafshan valley", instant: false);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.SecondRacing, preloadRacing);
     }
     public void EgyptRacing()
     {
@@ -233,9 +232,8 @@ public class LobbyManager : MonoBehaviour
             HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
             return;  // Racing boshlanmaydi
         }
-
-
-        SceneLoadManager.Instance.LoadSmartSceneWithoutAdditive(SceneLoadManager.SceneType.EgyptRacing, preloadAddresses);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Racing Field - Egypt Nile", instant: false);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.EgyptRacing, preloadRacing);
     }
     #endregion
 
@@ -618,7 +616,8 @@ public class LobbyManager : MonoBehaviour
     #region Avatar Custom Scene ga o'tish
     public void AvatarCustom()
     {
-        SceneLoadManager.Instance.LoadSmartScene(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Custom, "New horses waiting for you!", instant: false, exclusive: true);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
     }
     #endregion
 

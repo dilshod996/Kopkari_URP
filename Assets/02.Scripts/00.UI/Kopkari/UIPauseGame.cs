@@ -54,7 +54,8 @@ public class UIPauseGame : MonoBehaviour
     void BackLobby()
     {
         Time.timeScale = 1f;
-        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Home);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
 
     private void UpdateTexts()

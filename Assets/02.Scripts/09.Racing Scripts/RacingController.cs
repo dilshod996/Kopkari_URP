@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using TMPro;
 using UnityEngine;
@@ -20,10 +21,6 @@ public class RacingController : MonoBehaviour
     public MAnimal riderAnimal;
     [SerializeField] private List<AIRacingRider> aiRiders;
     [SerializeField] private TMP_Text countText;
-    [SerializeField] private float countdownDelay = 1f; // har bosqich oralig‘i
-    [SerializeField] private float startTextDuration = 0.3f; // "Start" yozuvi qancha turadi
-
-
 
     [Header("Leaderboard Fade-In")]
     [SerializeField] private RacingLeaderboard leaderboard;
@@ -40,23 +37,8 @@ public class RacingController : MonoBehaviour
 
     [Header("Sprint UI Effect")]
     [SerializeField] private Image sprintImg;
+    [SerializeField] private GameObject sliderObject;
 
-    [Header("Reverse UI")]
-    [SerializeField] private RectTransform reversePanel;     // boshida SetActive(false)
-    [SerializeField] private TMP_Text reverseTimeText;
-    [SerializeField] private float slideDuration = 0.25f;    // anim vaqti
-    [SerializeField] private float panelShownY = -165f;         // ko‘rinadigan y
-    [SerializeField] private float panelHiddenY = 150f;      // yuqoriga yashirin y (anchored)
-    [SerializeField] private float reverseGraceTime = 5f;    // sekund
-    [SerializeField] private float uiTick = 0.2f;            // progress text yangilash
-    private Coroutine reverseCo;
-    private bool reverseActive;
-    private float tLeft;
-
-
-
-    [Header("Game Over")]
-    [SerializeField] GameOver gameOverPanel;
     [Header("Walk Zone Prefab")]
     public GameObject walkZonePrefab;
     public GameObject oneTimeFlashEffect;
@@ -89,6 +71,15 @@ public class RacingController : MonoBehaviour
     public static Action OnRacingStarted;
 
     [SerializeField] private GameObject winningPanelBG;
+    #region Racin Agents
+    [Header("Agents Registry")]
+    [SerializeField] private List<RacingAgent> allAgents = new List<RacingAgent>(16);
+
+    // Duplicate bo'lmasin + O(1) check
+    private readonly HashSet<RacingAgent> _agentSet = new HashSet<RacingAgent>();
+    public IReadOnlyList<RacingAgent> AllAgents => allAgents;
+    public bool IsRaceOver { get; private set; }
+    #endregion
     #region Starting Functions
     private void Awake()
     {
@@ -102,7 +93,7 @@ public class RacingController : MonoBehaviour
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
     }
-    void Start()
+    async void Start()
     {
         InitLeaderboardPanelHidden();
         SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
@@ -110,7 +101,11 @@ public class RacingController : MonoBehaviour
         SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 8, expandable: true);
         SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
         SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
+        await ApplyRandomSkinsToAllAI();
         //GetSetAnimal(HorseMine.Instance.horseAnimal);
+        SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
+        StartSound();
+        LoadingPanel(2f);
     }
     private void OnEnable()
     {
@@ -142,6 +137,7 @@ public class RacingController : MonoBehaviour
         UILookBackButton.OnCameraPressedState -= CameraBackState;
         riderAnimal = null;
         horse = null;
+        ClearAgents();
     }
     #endregion
 
@@ -185,6 +181,14 @@ public class RacingController : MonoBehaviour
     {
         DisableNavmesh();
         //StopAlwaysForward();
+    }
+    private async void StartSound()
+    {
+        var clip  = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.RacingSound);
+        if (clip != null)
+        {
+            SoundManager.Instance.PlayRoom(clip);
+        }
     }
     #endregion
 
@@ -359,9 +363,12 @@ public class RacingController : MonoBehaviour
     private IEnumerator HorseStopAction(Action action=null)
     {
         // 3 soniyadan so‘ng to‘xtatamiz misol uchun
+        if (boostRoutine != null)
+            StopCoroutine(boostRoutine);
         horse.Always_Forward(false);
         horse.Speed_CurrentIndex_Set(2);
-
+        UIButtonActions.Instance.DisableShootChainOrSprint();
+        yield return new WaitForEndOfFrame();
         if (SceneLoadManager.Instance != null)
         {
             float x;
@@ -390,9 +397,11 @@ public class RacingController : MonoBehaviour
         int playerRank = RacingLeaderboard.Instance.PlayerRank();
         PlayFinalAnim(playerRank);
         if (winningPanelBG != null) { winningPanelBG.SetActive(true); }
-        yield return new WaitForSeconds(3f);     
+        SoundManager.Instance.StopRoomSmooth();
+        yield return new WaitForSeconds(2f);
+        PlayFinalSound();
         OnRacingFinished?.Invoke();
-
+        horse.StopMoving();
 
         if (SceneLoadManager.Instance != null)
         {
@@ -420,12 +429,24 @@ public class RacingController : MonoBehaviour
 
 
 
-        yield return new WaitForSeconds(1f);
-        horse.StopMoving();
+        //yield return new WaitForSeconds(1f);
+       // horse.StopMoving();
 
         action?.Invoke();
     }
-
+    private void StopMyHorse()
+    {
+        if (boostRoutine != null)
+            StopCoroutine(boostRoutine);
+        horse.Always_Forward(false);
+        horse.Speed_CurrentIndex_Set(2);
+        StartCoroutine(DelayStopHorse());
+    }
+    private IEnumerator DelayStopHorse()
+    {
+        yield return new WaitForSeconds(2);
+        horse.StopMoving();
+    }
     private void HorseSprint()
     {
         if (horse != null) { 
@@ -441,130 +462,7 @@ public class RacingController : MonoBehaviour
         }
     }
     #endregion
-
-    #region Scene Details.
-    public void BackLobby()
-    {
-        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Home);
-    }
-    #endregion
-
-
-    #region Horse Back Running
-    public void StartReverse()
-    {
-        // Timer reset (agar allaqachon aktiv bo‘lsa ham yangilaymiz)
-        tLeft = reverseGraceTime;
-        UIButtonActions.Instance?.SpeechBubbleEnable("Ogohlantirish orqaga yugurayapsan!");
-        if (!reverseActive)
-        {
-            reverseActive = true;
-            ShowPanel(); // SetActive(true) + slide in
-
-            if (reverseCo != null) StopCoroutine(reverseCo);
-            reverseCo = StartCoroutine(ReverseCountdown());
-        }
-        // reverseActive bo‘lsa ham faqat tLeft yangilandi (UI shu korutinada yangilanadi)
-    }
-
-    public void ClearReverse()
-    {
-        if (!reverseActive) return;
-        UIButtonActions.Instance?.SpeechBubbleDisable();
-        reverseActive = false;
-        if (reverseCo != null) { StopCoroutine(reverseCo); reverseCo = null; }
-        HidePanel(); // slide out + SetActive(false)
-
-    }
-
-    // ===== UI Anim (LeanTween) =====
-    private void ShowPanel()
-    {
-        if (!reversePanel) return;
-
-        reversePanel.gameObject.SetActive(true); // LT uchun active bo‘lishi shart
-        LeanTween.cancel(reversePanel);
-
-        // start pozitsiya: hiddenY
-        var ap = reversePanel.anchoredPosition;
-        reversePanel.anchoredPosition = new Vector2(ap.x, panelHiddenY);
-
-        LeanTween.value(reversePanel.gameObject, panelHiddenY, panelShownY, slideDuration)
-                 .setEaseOutCubic()
-                 .setOnUpdate((float y) =>
-                 {
-                     var p = reversePanel.anchoredPosition;
-                     reversePanel.anchoredPosition = new Vector2(p.x, y);
-                 });
-    }
-
-    private void HidePanel()
-    {
-        if (!reversePanel) return;
-
-        LeanTween.cancel(reversePanel);
-        var ap = reversePanel.anchoredPosition;
-
-        LeanTween.value(reversePanel.gameObject, ap.y, panelHiddenY, slideDuration)
-                 .setEaseInCubic()
-                 .setOnUpdate((float y) =>
-                 {
-                     var p = reversePanel.anchoredPosition;
-                     reversePanel.anchoredPosition = new Vector2(p.x, y);
-                 })
-                 .setOnComplete(() =>
-                 {
-                     if (reverseTimeText) reverseTimeText.text = "";
-                     reversePanel.gameObject.SetActive(false); // qayta inactive
-                 });
-    }
-
-    // ===== Countdown (Update yo‘q) =====
-    private IEnumerator ReverseCountdown()
-    {
-        var wait = new WaitForSecondsRealtime(uiTick);
-
-        while (reverseActive && tLeft > 0f)
-        {
-            if (reverseTimeText) reverseTimeText.text = $"{tLeft:0}";
-            tLeft -= uiTick;
-            penaltyTime += uiTick;
-            yield return wait;
-        }
-
-        reverseCo = null;
-
-        if (reverseActive)
-        {
-            // Timeout → DQ
-            reverseActive = false;
-            HidePanel();
-            Disqualify();
-        }
-    }
-
-    // ===== DQ logika =====
-    private void Disqualify()
-    {
-        // Bu yerda sizning o‘yindagi jazo:
-        // - Malbers: hayvonni bloklash
-        // - Result page/popup
-        // - Leaderboardga signal
-        // Masalan:
-        // var animal = FindObjectOfType<MalbersAnimations.Controller.MAnimal>();
-        // if (animal) animal.Lock(true);
-        StartCoroutine(HorseStopAction(GameOverPanel));
-        UIButtonActions.Instance?.SpeechBubbleDisable();
-        Debug.Log("[RacingController] Reverse timeout -> DQ");
-    }
-
-    private void GameOverPanel()
-    {
-        gameOverPanel.gameObject.SetActive(true);
-    }
-    #endregion
-
-   
+ 
 
     #region Camera Details
 
@@ -646,6 +544,101 @@ public class RacingController : MonoBehaviour
     {
         penaltyTime = penaltyTime + time;
         OnOverallPenaltyTime?.Invoke(penaltyTime);
+    }
+    #endregion
+
+    #region AI Random skins
+    private async Task ApplyRandomSkinsToAllAI()
+    {
+        for (int i = 0; i < aiRiders.Count; i++)
+        {
+            var rider = aiRiders[i];
+            if (rider == null) continue;
+
+            var rs = rider.randomSkin; // yoki rider.randomSkin
+            if (rs == null) continue;
+
+            await rs.ApplyRandomAsync();
+        }
+    }
+    #endregion
+
+    #region Racing Agents
+    // Call this when race ends
+    public void SetRaceOver(bool value) => IsRaceOver = value;
+
+    public void RegisterAgent(RacingAgent a)
+    {
+        if (a == null) return;
+
+        // old null'larni tozalab turamiz (vaqti-vaqti bilan)
+        // (xohlasang alohida methodda ham qilamiz)
+        if (_agentSet.Add(a))
+        {
+            allAgents.Add(a);
+        }
+    }
+
+    public void RemoveAgent(RacingAgent a)
+    {
+        if (a == null) return;
+
+        if (_agentSet.Remove(a))
+        {
+            // List.Remove O(n) lekin agent count odatda kichik (10-30)
+            allAgents.Remove(a);
+        }
+    }
+
+    public void ClearAgents()
+    {
+        allAgents.Clear();
+        _agentSet.Clear();
+    }
+    public void PlayerFailedSpecialReach(RacingAgent playerAgent, MonoBehaviour triggerPoint)
+    {
+        if (IsRaceOver) return;
+        IsRaceOver = true;
+        // shu yerda SENING game over / lose / stop race logikang
+        // Misol:
+        // GameOverPage();
+        // StopRace();
+
+
+        StopMyHorse();
+        UIButtonActions.Instance.ShowGameOver();
+        mobileCanvasPanel.gameObject.SetActive(false);
+        RacingLeaderboard.Instance.FinishRace();
+        leaderboard.gameObject.SetActive(false);
+    }
+    #endregion
+    #region Game Start Slider
+    public void LoadingPanel(float time)
+    {
+        StartCoroutine(LoadingPanelDisabler(time));
+    }
+
+    private IEnumerator LoadingPanelDisabler(float time)
+    {
+        yield return new WaitForSeconds(time);
+        UIOverlayRoot.I.HideCurrentPanel();
+        if (sliderObject != null) sliderObject.SetActive(true);
+        Finalsound();
+    }
+    private async void Finalsound()
+    {
+        await AddressablesService.Instance.PreloadDependenciesAsync("Makarena");
+    }
+    public async void PlayFinalSound()
+    {
+        var audioClip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>("Makarena");
+        if (audioClip != null)
+            SoundEffect(audioClip);
+   
+    }
+    public void SoundEffect(AudioClip clip)
+    {
+        SoundManager.Instance?.PlayRoom(clip);
     }
     #endregion
 

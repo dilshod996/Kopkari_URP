@@ -48,14 +48,32 @@ public class GameFood : MonoBehaviour
         UITransilation();
         GetResources();
         replayBtn.onClick.AddListener(PlayMore);
+        backButton.onClick.AddListener(BackHome);
     }
 
     private void OnDisable()
     {
         HookButtons(false);
-        replayBtn.onClick.RemoveListener(PlayMore);
+        replayBtn.onClick.RemoveAllListeners();
+        backButton.onClick.RemoveAllListeners();
     }
-
+    private void BackHome()
+    {
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
+    }
+    public void PlayAgainText()
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.SecondRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "This time is your win!");
+                break;
+            case SceneLoadManager.SceneType.EgyptRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
+                break;
+        }
+    }
     #region UI Transilations
     private void UITransilation()
     {
@@ -92,11 +110,11 @@ public class GameFood : MonoBehaviour
         }
         else
         {
-            waterBtn.onClick.RemoveListener(OnWater);
-            appleBtn.onClick.RemoveListener(OnApple);
-            bugdoyBtn.onClick.RemoveListener(OnBugdoy);
-            arpaBtn.onClick.RemoveListener(OnArpa);
-            boosterBtn.onClick.RemoveListener(OnBooster);
+            waterBtn.onClick.RemoveAllListeners();
+            appleBtn.onClick.RemoveAllListeners();
+            bugdoyBtn.onClick.RemoveAllListeners();
+            arpaBtn.onClick.RemoveAllListeners();
+            boosterBtn.onClick.RemoveAllListeners();
         }
     }
 
@@ -222,18 +240,20 @@ public class GameFood : MonoBehaviour
         }
         else
         {
-            if (KopkariMainUI.Instance != null)
-            {
-                KopkariMainUI.Instance.HideUI(this);
-            }
-            else
-            {
-                UIButtonActions.Instance.HideUI(this);
-            }
+            //if (KopkariMainUI.Instance != null)
+            //{
+            //    KopkariMainUI.Instance.HideUI(this);
+            //}
+            //else
+            //{
+            //    UIButtonActions.Instance.HideUI(this);
+            //}
             Clear();
-            SceneLoadManager.Instance.LoadScene(sceneType);
+            PlayAgainText();
+            SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
         }
     }
+
     public void Clear()
     {
         StopAllCoroutines();

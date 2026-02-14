@@ -13,6 +13,7 @@ public class PlayerSkinLoader : MonoBehaviour
 
     private string _playerId;
 
+    private readonly Dictionary<string, string> _pending = new Dictionary<string, string>();
     private void Awake()
     {
         BuildSlotMap();
@@ -23,7 +24,15 @@ public class PlayerSkinLoader : MonoBehaviour
         _playerId = PlayerPrefs.GetString("ActivePlayerId", "player_01");
         AvatarCustomManager.RaisePlayerSkinLoad(this);
     }
+    private void OnEnable()
+    {
+        AvatarCustomUIManager.OnSavedBtnClicked += CommitPending;  // static event
+    }
 
+    private void OnDisable()
+    {
+        AvatarCustomUIManager.OnSavedBtnClicked -= CommitPending;
+    }
     private void BuildSlotMap()
     {
         _slots.Clear();
@@ -82,6 +91,34 @@ public class PlayerSkinLoader : MonoBehaviour
         PlayerPrefs.SetString($"Sel_{_playerId}_{slotId}", optionId);
         PlayerPrefs.Save();
     }
+    public async Task PreviewOne(string slotId, string optionId)
+    {
+        if (!_slots.TryGetValue(slotId, out var smr))
+            return;
+
+        var entry = await PlayerCatalogProvider.Instance.FindAsync(_playerId, slotId, optionId);
+        if (entry == null) return;
+
+        await ApplyEntry(smr, entry);
+
+        // ✅ faqat pendingga yozamiz (prefsga emas)
+        _pending[slotId] = optionId;
+    }
+    private void CommitPending()
+    {
+        if (_pending.Count == 0) return;
+
+        foreach (var kv in _pending)
+        {
+            string slotId = kv.Key;
+            string optionId = kv.Value;
+
+            PlayerPrefs.SetString($"Sel_{_playerId}_{slotId}", optionId);
+        }
+
+        PlayerPrefs.Save();
+        _pending.Clear();
+    }
 
     private async Task ApplyEntry(SkinnedMeshRenderer smr, CatalogEntry entry)
     {
@@ -109,4 +146,16 @@ public class PlayerSkinLoader : MonoBehaviour
             }
         }
     }
+    public string GetCurrentOptionId(string slotId)
+    {
+        if (string.IsNullOrEmpty(slotId)) return "";
+
+        // 1) pending bor bo'lsa shuni qaytaramiz
+        if (_pending != null && _pending.TryGetValue(slotId, out var pendingId) && !string.IsNullOrEmpty(pendingId))
+            return pendingId;
+
+        // 2) bo'lmasa prefs
+        return PlayerPrefs.GetString($"Sel_{_playerId}_{slotId}", "");
+    }
+
 }

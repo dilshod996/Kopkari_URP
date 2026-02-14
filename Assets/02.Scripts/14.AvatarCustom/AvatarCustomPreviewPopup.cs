@@ -1,12 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
-using MalbersAnimations;
-using static Constants;
-using System.Collections;
 
 public class AvatarCustomPreviewPopup : MonoBehaviour
 {
@@ -15,123 +13,126 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text applyBtnText;
     [SerializeField] private Button applyBtn;
-
     [SerializeField] private GameObject lockedRoot;
-    // DOTween anim target
+
+    [Header("DOTween anim target")]
     [SerializeField] private RectTransform panelRect;
     private Tween _shakeTween;
+    private Tween _moveTween;
+    private Coroutine _autoHideCo;
+
+    private Func<Task<bool>> _onApply;
 
     private const float HiddenX = -300f;
     private const float ShownX = 228f;
     private const float ShowDur = 0.45f;
     private const float HideDur = 0.25f;
 
-    private Tween _moveTween;
-    private Coroutine _autoHideCo;
-
-    private Func<Task> _onApply;
-
     private void Awake()
     {
-
-
-        // default joyga qo'yib qo'yamiz
-        if (panelRect != null)
-        {
-            var p = panelRect.anchoredPosition;
-            p.x = HiddenX;
-            panelRect.anchoredPosition = p;
-        }
-
-        Hide();
-        OptionItemUI.OnNotEnoughCoins += PlayNotEnoughCoinsFeedback;
-
+        // ❗ gameObject.SetActive(false) QILMAYMIZ
+        // Popup doim active turadi, faqat ko‘rinmaydi va raycast olmaydi
+        InitHiddenImmediate();
     }
 
-    public void Show(CatalogEntry entry, string playerId, string slotId, Sprite imageSprite, Func<Task> onApply)
+    private void OnEnable()
+    {
+        // double-subscribe bo‘lmasin
+        OptionItemUI.OnNotEnoughCoins -= PlayNotEnoughCoinsFeedback;
+        OptionItemUI.OnNotEnoughCoins += PlayNotEnoughCoinsFeedback;
+    }
+
+    private void OnDisable()
+    {
+        OptionItemUI.OnNotEnoughCoins -= PlayNotEnoughCoinsFeedback;
+    }
+
+    private void InitHiddenImmediate()
+    {
+        if (panelRect != null)
+        {
+            panelRect.DOKill(false);
+            panelRect.anchoredPosition = new Vector2(HiddenX, panelRect.anchoredPosition.y);
+        }
+
+        if (cg != null)
+        {
+            cg.alpha = 0f;
+            cg.interactable = false;
+            cg.blocksRaycasts = false;
+        }
+    }
+
+    public void Show(CatalogEntry entry, string playerId, string slotId, Sprite imageSprite, Func<Task<bool>> onApply)
     {
         _onApply = onApply;
-        bool unlocked = entry.IsDefault || PlayerPrefs.GetInt($"Unlock_{playerId}_{slotId}_{entry.OptionId}", 0) == 1;
 
-        if (applyBtnText) applyBtnText.text = unlocked ? "Change" : $"{entry.Price}";
+        bool unlocked = entry.IsDefault ||
+                        PlayerPrefs.GetInt($"Unlock_{playerId}_{slotId}_{entry.OptionId}", 0) == 1;
+
+        if (applyBtnText) applyBtnText.text = unlocked ? "Change" : $"Buy: {entry.Price}";
         if (lockedRoot) lockedRoot.SetActive(!unlocked);
-       // if (priceText) priceText.text = unlocked ? "" : entry.Price.ToString();
 
         if (titleText) titleText.text = entry.SlotId;
-        bigIcon.sprite = imageSprite;
+        if (bigIcon) bigIcon.sprite = imageSprite;
+
         if (applyBtn)
         {
             applyBtn.onClick.RemoveAllListeners();
-            applyBtn.onClick.AddListener(async () =>
-            {
-                if (_onApply != null) await _onApply.Invoke();
-                Hide();
-            });
+            applyBtn.onClick.AddListener(() => _ = OnClickApply());
         }
 
         SetVisible(true);
         RestartAutoHide();
-
-
+        SoundManager.Instance?.PlayUI(UISoundType.PopupOpen);
     }
 
-    public void Hide() => SetVisible(false);
+    private async Task OnClickApply()
+    {
+        bool ok = true;
+        if (_onApply != null)
+            ok = await _onApply.Invoke();
+
+        if (ok)
+            Hide();
+        else
+            PlayNotEnoughCoinsFeedback(); // yopilmasin
+
+        RestartAutoHide();
+    }
+
+    public void Hide()
+    {
+        SetVisible(false);
+        SoundManager.Instance?.PlayUI(UISoundType.PopupClose);
+    }
 
     private void SetVisible(bool v)
     {
-        if (cg == null)
+        _moveTween?.Kill(false);
+
+        if (cg != null)
         {
-            gameObject.SetActive(v);
-            return;
+            cg.alpha = v ? 1f : 0f;
+            cg.interactable = v;
+            cg.blocksRaycasts = v;
         }
 
-        // tween conflict bo'lmasin
-        _moveTween?.Kill(false);
+        if (panelRect == null) return;
+
+        panelRect.DOKill(false);
 
         if (v)
         {
-            // avval yoqamiz (tween ko'rinishi uchun)
-            gameObject.SetActive(true);
-
-            cg.alpha = 1;
-            cg.interactable = true;
-            cg.blocksRaycasts = true;
-
-            // kirib kelish anim
-            if (panelRect != null)
-            {
-                panelRect.DOKill(false);
-                panelRect.anchoredPosition = new Vector2(HiddenX, panelRect.anchoredPosition.y);
-
-                _moveTween = panelRect.DOAnchorPosX(ShownX, ShowDur)
-                    .SetEase(Ease.OutBack);
-            }
+            panelRect.anchoredPosition = new Vector2(HiddenX, panelRect.anchoredPosition.y);
+            _moveTween = panelRect.DOAnchorPosX(ShownX, ShowDur).SetEase(Ease.OutBack);
         }
         else
         {
-            // chiqib ketish anim (tugagach o'chiramiz)
-            cg.interactable = false;
-            cg.blocksRaycasts = false;
-
-            if (panelRect != null)
-            {
-                panelRect.DOKill(false);
-
-                _moveTween = panelRect.DOAnchorPosX(HiddenX, HideDur)
-                    .SetEase(Ease.InBack)
-                    .OnComplete(() =>
-                    {
-                        cg.alpha = 0;
-                        gameObject.SetActive(false);
-                    });
-            }
-            else
-            {
-                cg.alpha = 0;
-                gameObject.SetActive(false);
-            }
+            _moveTween = panelRect.DOAnchorPosX(HiddenX, HideDur).SetEase(Ease.InBack);
         }
     }
+
     private void RestartAutoHide()
     {
         if (_autoHideCo != null) StopCoroutine(_autoHideCo);
@@ -141,19 +142,18 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
     private IEnumerator AutoCloseRoutine()
     {
         yield return new WaitForSeconds(5f);
-
-        if (gameObject.activeSelf)
-            Hide();
+        Hide();
     }
+
     private void PlayNotEnoughCoinsFeedback()
     {
-        if (!gameObject.activeInHierarchy) return;
+        // endi gameObject inactive bo‘lmaydi, shuning uchun bu stabil ishlaydi
+        if (!isActiveAndEnabled) return;
         if (panelRect == null) return;
 
         _shakeTween?.Kill(false);
         panelRect.DOKill(false);
 
-        // “jizz” — qisqa va jonli qaltirash
         _shakeTween = panelRect.DOShakeAnchorPos(
             duration: 0.25f,
             strength: new Vector2(20f, 0f),
@@ -162,14 +162,8 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
             snapping: false,
             fadeOut: true
         );
+
+        SoundManager.Instance?.PlayUI(UISoundType.Error);
         RestartAutoHide();
-
     }
-    private void OnDestroy()
-    {
-        OptionItemUI.OnNotEnoughCoins -= PlayNotEnoughCoinsFeedback;
-    }
-
-
-
 }

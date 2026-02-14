@@ -31,6 +31,8 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
     [Header("Auto Init On Start")]
     [SerializeField] private bool initOnStart = true;
     [SerializeField] private bool preloadSelectedAssets = true;
+    [Header("Preload Active Horse Too (optional)")]
+    [SerializeField] private bool preloadActiveHorseSelectedAssets = true;
 
     private const string VERSION_PREF_KEY = "avatar_catalog_version_global";
 
@@ -62,7 +64,25 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
         _initTask = InitializeAsync(preloadSelectedAssets);
         await _initTask;
     }
+    #region Horse Custom Methods
+    // PlayerCatalogProvider ichiga qo'sh (class ichida)
+    public Task<List<CatalogEntry>> GetHorseOptionsAsync(string horseId, AvatarCustomTypes.HorseSkins slot)
+    {
+        // slotId catalogdagi string bo'lishi kerak: "Body","Mane","Tail","Saddle"
+        return GetOptionsAsync(horseId, slot.ToString());
+    }
 
+    public Task<CatalogEntry> FindHorseAsync(string horseId, AvatarCustomTypes.HorseSkins slot, string optionId)
+    {
+        return FindAsync(horseId, slot.ToString(), optionId);
+    }
+
+    public string GetDefaultHorseOptionId(string horseId, AvatarCustomTypes.HorseSkins slot)
+    {
+        return GetDefaultOptionId(horseId, slot.ToString());
+    }
+
+    #endregion
     public Task WaitInitializedAsync() => _initTask ?? Task.CompletedTask;
 
     public async Task InitializeAsync(bool preloadActivePlayerSelectedAssets)
@@ -74,6 +94,12 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
         {
             string playerId = PlayerPrefs.GetString("ActivePlayerId", "player_01");
             await PreloadSelectedAssetsAsync(playerId);
+        }
+        // ✅ horse ham xuddi shunday (faqat providerda)
+        if (preloadActiveHorseSelectedAssets)
+        {
+            string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
+            await PreloadSelectedAssetsAsync(horseId);
         }
     }
 
@@ -193,7 +219,18 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
             // UI iconlarni ham oldindan download qilmoqchi bo'lsang:
             // if (!string.IsNullOrEmpty(entry.IconKey)) keySet.Add(entry.IconKey);
         }
+        // ---------- 🐎 HORSE STATIC PARTS ----------
+        if (playerId.StartsWith("horse_", StringComparison.OrdinalIgnoreCase))
+        {
+            // meshes
+            keySet.Add(Constants.HorseStaticMeshes.Eyes);
+            keySet.Add(Constants.HorseStaticMeshes.Tail);
+            keySet.Add(Constants.HorseStaticMeshes.Reins);
+            keySet.Add(Constants.HorseStaticMeshes.HeadReins);
 
+            // materials
+            keySet.Add(Constants.HorseStaticMaterials.Eyes);
+        }
         if (keySet.Count == 0) return;
 
         var keys = new List<string>(keySet);
@@ -265,6 +302,80 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
         Debug.Log($"✅ Global catalog saved: {LocalCatalogPath()}");
         return true;
     }
+    #region Horse Preload Wrappers (optional, qulaylik uchun)
+    //public Task PreloadSelectedAssetsForHorseAsync(string horseId)
+    //{
+    //    // PreloadSelectedAssetsAsync allaqachon avatarId bo‘yicha ishlaydi
+    //    return PreloadSelectedAssetsAsync(horseId);
+    //}
+
+    public Task<bool> PreloadAllForHorseAsync(string horseId, Action<float> onProgress = null, bool includeIcons = true)
+    {
+        // PreloadAllForPlayerAsync ham avatarId bo‘yicha ishlaydi (nomi player bo‘lsa ham)
+        return PreloadAllForPlayerAsync(horseId, onProgress, includeIcons);
+    }
+    #endregion
+
+    #region AI Rider lar uchun random custom
+    public async Task<List<string>> GetMaterialKeysAsync(string avatarId, string slotId)
+    {
+        var catalog = await EnsureCatalogAsync(); // sen endi bitta umumiy catalog qilganding
+        if (catalog == null) return new List<string>();
+
+        return catalog.CollectMaterialKeys(avatarId, slotId);
+    }
+    public async Task<bool> PreloadMaterialPoolAsync(
+        string avatarId,
+        List<string> slotIds,
+        Action<float> onProgress = null)
+    {
+        var catalog = await EnsureCatalogAsync();
+        if (catalog == null) return false;
+
+        if (string.IsNullOrWhiteSpace(avatarId) || slotIds == null || slotIds.Count == 0)
+        {
+            onProgress?.Invoke(1f);
+            return true;
+        }
+
+        // Slotlar bo'yicha material keylarni yig'amiz (unique)
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var slotId in slotIds)
+        {
+            if (string.IsNullOrWhiteSpace(slotId)) continue;
+
+            // CatalogData ichida shu method bo'lishi kerak:
+            // CollectMaterialKeys(avatarId, slotId)
+            var keys = catalog.CollectMaterialKeys(avatarId, slotId);
+            for (int i = 0; i < keys.Count; i++)
+            {
+                var k = keys[i];
+                if (!string.IsNullOrWhiteSpace(k))
+                    set.Add(k);
+            }
+        }
+
+        if (set.Count == 0)
+        {
+            onProgress?.Invoke(1f);
+            return true;
+        }
+
+        // Addressables download progress (0..1)
+        var list = new List<string>(set);
+
+        return await AddressablesService.Instance.PreloadDependenciesAsync(
+            list,
+            onProgress,
+            fakeDurationIfCached: 0.3f
+        );
+    }
+
+
+
+    #endregion
+
 }
 
 // ---------------- DATA ----------------
@@ -413,6 +524,26 @@ public sealed class CatalogData
         }
 
         return data;
+    }
+    public List<string> CollectMaterialKeys(string avatarId, string slotId)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var e in Entries)
+        {
+            if (e == null) continue;
+
+            if (!string.Equals(e.AvatarId, avatarId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.Equals(e.SlotId, slotId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.IsNullOrEmpty(e.MaterialKey))
+                set.Add(e.MaterialKey);
+        }
+
+        return new List<string>(set);
     }
 
     [Serializable]

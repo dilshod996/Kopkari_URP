@@ -64,10 +64,6 @@ public class UIButtonActions : MonoBehaviour
     #region Inspector - Others
     [Header("Hit Count Slider")]
     public Slider hitCountSlider;
-
-    [SerializeField] private GameObject loadingPanel;
-    [SerializeField] private GameObject sliderObject;
-
     [Header("Pages")]
     [SerializeField] private GameObject resultPage;
     [SerializeField] private GameObject foodPanel;
@@ -127,11 +123,14 @@ public class UIButtonActions : MonoBehaviour
 
     [Header("Popup Data")]
     [SerializeField] UISpeechBuble speechBubble;
+    [SerializeField] RightPopup rightPopup;
+    [SerializeField] private ReverseWarningUI reverseWarningUI;
+    [Header("Game Over")]
+    [SerializeField] GameOver gameOverPanel;
 
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
     {
-        LoadingPanel(3f);
 
         Booster.OnSprintFull += HandleSprintFull;
 
@@ -562,7 +561,7 @@ public class UIButtonActions : MonoBehaviour
         if (!chainContainerBtn.interactable) chainContainerBtn.interactable = true;
 
         WeaponInHand = newState;
-        chainContainerBtn.gameObject.SetActive(newState);
+        chainContainerBtn.gameObject?.SetActive(newState);
         OnWebSnareBtnEnable?.Invoke();
     }
     #endregion
@@ -578,26 +577,12 @@ public class UIButtonActions : MonoBehaviour
     {
         ShowUI(resultPage);
 
+    }
+
+    public void DisableShootChainOrSprint()
+    {
         if (sprintImg != null && sprintImg.gameObject.activeSelf) sprintImg.gameObject.SetActive(false);
-        if (slowImg != null && slowImg.gameObject.activeSelf) slowImg.gameObject.SetActive(false);
-
         if (WeaponInHand) OnClickChain();
-    }
-
-    public void LoadingPanel(float time)
-    {
-        StartCoroutine(LoadingPanelDisabler(time));
-    }
-
-    private IEnumerator LoadingPanelDisabler(float time)
-    {
-        if (loadingPanel != null && !loadingPanel.activeSelf)
-            loadingPanel.SetActive(true);
-
-        yield return new WaitForSeconds(time);
-
-        if (loadingPanel != null) loadingPanel.SetActive(false);
-        if (sliderObject != null) sliderObject.SetActive(true);
     }
     #endregion
 
@@ -712,7 +697,6 @@ public class UIButtonActions : MonoBehaviour
     }
     private IEnumerator SpeechCoroutine(string text)
     {
-        Debug.Log("Call 3");
         SpeechBubbleEnable(text);
         yield return new WaitForSeconds(3.5f);
         SpeechBubbleDisable();
@@ -725,6 +709,35 @@ public class UIButtonActions : MonoBehaviour
     public void SpeechBubbleDisable()
     {
         speechBubble.Hide();
+    }
+    public void StartReverse()
+    {
+        reverseWarningUI.StartReverse();
+    }
+    // Mana shu yerda speech bubble berish kerak ortga ketayapsan deb reversewarninui event bilan
+    public void ClearReverse()
+    {
+        reverseWarningUI.ClearReverse();
+    }
+    public void ShowSpecialTrigger(float timer)
+    {
+        reverseWarningUI.ShowPanel(timer);
+    }
+    public void HideSpecialTrigger()
+    {
+        reverseWarningUI.HidePanelNotTimeBased();
+    }
+
+    public void EliminitedRider(string name, Sprite sprite = null, bool disqualified=true)
+    {
+        rightPopup.EnqueueEliminatedRider(name, sprite, disqualified);
+    }
+    #endregion
+
+    #region Game Over
+    public void ShowGameOver()
+    {
+        ShowUI(gameOverPanel);
     }
     #endregion
 }

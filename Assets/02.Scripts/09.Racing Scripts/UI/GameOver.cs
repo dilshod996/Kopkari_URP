@@ -11,45 +11,40 @@ public class GameOver : MonoBehaviour
     [SerializeField] private Button playAgain;
     [SerializeField] private Button backLobby;
 
-    [Header("Anim Settings")]
-    [SerializeField] private float fadeDuration = 0.4f;
-    [SerializeField] private float scaleDuration = 0.5f;
-    [SerializeField] private LeanTweenType easeType = LeanTweenType.easeOutBack;
     public SceneLoadManager.SceneType sceneType;
 
-    private void Start()
-    {
-        playAgain.onClick.AddListener(PlayAgainAction);
-    }
     private void OnEnable()
     {
-        ShowAnimation();
+        backLobby.onClick.AddListener(BackHome);
+        playAgain.onClick.AddListener(PlayAgainAction);
     }
 
     private void OnDisable()
     {
-        // anim reset bo¡®lishi uchun qayta chaqirilganda toza holat
-        canvasGroup.alpha = 0;
-        transform.localScale = Vector3.one * 0.8f;
+        playAgain.onClick.RemoveAllListeners();
+        backLobby.onClick.RemoveAllListeners();
     }
 
-    private void ShowAnimation()
-    {
-        // Dastlabki holat
-        canvasGroup.alpha = 0;
-        transform.localScale = Vector3.one * 0.8f;
-
-        // Alpha (fade in)
-        LeanTween.value(gameObject, 0f, 1f, fadeDuration)
-            .setOnUpdate((float val) => canvasGroup.alpha = val);
-
-        // Scale (zoom in)
-        LeanTween.scale(gameObject, Vector3.one, scaleDuration)
-            .setEase(easeType)
-            .setDelay(0.05f); // biroz kechikish bilan chiroyli effekt
-    }
     public void PlayAgainAction()
     {
-        SceneLoadManager.Instance.LoadScene(sceneType);
+        PlayAgainText();
+        SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
+    }
+    public void PlayAgainText()
+    {
+        switch(sceneType)
+        {
+            case SceneLoadManager.SceneType.SecondRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "This time is your win!");
+                break;
+            case SceneLoadManager.SceneType.EgyptRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
+                break;
+        }
+    }
+    private void BackHome()
+    {
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
 }

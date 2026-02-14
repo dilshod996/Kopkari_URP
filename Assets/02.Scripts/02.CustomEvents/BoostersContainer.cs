@@ -723,5 +723,13 @@ public class BoostersContainer : MonoBehaviour
         if (forceRestoreSpeed)
             RestoreSpeedAfterDebuffClear();
     }
+    public void StopAnimation()
+    {
+        if(isNpc)
+        {
+            horseAnimal.Always_Forward(false);
+            horseAnimal.StopMoving();
+        }
+    }
     #endregion
 }

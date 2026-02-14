@@ -155,5 +155,22 @@ public static class Constants
     public static class RoomSound 
     {
         public const string HomeRoomSound = "HomeSound";
+        public const string IntroSound = "IntroSound";
+        public const string RacingSound = "RacingSound";
+    }
+    public static class VideoClips
+    {
+        public const string IntroVideo = "IntroVideo";
+    }
+    public static class HorseStaticMeshes
+    {
+        public const string Eyes = "eyes_default";
+        public const string Reins = "reins_default";
+        public const string HeadReins = "headReins_default";
+        public const string Tail = "tail_default";
+    }
+    public static class HorseStaticMaterials
+    {
+        public const string Eyes = "eyesMaterial_default";
     }
 }

@@ -33,7 +33,7 @@ public class PlayerResourse : MonoBehaviour
     }
     private void OnDisable()
     {
-        buyButton.onClick.RemoveListener(BuyResource);
+        buyButton.onClick.RemoveAllListeners();
     }
     private void UITransilation()
     {
@@ -64,6 +64,7 @@ public class PlayerResourse : MonoBehaviour
            
             // money not enough text
             OnMoneyNotEnough?.Invoke();
+            SoundManager.Instance?.PlayUI(UISoundType.Error);
             return;
         }
         ResourceName();
@@ -109,9 +110,9 @@ public class PlayerResourse : MonoBehaviour
         PlayerPrefs.SetInt(itemKey, count + 1);
 
         PlayerPrefs.SetInt(Constants.Coins.Nyufiy, newNyufiyAmount);
-        PlayerPrefs.Save();
        // OnNyufiyUpdated?.Invoke();
         OnResourseUpdated?.Invoke(itemKey);
+        SoundManager.Instance?.PlayUI(UISoundType.Success);
     }
 
     private string GetItemKey(Resources resource)

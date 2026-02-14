@@ -1,6 +1,12 @@
 public static class AvatarCustomTypes
 {
-    public enum CamSpot { Start, Player, Horse }
+    public enum CamSpot { 
+        Start,
+        Player,
+        HeadPlayer,
+        UpperBodyPlayer,
+        Horse 
+    }
 
     public enum MainPages
     {
@@ -20,9 +26,8 @@ public static class AvatarCustomTypes
 
     public enum HorseSkins
     {
-        Hair,
         Body,
-        Saddle,
-        Tail
+        Mane,
+        Saddle
     }
 }

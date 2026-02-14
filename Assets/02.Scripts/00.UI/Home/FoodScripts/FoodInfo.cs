@@ -36,7 +36,7 @@ public class FoodInfo : MonoBehaviour
     }
     private void OnDisable()
     {
-        selectBtn.onClick.RemoveListener(ShowFoodDetails);
+        selectBtn.onClick.RemoveAllListeners();
         FoodShowerPopup.OnFoodAmountChanged -= HandleFoodAmountChanged;
     }
 
@@ -51,6 +51,7 @@ public class FoodInfo : MonoBehaviour
     {
         foodPopup.gameObject.SetActive(true);
         foodPopup.SHowFoodDetails(nameFoodId, food, imageofFood.sprite);
+        SoundManager.Instance.PlayUI(UISoundType.PopupOpen);
     }
     private string GetFoodKey(HorseFood food)
     {
