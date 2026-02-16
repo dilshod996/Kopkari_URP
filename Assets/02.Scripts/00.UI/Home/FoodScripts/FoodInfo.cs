@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -8,15 +9,18 @@ public class FoodInfo : MonoBehaviour
 {
     [Header("UI Texts")]
     [SerializeField] private TMP_Text nameFood;
-    [SerializeField] private TMP_Text amountFood;
     [SerializeField] private Image imageofFood;
 
     [SerializeField] private int nameFoodId=-1;
-    [SerializeField] private int amountFoodId=-1;
     [Header("UI Settings")]
-    [SerializeField] private Button selectBtn;
+    [SerializeField] private Button buyBtn;
+    [SerializeField] private TMP_Text foodCostText;
 
-    [SerializeField] private FoodShowerPopup foodPopup;
+    [SerializeField] private int foodCost;
+
+    public static event Action<float, float, float> OnFoodAddToHorse;
+    public static event Action<int> OnNyufiyUpdate;
+    public static event Action OnMoneyNotEnough;
     public enum HorseFood
     {
         None,
@@ -31,52 +35,71 @@ public class FoodInfo : MonoBehaviour
     private void OnEnable()
     {
         TextTransilations();
-        selectBtn.onClick.AddListener(ShowFoodDetails);
-        FoodShowerPopup.OnFoodAmountChanged += HandleFoodAmountChanged;
+        buyBtn.onClick.AddListener(BuyFood);
     }
     private void OnDisable()
     {
-        selectBtn.onClick.RemoveAllListeners();
-        FoodShowerPopup.OnFoodAmountChanged -= HandleFoodAmountChanged;
+        buyBtn.onClick.RemoveAllListeners();
     }
+
 
     private void TextTransilations()
     {
         if (nameFoodId != -1)
             nameFood.text = LanguageManager.Instance.GetText(nameFoodId);
-        if (amountFoodId != -1)
-            amountFood.text = $"{FoodReserve()} {LanguageManager.Instance.GetText(amountFoodId)}";
+        if(foodCostText != null)
+            foodCostText.text = foodCost > 0 ? $"{foodCost:N0}" : "0";
     }
-    public void ShowFoodDetails()
+
+    private void BuyFood()
     {
-        foodPopup.gameObject.SetActive(true);
-        foodPopup.SHowFoodDetails(nameFoodId, food, imageofFood.sprite);
-        SoundManager.Instance.PlayUI(UISoundType.PopupOpen);
-    }
-    private string GetFoodKey(HorseFood food)
-    {
-        return food switch
+        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        if (nyufiyAmount > foodCost)
         {
-            HorseFood.Water => Constants.HorseFoods.Water,
-            HorseFood.Apple => Constants.HorseFoods.Apple,
-            HorseFood.Wheat => Constants.HorseFoods.Wheat,
-            HorseFood.Barley => Constants.HorseFoods.Barley,
-            HorseFood.StaminWater => Constants.HorseFoods.StaminWater,
-            _ => ""
-        };
+            nyufiyAmount -= foodCost;
+            
+            BuyFeedHorse(food);
+            SoundManager.Instance.PlayUI(UISoundType.Success);
+            PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
+            OnNyufiyUpdate?.Invoke(nyufiyAmount);
+        }
+        else
+        {
+            
+            OnMoneyNotEnough?.Invoke();
+            SoundManager.Instance.PlayUI(UISoundType.Error);
+        }
     }
-    private int FoodReserve()
+    private void BuyFeedHorse(HorseFood foodType)
     {
-        string key = GetFoodKey(food);
-
-        int current = PlayerPrefs.GetInt(key, 0);
-        return current;
+        int langId = -1;
+        switch (foodType)
+        {
+            case HorseFood.Water:
+                AddSupplies(0, 7, 0);// 300
+                langId = 204;
+                break;
+            case HorseFood.Apple:
+                AddSupplies(4, 0, 4);//500
+                langId = 205;
+                break;
+            case HorseFood.Wheat:
+                AddSupplies(6, 0, 8);//720
+                langId = 206;
+                break;
+            case HorseFood.Barley:
+                AddSupplies(7, 0, 10); //910
+                langId = 207;
+                break;
+            case HorseFood.StaminWater:
+                AddSupplies(0, 6, 13); // 1220
+                langId = 208;
+                break;
+        }
+        HomeMainUI.Instance?.ShowRightPopup(LanguageManager.Instance.GetText(langId), imageofFood.sprite);
     }
-    private void HandleFoodAmountChanged(HorseFood changedType, int newAmount)
+    private void AddSupplies(float powerAddAmount, float coolingAddAmount, float staminaAddAmount)
     {
-        if (changedType != food)
-            return; // Bu signal boshqa ovqat uchun – e’tibor bermaymiz
-
-        amountFood.text = $"{newAmount.ToString()} {LanguageManager.Instance.GetText(amountFoodId)}";
+        OnFoodAddToHorse?.Invoke(powerAddAmount, coolingAddAmount, staminaAddAmount);
     }
 }

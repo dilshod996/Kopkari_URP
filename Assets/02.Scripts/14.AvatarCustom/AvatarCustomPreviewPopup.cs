@@ -5,14 +5,17 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
+using Michsky.UI.ModernUIPack;
 
 public class AvatarCustomPreviewPopup : MonoBehaviour
 {
     [SerializeField] private CanvasGroup cg;
-    [SerializeField] private Image bigIcon;
+
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text applyBtnText;
     [SerializeField] private Button applyBtn;
+    [SerializeField] private GameObject iconContainer;
+    [SerializeField] private Image bigIcon;
     [SerializeField] private GameObject lockedRoot;
 
     [Header("DOTween anim target")]
@@ -27,6 +30,14 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
     private const float ShownX = 228f;
     private const float ShowDur = 0.45f;
     private const float HideDur = 0.25f;
+
+    [Header("Horse Only")]
+    [SerializeField] private GameObject statsContainer;
+    [SerializeField] private Image horseIcon;
+    [SerializeField] private ProgressBar horsePower;
+    [SerializeField] private ProgressBar horseStamina;
+    [SerializeField] private ProgressBar horseCooling;
+    [SerializeField] private TMP_Text powerText, staminaText, coolingText;
 
     private void Awake()
     {
@@ -66,15 +77,46 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
     public void Show(CatalogEntry entry, string playerId, string slotId, Sprite imageSprite, Func<Task<bool>> onApply)
     {
         _onApply = onApply;
-
+        bool isHorseBody =
+            entry.AvatarId.StartsWith("horse", StringComparison.OrdinalIgnoreCase) &&
+            entry.SlotId.Equals("Body", StringComparison.OrdinalIgnoreCase);
         bool unlocked = entry.IsDefault ||
-                        PlayerPrefs.GetInt($"Unlock_{playerId}_{slotId}_{entry.OptionId}", 0) == 1;
+                PlayerPrefs.GetInt($"Unlock_{playerId}_{slotId}_{entry.OptionId}", 0) == 1;
+        bool isSelected =
+             PlayerPrefs.GetString($"Sel_{playerId}_{slotId}", "") == entry.OptionId;
 
-        if (applyBtnText) applyBtnText.text = unlocked ? "Change" : $"Buy: {entry.Price}";
-        if (lockedRoot) lockedRoot.SetActive(!unlocked);
+        if (!unlocked)
+            applyBtnText.text = $"{LanguageManager.Instance.GetText(424)}: {entry.Price}";
+        else
+            applyBtnText.text = isSelected ? 
+            LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
 
-        if (titleText) titleText.text = entry.SlotId;
-        if (bigIcon) bigIcon.sprite = imageSprite;
+
+        if (titleText) titleText.text = LanguageManager.Instance?.GetText(entry.NameCode);
+
+        statsContainer.SetActive(isHorseBody);
+        iconContainer.SetActive(!isHorseBody);
+        if (isHorseBody)
+        {
+            horseIcon.sprite = imageSprite;
+            powerText.text = LanguageManager.Instance.GetText(326);
+            coolingText.text = LanguageManager.Instance.GetText(327);
+            staminaText.text = LanguageManager.Instance.GetText(328);
+            horsePower.currentPercent = entry.Power;
+            horseStamina.currentPercent = entry.Stamina;
+            horseCooling.currentPercent = entry.Cool;
+            horsePower.UpdateUI();
+            horseStamina.UpdateUI();
+            horseCooling.UpdateUI();
+        }
+        else
+        {
+            if (bigIcon) bigIcon.sprite = imageSprite;
+            if (lockedRoot) lockedRoot.SetActive(!unlocked);
+        }
+
+
+
 
         if (applyBtn)
         {
@@ -86,7 +128,6 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
         RestartAutoHide();
         SoundManager.Instance?.PlayUI(UISoundType.PopupOpen);
     }
-
     private async Task OnClickApply()
     {
         bool ok = true;

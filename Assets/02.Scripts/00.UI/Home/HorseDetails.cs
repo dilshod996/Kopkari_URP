@@ -13,17 +13,22 @@ public class HorseDetails : MonoBehaviour
     [SerializeField] private TMP_Text playerSuppliesText;
     [SerializeField] private Button backButton;
     [SerializeField] private Button playerSuppliesButton;
-
+    [SerializeField] private GameObject MoneyNotEnoghObj;
+    [SerializeField] private TMP_Text moneyNotEnoughText;
+    [SerializeField] private Button watchAddBtn;
     private void OnEnable()
     {
         TextTransilations();
         backButton.onClick.AddListener(ClosePage);
         playerSuppliesButton.onClick.AddListener(OpenPlayerSuppliesPage);
+        FoodInfo.OnMoneyNotEnough += OpenNotMoney;
+        MoneyNotEnoghObj?.SetActive(false);
     }
     private void OnDisable()
     {
         backButton.onClick.RemoveListener(ClosePage);
         playerSuppliesButton.onClick.RemoveListener(OpenPlayerSuppliesPage);
+        FoodInfo.OnMoneyNotEnough -= OpenNotMoney;
     }
     private void TextTransilations()
     {
@@ -46,5 +51,12 @@ public class HorseDetails : MonoBehaviour
             ClosePage();
         }
     }
-
+    private void OpenNotMoney()
+    {
+        if (MoneyNotEnoghObj != null)
+        {
+            MoneyNotEnoghObj.SetActive(true);
+            moneyNotEnoughText.text = LanguageManager.Instance.GetText(333);
+        }
+    }
 }

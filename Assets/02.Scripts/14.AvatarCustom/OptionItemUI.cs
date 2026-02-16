@@ -9,6 +9,7 @@ public class OptionItemUI : MonoBehaviour
 {
     [SerializeField] private Image background;
     [SerializeField] private Image buyBtnBg;
+    [SerializeField] private TMP_Text nameCodeText;
     private static readonly Color horseCardBgColor = new Color32(245, 154, 0, 255);
     private static readonly Color playerCardBgColor = new Color32(22, 180, 232, 255);
     private static readonly Color horseBuyBtnBgColor = new Color32(255, 206, 32, 255);
@@ -59,29 +60,17 @@ public class OptionItemUI : MonoBehaviour
 
         bool isUnlocked = entry.IsDefault || IsUnlocked(entry);
         bool isSelected = IsSelected(entry);
-
-        // ---- LOCK / OPEN STATE ----
-
-        //if (notOpendObj)
-        //    notOpendObj.SetActive(!isUnlocked);   // ✅ ASOSIY FIX
-
-        //if (selectedMark)
-        //    selectedMark.SetActive(isSelected);
-
-        // ---- BUTTON TEXT ----
+        if (nameCodeText.text != null)
+            nameCodeText.text = LanguageManager.Instance.GetText(entry.NameCode);
         if (btnText)
         {
             if (!isUnlocked)
             {
-                btnText.text = "Unlock";
-                //if (priceText)
-                //    priceText.text = entry.Price.ToString();
+                btnText.text = LanguageManager.Instance.GetText(427);
             }
             else
             {
-                btnText.text = isSelected ? "Selected" : "Change";
-                //if (priceText)
-                //    priceText.text = "";
+                btnText.text = isSelected ? LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
             }
         }
 
@@ -113,23 +102,17 @@ public class OptionItemUI : MonoBehaviour
         bool isUnlocked = entry.IsDefault || IsUnlocked(entry);
         bool isSelected = IsSelected(entry);
 
-        //if (notOpendObj)
-        //    notOpendObj.SetActive(!isUnlocked);
-
-        //if (selectedMark)
-        //    selectedMark.SetActive(isSelected);
-
+        if(nameCodeText.text!=null)
+            nameCodeText.text = LanguageManager.Instance.GetText(entry.NameCode);
         if (btnText)
         {
             if (!isUnlocked)
             {
-                btnText.text = "Buy";
-                //if (priceText) priceText.text = entry.Price.ToString();
+                btnText.text = LanguageManager.Instance.GetText(424);
             }
             else
             {
-                btnText.text = isSelected ? "Selected" : "Change";
-                //if (priceText) priceText.text = "";
+                btnText.text = isSelected ? LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
             }
         }
 
@@ -327,11 +310,11 @@ public class OptionItemUI : MonoBehaviour
         {
             if (!isUnlocked)
             {
-                btnText.text = /*entry.Price.ToString()*/"Unlock";   // listda narx ko'rinsin
+                btnText.text = /*entry.Price.ToString()*/LanguageManager.Instance.GetText(427);   // listda narx ko'rinsin
                 //priceText.text = _entry.Price.ToString();
             }
             else
-                btnText.text = isSelected ? "Selected" : "Change";
+                btnText.text = isSelected ? LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
         }
     }
     private async Task ApplyToHorse()
@@ -339,6 +322,10 @@ public class OptionItemUI : MonoBehaviour
         if (_horseLoader != null && _entry != null)
         {
             await _horseLoader.PreviewOne(_slotId, _entry.OptionId);
+            if (_entry.SlotId == "Body")
+            {
+                Debug.Log("Body bought");
+            }
 
             // ✅ UI refresh: o'sha slot
             OnSelectionChanged?.Invoke(_playerId, _slotId);

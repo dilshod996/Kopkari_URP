@@ -524,7 +524,7 @@ public class SceneLoadManager : MonoBehaviour
         preloadAddresses ??= new List<string>();
 
         // ✅ 0) Loading panel show (DontDestroy)
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Welcome Back", instant: false, exclusive: true);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(192), instant: false, exclusive: true);
 
 
         // ✅ 1) Preload (intro paytida)

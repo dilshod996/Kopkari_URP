@@ -118,6 +118,9 @@ public class BoostersContainer : MonoBehaviour
     public DebuffState CurrentDebuff { get; private set; } = DebuffState.None;
     #endregion
 
+    private float _boostStartedAt;
+    private bool _boostRunning;
+
     #region ====== Unity ======
     private void Start()
     {
@@ -217,22 +220,29 @@ public class BoostersContainer : MonoBehaviour
 
     private IEnumerator ImproveSpeed()
     {
-        // slow effect off (player-only)
-        if (!isNpc && slowEffectObj != null && slowEffectObj.activeSelf)
-            slowEffectObj.SetActive(false);
-
         if (horseAnimal != null)
             horseAnimal.Speed_CurrentIndex_Set(6);
 
-        yield return new WaitForSeconds(maxSpeedDuration);
+        _boostRunning = true;
+        _boostStartedAt = Time.time;
+
+        float endAt = _boostStartedAt + maxSpeedDuration;
+
+        // ✅ wait: duration tugaguncha YOKI cancel bo‘lguncha
+        while (_boostRunning && Time.time < endAt)
+            yield return null;
+
+        // ✅ real elapsed
+        float actual = Mathf.Clamp(Time.time - _boostStartedAt, 0f, maxSpeedDuration);
 
         if (!isNpc)
         {
-            boostTime += maxSpeedDuration;
+            boostTime += actual;
+            Debug.Log("[BOOSTER ACTUAL END]" + boostTime + $" (added {actual:0.00}s)");
             OnBoostTime?.Invoke(boostTime);
         }
 
-        // ✅ End event + restore speed shu yerda
+        // restore speed
         CancelBoost(forceRestoreSpeed: true);
     }
 
@@ -244,6 +254,7 @@ public class BoostersContainer : MonoBehaviour
 
     private void CancelBoost(bool forceRestoreSpeed)
     {
+        _boostRunning = false;
         if (boostCoroutine != null)
         {
             StopCoroutine(boostCoroutine);
@@ -535,7 +546,7 @@ public class BoostersContainer : MonoBehaviour
         else walkZoneCount++;
     }
 
-    public void OnReceiveDamageHandler(float dam=0)
+    public void OnReceiveDamageHandler(float dam = 0)
     {
         if (isUnderSlow) return;
 
@@ -564,6 +575,10 @@ public class BoostersContainer : MonoBehaviour
     {
         isUnderSlow = true;
 
+        // ✅ slow actual time track
+        float slowStart = Time.time;
+        float endAt = slowStart + slowDuration;
+
         // slow kelganda boost cancel bo‘lsin
         CancelBoost(forceRestoreSpeed: false);
         CancelObstaclePenalty(forceRestoreSpeed: false);
@@ -580,14 +595,16 @@ public class BoostersContainer : MonoBehaviour
         if (horseAnimal != null)
             horseAnimal.Speed_CurrentIndex_Set(slowSpeedIndex);
 
-        yield return new WaitForSeconds(slowDuration);
+        // ✅ vaqt tugaguncha YOKI isUnderSlow false bo‘lguncha kutamiz
+        while (isUnderSlow && Time.time < endAt)
+            yield return null;
 
-        // Agar defend bosilib bekor qilingan bo‘lsa, bu yerga kelganda isUnderSlow false bo‘ladi
-        if (!isUnderSlow) yield break;
+        // ✅ real elapsed (cancel bo‘lsa ham, duration tugasa ham)
+        float actualSlow = Mathf.Clamp(Time.time - slowStart, 0f, slowDuration);
 
         if (!isNpc)
         {
-            penaltyTime += slowDuration;
+            penaltyTime += actualSlow;
             OnPenaltyTime?.Invoke(penaltyTime);
             OnNormalState?.Invoke();
         }
@@ -606,19 +623,18 @@ public class BoostersContainer : MonoBehaviour
 
     private void CancelSlow(bool forceRestoreSpeed)
     {
-        if (applyHitSlowCoroutine != null)
-        {
-            StopCoroutine(applyHitSlowCoroutine);
-            applyHitSlowCoroutine = null;
-        }
+        // ✅ MUHIM: StopCoroutine QILMAYMIZ!
+        // Sabab: StopCoroutine qilinsa ApplyHitSlow() oxiriga yetmaydi,
+        // actualSlow hisoblanmaydi va penaltyTime noto‘g‘ri bo‘ladi.
+        // applyHitSlowCoroutine ni coroutine o‘zi null qiladi.
 
-        isUnderSlow = false;
+        isUnderSlow = false; // ✅ loopni sindiradi, coroutine 1 frame ichida tugaydi
 
-        // ✅ OLD: forceRestoreSpeed true bo‘lsa doim 5ga qaytarardi (sprintni buzardi)
-        // ✅ NEW: forceRestoreSpeed bo‘lsa ham qoidaga ko‘ra tiklaymiz
+        // ✅ qoidaga ko‘ra tiklaymiz
         if (forceRestoreSpeed)
             RestoreSpeedAfterDebuffClear();
     }
+
     #endregion
 
     #region ========================= Obstacle Penalty =========================

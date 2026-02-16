@@ -191,24 +191,25 @@ public class LobbyManager : MonoBehaviour
         float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        int langId=-1;
-        if (currentPower < 30)
-            langId = 334;
+        //int langId=-1;
+        //if (currentPower < 30)
+        //    langId = 334;
 
-        if (currentCooling < 30)
-            langId = 335;
+        //if (currentCooling < 30)
+        //    langId = 335;
 
-        if (currentStamina < 30)
-            langId = 336;
+        //if (currentStamina < 30)
+        //    langId = 336;
         
 
-        if (currentPower < 30 || currentCooling < 30 || currentStamina < 30)
+        if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
         {
-            HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            HomeMainUI.Instance?.OpenConditionCriticalPopup();
             return;  // Racing boshlanmaydi
         }
         // ;
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "Racing Field - Zarafshan valley", instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.SecondRacing, preloadRacing);
     }
     public void EgyptRacing()
@@ -216,23 +217,24 @@ public class LobbyManager : MonoBehaviour
         float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        int langId = -1;
-        if (currentPower < 30)
-            langId = 334;
+        //int langId = -1;
+        //if (currentPower < 20)
+        //    langId = 334;
 
-        if (currentCooling < 30)
-            langId = 335;
+        //if (currentCooling < 10)
+        //    langId = 335;
 
-        if (currentStamina < 30)
-            langId = 336;
+        //if (currentStamina < 30)
+        //    langId = 336;
 
 
-        if (currentPower < 30 || currentCooling < 30 || currentStamina < 30)
+        if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
         {
-            HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            HomeMainUI.Instance?.OpenConditionCriticalPopup();
             return;  // Racing boshlanmaydi
         }
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Racing Field - Egypt Nile", instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.EgyptRacing, preloadRacing);
     }
     #endregion
@@ -616,7 +618,8 @@ public class LobbyManager : MonoBehaviour
     #region Avatar Custom Scene ga o'tish
     public void AvatarCustom()
     {
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Custom, "New horses waiting for you!", instant: false, exclusive: true);
+        string message = $"{LanguageManager.Instance.GetText(193)}..."; 
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Custom, message, instant: false, exclusive: true);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
     }
     #endregion

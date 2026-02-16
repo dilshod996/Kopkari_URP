@@ -18,48 +18,38 @@ public class GameFood : MonoBehaviour
     [SerializeField] private Button replayBtn;
     [SerializeField] private TMP_Text replayText;
 
-    [Header("Main Details")]
-    [SerializeField] private TMP_Text waterText;
-    [SerializeField] private TMP_Text appleText;
-    [SerializeField] private TMP_Text bugdoyText;
-    [SerializeField] private TMP_Text arpaText;
-    [SerializeField] private TMP_Text boosterText;
-    [SerializeField] private Button waterBtn, appleBtn, bugdoyBtn, arpaBtn, boosterBtn;
+
 
     private int amountWatch = 0;
     private int coin = 0;
     private int nyufiy = 0;
 
-    [Header("Sliders")]
-    [SerializeField] private ProgressBar powerSlider, coolingSlider, staminaSlider;
-    [SerializeField] private TMP_Text powerText, coolingText, staminaText;
 
     [SerializeField] private GameObject adsPanel;
     [SerializeField] private RectTransform nyufiyBgObj;
-    [SerializeField] private RectTransform slidersBgObj;
     [SerializeField] private TMP_Text notEnoughResourceText;
+    [SerializeField] private ConditionCheck checkCondition;
 
     public SceneLoadManager.SceneType sceneType;
+
     private void OnEnable()
     {
-        HookButtons(true);
-
         GetCoins();
         UITransilation();
-        GetResources();
         replayBtn.onClick.AddListener(PlayMore);
         backButton.onClick.AddListener(BackHome);
+        FoodInfo.OnNyufiyUpdate += UpdateOnlyNyufiy;
     }
 
     private void OnDisable()
     {
-        HookButtons(false);
         replayBtn.onClick.RemoveAllListeners();
         backButton.onClick.RemoveAllListeners();
+        FoodInfo.OnNyufiyUpdate -= UpdateOnlyNyufiy;
     }
     private void BackHome()
     {
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
     public void PlayAgainText()
@@ -82,41 +72,13 @@ public class GameFood : MonoBehaviour
         {
             backText.text = lang.GetText(362);
             //adsText.text = lang.GetText(363);
-            waterText.text = lang.GetText(111);
-            appleText.text = lang.GetText(110);
-            bugdoyText.text = lang.GetText(108);
-            arpaText.text = lang.GetText(111);
-            boosterText.text = lang.GetText(112);
-            powerText.text = lang.GetText(326);
-            coolingText.text = lang.GetText(327);
-            staminaText.text = lang.GetText(328);
+
         }
     }
     #endregion
 
     #region Button Actions
-    private void HookButtons(bool hook)
-    {
-        if (waterBtn == null || appleBtn == null || bugdoyBtn == null || arpaBtn == null || boosterBtn == null)
-            return;
-
-        if (hook)
-        {
-            waterBtn.onClick.AddListener(OnWater);
-            appleBtn.onClick.AddListener(OnApple);
-            bugdoyBtn.onClick.AddListener(OnBugdoy);
-            arpaBtn.onClick.AddListener(OnArpa);
-            boosterBtn.onClick.AddListener(OnBooster);
-        }
-        else
-        {
-            waterBtn.onClick.RemoveAllListeners();
-            appleBtn.onClick.RemoveAllListeners();
-            bugdoyBtn.onClick.RemoveAllListeners();
-            arpaBtn.onClick.RemoveAllListeners();
-            boosterBtn.onClick.RemoveAllListeners();
-        }
-    }
+  
 
     private void OnWater() => TryBuyAndApply(powerAdd: 0f, coolingAdd: 6f, staminaAdd: 3f, costNyufiy: 500);
     private void OnApple() => TryBuyAndApply(powerAdd: 4f, coolingAdd: 2f, staminaAdd: 4f, costNyufiy: 750);
@@ -139,23 +101,22 @@ public class GameFood : MonoBehaviour
         PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiy);
 
         // 3) Statlarni olib, qo¡®shib, clamp qilib saqlaymiz
-        float p = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float c = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float s = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        //float p = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
+        //float c = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
+        //float s = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
 
-        p = Mathf.Clamp(p + powerAdd, 0f, 100f);
-        c = Mathf.Clamp(c + coolingAdd, 0f, 100f);
-        s = Mathf.Clamp(s + staminaAdd, 0f, 100f);
+        //p = Mathf.Clamp(p + powerAdd, 0f, 100f);
+        //c = Mathf.Clamp(c + coolingAdd, 0f, 100f);
+        //s = Mathf.Clamp(s + staminaAdd, 0f, 100f);
 
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, p);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, c);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, s);
+        //PlayerPrefs.SetFloat(Constants.HorseCondition.Power, p);
+        //PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, c);
+        //PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, s);
 
         PlayerPrefs.Save();
 
         // 4) UI yangilash
         UpdateTexts(nyufiy, coin);
-        UpdateSliders(p, c, s);
     }
     #endregion
 
@@ -166,33 +127,17 @@ public class GameFood : MonoBehaviour
         nyufiy = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
         UpdateTexts(nyufiy, coin);
     }
-
+    private void UpdateOnlyNyufiy(int amount)
+    {
+        nyufiyText.text = amount > 0 ? $"{amount:N0}" : "0";
+    }
     private void UpdateTexts(int nyufiy, int coin)
     {
         nyufiyText.text = $"{nyufiy:N0}";
         coinText.text = $"{coin:N0}";
     }
 
-    private void GetResources()
-    {
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
 
-        UpdateSliders(horsePowerMain, horseCoolingMain, horseStaminaMain);
-    }
-
-    private void UpdateSliders(float horsePower, float horseCooling, float horseStamina)
-    {
-        powerSlider.currentPercent = horsePower;
-        powerSlider.UpdateUI();
-
-        coolingSlider.currentPercent = horseCooling;
-        coolingSlider.UpdateUI();
-
-        staminaSlider.currentPercent = horseStamina;
-        staminaSlider.UpdateUI();
-    }
     private void PlayScaleAnim(RectTransform transform)
     {
         if (transform == null) return;
@@ -231,12 +176,12 @@ public class GameFood : MonoBehaviour
         float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
 
-        if (horsePowerMain < 30f || horseCoolingMain < 30f || horseStaminaMain < 30f)
+        if (horsePowerMain < 20f || horseCoolingMain < 10f || horseStaminaMain < 30f)
         {
-            PlayScaleAnim(slidersBgObj);
-            EnableAdsPanel(false);
-            notEnoughResourceText.gameObject.SetActive(true);
-            notEnoughResourceText.text = LanguageManager.Instance.GetText(364);
+            UIButtonActions.Instance?.ShowUI(checkCondition);
+            //EnableAdsPanel(false);
+            //notEnoughResourceText.gameObject.SetActive(true);
+            //notEnoughResourceText.text = LanguageManager.Instance.GetText(364);
         }
         else
         {

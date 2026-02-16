@@ -136,7 +136,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         agent.DisableNavmesh();
         agent.gameObject.SetActive(false);
 
-        UIButtonActions.Instance.EliminitedRider(agent.displayName, null,false);
+        UIButtonActions.Instance.EliminitedRider(agent.displayName, agent.flagIcon,false);
     }
 
     private bool HasPlayerPassed()

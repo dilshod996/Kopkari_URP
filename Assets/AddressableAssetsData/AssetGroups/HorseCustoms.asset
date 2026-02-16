@@ -46,12 +46,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: d4b0ae5dd029ee64b807cf9806edf455
-    m_Address: horse_01/mat/body/body_01
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - HorseMaterials
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e6a9299247781dd4ab0b258191767f62
     m_Address: horse_01/mat/body/body_09
     m_ReadOnly: 0
@@ -190,6 +184,12 @@ MonoBehaviour:
     m_Address: horse_01/mat/saddle/saddle_01
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d24c88fd0da379649a4d2506731dbaf1
+    m_Address: horse_01/mat/body/body_01
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - HorseMaterials
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}

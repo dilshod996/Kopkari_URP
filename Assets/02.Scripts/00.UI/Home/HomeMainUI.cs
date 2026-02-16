@@ -91,6 +91,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject coinsPage;
     [SerializeField] private EnvironmentChangeUI environmentChangePanel;
     [SerializeField] private EnvironmentLoadingUI environmentLoadingUI;
+    [SerializeField] private ConditionCheck conditionCheckObj;
 
     #region Horse and Player Data
 
@@ -178,9 +179,9 @@ public class HomeMainUI : MonoBehaviour
         HorseStatistcs();
         if(LanguageManager.Instance != null) UITransilations();
         //PlayerResourse.OnNyufiyUpdated += UpdateNyufiy;
-        FoodShowerPopup.OnBuyBtnPressed += UpdateNyufiy;
+        FoodInfo.OnNyufiyUpdate += UpdateOnlyNyufiy;
         PlayerResourse.OnResourseUpdated += UpdatePlayerResource;
-        FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
+        FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
         LobbyManager.OnNameChanged += LobbyName;
         StartingInfo();
@@ -203,8 +204,8 @@ public class HomeMainUI : MonoBehaviour
 
         CancelInvoke(nameof(CheckIdle));
         PlayerResourse.OnResourseUpdated -= UpdatePlayerResource;
-        FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
-        FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
+        FoodInfo.OnNyufiyUpdate -= UpdateOnlyNyufiy;
+        FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
         LobbyManager.OnNameChanged -= LobbyName;
         playBtn.onClick.RemoveAllListeners();
@@ -299,8 +300,12 @@ public class HomeMainUI : MonoBehaviour
     {
         int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
         nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
-        int qorakAmount = GetOrInitInt(Constants.Coins.Coin, 0);
-        coinText.text = qorakAmount > 0 ? $"{qorakAmount:N0}" : "0";
+        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 0);
+        coinText.text = coinAmount > 0 ? $"{coinAmount:N0}" : "0";
+    }
+    private void UpdateOnlyNyufiy(int amount)
+    {
+        nyufiyText.text = amount > 0 ? $"{amount:N0}" : "0";
     }
     private void HorseStatistcs()
     {
@@ -394,7 +399,6 @@ public class HomeMainUI : MonoBehaviour
         PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
         PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
         PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
-        PlayerPrefs.Save();
 
         // 4) UI barlarni yangilaymiz
         horsePower.currentPercent = currentPower;
@@ -404,7 +408,7 @@ public class HomeMainUI : MonoBehaviour
         horsePower.UpdateUI();
         horseCooling.UpdateUI();
         horseStamina.UpdateUI();
-        MainUIState(false);
+        //MainUIState(false);
     }
 
     #endregion
@@ -565,6 +569,10 @@ public class HomeMainUI : MonoBehaviour
 
     #region Popup Code
 
+    public void OpenConditionCriticalPopup()
+    {
+        ShowUI(conditionCheckObj);
+    }
     private void StartingInfo()
     {
         StartCoroutine(NotiPopup());

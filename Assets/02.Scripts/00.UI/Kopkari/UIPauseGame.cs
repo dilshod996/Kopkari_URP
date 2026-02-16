@@ -16,8 +16,7 @@ public class UIPauseGame : MonoBehaviour
     [SerializeField] private TMP_Text titlePause;
     [SerializeField] private TMP_Text resumeText;
     [SerializeField] private TMP_Text backLobbyText;
-    [SerializeField] private TMP_Text settingsText;
-    [SerializeField] private TMP_Text changeHorseText;
+    [SerializeField] private TMP_Text howToPlayText;
     private bool _paused;
 
     [Header("Pages")]
@@ -54,7 +53,7 @@ public class UIPauseGame : MonoBehaviour
     void BackLobby()
     {
         Time.timeScale = 1f;
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
 
@@ -65,8 +64,7 @@ public class UIPauseGame : MonoBehaviour
             titlePause.text = LanguageManager.Instance.GetText(301);
             resumeText.text = LanguageManager.Instance.GetText(253);
             backLobbyText.text = LanguageManager.Instance.GetText(302);
-            settingsText.text = LanguageManager.Instance.GetText(26);
-            changeHorseText.text = LanguageManager.Instance.GetText(344);
+            howToPlayText.text = LanguageManager.Instance.GetText(195);
         }
     }
     private IEnumerator PauseNextFrame()

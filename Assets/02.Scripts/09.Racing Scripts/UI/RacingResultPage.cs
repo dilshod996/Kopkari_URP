@@ -19,9 +19,6 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text mainMenuText, raceAgainText;
     [SerializeField] private TMP_Text allNyufiyText, allCoinText;
-    [SerializeField] private GameObject foodPanel;
-    [SerializeField] private Button foodPanelEnablerBtn;
-    [SerializeField] private TMP_Text foodResourcesBtnText;
     [Header("Details")]
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text horseName;
@@ -62,10 +59,15 @@ public class RacingResultPage : MonoBehaviour
     private float overAllBoostTime=0f;
     private float overAllPenaltyTime=0f;
 
+    private float lastPower = 0f;
+    private float lastCooling = 0f;
+    private float lastStamina = 0f;
+
     [SerializeField] private float duration = 4f;     // qancha davom etadi
     [SerializeField] private float scaleMin = 1f;     // boshlanish scale
     [SerializeField] private float scaleMax = 1.05f;  // maksimal scale
 
+    [SerializeField] private ConditionCheck conditionCheck;
     public static Action<int> OnGetRiderRank;
 
     private void OnEnable()
@@ -78,25 +80,13 @@ public class RacingResultPage : MonoBehaviour
         {
             backToHome.onClick.AddListener(BackLobby);
         }
-        FoodNotNeeded();
-        UIButtonActions.OnSprintHold += GetOverallBoostTime;
-        RacingController.OnOverallBoostTime += GetOverallBoostTime;
-       // FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
-        //FoodShowerPopup.OnBuyBtnPressed += UpdateNyufiy;
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
-        foodPanelEnablerBtn.onClick.AddListener(EnableFoodPage);
     }
     private void OnDisable()
     {
         replayButton.onClick.RemoveAllListeners();
         backToHome.onClick.RemoveAllListeners();
-        UIButtonActions.OnSprintHold -= GetOverallBoostTime;
-        RacingController.OnOverallPenaltyTime -= GetOverallPenaltyTime;
-        RacingController.OnOverallBoostTime -= GetOverallBoostTime;
-        //FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
-       // FoodShowerPopup.OnBuyBtnPressed -= UpdateNyufiy;
-        foodPanelEnablerBtn.onClick.RemoveListener(EnableFoodPage);
         Clear();
     }
     #region Player List && Racing Stats && Records
@@ -111,6 +101,8 @@ public class RacingResultPage : MonoBehaviour
             return;
         }
         BuildList(standings);
+        GetBoostTime();
+        GetOverallPenaltyTime();
         HorseStats();
     }
     public void BuildList(List<RacingAgent> entries)
@@ -198,7 +190,7 @@ public class RacingResultPage : MonoBehaviour
 
                 timeText.text = $"{e.LastSplitTime:0.00}s";
                 currentRecordTime.text = $"{savedTime:0.00}s";
-                overAllTime = savedTime;
+                overAllTime = e.LastSplitTime;
                 //Debug.Log($"Split time {e.LastSplitTime}");
             }
         }
@@ -220,8 +212,8 @@ public class RacingResultPage : MonoBehaviour
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
         float nonPenaltyTime = overAllTime - overAllPenaltyTime;     // penalty bo‘lmagan vaqt
 
-        float newPower = horsePowerMain - (overAllBoostTime * 0.5f + basicTime * 0.2f);
-        float newStamina = horseStaminaMain - (overAllTime * 0.3f);
+        float newPower = horsePowerMain - (overAllBoostTime * 0.2f + basicTime * 0.2f);
+        float newStamina = horseStaminaMain - (overAllTime * 0.2f);
         float newCooling = horseCoolingMain - (overAllPenaltyTime * 0.5f + nonPenaltyTime * 0.05f);
 
         newPower = Mathf.Max(0, newPower);
@@ -232,12 +224,15 @@ public class RacingResultPage : MonoBehaviour
         float rPower = Mathf.Round(newPower);          // butun son (masalan: 83)
         float rStamina = Mathf.Round(newStamina);
         float rCooling = Mathf.Round(newCooling);
+        lastPower = rPower;
+        lastCooling = rCooling;
+        lastStamina = rStamina;
         // Progress Bar Updatelar
-        powerProgress.currentPercent = rPower;
+        powerProgress.currentPercent = lastPower;
         powerProgress.UpdateUI();
-        coolingProgress.currentPercent = rCooling;
+        coolingProgress.currentPercent = lastCooling;
         coolingProgress.UpdateUI();
-        staminaProgress.currentPercent = rStamina;
+        staminaProgress.currentPercent = lastStamina;
         staminaProgress.UpdateUI();
         PlayerPrefs.SetFloat(Constants.HorseCondition.Power, rPower);
         PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, rStamina);
@@ -251,11 +246,14 @@ public class RacingResultPage : MonoBehaviour
     {
         overAllBoostTime+= time;
     }
-    private void GetOverallPenaltyTime(float time)
+    private void GetOverallPenaltyTime()
     {
-        overAllPenaltyTime+= time; 
+        overAllPenaltyTime = UIButtonActions.Instance?.GetTotalWebSnareTime() ?? 0f; 
     }
-
+    private void GetBoostTime()
+    {
+        overAllBoostTime = UIButtonActions.Instance?.GetTotalHoldTime() ?? 0f;
+    }
     private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
     {
         // 1) PlayerPrefs dagi qiymatlarni olamiz
@@ -286,33 +284,6 @@ public class RacingResultPage : MonoBehaviour
     #endregion
 
     #region Resources
-    private void SHowResourcesNotEnough()
-    {
-        StartCoroutine(PulseRoutine());
-        foodPanelEnablerBtn?.gameObject.SetActive(true);
-        foodResourcesBtnText.text = LanguageManager.Instance?.GetText(369);
-    }
-    private IEnumerator PulseRoutine()
-    {
-        float t = 0f;
-        RectTransform rt = foodPanelEnablerBtn.GetComponent<RectTransform>();
-
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-
-            // 0 → 1 → 0 yurak urishi effekti
-            float pingPong = Mathf.PingPong(Time.time * 2, 1f);
-
-            float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
-
-            rt.localScale = new Vector3(scale, scale, 1);
-
-            yield return null;
-        }
-
-        rt.localScale = Vector3.one;
-    }
 
     #endregion
     private void UITransilations()
@@ -352,24 +323,10 @@ public class RacingResultPage : MonoBehaviour
 
     public void Replay()
     {
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        int langId = -1;
-        if (currentPower < 20)
-            langId = 334;
-
-        if (currentCooling < 20)
-            langId = 335;
-
-        if (currentStamina < 30)
-            langId = 336;
-
-
-        if (currentPower < 20 || currentCooling < 20 || currentStamina < 30)
+        if (lastPower < 20 || lastCooling < 10 || lastStamina < 30)
         {
-            SHowResourcesNotEnough();
-            alarmMessage.text = LanguageManager.Instance.GetText(langId);
+            UIButtonActions.Instance?.ShowUI(conditionCheck);
+            this.gameObject.SetActive(false);
             return;  // Racing davom etmaydi
         }
         //Clear();
@@ -390,18 +347,8 @@ public class RacingResultPage : MonoBehaviour
     }
     public void BackLobby()
     {
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Back To Home");
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
-    }
-    private void FoodNotNeeded()
-    {
-        foodPanelEnablerBtn.gameObject.SetActive(false);
-        alarmMessage.text = LanguageManager.Instance?.GetText(368);
-    }
-    private void EnableFoodPage()
-    {
-        this.gameObject.SetActive(false);
-        UIButtonActions.Instance.ShowUI(foodPanel);
     }
 
 }

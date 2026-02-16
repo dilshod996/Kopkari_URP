@@ -79,6 +79,8 @@ public class RacingController : MonoBehaviour
     private readonly HashSet<RacingAgent> _agentSet = new HashSet<RacingAgent>();
     public IReadOnlyList<RacingAgent> AllAgents => allAgents;
     public bool IsRaceOver { get; private set; }
+    public float raceEndTime { get; private set; }
+    public float RaceEndTime => raceEndTime;
     #endregion
     #region Starting Functions
     private void Awake()
@@ -104,7 +106,7 @@ public class RacingController : MonoBehaviour
         await ApplyRandomSkinsToAllAI();
         //GetSetAnimal(HorseMine.Instance.horseAnimal);
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
-        StartSound();
+
         LoadingPanel(2f);
     }
     private void OnEnable()
@@ -119,6 +121,9 @@ public class RacingController : MonoBehaviour
         BoostersContainer.OnSprintEffectEnd += SprintCameraDisable;
         //RacingResultPage.OnGetRiderRank += PlayFinalAnim;
         UILookBackButton.OnCameraPressedState += CameraBackState;
+        FoodInfo.OnFoodAddToHorse += AddFoods;
+
+        StartSound();
 
     }
     private void OnDestroy()
@@ -135,6 +140,7 @@ public class RacingController : MonoBehaviour
         BoostersContainer.OnSprintEffectEnd -= SprintCameraDisable;
        // RacingResultPage.OnGetRiderRank -= PlayFinalAnim;
         UILookBackButton.OnCameraPressedState -= CameraBackState;
+        FoodInfo.OnFoodAddToHorse -= AddFoods;
         riderAnimal = null;
         horse = null;
         ClearAgents();
@@ -533,8 +539,8 @@ public class RacingController : MonoBehaviour
     public void SetBoostTime(float time)
     {
         boostTime = boostTime + time;
-        OnOverallBoostTime?.Invoke(boostTime);
-
+       // OnOverallBoostTime?.Invoke(boostTime);
+        Debug.Log("[EndTime BoosterContainer]" + boostTime);
     }
     public float GetPenaltyTime()
     {
@@ -543,7 +549,8 @@ public class RacingController : MonoBehaviour
     public void SetPenaltyTime(float time)
     {
         penaltyTime = penaltyTime + time;
-        OnOverallPenaltyTime?.Invoke(penaltyTime);
+        Debug.Log("[PENALTY TIME]" +  penaltyTime);
+       // OnOverallPenaltyTime?.Invoke(penaltyTime);
     }
     #endregion
 
@@ -595,6 +602,10 @@ public class RacingController : MonoBehaviour
         allAgents.Clear();
         _agentSet.Clear();
     }
+    public float EndBoostTime()
+    {
+        return boostTime;
+    }
     public void PlayerFailedSpecialReach(RacingAgent playerAgent, MonoBehaviour triggerPoint)
     {
         if (IsRaceOver) return;
@@ -603,15 +614,18 @@ public class RacingController : MonoBehaviour
         // Misol:
         // GameOverPage();
         // StopRace();
-
-
-        StopMyHorse();
         UIButtonActions.Instance.ShowGameOver();
+        playerAgent.EndRace();
+        raceEndTime = playerAgent.ElapsedTime;
+        Debug.Log("[END RACE] " + raceEndTime);
+        StopMyHorse();
+
         mobileCanvasPanel.gameObject.SetActive(false);
         RacingLeaderboard.Instance.FinishRace();
         leaderboard.gameObject.SetActive(false);
     }
     #endregion
+
     #region Game Start Slider
     public void LoadingPanel(float time)
     {
@@ -639,6 +653,27 @@ public class RacingController : MonoBehaviour
     public void SoundEffect(AudioClip clip)
     {
         SoundManager.Instance?.PlayRoom(clip);
+    }
+    #endregion
+
+    #region Horse Power/Cooling/Stamina
+    private void AddFoods(float powerPercent, float coolingPercent, float staminaPercent)
+    {
+        float foolPercentage = 100f;
+        // 1) PlayerPrefs dagi qiymatlarni olamiz
+        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power, foolPercentage);
+        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling, foolPercentage);
+        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina, foolPercentage);
+
+        // 2) Bufflarni qo‘shamiz
+        currentPower = Mathf.Clamp(currentPower + powerPercent, 0f, 100f);
+        currentCooling = Mathf.Clamp(currentCooling + coolingPercent, 0f, 100f);
+        currentStamina = Mathf.Clamp(currentStamina + staminaPercent, 0f, 100f);
+
+        // 3) Yangi qiymatlarni saqlaymiz
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
     }
     #endregion
 

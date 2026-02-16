@@ -85,7 +85,7 @@ public class UIButtonActions : MonoBehaviour
     #region Events (DO NOT REMOVE)
     public static Action OnSprintStart;   // ✅ QAYTDI
     public static Action OnSprintEnd;       // Speed restore
-    public static Action<float> OnSprintHold;
+    //public static Action<float> OnSprintHold;
 
     public static Action OnWebSnareBtnEnable;
     public static Action OnWebSnareStart;
@@ -102,6 +102,7 @@ public class UIButtonActions : MonoBehaviour
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
     private float totalHoldTime = 0f;
+    private float totalWebSnareTime = 0f;
     #endregion
 
     #region Speed State UI
@@ -128,10 +129,11 @@ public class UIButtonActions : MonoBehaviour
     [Header("Game Over")]
     [SerializeField] GameOver gameOverPanel;
 
+    public bool isFinished = false;
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
     {
-
+        isFinished = false;
         Booster.OnSprintFull += HandleSprintFull;
 
         BoostersContainer.OnSprintEffectStart += ShowSprintEffectNoForce;
@@ -207,6 +209,21 @@ public class UIButtonActions : MonoBehaviour
         totalHoldTime = 0f;
         pauseButton.onClick.RemoveListener(PauseMenu);
     }
+    private void OnApplicationPause(bool pause)
+    {
+        if (pause && !isFinished)
+        {
+            pauseMenu.gameObject.SetActive(true);  
+        }
+        
+    }
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus && !isFinished)
+        {
+            pauseMenu.gameObject.SetActive(true);
+        }
+    }
     #endregion
 
     #region Text Updates
@@ -244,7 +261,7 @@ public class UIButtonActions : MonoBehaviour
     {
         // canSprint — umumiy ruxsat (page/scene)
         canSprint = state;
-
+       
         // ✅ “toki slider to‘lmaguncha bosilmasin”
         bool sliderFull = (sprintSlider == null) || (sprintSlider.value >= 0.001f);
 
@@ -355,7 +372,8 @@ public class UIButtonActions : MonoBehaviour
                 sprintSlider.value = Mathf.Max(0f, sprintSlider.value - drainRate * Time.unscaledDeltaTime);
 
             totalHoldTime += Time.unscaledDeltaTime;
-            OnSprintHold?.Invoke(totalHoldTime);
+            //Debug.Log("[HOLD] time" + totalHoldTime);
+            //OnSprintHold?.Invoke(totalHoldTime);
 
             if (sprintSlider != null && sprintSlider.value <= 0.0001f)
             {
@@ -572,11 +590,13 @@ public class UIButtonActions : MonoBehaviour
         if (state) ShowUI(foodPanel);
         else HideUI(foodPanel);
     }
-
+    public void OpenFoodPanel()
+    {
+        ShowUI(foodPanel);
+    }
     public void ShowResultPage()
     {
         ShowUI(resultPage);
-
     }
 
     public void DisableShootChainOrSprint()
@@ -737,7 +757,29 @@ public class UIButtonActions : MonoBehaviour
     #region Game Over
     public void ShowGameOver()
     {
+        EndRace();
         ShowUI(gameOverPanel);
+    }
+    #endregion
+
+    #region EndRacing
+    public float GetTotalHoldTime()
+    {
+        float autoBoostTime = RacingController.Instance.GetBoostTime();
+        Debug.Log("[AUTO BOOST]" + autoBoostTime);
+        totalHoldTime += autoBoostTime;
+        return totalHoldTime;
+    }
+    public float GetTotalWebSnareTime()
+    {
+        float get = RacingController.Instance.GetPenaltyTime();
+        totalWebSnareTime += get;
+        return totalWebSnareTime;
+    }
+    public void EndRace()
+    {
+        Debug.Log("[GAME FINISHED]" + isFinished);
+        isFinished = true;
     }
     #endregion
 }

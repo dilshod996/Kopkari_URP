@@ -173,4 +173,9 @@ public static class Constants
     {
         public const string Eyes = "eyesMaterial_default";
     }
+
+    public static class HorseFoodAmount
+    {
+        public const int Water = 6;
+    }
 }

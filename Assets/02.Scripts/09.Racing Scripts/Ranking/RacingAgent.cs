@@ -11,6 +11,7 @@ public class RacingAgent : MonoBehaviour
     public string displayName = "Rider";
     public string teamName = "Team A";       // 🔹 yangi
     public string countryName = "Uzb";
+    public Sprite flagIcon;
 
     //public Transform pivot;
     public Transform webSnareTarget;

@@ -517,7 +517,12 @@ public sealed class CatalogData
                 materialKey: r.materialKey,
                 iconKey: r.iconKey,
                 isDefault: r.isDefault,
-                price: r.price
+                price: r.price,
+                nameCode: r.nameCode,
+                horseTag: r.horseTag,
+                power: r.power,
+                cool: r.cool,
+                stamina: r.stamina
             );
 
             data.Entries.Add(e);
@@ -563,6 +568,11 @@ public sealed class CatalogData
         public string iconKey;
         public bool isDefault;
         public int price;
+        public int nameCode;
+        public int horseTag;
+        public int power;
+        public int cool;
+        public int stamina;
     }
 }
 
@@ -576,11 +586,19 @@ public sealed class CatalogEntry
     public string IconKey { get; }
     public bool IsDefault { get; }
     public int Price { get; }   // 0 → bepul
+    public int NameCode { get; }
+    public int HorseTag { get; }
+    public int Power { get; }
+    public int Cool { get; }
+    public int Stamina {  get; }
+
+
 
     public CatalogEntry(
         string avatarId, string slotId, string optionId,
         string meshKey, string materialKey, string iconKey,
-        bool isDefault, int price)
+        bool isDefault, int price, int nameCode, int horseTag,
+        int power, int cool, int stamina)
     {
         AvatarId = (avatarId ?? "").Trim();
         SlotId = (slotId ?? "").Trim();
@@ -590,5 +608,10 @@ public sealed class CatalogEntry
         IconKey = (iconKey ?? "").Trim();
         IsDefault = isDefault;
         Price = Mathf.Max(0, price);
+        NameCode = Mathf.Max(0, nameCode);
+        HorseTag = Mathf.Max(0, horseTag);
+        Power = Mathf.Max(0, power);
+        Cool = Mathf.Max(0, cool);
+        Stamina = Mathf.Max(0, stamina);
     }
 }

@@ -19,6 +19,7 @@ public class PlayerResourse : MonoBehaviour
     [SerializeField] private Resources playerResources = Resources.None;
     [SerializeField] private Button buyButton;
     [SerializeField] private TMP_Text resourseName;
+    [SerializeField] private TMP_Text resourceAmount;
     [SerializeField] private TMP_Text resourseCost;
     [SerializeField] private Image iconImage;
     [SerializeField] private int resourseTransilationId;
@@ -26,10 +27,14 @@ public class PlayerResourse : MonoBehaviour
     public static event Action OnMoneyNotEnough;
     public static event Action OnNyufiyUpdated;
     public static event Action<string> OnResourseUpdated;
+
+    private string itemName;
+    private int itemAmount;
     private void OnEnable()
     {
         UITransilation();
         buyButton.onClick.AddListener(BuyResource);
+        GetData();
     }
     private void OnDisable()
     {
@@ -100,21 +105,26 @@ public class PlayerResourse : MonoBehaviour
     }
     private void BuyResourceSave(int nyufiyAmount)
     {
-        string itemKey = GetItemKey(playerResources);
-        if (string.IsNullOrEmpty(itemKey))
-            return; // noma'lum resource bo'lsa hech narsa qilmaymiz
+        
 
         int newNyufiyAmount = nyufiyAmount - costOfResource;
 
-        int count = PlayerPrefs.GetInt(itemKey, 0);
-        PlayerPrefs.SetInt(itemKey, count + 1);
-
+        itemAmount += 1; 
+        PlayerPrefs.SetInt(itemName, itemAmount);
+        resourceAmount.text = $"{itemAmount}X";
         PlayerPrefs.SetInt(Constants.Coins.Nyufiy, newNyufiyAmount);
        // OnNyufiyUpdated?.Invoke();
-        OnResourseUpdated?.Invoke(itemKey);
+        OnResourseUpdated?.Invoke(itemName);
         SoundManager.Instance?.PlayUI(UISoundType.Success);
     }
-
+    private void GetData()
+    {
+        itemName = GetItemKey(playerResources);
+        if (string.IsNullOrEmpty(itemName))
+            return; // noma'lum resource bo'lsa hech narsa qilmaymiz
+        itemAmount = PlayerPrefs.GetInt(itemName, 0);
+        resourceAmount.text = $"{itemAmount}X";
+    }
     private string GetItemKey(Resources resource)
     {
         switch (resource)

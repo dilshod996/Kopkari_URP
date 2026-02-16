@@ -847,11 +847,6 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 74ca4b82206abf64ca3fffe62af3a525, type: 3}
   - {fileID: 8300000, guid: 46af41691551a97488fbbfafb43aad01, type: 3}
   - {fileID: 8300000, guid: 8732e1c6be9135946b80c461e5d8d89d, type: 3}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   playOnEnter: 1
   SkipTransition: 0
   Loop: 1
@@ -5479,7 +5474,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: a3a84068e8d9fa143abd16dbbded7955, type: 3}
+  m_Motion: {fileID: 7400000, guid: 2c5cf80fba76adb4eb61a4d3b275ad8f, type: 3}
   m_Tag: Idle
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -5507,7 +5502,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: 2303905a867976c4088bd435c102c13d, type: 3}
+  m_Motion: {fileID: 7400000, guid: 2c5cf80fba76adb4eb61a4d3b275ad8f, type: 3}
   m_Tag: Idle
   m_SpeedParameter: 
   m_MirrorParameter: 

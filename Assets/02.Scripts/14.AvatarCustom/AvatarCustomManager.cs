@@ -291,7 +291,7 @@ public class AvatarCustomManager : MonoBehaviour
         }
         else
         {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.Home, "Home loading...", instant: false,  true);
+            UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191), instant: false,  true);
             SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
         }
     }

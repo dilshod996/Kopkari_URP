@@ -20,7 +20,8 @@ public class RacingLeaderboard : MonoBehaviour
     public bool RaceStarted { get; private set; }
     public float RaceStartTime { get; private set; }
     public bool RaceFinished { get; private set; }
-
+    private static readonly Color playerTextColor = new Color32(44, 44, 44, 255);
+    private static readonly Color playerBgColor = new Color32(255, 255, 255, 255);
     private void Awake()
     {
         if (Instance == null)
@@ -145,13 +146,10 @@ public class RacingLeaderboard : MonoBehaviour
     {
         if (!rows.TryGetValue(a, out var row) || row == null) return;
         int cpShow = Mathf.Max(0, a.CheckpointIndex);
-        row.SetData( $"{rank}.", $"{a.displayName}", $"{a.teamName}");/*$"CP {cpShow} • Passed {a.Passed}"*/
+        row.SetData( $"{rank}.", $"{a.displayName}", $"{a.countryName}", a.flagIcon);/*$"CP {cpShow} • Passed {a.Passed}"*/
         if (a.isPlayer) // yoki o‘zingda qanday belgilang bo‘lsa
         {
-            if (ColorUtility.TryParseHtmlString("#FFBF34", out Color highlightColor))
-            {
-                row.SetColor(highlightColor);
-            }
+            row.SetColor(playerTextColor, playerBgColor);
         }
         //else
         //{

@@ -17,6 +17,7 @@ public class FinalCollider : MonoBehaviour
         if (agent.isPlayer)
         {
             RacingController.Instance.StopHorseRun();
+            UIButtonActions.Instance.EndRace();
         }
 
     }
