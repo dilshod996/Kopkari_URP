@@ -52,6 +52,7 @@ public class GameFood : MonoBehaviour
         GetCoins();
         UITransilation();
         GetResources();
+        EnableAdsPanel(false);
         replayBtn.onClick.AddListener(PlayMore);
         backButton.onClick.AddListener(BackHome);
         FoodInfo.OnNyufiyUpdate += UpdateOnlyNyufiy;
