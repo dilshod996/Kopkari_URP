@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using MalbersAnimations;                // MobileJoystick uchun
+using MalbersAnimations;
 using MalbersAnimations.Scriptables;
 using MalbersAnimations.Events;
 
@@ -13,7 +13,12 @@ namespace MalbersExtensions
         [SerializeField] private TurnButton leftButton;
         [SerializeField] private TurnButton rightButton;
 
-        [Tooltip("Tugma bosilganda erishiladigan maksimal burilish (0–1)")]
+        [Header("Reins Drag (Optional)")]
+        [SerializeField] private bool reinsEnabled = true;
+        [SerializeField] private ReinZone leftRein;
+        [SerializeField] private ReinZone rightRein;
+
+        [Tooltip("Tugma/Rein bosilganda erishiladigan maksimal burilish (0–1)")]
         [Range(0.05f, 1f)] public float turnMaxAdd = 0.6f;
         [Tooltip("Bosilganda ohista ko‘tarilish tezligi (unit/sec)")]
         [Range(1f, 30f)] public float turnRampUp = 10f;
@@ -22,39 +27,43 @@ namespace MalbersExtensions
         [Range(1f, 30f)] public float turnRampDown = 14f;
 
         private float _turnAddX;
-        private int _turnDir;
         private Vector2 _joyBase;
-
-        public void TurnLeftDown() => _turnDir = -1;
-        public void TurnRightDown() => _turnDir = +1;
-        public void TurnUp() => _turnDir = 0;
-
-        //protected override void Awake()
-        //{
-        //    base.Awake();
-        //    _joyBase = Vector2.zero;
-        //}
 
         public override void OnDrag(UnityEngine.EventSystems.PointerEventData point)
         {
             base.OnDrag(point);
-
-            // bazaviy joystick qiymatini saqlab qolamiz
-            _joyBase = axisValue.Value;
+            _joyBase = axisValue.Value; // joystick bazasi
         }
 
         private void LateUpdate()
         {
-            if (!turnButtonsEnabled) return;
+            float target = 0f;
 
-            bool left = leftButton && leftButton.IsPressed;
-            bool right = rightButton && rightButton.IsPressed;
-            int dir = 0;
-            if (left ^ right) dir = left ? -1 : +1;
-
-            if (dir != 0)
+            // 1) Reins target (prioritet)
+            if (reinsEnabled && leftRein && rightRein)
             {
-                float target = dir * turnMaxAdd;
+                float leftPull = leftRein.IsHeld ? leftRein.Pull01 : 0f;
+                float rightPull = rightRein.IsHeld ? rightRein.Pull01 : 0f;
+
+                // right - left => [-1..+1]
+                float signed = Mathf.Clamp(rightPull - leftPull, -1f, 1f);
+                target = signed * turnMaxAdd;
+            }
+            // 2) Button fallback
+            else if (turnButtonsEnabled)
+            {
+                bool left = leftButton && leftButton.IsPressed;
+                bool right = rightButton && rightButton.IsPressed;
+
+                int dir = 0;
+                if (left ^ right) dir = left ? -1 : +1;
+
+                target = dir * turnMaxAdd;
+            }
+
+            // Ramp (smooth)
+            if (Mathf.Abs(target) > 0.0001f)
+            {
                 _turnAddX = Mathf.MoveTowards(_turnAddX, target, turnRampUp * Time.deltaTime);
             }
             else
@@ -72,7 +81,6 @@ namespace MalbersExtensions
         private void OnDisable()
         {
             _turnAddX = 0f;
-            _turnDir = 0;
         }
     }
 }

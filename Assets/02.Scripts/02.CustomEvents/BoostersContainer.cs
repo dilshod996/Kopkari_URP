@@ -665,7 +665,7 @@ public class BoostersContainer : MonoBehaviour
 
         obstacleHitCount++;
 
-        if (obstacleHitCount >= obstacleMaxHits)
+        if (obstacleHitCount == obstacleMaxHits)
         {
             obstacleHitCount = 0;
             StartObstaclePenalty();
@@ -676,21 +676,24 @@ public class BoostersContainer : MonoBehaviour
     {
         if (obstaclePenalized) return;
         Debug.Log("Obstacle penalty");
-        // Defend aktiv bo‘lsa penalty bermaymiz
-        if (isDefend) return;
-        if (defendCount > 0 && isNpc)
+        if (isNpc)
         {
-            DefendPlayerNpc();
-            return;
+            if(defendCount > 0)
+            {
+                DefendPlayerNpc();
+                return;
+            }
+            else
+            {
+                CancelBoost(forceRestoreSpeed: false);
+                CancelSlow(forceRestoreSpeed: false);
+
+                if (obstaclePenaltyCoroutine != null)
+                    StopCoroutine(obstaclePenaltyCoroutine);
+
+                obstaclePenaltyCoroutine = StartCoroutine(ObstaclePenaltyRoutine());
+            }
         }
-        Debug.Log("Obstacle penalty1");
-        CancelBoost(forceRestoreSpeed: false);
-        CancelSlow(forceRestoreSpeed: false);
-
-        if (obstaclePenaltyCoroutine != null)
-            StopCoroutine(obstaclePenaltyCoroutine);
-
-        obstaclePenaltyCoroutine = StartCoroutine(ObstaclePenaltyRoutine());
     }
 
     private IEnumerator ObstaclePenaltyRoutine()

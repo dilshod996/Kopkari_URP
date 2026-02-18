@@ -202,10 +202,10 @@ public class LobbyManager : MonoBehaviour
         //    langId = 336;
         
 
-        if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
+        if (currentPower < Constants.HorseConditionNum.Power || currentCooling < Constants.HorseConditionNum.Cool || currentStamina < Constants.HorseConditionNum.Stamina)
         {
             //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
-            HomeMainUI.Instance?.OpenConditionCriticalPopup();
+            HomeMainUI.Instance?.SHowFoodPanel();
             return;  // Racing boshlanmaydi
         }
         // ;
@@ -231,7 +231,7 @@ public class LobbyManager : MonoBehaviour
         if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
         {
             //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
-            HomeMainUI.Instance?.OpenConditionCriticalPopup();
+            HomeMainUI.Instance?.SHowFoodPanel();
             return;  // Racing boshlanmaydi
         }
         UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);

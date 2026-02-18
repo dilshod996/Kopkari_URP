@@ -21,6 +21,10 @@ public class UIPauseGame : MonoBehaviour
 
     [Header("Pages")]
     [SerializeField] private HowToPlay howToPlayPage;
+
+    private float overAllTime = 0f;
+    private float overAllBoostTime = 0f;
+    private float overAllPenaltyTime = 0f;
     private void Awake()
     {
         ResumeBtn.onClick.AddListener(ResumeGame);
@@ -33,6 +37,7 @@ public class UIPauseGame : MonoBehaviour
         UpdateTexts();
         if (!_paused)
             StartCoroutine(PauseNextFrame());  
+        Debug.Log("PauseTime " + RacingController.Instance.ElapsedTime);
     }
 
     void ResumeGame()
@@ -46,6 +51,7 @@ public class UIPauseGame : MonoBehaviour
         else
         {
             UIButtonActions.Instance.HideUI(this);
+            RacingController.Instance.ResumeRaceTime();
         }
         
     }
@@ -53,6 +59,7 @@ public class UIPauseGame : MonoBehaviour
     void BackLobby()
     {
         Time.timeScale = 1f;
+        HorseStats();
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
@@ -81,4 +88,53 @@ public class UIPauseGame : MonoBehaviour
             howToPlayPage.gameObject.SetActive(true);
         }
     }
+
+    #region If Destroy Set Data
+    private void GetGameFinishedTime()
+    {
+        if (RacingController.Instance != null)
+            overAllTime = RacingController.Instance.ElapsedTime;
+    }
+    private void GetOverallPenaltyTimeAndBoost()
+    {
+        if (UIButtonActions.Instance != null)
+        {
+            overAllPenaltyTime = UIButtonActions.Instance.GetTotalWebSnareTime();
+            overAllBoostTime = UIButtonActions.Instance.GetTotalHoldTime();
+        }
+    }
+    private void HorseStats()
+    {
+        // --- Load ---
+        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
+        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
+        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}");
+        // --- Calc ---
+        float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
+        float nonPenaltyTime = overAllTime - overAllPenaltyTime;     // penalty bo¡®lmagan vaqt
+
+        float newPower = horsePowerMain - (overAllBoostTime * 0.4f + basicTime * 0.3f);
+        float newStamina = horseStaminaMain - (overAllTime * 0.3f);
+        float newCooling = horseCoolingMain - (overAllPenaltyTime * 0.5f + nonPenaltyTime * 0.1f);
+
+        newPower = Mathf.Max(0, newPower);
+        newStamina = Mathf.Max(0, newStamina);//Hard coded now
+        newCooling = Mathf.Max(0, newCooling);
+
+
+        float rPower = Mathf.Round(newPower);          // butun son (masalan: 83)
+        float rStamina = Mathf.Round(newStamina);
+        float rCooling = Mathf.Round(newCooling);
+        // Progress Bar Updatelar
+
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, rPower);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, rStamina);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, rCooling);
+
+        PlayerPrefs.Save();
+
+        Debug.Log($"Horse Stats Updated ¡æ Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
+    }
+    #endregion
 }

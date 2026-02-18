@@ -70,6 +70,11 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private ConditionCheck conditionCheck;
     public static Action<int> OnGetRiderRank;
 
+    [Header("Not Enough Resource")]
+    [SerializeField] private GameObject foodPanel;
+    [SerializeField] private Button foodPanelEnablerBtn;
+    [SerializeField] private TMP_Text foodResourcesBtnText;
+
     private void OnEnable()
     {
         if(replayButton != null)
@@ -82,6 +87,7 @@ public class RacingResultPage : MonoBehaviour
         }
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
+        foodPanelEnablerBtn.onClick.AddListener(EnableFoodPage);
     }
     private void OnDisable()
     {
@@ -323,10 +329,11 @@ public class RacingResultPage : MonoBehaviour
 
     public void Replay()
     {
-        if (lastPower < 20 || lastCooling < 10 || lastStamina < 30)
+        if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
-            UIButtonActions.Instance?.ShowUI(conditionCheck);
-            this.gameObject.SetActive(false);
+            SHowResourcesNotEnough();
+            alarmMessage.text = LanguageManager.Instance.GetText(334);
+         
             return;  // Racing davom etmaydi
         }
         //Clear();
@@ -350,5 +357,40 @@ public class RacingResultPage : MonoBehaviour
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
+    #region Resources
+    private void SHowResourcesNotEnough()
+    {
+        StartCoroutine(PulseRoutine());
+        foodPanelEnablerBtn?.gameObject.SetActive(true);
+        foodResourcesBtnText.text = LanguageManager.Instance?.GetText(369);
+    }
+    private IEnumerator PulseRoutine()
+    {
+        float t = 0f;
+        RectTransform rt = foodPanelEnablerBtn.GetComponent<RectTransform>();
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+
+            // 0 → 1 → 0 yurak urishi effekti
+            float pingPong = Mathf.PingPong(Time.time * 2, 1f);
+
+            float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
+
+            rt.localScale = new Vector3(scale, scale, 1);
+
+            yield return null;
+        }
+
+        rt.localScale = Vector3.one;
+    }
+    private void EnableFoodPage()
+    {
+        this.gameObject.SetActive(false);
+        UIButtonActions.Instance.ShowUI(foodPanel);
+    }
+
+    #endregion
 
 }

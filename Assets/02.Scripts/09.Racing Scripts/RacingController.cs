@@ -82,6 +82,30 @@ public class RacingController : MonoBehaviour
     public float raceEndTime { get; private set; }
     public float RaceEndTime => raceEndTime;
     #endregion
+
+    public GameOverTypes gameOverType = GameOverTypes.None;
+
+
+    #region Race Start and End
+    public bool HasStarted { get; private set; }
+    public bool HasFinished { get; private set; }
+    private bool _isPaused;
+
+    private float _accumulated;
+    private float _runStartTime;
+
+    public float ElapsedTime
+    {
+        get
+        {
+            if (!HasStarted) return 0f;
+            if (HasFinished) return _accumulated;
+            if (_isPaused) return _accumulated;
+            return _accumulated + (Time.time - _runStartTime);
+        }
+    }
+
+    #endregion
     #region Starting Functions
     private void Awake()
     {
@@ -104,7 +128,7 @@ public class RacingController : MonoBehaviour
         SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
         SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
         await ApplyRandomSkinsToAllAI();
-        //GetSetAnimal(HorseMine.Instance.horseAnimal);
+        ////GetSetAnimal(HorseMine.Instance.horseAnimal);
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
 
         LoadingPanel(2f);
@@ -144,6 +168,39 @@ public class RacingController : MonoBehaviour
         riderAnimal = null;
         horse = null;
         ClearAgents();
+    }
+    #endregion
+
+    #region Start and End race
+    public void BeginRace()
+    {
+        if (HasStarted) return;
+        HasStarted = true;
+        HasFinished = false;
+        _accumulated = 0f;
+        _runStartTime = Time.time;
+        _isPaused = false;
+    }
+
+    public void FinishRace()
+    {
+        if (!HasStarted || HasFinished) return;
+        if (!_isPaused) _accumulated += (Time.time - _runStartTime);
+        HasFinished = true;
+    }
+
+    public void PauseRaceTime()
+    {
+        if (!HasStarted || HasFinished || _isPaused) return;
+        _accumulated += (Time.time - _runStartTime);
+        _isPaused = true;
+    }
+
+    public void ResumeRaceTime()
+    {
+        if (!HasStarted || HasFinished || !_isPaused) return;
+        _runStartTime = Time.time;
+        _isPaused = false;
     }
     #endregion
 
@@ -539,7 +596,6 @@ public class RacingController : MonoBehaviour
     public void SetBoostTime(float time)
     {
         boostTime = boostTime + time;
-       // OnOverallBoostTime?.Invoke(boostTime);
         Debug.Log("[EndTime BoosterContainer]" + boostTime);
     }
     public float GetPenaltyTime()
@@ -549,8 +605,6 @@ public class RacingController : MonoBehaviour
     public void SetPenaltyTime(float time)
     {
         penaltyTime = penaltyTime + time;
-        Debug.Log("[PENALTY TIME]" +  penaltyTime);
-       // OnOverallPenaltyTime?.Invoke(penaltyTime);
     }
     #endregion
 
@@ -609,20 +663,35 @@ public class RacingController : MonoBehaviour
     public void PlayerFailedSpecialReach(RacingAgent playerAgent, MonoBehaviour triggerPoint)
     {
         if (IsRaceOver) return;
-        IsRaceOver = true;
+
         // shu yerda SENING game over / lose / stop race logikang
         // Misol:
         // GameOverPage();
         // StopRace();
-        UIButtonActions.Instance.ShowGameOver();
-        playerAgent.EndRace();
-        raceEndTime = playerAgent.ElapsedTime;
-        Debug.Log("[END RACE] " + raceEndTime);
-        StopMyHorse();
 
-        mobileCanvasPanel.gameObject.SetActive(false);
-        RacingLeaderboard.Instance.FinishRace();
+        playerAgent.EndRace();
+        EndRacing();
+        GamOverType(GameOverTypes.ByTime);
+        UIButtonActions.Instance.ShowGameOver();
+
+    }
+    public void EndRacing()
+    {
+        FinishRace();
+        IsRaceOver = true;
+        StopMyHorse();
+        mobileCanvasPanel.gameObject.SetActive(false);       
         leaderboard.gameObject.SetActive(false);
+    }
+    public void EndRacingCollision()
+    {
+        GamOverType(GameOverTypes.ObstacleHit);
+        EndRacing();
+    }
+
+    public void GamOverType(GameOverTypes types)
+    {
+        gameOverType = types;
     }
     #endregion
 
@@ -635,7 +704,7 @@ public class RacingController : MonoBehaviour
     private IEnumerator LoadingPanelDisabler(float time)
     {
         yield return new WaitForSeconds(time);
-        UIOverlayRoot.I.HideCurrentPanel();
+        UIOverlayRoot.I?.HideCurrentPanel();
         if (sliderObject != null) sliderObject.SetActive(true);
         Finalsound();
     }

@@ -185,7 +185,7 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: d24c88fd0da379649a4d2506731dbaf1
+  - m_GUID: d4b0ae5dd029ee64b807cf9806edf455
     m_Address: horse_01/mat/body/body_01
     m_ReadOnly: 0
     m_SerializedLabels:

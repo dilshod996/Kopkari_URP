@@ -57,7 +57,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
             Debug.Log($"[SpecialReach] Passed: {agent.displayName} (player={agent.isPlayer})");
 
         // Birinchi o'tgan agent => timer start
-        if (!_timerStarted)
+        if (!_timerStarted && !RacingController.Instance.IsRaceOver)
         {
             _timerStarted = true;
             _routine = StartCoroutine(GraceCountdown());

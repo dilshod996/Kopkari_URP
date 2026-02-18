@@ -1,5 +1,6 @@
 ﻿// RacingAgent.cs
 using MalbersAnimations.Controller.AI;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
 /// <summary>
@@ -45,6 +46,7 @@ public class RacingAgent : MonoBehaviour
         FinishTime = 0f;
         HasFinished = false;
         Debug.Log("Race Started");
+        RacingController.Instance?.BeginRace();
     }
 
     public void EndRace()

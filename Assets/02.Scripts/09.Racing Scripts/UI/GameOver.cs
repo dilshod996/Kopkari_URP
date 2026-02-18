@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 public class GameOver : MonoBehaviour
 {
+
     [Header("UI Refs")]
     [SerializeField] private TMP_Text gameOverTitle;
     [SerializeField] private CanvasGroup canvasGroup;
@@ -17,7 +18,6 @@ public class GameOver : MonoBehaviour
 
     [SerializeField] private TMP_Text infoText;
     [SerializeField] private GameFood foodPage;
-    [SerializeField] private ConditionCheck conditionCheck;
 
     public SceneLoadManager.SceneType sceneType;
 
@@ -30,20 +30,19 @@ public class GameOver : MonoBehaviour
     private float lastPower = 0f;
     private float lastCooling = 0f;
     private float lastStamina = 0f;
-
     private void OnEnable()
-    {
-        // UIButtonActions.OnSprintHold += GetOverallBoostTime;
-        //RacingController.OnOverallBoostTime += GetOverallBoostTime;
-        GetOverallPenaltyTime();
-        GetBoostTime();
+    { 
+        GetGameFinishedTime();
+        GetOverallPenaltyTimeAndBoost();
         backLobby.onClick.AddListener(BackHome);
         playAgain.onClick.AddListener(PlayAgainAction);
         support.onClick.AddListener(OpenSuppliesPage);
         UITransilations();
-        overAllTime = RacingController.Instance.RaceEndTime;
+
+        var rc = RacingController.Instance;
+        if (rc == null) return;
+        GetGameOverType(rc.gameOverType);
         HorseStats();
-        
     }
 
     private void OnDisable()
@@ -51,15 +50,41 @@ public class GameOver : MonoBehaviour
         playAgain.onClick.RemoveAllListeners();
         backLobby.onClick.RemoveAllListeners();
         support.onClick.RemoveAllListeners();
-        //UIButtonActions.OnSprintHold -= GetOverallBoostTime;
-        //RacingController.OnOverallPenaltyTime -= GetOverallPenaltyTime;
-        //RacingController.OnOverallBoostTime -= GetOverallBoostTime;
     }
+    private void GetGameFinishedTime()
+    {
+        if(RacingController.Instance != null)
+            overAllTime = RacingController.Instance.ElapsedTime;
+    }
+    public void GetGameOverType(GameOverTypes type)
+    {
+        if (type == GameOverTypes.ObstacleHit)
+        {
+            gameOverTitle.text = LanguageManager.Instance.GetText(215);
+            infoText.text = LanguageManager.Instance.GetText(217);
+        }
+        else if (type == GameOverTypes.Offside)
+        {
+            gameOverTitle.text = LanguageManager.Instance.GetText(219);
+            infoText.text = LanguageManager.Instance.GetText(218);
+        }
+        else if (type == GameOverTypes.ByTime)
+        {
+            gameOverTitle.text = LanguageManager.Instance.GetText(196);
+            infoText.text = LanguageManager.Instance.GetText(216);
+        }
+        else
+        {
+            // None yoki default
+            gameOverTitle.text = LanguageManager.Instance.GetText(196);
+            infoText.text = "";
+        }
+    }
+
     private void UITransilations()
     {
         if(LanguageManager.Instance != null)
         {
-            gameOverTitle.text = LanguageManager.Instance.GetText(196);
             backText.text = LanguageManager.Instance.GetText(302);
             replayText.text = LanguageManager.Instance.GetText(197);
             supportText.text = LanguageManager.Instance.GetText(198);
@@ -68,9 +93,9 @@ public class GameOver : MonoBehaviour
     }
     public void PlayAgainAction()
     {
-        if (lastPower < 20 || lastCooling < 10 || lastStamina < 30)
+        if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
-            UIButtonActions.Instance?.ShowUI(conditionCheck);
+            UIButtonActions.Instance?.ShowUI(foodPage);
             this.gameObject.SetActive(false);
             return;  // Racing davom etmaydi
         }
@@ -101,14 +126,13 @@ public class GameOver : MonoBehaviour
     }
 
     #region Horse Statistics
-    private void GetOverallPenaltyTime()
+    private void GetOverallPenaltyTimeAndBoost()
     {
-        overAllPenaltyTime = UIButtonActions.Instance?.GetTotalWebSnareTime() ?? 0f;
-    }
-
-    private void GetBoostTime()
-    {
-        overAllBoostTime = UIButtonActions.Instance?.GetTotalHoldTime() ?? 0f;
+        if(UIButtonActions.Instance != null)
+        {
+            overAllPenaltyTime = UIButtonActions.Instance.GetTotalWebSnareTime();
+            overAllBoostTime = UIButtonActions.Instance.GetTotalHoldTime();
+        }
     }
 
     private void HorseStats()
@@ -122,7 +146,7 @@ public class GameOver : MonoBehaviour
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
         float nonPenaltyTime = overAllTime - overAllPenaltyTime;     // penalty bo¡®lmagan vaqt
 
-        float newPower = horsePowerMain - (overAllBoostTime * 0.5f + basicTime * 0.2f);
+        float newPower = horsePowerMain - (overAllBoostTime * 0.4f + basicTime * 0.2f);
         float newStamina = horseStaminaMain - (overAllTime * 0.3f);
         float newCooling = horseCoolingMain - (overAllPenaltyTime * 0.5f + nonPenaltyTime * 0.05f);
 

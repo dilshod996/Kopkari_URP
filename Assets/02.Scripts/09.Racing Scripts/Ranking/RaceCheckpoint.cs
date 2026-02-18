@@ -107,7 +107,11 @@ public class RaceCheckpoint : MonoBehaviour
 
             // Finish
             if (index == total - 1)
+            {
                 agent.EndRace();
+                RacingController.Instance.FinishRace();
+            }
+                
 
             lb?.NotifyCheckpoint(agent);
 

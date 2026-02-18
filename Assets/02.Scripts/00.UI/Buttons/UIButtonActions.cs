@@ -38,9 +38,6 @@ public class UIButtonActions : MonoBehaviour
     #endregion
 
     #region Inspector - UI Effects
-    [Header("Shock Effect")]
-    [SerializeField] private Image shockImg;
-    [SerializeField] private float shockLife = 0.25f;
 
     [Header("Slow Effect")]
     [SerializeField] private Image slowImg;
@@ -130,6 +127,7 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] GameOver gameOverPanel;
 
     public bool isFinished = false;
+    private bool _pausedByApp;
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
     {
@@ -150,9 +148,7 @@ public class UIButtonActions : MonoBehaviour
         PlayerDataManager.OnShowFinalPage += ShowResultPage;
         RacingController.OnRacingStarted += GetData;
 
-        BoostersContainer.OnDefendState += SetDefendState;
-
-        FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanleState;
+        BoostersContainer.OnDefendState += SetDefendStateTime;
         HorseMine.OnObstacleTouchedEvent += PlayShock;
 
         BoostersContainer.OnNormalState += NormalState;
@@ -188,9 +184,7 @@ public class UIButtonActions : MonoBehaviour
         PlayerDataManager.OnShowFinalPage -= ShowResultPage;
         RacingController.OnRacingStarted -= GetData;
 
-        BoostersContainer.OnDefendState -= SetDefendState;
-
-        FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanleState;
+        BoostersContainer.OnDefendState -= SetDefendStateTime;
         HorseMine.OnObstacleTouchedEvent -= PlayShock;
 
         BoostersContainer.OnNormalState -= NormalState;
@@ -211,18 +205,38 @@ public class UIButtonActions : MonoBehaviour
     }
     private void OnApplicationPause(bool pause)
     {
-        if (pause && !isFinished)
+        if (isFinished) return;
+
+        if (pause)
         {
-            pauseMenu.gameObject.SetActive(true);  
+            PauseBySystem();
         }
-        
+        // ❗ bu yerda Resume qilmang (user continue bosganda qilasiz)
     }
+
     private void OnApplicationFocus(bool hasFocus)
     {
-        if (!hasFocus && !isFinished)
+        if (isFinished) return;
+
+        if (!hasFocus)
         {
-            pauseMenu.gameObject.SetActive(true);
+            PauseBySystem();
         }
+        // hasFocus == true bo‘lsa ham Resume qilmang
+    }
+
+    private void PauseBySystem()
+    {
+        if (_pausedByApp) return; // ✅ double-calldan saqlaydi
+        _pausedByApp = true;
+
+        pauseMenu.gameObject.SetActive(true);
+
+        // ✅ global timer pause
+        RacingController.Instance?.PauseRaceTime();
+
+        // ixtiyoriy: agar audio/vfx ham to‘xtasin desa
+        // Time.timeScale = 0f;  // (agar sen game’ni to‘liq muzlatmoqchi bo‘lsang)
     }
     #endregion
 
@@ -280,6 +294,25 @@ public class UIButtonActions : MonoBehaviour
 
     public void SetJumpState(bool state) => jumpBtn.interactable = state;
     public void SetDefendState(bool state) => defendBtn.interactable = state;
+    public void SetDefendStateTime(bool state)
+    {
+        if (!state)
+        {
+            defendBtn.interactable = false;
+        }
+        else
+        {
+            int defendCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+            if (defendCount > 0)
+            {
+                defendBtn.interactable = true;
+            }
+            else
+            {
+                defendBtn.interactable= false;
+            }
+        }
+    }
     public void SetWalkZoneState(bool state) => walkZoneBtn.interactable = state;
     public void SetHitState(bool state) => hitBtn.interactable = state;
     public void SetWebState(bool state) => shootWebBtn.interactable = state;
@@ -538,8 +571,13 @@ public class UIButtonActions : MonoBehaviour
     #region UI Effects (minimal)
     public void PlayShock()
     {
-        if (!shockImg) return;
-        if (hitCountSlider != null) hitCountSlider.value--;
+        hitCountSlider.value = Mathf.Max(0, hitCountSlider.value - 1);
+
+        if (hitCountSlider.value == 0 && !isFinished)
+        {
+            RacingController.Instance.EndRacingCollision();
+            ShowGameOver();
+        }
     }
 
     public void SprintEffect(bool value)
@@ -585,11 +623,6 @@ public class UIButtonActions : MonoBehaviour
     #endregion
 
     #region Pages
-    public void FoodPanleState(bool state)
-    {
-        if (state) ShowUI(foodPanel);
-        else HideUI(foodPanel);
-    }
     public void OpenFoodPanel()
     {
         ShowUI(foodPanel);
@@ -684,6 +717,7 @@ public class UIButtonActions : MonoBehaviour
     #region Other Button Actions
     private void PauseMenu()
     {
+        RacingController.Instance.PauseRaceTime();
         ShowUI(pauseMenu);
     }
     #endregion

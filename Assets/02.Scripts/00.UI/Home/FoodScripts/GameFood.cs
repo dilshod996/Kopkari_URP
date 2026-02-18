@@ -18,7 +18,23 @@ public class GameFood : MonoBehaviour
     [SerializeField] private Button replayBtn;
     [SerializeField] private TMP_Text replayText;
 
+    [Header("Sliders")]
+    [SerializeField] private TMP_Text conditionTitleText;
+    [SerializeField] private ProgressBar powerSlider, coolingSlider, staminaSlider;
+    [SerializeField] private RectTransform notEnoughPowerBg, notEnoughCoolingBg, notEnoughStaminaBg;
+    [SerializeField] private TMP_Text notEnoughPowerText, notEnoughCoolingText, notEnoughStaminaText;
+    [SerializeField] private TMP_Text powerText, coolingText, staminaText;
 
+    [SerializeField] private GameObject bottomAlarmObj;
+    [SerializeField] private TMP_Text bottomAlarmText;
+
+    private static readonly Color goodConditionColor = new Color32(47, 255, 135, 255);
+    private static readonly Color stableConditionColor = new Color32(255, 199, 117, 255);
+    private static readonly Color badConditionColor = new Color32(238, 32, 30, 255);
+    private float mPower;
+    private float mCooling;
+    private float mStamina;
+    private bool resourceUpdated=false;
 
     private int amountWatch = 0;
     private int coin = 0;
@@ -27,8 +43,7 @@ public class GameFood : MonoBehaviour
 
     [SerializeField] private GameObject adsPanel;
     [SerializeField] private RectTransform nyufiyBgObj;
-    [SerializeField] private TMP_Text notEnoughResourceText;
-    [SerializeField] private ConditionCheck checkCondition;
+
 
     public SceneLoadManager.SceneType sceneType;
 
@@ -36,9 +51,12 @@ public class GameFood : MonoBehaviour
     {
         GetCoins();
         UITransilation();
+        GetResources();
         replayBtn.onClick.AddListener(PlayMore);
         backButton.onClick.AddListener(BackHome);
         FoodInfo.OnNyufiyUpdate += UpdateOnlyNyufiy;
+        FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
+        FoodInfo.OnMoneyNotEnough += AdsPanel;
     }
 
     private void OnDisable()
@@ -46,9 +64,20 @@ public class GameFood : MonoBehaviour
         replayBtn.onClick.RemoveAllListeners();
         backButton.onClick.RemoveAllListeners();
         FoodInfo.OnNyufiyUpdate -= UpdateOnlyNyufiy;
+        FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
+        FoodInfo.OnMoneyNotEnough -= AdsPanel;
+    }
+    private void OnDestroy()
+    {
+        SetData();
     }
     private void BackHome()
     {
+        if (sceneType.Equals(SceneLoadManager.SceneType.None))
+        {
+            HomeMainUI.Instance.HideUI(this);
+            return;
+        }
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
@@ -70,53 +99,19 @@ public class GameFood : MonoBehaviour
         var lang = LanguageManager.Instance;
         if (lang != null)
         {
-            backText.text = lang.GetText(362);
-            //adsText.text = lang.GetText(363);
+            if (sceneType.Equals(SceneLoadManager.SceneType.None))
+            {
+                backText.text = lang.GetText(428);
+            }
+            else
+            {
+                backText.text = lang.GetText(302);
+            }
+            powerText.text = lang.GetText(326);
+            coolingText.text = lang.GetText(327);
+            staminaText.text = lang.GetText(328);
 
         }
-    }
-    #endregion
-
-    #region Button Actions
-  
-
-    private void OnWater() => TryBuyAndApply(powerAdd: 0f, coolingAdd: 6f, staminaAdd: 3f, costNyufiy: 500);
-    private void OnApple() => TryBuyAndApply(powerAdd: 4f, coolingAdd: 2f, staminaAdd: 4f, costNyufiy: 750);
-    private void OnBugdoy() => TryBuyAndApply(powerAdd: 7f, coolingAdd: 2f, staminaAdd: 5f, costNyufiy: 900);
-    private void OnArpa() => TryBuyAndApply(powerAdd: 9f, coolingAdd: 3f, staminaAdd: 6f, costNyufiy: 1400);
-    private void OnBooster() => TryBuyAndApply(powerAdd: 0f, coolingAdd: 5f, staminaAdd: 15f, costNyufiy: 1780);
-
-    private void TryBuyAndApply(float powerAdd, float coolingAdd, float staminaAdd, int costNyufiy)
-    {
-        // 1) Nyufiy yetarlimi?
-        if (nyufiy < costNyufiy)
-        {
-            PlayScaleAnim(nyufiyBgObj);
-            EnableAdsPanel(true);
-            return;
-        }
-
-        // 2) Balansdan yechamiz
-        nyufiy -= costNyufiy;
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiy);
-
-        // 3) Statlarni olib, qo¡®shib, clamp qilib saqlaymiz
-        //float p = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        //float c = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        //float s = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-
-        //p = Mathf.Clamp(p + powerAdd, 0f, 100f);
-        //c = Mathf.Clamp(c + coolingAdd, 0f, 100f);
-        //s = Mathf.Clamp(s + staminaAdd, 0f, 100f);
-
-        //PlayerPrefs.SetFloat(Constants.HorseCondition.Power, p);
-        //PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, c);
-        //PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, s);
-
-        PlayerPrefs.Save();
-
-        // 4) UI yangilash
-        UpdateTexts(nyufiy, coin);
     }
     #endregion
 
@@ -154,7 +149,10 @@ public class GameFood : MonoBehaviour
     {
         if (state)
         {
-            notEnoughResourceText.gameObject.SetActive(false);
+            if(bottomAlarmObj !=null &&  bottomAlarmObj.activeSelf)
+            {
+                bottomAlarmObj.SetActive(false);
+            }
             adsPanel.SetActive(true);
             adsText.text = LanguageManager.Instance?.GetText(363);
         }
@@ -167,41 +165,146 @@ public class GameFood : MonoBehaviour
     #region Replay Section
     public void PlayMore()
     {
-        CheckResources();
-        
+        CheckResources();    
     }
+
     private void CheckResources()
     {
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-
-        if (horsePowerMain < 20f || horseCoolingMain < 10f || horseStaminaMain < 30f)
+        if (mPower < Constants.HorseConditionNum.Power || mCooling < Constants.HorseConditionNum.Cool || mStamina < Constants.HorseConditionNum.Stamina)
         {
-            UIButtonActions.Instance?.ShowUI(checkCondition);
-            //EnableAdsPanel(false);
-            //notEnoughResourceText.gameObject.SetActive(true);
-            //notEnoughResourceText.text = LanguageManager.Instance.GetText(364);
+            PlayResourceAnim();
         }
         else
         {
-            //if (KopkariMainUI.Instance != null)
-            //{
-            //    KopkariMainUI.Instance.HideUI(this);
-            //}
-            //else
-            //{
-            //    UIButtonActions.Instance.HideUI(this);
-            //}
             Clear();
             PlayAgainText();
+            SetData();
             SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
         }
     }
-
+    private void PlayResourceAnim()
+    {
+        if (mPower < Constants.HorseConditionNum.Power)
+        {
+            PlayScaleAnim(notEnoughPowerBg);
+        }
+        if (mCooling < Constants.HorseConditionNum.Cool)
+        {
+            PlayScaleAnim(notEnoughCoolingBg);
+        }
+        if (mStamina < Constants.HorseConditionNum.Stamina)
+        {
+            PlayScaleAnim(notEnoughStaminaBg);
+        }
+    }
     public void Clear()
     {
         StopAllCoroutines();
+    }
+    private void GetResources()
+    {
+        mPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
+        mCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
+        mStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        UpdateSliders(mPower, mCooling, mStamina);
+    }
+    private void UpdateSliders(float powerValue, float coolingValue, float staminValue)
+    {
+        powerSlider.currentPercent = powerValue;
+        coolingSlider.currentPercent = coolingValue;
+        staminaSlider.currentPercent = staminValue;
+        powerSlider.UpdateUI();
+        coolingSlider.UpdateUI();
+        staminaSlider.UpdateUI();
+        SetText(notEnoughPowerText, powerValue, Constants.HorseConditionNum.Power);
+        SetText(notEnoughCoolingText, coolingValue, Constants.HorseConditionNum.Cool);
+        SetText(notEnoughStaminaText, staminValue, Constants.HorseConditionNum.Stamina);
+
+    }
+    private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
+    {
+        resourceUpdated = true;
+
+        // 2) Bufflarni qo¡®shamiz
+        mPower = Mathf.Clamp(mPower + powerPercent, 0f, 100f);
+        mCooling = Mathf.Clamp(mCooling + coolingPercent, 0f, 100f);
+        mStamina = Mathf.Clamp(mStamina + staminaPercent, 0f, 100f);
+
+
+
+        UpdateSliders(mPower, mCooling, mStamina);
+        //MainUIState(false);
+    }
+    private void SetData()
+    {
+        if(!resourceUpdated)
+            return;
+        // 3) Yangi qiymatlarni saqlaymiz
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, mPower);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, mCooling);
+        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, mStamina);
+    }
+    #endregion
+
+    #region Conditions
+    private void SetText(TMP_Text detailText, float num, float limitNum)
+    {
+        if (num >= Constants.HorseConditionNum.GoodCondition)
+        {
+            GoodCondition(detailText);
+        }
+        else if(num<Constants.HorseConditionNum.GoodCondition && num>limitNum)
+        {
+            StableCondition(detailText);
+        }
+        else
+        {
+            BadCondition(detailText);
+            if (sceneType.Equals(SceneLoadManager.SceneType.None))
+            {
+                BottomMessage();
+            }
+        }
+    }
+    private void GoodCondition(TMP_Text text)
+    {
+        if(text != null)
+        {
+            text.color = goodConditionColor;
+            text.text = LanguageManager.Instance.GetText(211);
+        }
+    }
+    private void StableCondition(TMP_Text text) { 
+        if(text != null)
+        {
+            text.color = stableConditionColor;
+            text.text = LanguageManager.Instance.GetText(212);
+        }
+    }
+    private void BadCondition(TMP_Text text)
+    {
+        if(text != null)
+        {
+            text.color = badConditionColor;
+            text.text = LanguageManager.Instance.GetText(213);
+            
+        }
+    }
+    private void AdsPanel()
+    {
+        //UIButtonActions.Instance?.ShowUI(checkCondition);
+        EnableAdsPanel(true);
+        //notEnoughResourceText.gameObject.SetActive(true);
+        //notEnoughResourceText.text = LanguageManager.Instance.GetText(364);
+    }
+    private void BottomMessage()
+    {
+        if(bottomAlarmObj != null)
+        {
+            PlayResourceAnim();
+            bottomAlarmObj.gameObject.SetActive(true);
+            bottomAlarmText.text = LanguageManager.Instance.GetText(200);
+        }
     }
     #endregion
 }
