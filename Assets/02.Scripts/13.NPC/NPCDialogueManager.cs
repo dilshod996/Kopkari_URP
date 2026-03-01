@@ -193,7 +193,7 @@ public class NPCDialogueManager : MonoBehaviour
                 OpenPopup("Uloqni ushlab turish vaqti tugamoqda ! 3 soniya", 3f);
                 break;
             case PlayerCondition.TakenTargetOthers:
-                OpenPopup("Uloqni " + BaseManager.Instance.LambOwner + " polvon olib ketdi! Tezroq qayt!", 3f);
+                OpenPopup("Uloqni " + KopkariManager.Instance.LambOwner + " polvon olib ketdi! Tezroq qayt!", 3f);
                 break;
             // va hokazo...
             default:

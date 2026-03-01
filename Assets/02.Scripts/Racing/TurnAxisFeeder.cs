@@ -23,7 +23,7 @@ public class TurnAxisFeeder : MonoBehaviour
     public void Release() => holdDir = 0f;
     private void Start()
     {
-         animal = BaseManager.Instance.horseAnimal;
+         animal = KopkariManager.Instance.horseAnimal;
     }
 
     void Update()

@@ -205,10 +205,12 @@ public class LobbyManager : MonoBehaviour
         if (currentPower < Constants.HorseConditionNum.Power || currentCooling < Constants.HorseConditionNum.Cool || currentStamina < Constants.HorseConditionNum.Stamina)
         {
             //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            HomeHapticsManager.Instance.Play(HomeHapticId.LowCondition);
             HomeMainUI.Instance?.SHowFoodPanel();
             return;  // Racing boshlanmaydi
         }
         // ;
+        HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.SecondRacing, preloadRacing);
     }
@@ -232,8 +234,10 @@ public class LobbyManager : MonoBehaviour
         {
             //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
             HomeMainUI.Instance?.SHowFoodPanel();
+            HomeHapticsManager.Instance.Play(HomeHapticId.LowCondition);
             return;  // Racing boshlanmaydi
         }
+        HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.EgyptRacing, preloadRacing);
     }
@@ -616,10 +620,15 @@ public class LobbyManager : MonoBehaviour
     #endregion
 
     #region Avatar Custom Scene ga o'tish
+    public void MoveCustomRoom()
+    {
+        UIOverlayRoot.I.Confirm(222, 221, 93, 94, AvatarCustom, null);
+    }
     public void AvatarCustom()
     {
         string message = $"{LanguageManager.Instance.GetText(193)}..."; 
         UIOverlayRoot.I.ShowPanel(UIPanelType.Custom, message, instant: false, exclusive: true);
+        HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
     }
     #endregion

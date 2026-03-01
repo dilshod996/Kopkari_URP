@@ -1,4 +1,5 @@
-﻿using MalbersAnimations;
+﻿using Cinemachine;
+using MalbersAnimations;
 using MalbersAnimations.Controller;
 using MalbersAnimations.HAP;
 using System;
@@ -13,7 +14,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-
+using DG.Tweening;
 public class RacingController : MonoBehaviour
 {
     public static RacingController Instance { get; protected set; }
@@ -49,6 +50,16 @@ public class RacingController : MonoBehaviour
     [SerializeField] private ThirdPersonFollowTarget mainCam;
     [SerializeField] private ThirdPersonFollowTarget finishCam;
     [SerializeField] private ThirdPersonFollowTarget sprintCam;
+    [SerializeField] private ThirdPersonFollowTarget firstPersonCam;
+    public enum CameraTypes
+    {
+        ThirdMain,
+        Sprint,
+        Final,
+        First
+    }
+    public CameraTypes cameraTypes = CameraTypes.ThirdMain;
+    private Coroutine _fpCullCo;
 
     public float cameraDistance = 4.5f;
     [SerializeField] private float frontDistance = 6f;
@@ -106,6 +117,8 @@ public class RacingController : MonoBehaviour
     }
 
     #endregion
+    private int _fpLayer;
+    private Camera _mainCam;
     #region Starting Functions
     private void Awake()
     {
@@ -118,6 +131,8 @@ public class RacingController : MonoBehaviour
 
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
+        _fpLayer = LayerMask.NameToLayer("FP_Hide");
+        _mainCam = Camera.main; // CinemachineBrain shu kamerada bo‘ladi
     }
     async void Start()
     {
@@ -425,7 +440,8 @@ public class RacingController : MonoBehaviour
     }
     private IEnumerator HorseStopAction(Action action=null)
     {
-        // 3 soniyadan so‘ng to‘xtatamiz misol uchun
+        cameraTypes = CameraTypes.Final;
+        FirstPersonDisable();
         if (boostRoutine != null)
             StopCoroutine(boostRoutine);
         horse.Always_Forward(false);
@@ -453,8 +469,6 @@ public class RacingController : MonoBehaviour
         {
             CameraPostionCheck(-10f, -3f);
         }
-            
-        //CameraPostionCheck(-189f, -3f); changed here
         HideLeaderboardPanel();
         mobileCanvasPanel.gameObject.SetActive(false);
         int playerRank = RacingLeaderboard.Instance.PlayerRank();
@@ -487,14 +501,6 @@ public class RacingController : MonoBehaviour
         {
             CameraPostionCheck(10, -5);
         }
-
-        
-
-
-
-        //yield return new WaitForSeconds(1f);
-       // horse.StopMoving();
-
         action?.Invoke();
     }
     private void StopMyHorse()
@@ -510,30 +516,81 @@ public class RacingController : MonoBehaviour
         yield return new WaitForSeconds(2);
         horse.StopMoving();
     }
-    private void HorseSprint()
-    {
-        if (horse != null) { 
-            SprintCameraEnable();
-        }
-    }
 
-    private void HorseDefaultSpeed()
-    {
-        if (horse != null) { 
-            SprintCameraDisable();
-            Debug.Log("Camera back");
-        }
-    }
     #endregion
- 
+
 
     #region Camera Details
+   
 
+    private void SetFPCulling(bool isFP)
+    {
+        if (_mainCam == null) return;
+
+        int mask = _mainCam.cullingMask;
+
+        if (isFP)
+            mask &= ~(1 << _fpLayer);   // FP_Hide layerni olib tashla
+        else
+            mask |= (1 << _fpLayer);    // qayta ko‘rsat
+
+        _mainCam.cullingMask = mask;
+    }
+    public void FirstPersonEnable()
+    {
+        if (firstPersonCam == null) return;
+
+        firstPersonCam.SetPriority(true);
+        mainCam?.SetPriority(false);
+        sprintCam?.SetPriority(false);
+        finishCam?.SetPriority(false);
+
+        cameraTypes = CameraTypes.First;
+        // ✅ oldingi coroutine bo‘lsa to'xtatamiz
+        if (_fpCullCo != null) StopCoroutine(_fpCullCo);
+        _fpCullCo = StartCoroutine(DelayFPCullOn());
+
+    }
+    public void FirstPersonDisable()
+    {
+        if (firstPersonCam == null) return;
+
+        // ✅ TP ga qaytayotganda darrov ko‘rsatamiz
+        if (_fpCullCo != null) StopCoroutine(_fpCullCo);
+        _fpCullCo = null;
+
+        SetFPCulling(isFP: false);
+
+        firstPersonCam?.SetPriority(false);
+        mainCam.SetPriority(true);
+
+        cameraTypes = CameraTypes.ThirdMain;
+    }
+    private IEnumerator DelayFPCullOn()
+    {
+        // Cinemachine linear 0.8s bo‘lsa, 0.85 yaxshi
+        yield return new WaitForSeconds(0.85f);
+
+        // FP holatda qolgan bo'lsa only
+        if (cameraTypes == CameraTypes.First)
+            SetFPCulling(isFP: true);
+
+        _fpCullCo = null;
+    }
     private void SprintCameraEnable()
     {
+        if(cameraTypes==CameraTypes.First) 
+            return;
+        cameraTypes = CameraTypes.Sprint;
         sprintCam.SetPriority(true);
+        
     }
-    private void SprintCameraDisable() { sprintCam.SetPriority(false); }
+    private void SprintCameraDisable() {
+        sprintCam.SetPriority(false);
+        if(cameraTypes!=CameraTypes.Sprint)
+            return;
+        cameraTypes = CameraTypes.ThirdMain;
+    }
     public void CameraPostionCheck(float yMove, float xMove)
     {
         horse.UseCameraInput = false;
@@ -584,19 +641,34 @@ public class RacingController : MonoBehaviour
         horse.UseCameraInput = true;
     }
 
+    private void HorseSprint()
+    {
+        if (horse != null)
+        {
+            SprintCameraEnable();
+        }
+    }
 
+    private void HorseDefaultSpeed()
+    {
+        if (horse != null)
+        {
+            SprintCameraDisable();
+            Debug.Log("Camera back");
+        }
+    }
 
     #endregion
 
-    #region Horse Statistics
-    public float GetBoostTime()
+
+#region Horse Statistics
+public float GetBoostTime()
     {
         return boostTime;
     }
     public void SetBoostTime(float time)
     {
         boostTime = boostTime + time;
-        Debug.Log("[EndTime BoosterContainer]" + boostTime);
     }
     public float GetPenaltyTime()
     {

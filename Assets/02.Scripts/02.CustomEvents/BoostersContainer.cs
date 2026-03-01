@@ -389,9 +389,17 @@ public class BoostersContainer : MonoBehaviour
 
         // old state OFF events
         if (CurrentDebuff == DebuffState.WalkZone)
+        {
             OnWalkZoneDamaged?.Invoke(false);
+            HomeHapticsManager.Instance.Play(HomeHapticId.NotEnoughMoney);
+        }
+            
         if (CurrentDebuff == DebuffState.WebSnare)
+        {
             OnWebSnareDamaged?.Invoke(false);
+            HomeHapticsManager.Instance.Play(HomeHapticId.Success);
+        }
+            
 
         // reset flags
         IsInWalkZone = false;

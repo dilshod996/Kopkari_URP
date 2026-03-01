@@ -87,7 +87,7 @@ public class RacingResultPage : MonoBehaviour
         }
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
-        foodPanelEnablerBtn.onClick.AddListener(EnableFoodPage);
+        foodPanelEnablerBtn.onClick.AddListener(OpenFoodPanelPopup);
     }
     private void OnDisable()
     {
@@ -384,6 +384,11 @@ public class RacingResultPage : MonoBehaviour
         }
 
         rt.localScale = Vector3.one;
+    }
+
+    private void OpenFoodPanelPopup()
+    {
+        UIOverlayRoot.I.Done(431, 432, 433, EnableFoodPage, null);
     }
     private void EnableFoodPage()
     {

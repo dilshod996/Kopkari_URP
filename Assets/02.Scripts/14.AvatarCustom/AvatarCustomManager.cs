@@ -291,9 +291,17 @@ public class AvatarCustomManager : MonoBehaviour
         }
         else
         {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191), instant: false,  true);
-            SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
+            ConfirmPopup();
         }
+    }
+    private void ConfirmPopup()
+    {
+        UIOverlayRoot.I.Confirm(434, 435, 1, 2, YesAction, null);
+    }
+    private void YesAction()
+    {
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191), instant: false, true);
+        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
 
     public void OpenPopup()

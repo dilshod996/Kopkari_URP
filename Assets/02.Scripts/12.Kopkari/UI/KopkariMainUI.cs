@@ -5,7 +5,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using static UIButtonActions;
 
 public class KopkariMainUI : MonoBehaviour
 {
@@ -28,7 +27,7 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private TMP_Text defendCountText;
     [SerializeField] private TMP_Text walkZoneCountText;
     [SerializeField] private TMP_Text hitCountText;
-    [SerializeField] private TMP_Text chainCounter;
+    [SerializeField] private TMP_Text webSnareCounter;
     #endregion
 
     #region Effects / Sprint/ Hit / Walk
@@ -69,8 +68,6 @@ public class KopkariMainUI : MonoBehaviour
     public Sprite obstacleHitSprite;
     #endregion
 
-    [Header("Pages")]
-    [SerializeField] private KopkariResultUI resultUI;
     [Header("Top Slider && BottomUI")]
     [SerializeField] private RectTransform bottomUI;
     [SerializeField] private Slider topUloqSlider;
@@ -81,7 +78,6 @@ public class KopkariMainUI : MonoBehaviour
 
     #region Projectiles
     [Header("Projectiles")]
-    [SerializeField] private TMP_Text webSnareCounter;
     [SerializeField] private TMP_Text uloqPushCounterText;
 
     #endregion
@@ -144,7 +140,7 @@ public class KopkariMainUI : MonoBehaviour
     private void OnEnable()
     {
         LoadingPanel(3f);
-        BaseManager.OnGameStartFinishState += CanvasEnable;
+        KopkariManager.OnGameStartFinishState += CanvasEnable;
         OnBindRequested += Bind;
         Booster.OnSprintFull += HandleSprintFull;
 
@@ -160,14 +156,14 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnWebSnareAdded += UpdateWebCount;
 
        // RacingController.OnRacingFinished += ShowResultPage;
-        //BaseManager.OnGameStarted += GetData;
+        //KopkariManager.OnGameStarted += GetData;
 
         BoostersContainer.OnDefendState += SetDefendState;
         BoostersContainer.OnWalkZoneDamaged += EnableSprint;
         BoostersContainer.OnWebSnareDamaged += EnableSprint;
         BoostersContainer.OnObstacleDamage += OnObstacleDamageHandler;
         HorseMine.OnReachedStartTarget += MoveUP;
-        BaseManager.OnGoatPicked += ShowMeters;
+        KopkariManager.OnGoatPicked += ShowMeters;
         TargetReachEvent.OnRoundEnded += DisableMeters;
         pushButton.onClick.AddListener(PushEffectStart);
         pauseButton.onClick.AddListener(PauseMenu);
@@ -175,7 +171,7 @@ public class KopkariMainUI : MonoBehaviour
 
     private void OnDisable()
     {
-        BaseManager.OnGameStartFinishState -= CanvasEnable;
+        KopkariManager.OnGameStartFinishState -= CanvasEnable;
         OnBindRequested -= Bind;
 
         Booster.OnSprintFull -= HandleSprintFull;
@@ -191,7 +187,7 @@ public class KopkariMainUI : MonoBehaviour
 
         BoostersContainer.OnWebSnareAdded -= UpdateWebCount;
 
-        //BaseManager.OnRacingFinished -= ShowResultPage;
+        //KopkariManager.OnRacingFinished -= ShowResultPage;
         //RacingController.OnRacingStarted -= GetData;
 
         BoostersContainer.OnDefendState -= SetDefendState;
@@ -200,7 +196,7 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnObstacleDamage -= OnObstacleDamageHandler;
         HorseMine.OnReachedStartTarget -= MoveUP;
         TargetReachEvent.OnRoundEnded -= DisableMeters;
-        BaseManager.OnGoatPicked -= ShowMeters;
+        KopkariManager.OnGoatPicked -= ShowMeters;
         pushButton.onClick.RemoveListener(PushEffectStart);
         pauseButton.onClick.RemoveListener(PauseMenu);
     }
@@ -548,7 +544,7 @@ public class KopkariMainUI : MonoBehaviour
         {
             // 2 sekunddan keyin o‘chadi
             canvasRoutine = StartCoroutine(DisableCanvasDelayed());
-            ShowUI(resultUI);
+            ShowUI(resultPage);
         }
     }
 
@@ -706,7 +702,7 @@ public class KopkariMainUI : MonoBehaviour
         if (pointNumber == 3)
         {
             Debug.Log("You are near to final!");
-            //BaseManager.Instance?.FinalPosState(true);
+            //KopkariManager.Instance?.FinalPosState(true);
         }
 
            
@@ -731,7 +727,7 @@ public class KopkariMainUI : MonoBehaviour
     }
     private void ShowMeters(bool hasGoat)
     {
-        if(BaseManager.Instance.roomState==BaseManager.RoomState.GameFinished)
+        if(KopkariManager.Instance.roomState==KopkariManager.RoomState.GameFinished)
         {
             //goalDistanceUI.Hide();
             return;

@@ -91,12 +91,16 @@ public class GameOver : MonoBehaviour
             infoText.text = LanguageManager.Instance.GetText(194);
         }
     }
+    private void ResourceNotEnoughPopup()
+    {
+        UIButtonActions.Instance?.ShowUI(foodPage);
+        this.gameObject.SetActive(false);
+    }
     public void PlayAgainAction()
     {
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
-            UIButtonActions.Instance?.ShowUI(foodPage);
-            this.gameObject.SetActive(false);
+            UIOverlayRoot.I.Done(431, 432, 433, ResourceNotEnoughPopup, null);
             return;  // Racing davom etmaydi
         }
         PlayAgainText();

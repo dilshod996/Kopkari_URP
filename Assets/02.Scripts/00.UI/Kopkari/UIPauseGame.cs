@@ -28,7 +28,7 @@ public class UIPauseGame : MonoBehaviour
     private void Awake()
     {
         ResumeBtn.onClick.AddListener(ResumeGame);
-        LobbyBackBtn.onClick.AddListener(BackLobby);
+        LobbyBackBtn.onClick.AddListener(MoveLobby);
         howToPlay.onClick.AddListener(EnableHowToPlay);
     }
 
@@ -37,7 +37,7 @@ public class UIPauseGame : MonoBehaviour
         UpdateTexts();
         if (!_paused)
             StartCoroutine(PauseNextFrame());  
-        Debug.Log("PauseTime " + RacingController.Instance.ElapsedTime);
+        //Debug.Log("PauseTime " + RacingController.Instance.ElapsedTime);
     }
 
     void ResumeGame()
@@ -56,6 +56,10 @@ public class UIPauseGame : MonoBehaviour
         
     }
 
+    private void MoveLobby()
+    {
+        UIOverlayRoot.I.Confirm(429, 430,1,2, BackLobby, null);
+    }
     void BackLobby()
     {
         Time.timeScale = 1f;

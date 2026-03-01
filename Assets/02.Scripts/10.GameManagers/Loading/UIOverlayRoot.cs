@@ -49,6 +49,10 @@ public class UIOverlayRoot : MonoBehaviour
     private Sequence _seq;
     private UIPanelType _current = UIPanelType.None;
 
+    [SerializeField] private ConfirmationPopupController confirmPopup;
+    private readonly Queue<IRequest> _queue = new Queue<IRequest>();
+    private bool _isShowing;
+
     private void Awake()
     {
         // Singleton + DontDestroy
@@ -241,4 +245,123 @@ public class UIOverlayRoot : MonoBehaviour
             if (p?.group != null) p.group.DOKill();
         }
     }
+    #region Popup
+    // =========================
+    // Public Facade API
+    // =========================
+
+    public void Confirm(int titleId, int descId, int okTextId, int cancelTextId,
+        Action onOk, Action onCancel,
+        ConfirmationPopupController.Options options = null)
+    {
+        Enqueue(new ConfirmRequest(titleId, descId, okTextId, cancelTextId, onOk, onCancel, options));
+    }
+
+    public void Done(int titleId, int descId, int doneTextId,
+        Action onDone,
+        ConfirmationPopupController.Options options = null)
+    {
+        Enqueue(new DoneRequest(titleId, descId, doneTextId, onDone, options));
+    }
+
+    // (ixtiyoriy) navbatni tozalash
+    public void ClearAllPopups()
+    {
+        _queue.Clear();
+        _isShowing = false;
+        confirmPopup.Hide();
+    }
+
+    // =========================
+    // Queue Core
+    // =========================
+
+    private void Enqueue(IRequest req)
+    {
+        _queue.Enqueue(req);
+        TryShowNext();
+    }
+
+    private void TryShowNext()
+    {
+        if (_isShowing) return;
+        if (_queue.Count == 0) return;
+
+        _isShowing = true;
+        var req = _queue.Dequeue();
+
+        // Request popupni ko¡®rsatadi, biz esa "yopilganda" callback olamiz
+        req.Show(confirmPopup, onClosed: () =>
+        {
+            _isShowing = false;
+            TryShowNext();
+        });
+    }
+
+    // =========================
+    // Internal Request Types
+    // =========================
+
+    private interface IRequest
+    {
+        void Show(ConfirmationPopupController popup, Action onClosed);
+    }
+
+    private class ConfirmRequest : IRequest
+    {
+        private readonly int _titleId, _descId, _okId, _cancelId;
+        private readonly Action _onOk, _onCancel;
+        private readonly ConfirmationPopupController.Options _options;
+
+        public ConfirmRequest(int titleId, int descId, int okId, int cancelId,
+            Action onOk, Action onCancel,
+            ConfirmationPopupController.Options options)
+        {
+            _titleId = titleId;
+            _descId = descId;
+            _okId = okId;
+            _cancelId = cancelId;
+            _onOk = onOk;
+            _onCancel = onCancel;
+            _options = options;
+        }
+
+        public void Show(ConfirmationPopupController popup, Action onClosed)
+        {
+            popup.Show(
+                _titleId, _descId, _okId, _cancelId,
+                onOk: () => { _onOk?.Invoke(); onClosed?.Invoke(); },
+                onCancel: () => { _onCancel?.Invoke(); onClosed?.Invoke(); },
+                options: _options
+            );
+        }
+    }
+
+    private class DoneRequest : IRequest
+    {
+        private readonly int _titleId, _descId, _doneId;
+        private readonly Action _onDone;
+        private readonly ConfirmationPopupController.Options _options;
+
+        public DoneRequest(int titleId, int descId, int doneId,
+            Action onDone,
+            ConfirmationPopupController.Options options)
+        {
+            _titleId = titleId;
+            _descId = descId;
+            _doneId = doneId;
+            _onDone = onDone;
+            _options = options;
+        }
+
+        public void Show(ConfirmationPopupController popup, Action onClosed)
+        {
+            popup.Show(
+                _titleId, _descId, _doneId,
+                onDone: () => { _onDone?.Invoke(); onClosed?.Invoke(); },
+                options: _options
+            );
+        }
+    }
+    #endregion
 }

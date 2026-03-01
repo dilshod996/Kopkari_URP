@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DG.Tweening;
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -27,6 +28,7 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private Button shootWebBtn;
     [SerializeField] private Button chainContainerBtn;
     [SerializeField] private Button pauseButton;
+    [SerializeField] private Slider cameraSwitchSlider;
     #endregion
 
     #region Inspector - Texts
@@ -67,13 +69,14 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private UIPauseGame pauseMenu;
     [SerializeField] private Image blinkOverlay;      // UI Image
 
-    [Header("Scale Settings")]
-    [SerializeField] private float startScale = 0.8f;
-    [SerializeField] private float punchScale = 1.1f;
-    [SerializeField] private float animTime = 0.2f;
+    [Header("Animation Settings")]
     [SerializeField] private float fadeTime = 0.2f;
-    [SerializeField] private LeanTweenType easeIn = LeanTweenType.easeOutBack;
-    [SerializeField] private LeanTweenType easeOut = LeanTweenType.easeInOutQuad;
+    [SerializeField] private float animTime = 0.35f;
+    [SerializeField] private float startScale = 0.85f;
+    [SerializeField] private float overshootScale = 1.05f;
+    [SerializeField] private float slideDistance = 300f;
+
+    private Tween _currentTween;
 
     public bool WeaponInHand;
     public Sprite obstacleHitSprite;
@@ -164,6 +167,7 @@ public class UIButtonActions : MonoBehaviour
         // ✅ UI start holatini to‘g‘ri qo‘yib olamiz
         SetSprintState(true);
         pauseButton.onClick.AddListener(PauseMenu);
+        cameraSwitchSlider.onValueChanged.AddListener(OnSliderChanged);
     }
 
     private void OnDisable()
@@ -329,17 +333,35 @@ public class UIButtonActions : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        page.SetActive(true);
-        rt.localScale = Vector3.one * startScale;
-        cg.alpha = 0f;
+        if (rt == null || cg == null) return;
 
-        LeanTween.alphaCanvas(cg, 1f, fadeTime);
-        LeanTween.scale(rt, Vector3.one * punchScale, animTime)
-            .setEase(easeIn)
-            .setOnComplete(() =>
-            {
-                LeanTween.scale(rt, Vector3.one, animTime * 0.7f).setEase(easeOut);
-            });
+        page.SetActive(true);
+
+        _currentTween?.Kill();
+
+        // Initial state
+        cg.alpha = 0f;
+        rt.localScale = Vector3.one * startScale;
+        rt.anchoredPosition = new Vector2(0, -slideDistance);
+
+        Sequence seq = DOTween.Sequence();
+
+        // Fade
+        seq.Join(cg.DOFade(1f, fadeTime));
+
+        // Slide up
+        seq.Join(rt.DOAnchorPos(Vector2.zero, animTime)
+            .SetEase(Ease.OutExpo));
+
+        // Scale overshoot
+        seq.Join(rt.DOScale(overshootScale, animTime * 0.8f)
+            .SetEase(Ease.OutBack));
+
+        // Return scale to 1
+        seq.Append(rt.DOScale(1f, 0.15f)
+            .SetEase(Ease.OutQuad));
+
+        _currentTween = seq;
     }
 
     public void HideUI(GameObject page)
@@ -349,10 +371,29 @@ public class UIButtonActions : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        LeanTween.alphaCanvas(cg, 0f, fadeTime);
-        LeanTween.scale(rt, Vector3.one * startScale, animTime)
-            .setEase(easeOut)
-            .setOnComplete(() => page.SetActive(false));
+        if (rt == null || cg == null) return;
+
+        _currentTween?.Kill();
+
+        Sequence seq = DOTween.Sequence();
+
+        // Fade out
+        seq.Join(cg.DOFade(0f, fadeTime));
+
+        // Slide down fast
+        seq.Join(rt.DOAnchorPos(new Vector2(0, -slideDistance), animTime)
+            .SetEase(Ease.InExpo));
+
+        // Slight shrink
+        seq.Join(rt.DOScale(startScale, animTime)
+            .SetEase(Ease.InQuad));
+
+        seq.OnComplete(() =>
+        {
+            page.SetActive(false);
+        });
+
+        _currentTween = seq;
     }
     #endregion
 
@@ -572,6 +613,7 @@ public class UIButtonActions : MonoBehaviour
     public void PlayShock()
     {
         hitCountSlider.value = Mathf.Max(0, hitCountSlider.value - 1);
+        HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
 
         if (hitCountSlider.value == 0 && !isFinished)
         {
@@ -814,6 +856,22 @@ public class UIButtonActions : MonoBehaviour
     {
         Debug.Log("[GAME FINISHED]" + isFinished);
         isFinished = true;
+    }
+    #endregion
+
+    #region Camera Switcher
+    private void OnSliderChanged(float value)
+    {
+        if (isFinished)
+            return;
+        if (value >= 0.5f)
+        {
+            RacingController.Instance.FirstPersonEnable();
+        }
+        else
+        {
+            RacingController.Instance.FirstPersonDisable();
+        }
     }
     #endregion
 }

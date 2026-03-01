@@ -104,9 +104,9 @@ public class UIUserLoose : MonoBehaviour
     }
     private void ContinueGame()
     {
-        if (BaseManager.Instance != null)
+        if (KopkariManager.Instance != null)
         {
-            BaseManager.Instance.ContinueGame();
+            KopkariManager.Instance.ContinueGame();
             //BaseManager.Instance.currentCondition = BaseManager.PlayerCondition.LoserSession;
             CloseAction();
         }

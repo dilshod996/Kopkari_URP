@@ -39,9 +39,9 @@ public class CameraTransitionManager : MonoBehaviour
 
         fadePanel.SetActive(false);
 
-        if (BaseManager.Instance != null)
+        if (KopkariManager.Instance != null)
         {
-            BaseManager.Instance.StartGame();
+            KopkariManager.Instance.StartGame();
             Debug.Log("Game started from cameratransition");
         }
         else

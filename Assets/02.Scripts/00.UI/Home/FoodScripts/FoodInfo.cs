@@ -67,6 +67,7 @@ public class FoodInfo : MonoBehaviour
         {
             
             OnMoneyNotEnough?.Invoke();
+            HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             SoundManager.Instance.PlayUI(UISoundType.Error);
         }
     }

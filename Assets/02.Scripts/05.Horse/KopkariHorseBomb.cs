@@ -54,8 +54,8 @@ public class KopkariHorseBomb : MonoBehaviour
 
     void Start()
     {
-        if (explosionPool == null && BaseManager.Instance != null)
-            explosionPool = BaseManager.Instance.pool;
+        if (explosionPool == null && KopkariManager.Instance != null)
+            explosionPool = KopkariManager.Instance.pool;
     }
 
     void OnEnable()

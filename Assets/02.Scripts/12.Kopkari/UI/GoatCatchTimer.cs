@@ -31,15 +31,15 @@ public class GoatCatchTimer : MonoBehaviour
     private void OnEnable()
     {
         // Local player uloq oldi/yo‘qotdi (bool hasGoat)
-        BaseManager.OnGoatPicked += HandleLocalGoatState;
+        KopkariManager.OnGoatPicked += HandleLocalGoatState;
         // Masalan raund qayta start bo‘lganda majburan yopish
-        BaseManager.OnGameStarted += ForceHide;
+        KopkariManager.OnGameStarted += ForceHide;
     }
 
     private void OnDisable()
     {
-        BaseManager.OnGoatPicked -= HandleLocalGoatState;
-        BaseManager.OnGameStarted -= ForceHide;
+        KopkariManager.OnGoatPicked -= HandleLocalGoatState;
+        KopkariManager.OnGameStarted -= ForceHide;
 
         StopCountdown();
     }

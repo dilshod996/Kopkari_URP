@@ -118,7 +118,7 @@ public class AttackDefendManager : MonoBehaviour
     #region Speed Booster
     public void SprintByTime(float duration = 5f)
     {
-        MAnimal animal = BaseManager.Instance.horseAnimal;
+        MAnimal animal = KopkariManager.Instance.horseAnimal;
 
         if (animal != null)
         {

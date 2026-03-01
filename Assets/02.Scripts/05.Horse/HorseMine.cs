@@ -42,11 +42,11 @@ public class HorseMine : MonoBehaviour
         if (obstacleSensor != null)
             obstacleSensor.OnTouched += OnObstacleTouched;
 
-        BaseManager.OnGameStarted += BeginCheck;
-        BaseManager.OnStartPoint += StartPoint;
-        if (BaseManager.CurrentStartPoint != null)
+        KopkariManager.OnGameStarted += BeginCheck;
+        KopkariManager.OnStartPoint += StartPoint;
+        if (KopkariManager.CurrentStartPoint != null)
         {
-            StartPoint(BaseManager.CurrentStartPoint, BaseManager.CurrentWarmupTime);
+            StartPoint(KopkariManager.CurrentStartPoint, KopkariManager.CurrentWarmupTime);
         }
     }
 
@@ -54,8 +54,8 @@ public class HorseMine : MonoBehaviour
     {
         if (obstacleSensor != null)
             obstacleSensor.OnTouched -= OnObstacleTouched;
-        BaseManager.OnGameStarted -= BeginCheck;
-        BaseManager.OnStartPoint -= StartPoint;
+        KopkariManager.OnGameStarted -= BeginCheck;
+        KopkariManager.OnStartPoint -= StartPoint;
     }
 
     #region Penalty Section

@@ -31,7 +31,7 @@ public class TargetReachEvent : MonoBehaviour
         bool isNpc = riderRoot.CompareTag("NPC");
         Debug.Log($"Entered to final pos and is NPC {isNpc} or is Player {isPlayer}");
         if (!isPlayer && !isNpc) return;
-        var bm = BaseManager.Instance;
+        var bm = KopkariManager.Instance;
         if (bm == null) return;
         if (bm.currentGoatOwner == null) return;
         if (bm.currentGoatOwner != riderRoot.gameObject) return;
@@ -59,7 +59,7 @@ public class TargetReachEvent : MonoBehaviour
         // 3) Player bo‘lsa BaseManager flow
         if (isPlayer)
         {
-            BaseManager.Instance?.MarkPlayerReachedTarget();
+            KopkariManager.Instance?.MarkPlayerReachedTarget();
         }
 
         triggerLocked = true;

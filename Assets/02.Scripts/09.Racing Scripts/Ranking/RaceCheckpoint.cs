@@ -132,13 +132,14 @@ public class RaceCheckpoint : MonoBehaviour
     // -------------------- WEB SNARE --------------------
     private void TryScheduleWebSnare(RacingAgent agent, int rank)
     {
+        if(RacingController.Instance.IsRaceOver)  return; 
         if (webSnarePrefab == null) return;
         if (agent == null || agent.HasFinished) return;
 
         if (_shootInProgress.Contains(agent)) return;
 
         // Rank rules
-        if (rank == 6 || rank == 7) return; // umuman otmaydi
+        if (rank == 8 || rank == 7 || rank == 9) return; // umuman otmaydi
 
         bool forceShoot = (rank >= 1 && rank <= 3); // top-3: "auto urish" (player/ai farqsiz)
 

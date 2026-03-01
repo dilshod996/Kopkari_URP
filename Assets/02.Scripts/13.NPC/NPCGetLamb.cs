@@ -79,7 +79,7 @@ public class NPCGetLamb : MonoBehaviour
                 // ✅ AI ham uloq egasi sifatida ro‘yxatdan o‘tadi
                 if (BaseManager.Instance != null)
                 {
-                    BaseManager.Instance.NotifyGoatOwner(transform.root.gameObject, true);
+                    KopkariManager.Instance.NotifyGoatOwner(transform.root.gameObject, true);
                 }
 
 #if UNITY_EDITOR
@@ -180,13 +180,13 @@ public class NPCGetLamb : MonoBehaviour
     private void DropItemAndRetry()
     {
         isItemPicked = false;
-        if(BaseManager.Instance.currentCondition == BaseManager.PlayerCondition.TakenTargetOthers)
+        if(KopkariManager.Instance.currentCondition == KopkariManager.PlayerCondition.TakenTargetOthers)
         {
             pickUp?.DropItem();
         }
-        if(BaseManager.Instance.currentCondition != BaseManager.PlayerCondition.LoserSession)
+        if(KopkariManager.Instance.currentCondition != KopkariManager.PlayerCondition.LoserSession)
         {
-            BaseManager.Instance.currentCondition = BaseManager.PlayerCondition.None;
+            KopkariManager.Instance.currentCondition = KopkariManager.PlayerCondition.None;
         }
         
 

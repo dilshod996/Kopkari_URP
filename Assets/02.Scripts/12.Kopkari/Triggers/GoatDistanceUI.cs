@@ -59,12 +59,12 @@ public class GoatDistanceUI : MonoBehaviour
     void OnEnable()
     {
         // SENING event: 1=horse, 2=player(rider)
-        BaseManager.OnHorseTransform += OnSpawnedRiderAndHorse; // BaseManager nomi o'zingda qanaqa bo'lsa o'sha
+        KopkariManager.OnHorseTransform += OnSpawnedRiderAndHorse; // BaseManager nomi o'zingda qanaqa bo'lsa o'sha
     }
 
     void OnDisable()
     {
-        BaseManager.OnHorseTransform -= OnSpawnedRiderAndHorse;
+        KopkariManager.OnHorseTransform -= OnSpawnedRiderAndHorse;
     }
 
     private void OnSpawnedRiderAndHorse(Transform playerTransform)
@@ -119,7 +119,7 @@ public class GoatDistanceUI : MonoBehaviour
     }
     void ShowWarning()
     {
-        BaseManager.Instance?.speechBubble.ShowPopup("You are out of Kopkari! Return to the goat!");
+        KopkariManager.Instance?.speechBubble.ShowPopup("You are out of Kopkari! Return to the goat!");
         // UI popup yoki HUD text
         //Debug.Log("You are out of Kopkari! Return to the goat!");
     }

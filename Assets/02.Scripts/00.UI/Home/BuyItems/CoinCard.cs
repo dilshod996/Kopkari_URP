@@ -67,12 +67,14 @@ public class CoinCard : MonoBehaviour
             if(costNum>nyufiyAmount)
             {
                 // Demak nyufiy yetarli emas
-               // Debug.Log("Nyufiy yetarli emasss");
+                // Debug.Log("Nyufiy yetarli emasss");
+                HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
                 OnMoneyNotEnough?.Invoke();
             }
             else
             {
                 int qorakAmount = PlayerPrefs.GetInt(Constants.Coins.Coin,0);
+                HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
                 nyufiyAmount -= (int)costNum;
                 qorakAmount = qorakAmount + mainAmountNum + bonusAmountNum;
                 PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);

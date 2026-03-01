@@ -118,7 +118,7 @@ public class UIGetLamp : MonoBehaviour
 
     private void PerformAction()
     {
-        BaseManager.Instance.LambOwner = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+        KopkariManager.Instance.LambOwner = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         BoosterUIAnimator.RaiseBoosterPicked(
             Booster.BoosterType.GetUlak,
             uloqHeadSprite // icon sprite

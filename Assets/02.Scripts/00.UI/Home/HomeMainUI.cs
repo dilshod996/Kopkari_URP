@@ -46,17 +46,20 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private float punchScaleM = 1.2f;
     [SerializeField] private float scaleTime = 0.2f;
 
-    [Header("Scale Settings")]
-    [SerializeField] private float startScale = 0.8f;
-    [SerializeField] private float punchScale = 1.1f;
-    [SerializeField] private float animTime = 0.2f;
-    [SerializeField] private LeanTweenType easeIn = LeanTweenType.easeOutBack;
-    [SerializeField] private LeanTweenType easeOut = LeanTweenType.easeInOutQuad;
-
-    [Header("Fade Settings For UI Pages")]
-
+    [Header("Animation Settings")]
     [SerializeField] private float fadeTime = 0.2f;
+    [SerializeField] private float animTime = 0.35f;
+    [SerializeField] private float startScale = 0.85f;
+    [SerializeField] private float overshootScale = 1.05f;
+    [SerializeField] private float slideDistance = 300f;
 
+    private Tween _currentTween;
+    [Header("Neon Border")]
+    [SerializeField] private Image borderImage;
+    [SerializeField] private Color flashColor = new Color(0f, 1f, 1f, 1f); // cyan
+    [SerializeField] private float flashDuration = 0.15f;
+
+    private Color _originalBorderColor;
 
     [SerializeField] private float durationHorseResouceBg = 5f;     // qancha davom etadi
     [SerializeField] private float scaleMin = 1f;     // boshlanish scale
@@ -450,29 +453,57 @@ public class HomeMainUI : MonoBehaviour
     #region SHow and Hide UI Pages
     public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
     public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
-
     public void ShowUI(GameObject page)
     {
         if (!page) return;
 
         RectTransform rt = page.GetComponent<RectTransform>();
-        CanvasGroup cg = page.GetComponent<CanvasGroup>(); // oldindan bor deb faraz qilamiz
+        CanvasGroup cg = page.GetComponent<CanvasGroup>();
+
+        if (rt == null || cg == null) return;
 
         page.SetActive(true);
-        rt.localScale = Vector3.one * startScale;
+        _currentTween?.Kill();
+
+        // Initial state
         cg.alpha = 0f;
+        rt.localScale = Vector3.one * startScale;
+        rt.anchoredPosition = new Vector2(0, -slideDistance);
 
-        // fade
-        LeanTween.alphaCanvas(cg, 1f, fadeTime);
+        Sequence seq = DOTween.Sequence();
 
-        // scale
-        LeanTween.scale(rt, Vector3.one * punchScale, animTime)
-            .setEase(easeIn)
-            .setOnComplete(() =>
-            {
-                LeanTween.scale(rt, Vector3.one, animTime * 0.7f)
-                    .setEase(easeOut);
-            });
+        // Fade
+        seq.Join(cg.DOFade(1f, fadeTime));
+
+        // Slide
+        seq.Join(rt.DOAnchorPos(Vector2.zero, animTime)
+            .SetEase(Ease.OutExpo));
+
+        // Scale overshoot
+        seq.Join(rt.DOScale(overshootScale, animTime * 0.8f)
+            .SetEase(Ease.OutBack));
+
+        seq.Append(rt.DOScale(1f, 0.15f)
+            .SetEase(Ease.OutQuad));
+
+        // 🔥 Neon Flash Effect
+        if (borderImage != null)
+        {
+            borderImage.gameObject.SetActive(true);
+
+            borderImage.color = _originalBorderColor;
+
+            borderImage
+                .DOColor(flashColor, flashDuration)
+                .SetLoops(2, LoopType.Yoyo)
+                .SetEase(Ease.InOutQuad)
+                .OnComplete(() =>
+                {
+                    borderImage.gameObject.SetActive(false);
+                });
+        }
+
+        _currentTween = seq;
     }
 
     public void HideUI(GameObject page)
@@ -482,16 +513,29 @@ public class HomeMainUI : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        // fade
-        LeanTween.alphaCanvas(cg, 0f, fadeTime);
+        if (rt == null || cg == null) return;
 
-        // scale + deactivate
-        LeanTween.scale(rt, Vector3.one * startScale, animTime)
-            .setEase(easeOut)
-            .setOnComplete(() =>
-            {
-                page.SetActive(false);
-            });
+        _currentTween?.Kill();
+
+        Sequence seq = DOTween.Sequence();
+
+        // Fade out
+        seq.Join(cg.DOFade(0f, fadeTime));
+
+        // Slide down fast
+        seq.Join(rt.DOAnchorPos(new Vector2(0, -slideDistance), animTime)
+            .SetEase(Ease.InExpo));
+
+        // Slight shrink
+        seq.Join(rt.DOScale(startScale, animTime)
+            .SetEase(Ease.InQuad));
+
+        seq.OnComplete(() =>
+        {
+            page.SetActive(false);
+        });
+
+        _currentTween = seq;
     }
     #endregion
 

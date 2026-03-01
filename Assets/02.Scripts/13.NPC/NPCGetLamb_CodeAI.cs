@@ -62,7 +62,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
 
     private void OnEnable()
     {
-        BaseManager.OnGameStarted += OnGameStart;
+        KopkariManager.OnGameStarted += OnGameStart;
         HorseMine.OnReachedStartTarget += OnPlayerReachedStart;
         TargetReachEvent.OnReachedTargetWithLamb += HandleReachedTargetWithLamb;
         TargetReachEvent.OnRoundEnded += HandleFinish;
@@ -71,7 +71,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
 
     private void OnDisable()
     {
-        BaseManager.OnGameStarted -= OnGameStart;
+        KopkariManager.OnGameStarted -= OnGameStart;
         HorseMine.OnReachedStartTarget -= OnPlayerReachedStart;
         TargetReachEvent.OnReachedTargetWithLamb -= HandleReachedTargetWithLamb;
         TargetReachEvent.OnRoundEnded -= HandleFinish;
@@ -101,7 +101,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         }
         else if (target == finishPoint)
         {
-            BaseManager.Instance?.FinalPosState(true);
+            KopkariManager.Instance?.FinalPosState(true);
             ai.StoppingDistance = 0.7f;
         }
         else if(target == targetPoint)
@@ -345,7 +345,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         hasLamb = false;
 
         // BaseManager’ga xabar berish (ixtiyoriy)
-        BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
+        KopkariManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
 
         // Timeout → yana uloqqa yuramiz
         if (lambPoint != null)
@@ -362,7 +362,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
             KopkariResultsManager.Instance.OnLambPicked(id);
             hasLamb = true;
             // BaseManager’ga xabar berish (agar sendagi NotifyGoatOwner bo‘lsa)
-            BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, true);
+            KopkariManager.Instance?.NotifyGoatOwner(transform.root.gameObject, true);
 
             // 1-checkpointdan boshlaymiz
             currentCheckpointIndex = FindNextCheckpointIndex();
@@ -497,10 +497,10 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         }
         lambPoint.gameObject.SetActive(false);
         //DropLamb(); // NPCning o‘z drop metodi
-        var bm = BaseManager.Instance;
+        var bm = KopkariManager.Instance;
         bm.NotifyGoatOwner(transform.root.gameObject, false);
-        bm.roomState = BaseManager.RoomState.GameFinished;
-        BaseManager.OnGameStartFinishState?.Invoke(false);
+        bm.roomState = KopkariManager.RoomState.GameFinished;
+        KopkariManager.OnGameStartFinishState?.Invoke(false);
 
         // qo‘shimcha: AI stop, celebrate anim, state reset...
     }
@@ -548,7 +548,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
             pickUp.DropItem();
         }
 
-        BaseManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
+        KopkariManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
 
         // Endi yana uloqqa qaytamiz
         if (lambPoint != null)

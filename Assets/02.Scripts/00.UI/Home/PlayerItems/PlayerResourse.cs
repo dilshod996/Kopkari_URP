@@ -19,17 +19,18 @@ public class PlayerResourse : MonoBehaviour
     [SerializeField] private Resources playerResources = Resources.None;
     [SerializeField] private Button buyButton;
     [SerializeField] private TMP_Text resourseName;
-    [SerializeField] private TMP_Text resourceAmount;
     [SerializeField] private TMP_Text resourseCost;
     [SerializeField] private Image iconImage;
     [SerializeField] private int resourseTransilationId;
     [SerializeField] private int costOfResource;
     public static event Action OnMoneyNotEnough;
     public static event Action OnNyufiyUpdated;
-    public static event Action<string> OnResourseUpdated;
+
 
     private string itemName;
     private int itemAmount;
+    public static event Action<string> OnResourseUpdated;
+    public static event Action<Resources, int> OnResourseBought;
     private void OnEnable()
     {
         UITransilation();
@@ -66,7 +67,7 @@ public class PlayerResourse : MonoBehaviour
         int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
         if (nyufiyAmount < costOfResource)
         {
-           
+            HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             // money not enough text
             OnMoneyNotEnough?.Invoke();
             SoundManager.Instance?.PlayUI(UISoundType.Error);
@@ -111,9 +112,10 @@ public class PlayerResourse : MonoBehaviour
 
         itemAmount += 1; 
         PlayerPrefs.SetInt(itemName, itemAmount);
-        resourceAmount.text = $"{itemAmount}X";
+       // resourceAmount.text = $"{itemAmount}X";
         PlayerPrefs.SetInt(Constants.Coins.Nyufiy, newNyufiyAmount);
-       // OnNyufiyUpdated?.Invoke();
+        OnResourseBought?.Invoke(playerResources, itemAmount);
+        // OnNyufiyUpdated?.Invoke();
         OnResourseUpdated?.Invoke(itemName);
         SoundManager.Instance?.PlayUI(UISoundType.Success);
     }
@@ -123,7 +125,7 @@ public class PlayerResourse : MonoBehaviour
         if (string.IsNullOrEmpty(itemName))
             return; // noma'lum resource bo'lsa hech narsa qilmaymiz
         itemAmount = PlayerPrefs.GetInt(itemName, 0);
-        resourceAmount.text = $"{itemAmount}X";
+       // resourceAmount.text = $"{itemAmount}X";
     }
     private string GetItemKey(Resources resource)
     {
