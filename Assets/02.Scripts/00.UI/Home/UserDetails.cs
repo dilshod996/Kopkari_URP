@@ -1,4 +1,4 @@
-using Michsky.UI.ModernUIPack;
+ï»¿using Michsky.UI.ModernUIPack;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -35,14 +35,38 @@ public class UserDetails : MonoBehaviour
     [SerializeField] private GameObject nameContainerObj;
     void Start()
     {
-        string currentUsername = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        nameInputField.text = currentUsername;
+        if (PlayerPrefs.HasKey(Constants.Player.UsernameKey))
+        {
+            string currentUsername = PlayerPrefs.GetString(Constants.Player.UsernameKey);
+            nameInputField.text = currentUsername;
+        }
 
-        // Save tugmasiga listener qo¡®shish
+        // Save tugmasiga listener qoâ€˜shish
         saveButton.onClick.AddListener(SaveUsername);
         closeButton.onClick.AddListener(CloseEvent);
+        nameInputField.onEndEdit.AddListener(OnNameInputClosed);
+        //ShowNameFieldShower();
     }
+    private void ShowNameFieldShower()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        {
+            StartCoroutine(DelayNameFieldShow());
 
+        }
+    }
+    IEnumerator DelayNameFieldShow()
+    {
+        yield return new WaitForEndOfFrame(); 
+        //HomeMainUI.Instance.ShowNameField();
+    }
+    public void OnNameInputClosed(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            HomeMainUI.Instance.ShowSaveBtn(); // Save button tutorial
+        }
+    }
     private void SaveUsername()
     {
         string newUsername = nameInputField.text.Trim();
@@ -54,16 +78,13 @@ public class UserDetails : MonoBehaviour
             playerName.text = newUsername;
             PlayerPrefs.SetInt(Constants.Player.CountryName, countryDropdown.selectedItemIndex);
             PlayerPrefs.Save();
-            gameObject.SetActive(false);
-            //if (!PlayerPrefs.HasKey("horseData"))
-            //{
-            //    playerPrefsObj.gameObject.SetActive(true);
-            //    playerPrefsObj.HorseDataCheck();
-            //}
+            HomeMainUI.Instance.UpdatePlayerName(newUsername);
+            //gameObject.SetActive(false);
+            HomeMainUI.Instance.FinishNameTutorial();
         }
         else
         {
-            StartScaleLoop(nameContainerObj);
+            //StartScaleLoop(nameContainerObj);
             Debug.Log("Username bo'sh bo'lishi mumkin emas.");
         }
 
@@ -71,18 +92,18 @@ public class UserDetails : MonoBehaviour
     }
     private void OnEnable()
     {
-        nameContainerObj.transform.localScale = Vector3.one; // Reset scale to original size
+       // nameContainerObj.transform.localScale = Vector3.one; // Reset scale to original size
         CountrySelection();
         UITransilations();
     }
 
     private void CloseEvent()
     {
-        HomeMainUI.Instance.HideUI(this);
-        if (!PlayerPrefs.HasKey(Constants.Player.UsernameKey))
-        {
-            StartScaleLoop(nameContainerObj);
-        }
+        HomeMainUI.Instance.CloseUserDetailsPanel();
+        //if (!PlayerPrefs.HasKey(Constants.Player.UsernameKey))
+        //{
+        //    StartScaleLoop(nameContainerObj);
+        //}
         //else
         //{
         //    gameObject.SetActive(false);

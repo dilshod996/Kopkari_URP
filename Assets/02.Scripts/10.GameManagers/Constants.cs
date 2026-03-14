@@ -63,6 +63,12 @@ public static class Constants
     public static class Tutorial
     {
         public const string GamePlay = "GamePlayTutorial";
+        public const string Name = "playerName";
+        public const string Play = "play";
+        public const string TutorialPlay = "tutorialRoom";
+        public const string Settings = "settings";
+        public const string HomeTutorial = "homeDone";
+        public const string TutorialReward = "tutoreward";
     }
     public static class Initialize
     {
@@ -125,6 +131,7 @@ public static class Constants
     }
     public static class MapNames
     {
+        public const string RacingTraining = "racingTrain";
         public const string Zarafshan = "zarafmap";
         public const string Registan = "regismap";
         public const string Egypt = "egyptmap";
@@ -184,5 +191,10 @@ public static class Constants
         public const float Power = 20f;
         public const float Cool = 10f;
         public const float Stamina = 30f;
+    }
+    public static class Level
+    {
+        public const string CurrentLevel = "level";
+        public const string LevelAmount = "levelAmount";
     }
 }

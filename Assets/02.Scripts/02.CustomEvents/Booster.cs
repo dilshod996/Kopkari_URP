@@ -93,7 +93,7 @@ public class Booster : MonoBehaviour
         bool isPlayer = other.CompareTag("Player");
         bool isNpc = other.CompareTag("NPC");
         if (!isPlayer && !isNpc) return;
-
+        if (isNpc && RacingController.Instance?.mapType == RacingController.RacingType.Training && boosterType == BoosterType.WebSnare) return;
         if (mode == BoosterMode.Pickup)
         {
             HandlePickup(other, isPlayer, isNpc);
@@ -101,6 +101,7 @@ public class Booster : MonoBehaviour
         else // Zone
         {
             HandleZone(other, isPlayer, isNpc);
+            //RacingTutorials.OnItemPickedMode?.Invoke(mode);
         }
     }
 
@@ -115,10 +116,23 @@ public class Booster : MonoBehaviour
 
         if (isPlayer)
             PlayPickupFeedback();
-
+        DisableAndDespawn();
+        if (RacingController.Instance.mapType==RacingController.RacingType.Training)
+        {
+            RacingTutorials.OnItemPicked?.Invoke(boosterType, mode);
+            if(boosterType == BoosterType.SprintFull)
+            {
+                if (isPlayer) OnSprintFull?.Invoke();
+            }
+            else if(boosterType == BoosterType.SetSpeedSprint)
+            {
+                boosters.TriggerBoostSpeed();
+            }
+            return;
+        }
         ApplyPickupEffect(boosters, isPlayer);
 
-        DisableAndDespawn();
+
     }
 
     private void HandleZone(Collider other, bool isPlayer, bool isNpc)
@@ -154,7 +168,7 @@ public class Booster : MonoBehaviour
         if (isPlayer)
         {
             PlayPickupFeedback();
-            
+            RacingTutorials.OnItemPicked?.Invoke(BoosterType.WalkZone, mode);
         }
 
         boosters.SetDebuff(BoostersContainer.DebuffState.WalkZone);

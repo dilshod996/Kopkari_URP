@@ -75,7 +75,11 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private float startScale = 0.85f;
     [SerializeField] private float overshootScale = 1.05f;
     [SerializeField] private float slideDistance = 300f;
-
+    [Header("Neon Border")]
+    [SerializeField] private Image borderImage;
+    [SerializeField] private Color flashColor = new Color(0f, 1f, 1f, 1f); // cyan
+    [SerializeField] private float flashDuration = 0.15f;
+    private Color _originalBorderColor;
     private Tween _currentTween;
 
     public bool WeaponInHand;
@@ -233,11 +237,13 @@ public class UIButtonActions : MonoBehaviour
     {
         if (_pausedByApp) return; // ✅ double-calldan saqlaydi
         _pausedByApp = true;
-
-        pauseMenu.gameObject.SetActive(true);
-
+        var racingController = RacingController.Instance;
+        if(racingController.mapType != RacingController.RacingType.Training)
+        {
+            pauseMenu.gameObject.SetActive(true);
+        }
         // ✅ global timer pause
-        RacingController.Instance?.PauseRaceTime();
+        racingController.PauseRaceTime();
 
         // ixtiyoriy: agar audio/vfx ham to‘xtasin desa
         // Time.timeScale = 0f;  // (agar sen game’ni to‘liq muzlatmoqchi bo‘lsang)
@@ -326,7 +332,7 @@ public class UIButtonActions : MonoBehaviour
     public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
     public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
 
-    public void ShowUI(GameObject page)
+    public void ShowUI(GameObject page, Action onComplete = null)
     {
         if (!page) return;
 
@@ -336,35 +342,44 @@ public class UIButtonActions : MonoBehaviour
         if (rt == null || cg == null) return;
 
         page.SetActive(true);
-
         _currentTween?.Kill();
 
-        // Initial state
         cg.alpha = 0f;
         rt.localScale = Vector3.one * startScale;
         rt.anchoredPosition = new Vector2(0, -slideDistance);
 
         Sequence seq = DOTween.Sequence();
 
-        // Fade
         seq.Join(cg.DOFade(1f, fadeTime));
+        seq.Join(rt.DOAnchorPos(Vector2.zero, animTime).SetEase(Ease.OutExpo));
+        seq.Join(rt.DOScale(overshootScale, animTime * 0.8f).SetEase(Ease.OutBack));
+        seq.Append(rt.DOScale(1f, 0.15f).SetEase(Ease.OutQuad));
 
-        // Slide up
-        seq.Join(rt.DOAnchorPos(Vector2.zero, animTime)
-            .SetEase(Ease.OutExpo));
+        if (borderImage != null)
+        {
+            borderImage.gameObject.SetActive(true);
+            borderImage.color = _originalBorderColor;
 
-        // Scale overshoot
-        seq.Join(rt.DOScale(overshootScale, animTime * 0.8f)
-            .SetEase(Ease.OutBack));
+            borderImage
+                .DOColor(flashColor, flashDuration)
+                .SetLoops(2, LoopType.Yoyo)
+                .SetEase(Ease.InOutQuad)
+                .OnComplete(() =>
+                {
+                    borderImage.gameObject.SetActive(false);
+                });
+        }
 
-        // Return scale to 1
-        seq.Append(rt.DOScale(1f, 0.15f)
-            .SetEase(Ease.OutQuad));
+        seq.OnComplete(() =>
+        {
+            Canvas.ForceUpdateCanvases();
+            onComplete?.Invoke();
+        });
 
         _currentTween = seq;
     }
 
-    public void HideUI(GameObject page)
+    public void HideUI(GameObject page, Action onComplete = null)
     {
         if (!page) return;
 
@@ -391,6 +406,7 @@ public class UIButtonActions : MonoBehaviour
         seq.OnComplete(() =>
         {
             page.SetActive(false);
+            onComplete?.Invoke();
         });
 
         _currentTween = seq;
@@ -557,9 +573,6 @@ public class UIButtonActions : MonoBehaviour
         int slowCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
         int webCount = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
 
-        if (webCount == 0) webCount = 4;
-        if (slowCount < 1) slowCount = 5;
-
         int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
 
         InitializeData(defCount, slowCount, whipCount, webCount);
@@ -586,7 +599,7 @@ public class UIButtonActions : MonoBehaviour
     {
         if (walkZoneBtn)
         {
-            walkZoneBtn.onClick.RemoveAllListeners();
+           // walkZoneBtn.onClick.RemoveAllListeners();
             walkZoneBtn.onClick.AddListener(() =>
             {
                 if (boosters != null && !boosters.isNpc)
@@ -596,7 +609,7 @@ public class UIButtonActions : MonoBehaviour
 
         if (defendBtn)
         {
-            defendBtn.onClick.RemoveAllListeners();
+            //defendBtn.onClick.RemoveAllListeners();
             defendBtn.onClick.AddListener(() =>
             {
                 if (boosters != null && !boosters.isNpc)
@@ -612,6 +625,9 @@ public class UIButtonActions : MonoBehaviour
     #region UI Effects (minimal)
     public void PlayShock()
     {
+        if(!hitCountSlider.gameObject.activeSelf)
+            return;
+        
         hitCountSlider.value = Mathf.Max(0, hitCountSlider.value - 1);
         HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
 
@@ -634,6 +650,13 @@ public class UIButtonActions : MonoBehaviour
 
     public void OnWebSnoreButtonDown(BaseEventData data)
     {
+        if (RacingController.Instance?.mapType == RacingController.RacingType.Training)
+        {
+            StartCoroutine(OnShootCooling(6));
+            OnWebSnareStart?.Invoke();
+            return;
+        }
+
         int countSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
         if (countSnare > 0) countSnare--;
 
@@ -651,7 +674,12 @@ public class UIButtonActions : MonoBehaviour
         else chainContainerBtn.interactable = true;
     }
 
-    public void OnWebSnoreButtonUp(BaseEventData data) => OnWebSnareFinish?.Invoke();
+    public void OnWebSnoreButtonUp(BaseEventData data)
+    {
+        //if (RacingController.Instance?.mapType == RacingController.RacingType.Training)
+        //    return;
+        OnWebSnareFinish?.Invoke(); 
+    }
 
     public void OnClickChain()
     {
@@ -673,10 +701,17 @@ public class UIButtonActions : MonoBehaviour
     {
         ShowUI(resultPage);
     }
-
+    public void ShowResultTutorial()
+    {
+        ShowUI(resultPage, RacingTutorials.OnShowResultPageTutorial);
+    }
     public void DisableShootChainOrSprint()
     {
         if (sprintImg != null && sprintImg.gameObject.activeSelf) sprintImg.gameObject.SetActive(false);
+        HideShootChain();
+    }
+    public void HideShootChain()
+    {
         if (WeaponInHand) OnClickChain();
     }
     #endregion

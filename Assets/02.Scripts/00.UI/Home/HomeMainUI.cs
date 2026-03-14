@@ -79,6 +79,8 @@ public class HomeMainUI : MonoBehaviour
     [Header("UI Pages")]
 
     [SerializeField] private GameplayMode playMode;
+    [SerializeField] private GameObject racingMaps;
+    [SerializeField] private GameObject leaguePanel;
     [SerializeField] private GameObject collectionsPage;
     [SerializeField] private GameObject marketPage;
     [SerializeField] private GameObject racingFields;
@@ -95,6 +97,8 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private EnvironmentChangeUI environmentChangePanel;
     [SerializeField] private EnvironmentLoadingUI environmentLoadingUI;
     [SerializeField] private ConditionCheck conditionCheckObj;
+    [SerializeField] private GameObject tutorialPanels;
+    [SerializeField] private EsportUITutorial tutorial;
 
     #region Horse and Player Data
 
@@ -125,14 +129,14 @@ public class HomeMainUI : MonoBehaviour
 
 
     #region Popup UI
-    [Header("PopupUI")]
-    [SerializeField] private RectTransform popupRect;
-    [SerializeField] private TMP_Text popupText;
-    private Vector2 hiddenPos = new Vector2(0, 120f);   
-    private Vector2 shownPos = new Vector2(0, -120f);  
-    private float animTimePopup = 0.4f;     
-    [SerializeField] private float appearTime = 4f;
-    private Coroutine activeRoutinePopup;
+    //[Header("PopupUI")]
+    //[SerializeField] private RectTransform popupRect;
+    //[SerializeField] private TMP_Text popupText;
+    //private Vector2 hiddenPos = new Vector2(0, 120f);   
+    //private Vector2 shownPos = new Vector2(0, -120f);  
+    //private float animTimePopup = 0.4f;     
+    //[SerializeField] private float appearTime = 4f;
+    //private Coroutine activeRoutinePopup;
     #endregion
 
     #region Update Horse resources timing
@@ -147,7 +151,10 @@ public class HomeMainUI : MonoBehaviour
     #region Right Popup
     [Header("UI")]
     [SerializeField] private RightPopup rightPopup;
-    
+
+    #endregion
+    #region Map Sprites
+    [SerializeField] private Sprite zarafshanSprite;
     #endregion
 
     public event Action<bool> OnCoinsButtonPressed;
@@ -169,7 +176,7 @@ public class HomeMainUI : MonoBehaviour
     {
         ApplyOfflineRegen();
         AvailableMap();
-        TryOpenDailyRewardIfAvailable();
+        CheckHomeTutorial();
         saleBtn.onClick.AddListener(OnClickNextDayDebug);
         lastInputTime = Time.realtimeSinceStartup;
 
@@ -187,7 +194,7 @@ public class HomeMainUI : MonoBehaviour
         FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
         LobbyManager.OnNameChanged += LobbyName;
-        StartingInfo();
+        //StartingInfo();
         playBtn.onClick.AddListener(OpenGameMainPanel);
         marketBtn.onClick.AddListener(OpenMarketPage);
         nyufiyButton.onClick.AddListener(NyufiyClicked);
@@ -195,6 +202,8 @@ public class HomeMainUI : MonoBehaviour
         collectionBtn.onClick.AddListener(OpenCollectionPage);
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
+        NameTutorial();
+        CheckTutorialRewardOnReturn();
     }
     private void OnDisable()
     {
@@ -287,18 +296,21 @@ public class HomeMainUI : MonoBehaviour
 
         // Coins – default 0
         int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
-        if (nyufiyAmount < 1000)
-        {
-            nyufiyAmount = 4000;
-            PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
-        }
+        //if (nyufiyAmount < 1000)
+        //{
+        //    nyufiyAmount = 4000;
+        //    PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
+        //}
         int coinAmount = GetOrInitInt(Constants.Coins.Coin, 0);
 
         // Formatlash xohishingga qarab
         nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
         coinText.text = coinAmount > 0 ? $"{coinAmount:N0}" : "0";
     }
-
+    public void UpdatePlayerName(string value)
+    {
+        playerName.text = value;
+    }
     public void UpdateNyufiy()
     {
         int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
@@ -453,7 +465,7 @@ public class HomeMainUI : MonoBehaviour
     #region SHow and Hide UI Pages
     public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
     public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
-    public void ShowUI(GameObject page)
+    public void ShowUI(GameObject page, Action onComplete = null)
     {
         if (!page) return;
 
@@ -465,32 +477,20 @@ public class HomeMainUI : MonoBehaviour
         page.SetActive(true);
         _currentTween?.Kill();
 
-        // Initial state
         cg.alpha = 0f;
         rt.localScale = Vector3.one * startScale;
         rt.anchoredPosition = new Vector2(0, -slideDistance);
 
         Sequence seq = DOTween.Sequence();
 
-        // Fade
         seq.Join(cg.DOFade(1f, fadeTime));
+        seq.Join(rt.DOAnchorPos(Vector2.zero, animTime).SetEase(Ease.OutExpo));
+        seq.Join(rt.DOScale(overshootScale, animTime * 0.8f).SetEase(Ease.OutBack));
+        seq.Append(rt.DOScale(1f, 0.15f).SetEase(Ease.OutQuad));
 
-        // Slide
-        seq.Join(rt.DOAnchorPos(Vector2.zero, animTime)
-            .SetEase(Ease.OutExpo));
-
-        // Scale overshoot
-        seq.Join(rt.DOScale(overshootScale, animTime * 0.8f)
-            .SetEase(Ease.OutBack));
-
-        seq.Append(rt.DOScale(1f, 0.15f)
-            .SetEase(Ease.OutQuad));
-
-        // 🔥 Neon Flash Effect
         if (borderImage != null)
         {
             borderImage.gameObject.SetActive(true);
-
             borderImage.color = _originalBorderColor;
 
             borderImage
@@ -503,10 +503,16 @@ public class HomeMainUI : MonoBehaviour
                 });
         }
 
+        seq.OnComplete(() =>
+        {
+            Canvas.ForceUpdateCanvases();
+            onComplete?.Invoke();
+        });
+
         _currentTween = seq;
     }
 
-    public void HideUI(GameObject page)
+    public void HideUI(GameObject page, Action onComplete = null)
     {
         if (!page) return;
 
@@ -533,6 +539,7 @@ public class HomeMainUI : MonoBehaviour
         seq.OnComplete(() =>
         {
             page.SetActive(false);
+            onComplete?.Invoke();
         });
 
         _currentTween = seq;
@@ -540,6 +547,14 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     #region Daily Reward
+    public void CheckHomeTutorial()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.HomeTutorial))
+        {
+            return;
+        }
+        TryOpenDailyRewardIfAvailable();
+    }
     public void TryOpenDailyRewardIfAvailable()
     {
         if (dailyRewardUI == null) return;
@@ -613,87 +628,87 @@ public class HomeMainUI : MonoBehaviour
 
     #region Popup Code
 
-    public void OpenConditionCriticalPopup()
-    {
-        ShowUI(conditionCheckObj);
-    }
-    private void StartingInfo()
-    {
-        StartCoroutine(NotiPopup());
-    }
-    IEnumerator NotiPopup()
-    {
-        yield return new WaitForSeconds(3f);
-        AppearPopup(LanguageManager.Instance.GetText(41));
-    }
-    public void HorseResourceFinishPopup(string message)
-    {
-        AppearPopup(message, HorseResourcesScaleAnim);
-    }
-    public void AppearPopup(string message, Action action=null)
-    {
-        popupText.text = message;
+    //public void OpenConditionCriticalPopup()
+    //{
+    //    ShowUI(conditionCheckObj);
+    //}
+    //private void StartingInfo()
+    //{
+    //    StartCoroutine(NotiPopup());
+    //}
+    //IEnumerator NotiPopup()
+    //{
+    //    yield return new WaitForSeconds(3f);
+    //    AppearPopup(LanguageManager.Instance.GetText(41));
+    //}
+    //public void HorseResourceFinishPopup(string message)
+    //{
+    //    AppearPopup(message, HorseResourcesScaleAnim);
+    //}
+    //public void AppearPopup(string message, Action action=null)
+    //{
+    //    popupText.text = message;
 
-        // Agar popup allaqachon animda bo‘lsa — qaytadan boshlaymiz
-        if (activeRoutinePopup != null)
-            StopCoroutine(activeRoutinePopup);
+    //    // Agar popup allaqachon animda bo‘lsa — qaytadan boshlaymiz
+    //    if (activeRoutinePopup != null)
+    //        StopCoroutine(activeRoutinePopup);
 
-        activeRoutinePopup = StartCoroutine(PopupRoutine());
-        action?.Invoke();
-    }
+    //    activeRoutinePopup = StartCoroutine(PopupRoutine());
+    //    action?.Invoke();
+    //}
 
-    private IEnumerator PopupRoutine()
-    {
-        // 1) Pastga tushish
-        yield return MoveUI(popupRect, hiddenPos, shownPos, animTimePopup);
+    //private IEnumerator PopupRoutine()
+    //{
+    //    // 1) Pastga tushish
+    //    yield return MoveUI(popupRect, hiddenPos, shownPos, animTimePopup);
 
-        // 2) 4 sekund tursin
-        yield return new WaitForSeconds(appearTime);
+    //    // 2) 4 sekund tursin
+    //    yield return new WaitForSeconds(appearTime);
 
-        // 3) Yana yuqoriga chiqib ketish
-        yield return MoveUI(popupRect, shownPos, hiddenPos, animTime);
-    }
+    //    // 3) Yana yuqoriga chiqib ketish
+    //    yield return MoveUI(popupRect, shownPos, hiddenPos, animTime);
+    //}
 
-    private IEnumerator MoveUI(RectTransform rect, Vector2 start, Vector2 end, float duration)
-    {
-        float t = 0f;
+    //private IEnumerator MoveUI(RectTransform rect, Vector2 start, Vector2 end, float duration)
+    //{
+    //    float t = 0f;
 
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-            rect.anchoredPosition = Vector2.Lerp(start, end, t / duration);
-            yield return null;
-        }
+    //    while (t < duration)
+    //    {
+    //        t += Time.deltaTime;
+    //        rect.anchoredPosition = Vector2.Lerp(start, end, t / duration);
+    //        yield return null;
+    //    }
 
-        rect.anchoredPosition = end;
-    }
-    private void HorseResourcesScaleAnim()
-    {
-        StartCoroutine(PulseRoutine());
-        HideUI(racingFields);
-        if(playMode.gameObject.activeSelf) playMode.gameObject.SetActive(false);
-    }
-    private IEnumerator PulseRoutine()
-    {
-        float t = 0f;
-        RectTransform rt = horseResourcesObject.GetComponent<RectTransform>();
+    //    rect.anchoredPosition = end;
+    //}
+    //private void HorseResourcesScaleAnim()
+    //{
+    //    StartCoroutine(PulseRoutine());
+    //    HideUI(racingFields);
+    //    if(playMode.gameObject.activeSelf) playMode.gameObject.SetActive(false);
+    //}
+    //private IEnumerator PulseRoutine()
+    //{
+    //    float t = 0f;
+    //    RectTransform rt = horseResourcesObject.GetComponent<RectTransform>();
 
-        while (t < durationHorseResouceBg)
-        {
-            t += Time.deltaTime;
+    //    while (t < durationHorseResouceBg)
+    //    {
+    //        t += Time.deltaTime;
 
-            // 0 → 1 → 0 yurak urishi effekti
-            float pingPong = Mathf.PingPong(Time.time * 2, 1f);
+    //        // 0 → 1 → 0 yurak urishi effekti
+    //        float pingPong = Mathf.PingPong(Time.time * 2, 1f);
 
-            float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
+    //        float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
 
-            rt.localScale = new Vector3(scale, scale, 1);
+    //        rt.localScale = new Vector3(scale, scale, 1);
 
-            yield return null;
-        }
+    //        yield return null;
+    //    }
 
-        rt.localScale = Vector3.one;
-    }
+    //    rt.localScale = Vector3.one;
+    //}
 
     #endregion
 
@@ -763,18 +778,20 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     #region Coins
+    
     public void QorakClicked()
     {
         ShowUI(coinsPage);
         OnCoinsButtonPressed?.Invoke(true);
     }
-    private void NyufiyClicked()
+    public void NyufiyClicked()
     {
         ShowUI(coinsPage);
         OnCoinsButtonPressed?.Invoke(false);
     }
     public void CloseCoinsPage()
     {
+        //coinsPage.SetActive(false);
         HideUI(coinsPage);
     }
     #endregion
@@ -790,7 +807,21 @@ public class HomeMainUI : MonoBehaviour
     }
     public void OpenGameMainPanel()
     {
-        ShowUI(playMode);
+        ShowUI(playMode.gameObject, () =>
+        {
+            ShowGameModesTutorial();
+        });
+    }
+    public void OpenRacingMaps()
+    {
+        ShowUI(racingMaps, () =>
+        {
+            ShowRacingRoomTutorial();
+        });
+    }
+    public void OpenKopkariMaps()
+    {
+        ShowUI(leaguePanel);
     }
     public void CloseRacingField()
     {
@@ -802,11 +833,37 @@ public class HomeMainUI : MonoBehaviour
     }
     public void OpenSettingsPanel()
     {
-        ShowUI(settingsPanel);
+        ShowUI(settingsPanel, () =>
+        {
+            ShowLanguageDropdown();
+        });
+    }
+    public void CloseSettingsPanel()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Settings))
+        {
+            tutorialPanels.SetActive(false);
+            tutorial.Finish();
+            PlayerPrefs.SetInt(Constants.Tutorial.Settings, 1);
+        }
+        HideUI(settingsPanel, () =>
+        {
+            ShowNameBtn();
+        });
     }
     public void OpenUserDetailsPanel()
     {
-        ShowUI(userDetailsPanel);
+        ShowUI(userDetailsPanel, () => {
+            ShowNameField();
+        });
+        CloseTutorialPanel();
+    }
+    public void CloseUserDetailsPanel()
+    {
+        HideUI(userDetailsPanel, () =>
+        {
+            ShowPlayButton();
+        });
     }
     public void OpenCollectionPage()
     {
@@ -833,12 +890,12 @@ public class HomeMainUI : MonoBehaviour
     #region Open Map 
     private void AvailableMap()
     {
-        int getInitialMap = PlayerPrefs.GetInt(Constants.MapNames.Zarafshan);
+        int getInitialMap = PlayerPrefs.GetInt(Constants.MapNames.RacingTraining);
         if (getInitialMap > 0)
         {
             return;
         }
-        PlayerPrefs.SetInt(Constants.MapNames.Zarafshan, 1);
+        PlayerPrefs.SetInt(Constants.MapNames.RacingTraining, 1);
     }
     private void LobbyName(string name)
     {
@@ -866,5 +923,147 @@ public class HomeMainUI : MonoBehaviour
         environmentLoadingUI.SetMapData(getEnvrionmentName);
         LobbyName(getEnvrionmentName);
     }
+    #endregion
+
+    #region Tutorials
+
+    #region Name Tutorial
+    public void NameTutorial()
+    {
+
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Settings))
+        {
+            ShowSettingsBtn();
+        }
+        else if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        {
+            ShowNameBtn();
+        }
+        else if (!PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
+        {
+            StartCoroutine(ShowPlayButtonDelay());
+        }
+
+    }
+    private void CheckTutorialRewardOnReturn()
+    {
+        bool tutorialPlayed = PlayerPrefs.GetInt(Constants.Tutorial.TutorialPlay, 0) == 1;
+        bool rewardGiven = PlayerPrefs.GetInt(Constants.Tutorial.TutorialReward, 0) == 1;
+
+        if (!tutorialPlayed || rewardGiven)
+            return;
+
+
+        DisplayAutoReward(zarafshanSprite, LanguageManager.Instance.GetText(483), LanguageManager.Instance.GetText(484), LanguageManager.Instance.GetText(376));
+        PlayerPrefs.SetInt(Constants.MapNames.Zarafshan, 1);
+        PlayerPrefs.SetInt(Constants.Tutorial.TutorialReward, 1);
+        PlayerPrefs.Save();
+    }
+    public void ShowNameBtn()
+    {
+        tutorial.ShowStep(0);
+        tutorialPanels.SetActive(true);
+    }
+    IEnumerator ShowPlayButtonDelay()
+    {
+        yield return new WaitForSeconds(0.6f);
+        ShowPlayButton();
+    }
+    public void ShowNameField()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        {
+            tutorial.ShowStep(1);
+            tutorialPanels.SetActive(true);
+        }
+    }
+    public void ShowSaveBtn()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        {
+            tutorial.ShowStep(2);
+            tutorialPanels.SetActive(true);
+        }
+    }
+    public void FinishNameTutorial()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        {
+            tutorialPanels.SetActive(false);
+            tutorial.Finish();
+            PlayerPrefs.SetInt(Constants.Tutorial.Name, 1);
+        }
+        CloseUserDetailsPanel();
+    }
+    public void CloseTutorialPanel()
+    {
+        if (tutorialPanels.activeSelf)
+        {
+            tutorialPanels.SetActive(false);
+            //tutorial.Finish();
+        }
+    }
+    #endregion
+
+    #region Play Tutorial
+    
+    public void ShowPlayButton()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
+        {
+            return;
+        }
+        tutorialPanels.SetActive(true);
+        tutorial.ShowStep(3);
+    }
+    public void ShowGameModesTutorial()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
+        {
+            return;
+        }
+        tutorialPanels.SetActive(true);
+        tutorial.ShowStep(4);
+    }
+    public void ShowRacingRoomTutorial()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
+        {
+            return;
+        }
+        tutorial.ShowStep(5);
+    }
+    #endregion
+
+    #region Settings
+    public void ShowSettingsBtn()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.Settings))
+        {
+            return;
+        }
+        tutorialPanels.SetActive(true);
+        tutorial.ShowStep(6);
+    }
+    public void ShowLanguageDropdown()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.Settings))
+        {
+            return;
+        }
+        tutorialPanels.SetActive(true);
+        tutorial.ShowStep(7);
+    }
+    public void ShowSettingsSave()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.Settings))
+        {
+            return;
+        }
+        tutorialPanels.SetActive(true);
+        tutorial.ShowStep(8);
+    }
+    #endregion
+
     #endregion
 }

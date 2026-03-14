@@ -18,6 +18,8 @@ public class StartPowerBar : MonoBehaviour
     private float timer = 0f;
 
     public static Action<float> OnStartPowerSelected;
+    public static Action OnSliderEnabled;
+    public bool isTutorial = false;
 
     private void OnEnable()
     {
@@ -25,7 +27,7 @@ public class StartPowerBar : MonoBehaviour
         timer = 0f;
         powerSlider.value = 0f;
         isIncreasing = true;
-
+        OnSliderEnabled?.Invoke();
         confirmButton.onClick.AddListener(OnClickConfirm);
     }
 
@@ -55,6 +57,8 @@ public class StartPowerBar : MonoBehaviour
         }
 
         // AUTO TIMER
+        if(isTutorial)
+            return;
         timer += Time.deltaTime;
         if (timer >= autoStartTime)
         {
@@ -64,7 +68,6 @@ public class StartPowerBar : MonoBehaviour
 
     private void OnClickConfirm()
     {
-        Debug.Log("Selected");
         if (hasSelected) return;
 
         hasSelected = true;

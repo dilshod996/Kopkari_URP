@@ -51,11 +51,13 @@ public class Settings : MonoBehaviour
         SettingsPanelText();
         saveButton.onClick.AddListener(GetSelectedItem);
         closeButton.onClick.AddListener(ClosePage);
+        languageDropdown.dropdownEvent.AddListener(OnDropdownSelected);
     }
     private void OnDisable()
     {
-        saveButton.onClick.RemoveListener(GetSelectedItem);
-        closeButton.onClick.RemoveListener(ClosePage);
+        saveButton.onClick.RemoveAllListeners();
+        closeButton.onClick.RemoveAllListeners();
+        languageDropdown.dropdownEvent.RemoveListener(OnDropdownSelected);
     }
     private void SettingsPanelText()
     {
@@ -105,7 +107,7 @@ public class Settings : MonoBehaviour
         SetLanguage(languageDropdown.selectedItemIndex);
         HomeMainUI.Instance?.UITransilations();
         //lobbyManager.MainLobbyText();
-        HomeMainUI.Instance.HideUI(this);
+        HomeMainUI.Instance.CloseSettingsPanel();
         //LanguageManager.Instance.SetLanguage(languageDropdown.selectedItemIndex);
     }
     public void SetLanguage(int langNum)
@@ -135,6 +137,11 @@ public class Settings : MonoBehaviour
     private void ClosePage()
     {
         HomeMainUI.Instance.HideUI(this);
+    }
+    private void OnDropdownSelected(int selectedIndex)
+    {
+        Debug.Log("selected event id" + selectedIndex);
+        HomeMainUI.Instance?.ShowSettingsSave();
     }
 }
 //[Header("UI Refs")]

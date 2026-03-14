@@ -157,17 +157,11 @@ public class RacingResultPage : MonoBehaviour
                 int level = PlayerPrefs.GetInt(Constants.HorseCondition.Level, 0);
 
                 levelText.text = LanguageManager.Instance?.GetText(319) + $"{level}" +"/20";
-                int taqaPrize = 0;
-                int nyufiyPrize = 0;
+                var prize = GetRacePrizeByMapAndRank(e.Ranking);
 
-                switch (e.Ranking)
-                {
-                    case 1: taqaPrize = 4; nyufiyPrize = 2200; break;
-                    case 2: taqaPrize = 2; nyufiyPrize = 1700; break;
-                    case 3: taqaPrize = 1; nyufiyPrize = 1300; break;
-                    default: taqaPrize = 0; nyufiyPrize = 500; break;
-                }
-
+                int taqaPrize = prize.taqaPrize;
+                int nyufiyPrize = prize.nyufiyPrize;
+                int levelUpPoint = prize.levelUpPoint;
                 OnGetRiderRank?.Invoke(e.Ranking);
 
                 nyufiyAmountText.text = $"+{nyufiyPrize:N0}";
@@ -203,7 +197,70 @@ public class RacingResultPage : MonoBehaviour
 
         Debug.Log("player list done");
     }
+    private (int taqaPrize, int nyufiyPrize, int levelUpPoint) GetRacePrizeByMapAndRank(int ranking)
+    {
+        var rCont = RacingController.Instance;
+        RacingController.RacingType mapType = rCont
+            ? rCont.mapType
+            : RacingController.RacingType.None;
 
+        switch (mapType)
+        {
+            case RacingController.RacingType.Training:
+                {
+                    // misol key nomi, o'zingizdagi keyga moslab o'zgartiring
+                    bool hasFinishedTutorial = PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay);
+
+                    // agar tutorial oldin tugagan bo‘lsa, training uchun reward yo‘q
+                    if (hasFinishedTutorial)
+                        return (0, 0, 0);
+
+                    return ranking switch
+                    {
+                        1 => (10, 4000, 100),
+                        2 => (1, 700, 50),
+                        3 => (0, 500, 0),
+                        _ => (0, 200, 0)
+                    };
+                }
+
+            case RacingController.RacingType.Zarafshan:
+                return ranking switch
+                {
+                    1 => (3, 2200,15),
+                    2 => (1, 1700,10),
+                    3 => (1, 1300,5),
+                    _ => (0, 500,2)
+                };
+
+            case RacingController.RacingType.Egypt:
+                return ranking switch
+                {
+                    1 => (4, 2600,18),
+                    2 => (3, 2000,13),
+                    3 => (2, 1500,8),
+                    _ => (0, 600,2)
+                };
+
+            case RacingController.RacingType.Texas:
+                return ranking switch
+                {
+                    1 => (6, 3000,20),
+                    2 => (3, 2300, 15),
+                    3 => (2, 1800, 10),
+                    _ => (0, 700,2)
+                };
+
+            default:
+                return ranking switch
+                {
+                    1 => (1, 1000,5),
+                    2 => (0, 700,3),
+                    3 => (0, 500,2),
+                    _ => (0, 200,1)
+                };
+        }
+    }
     #endregion
 
     #region Horse Details
@@ -338,6 +395,17 @@ public class RacingResultPage : MonoBehaviour
         }
         //Clear();
         PlayAgainText();
+        if (sceneType == SceneLoadManager.SceneType.TrainingRacing)
+        {
+            UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, "Welcome to the Game", instant: false);
+        }
+        else if(sceneType == SceneLoadManager.SceneType.SecondRacing){
+            UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false);
+        }
+        else if(sceneType == SceneLoadManager.SceneType.EgyptRacing)
+        {
+            UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
+        }
         SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
     }
     public void PlayAgainText()

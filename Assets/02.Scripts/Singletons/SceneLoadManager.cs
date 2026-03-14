@@ -26,6 +26,7 @@ public class SceneLoadManager : MonoBehaviour
         Jomboy,
         PastDargom,
         FirstRacing,
+        TrainingRacing,
         SecondRacing,
         EgyptRacing
     }

@@ -18,6 +18,16 @@ using DG.Tweening;
 public class RacingController : MonoBehaviour
 {
     public static RacingController Instance { get; protected set; }
+
+    public enum RacingType
+    {
+        None,
+        Training,
+        Zarafshan,
+        Egypt,
+        Texas
+    }
+    public RacingType mapType = RacingType.None;
     public MAnimal horse;
     public MAnimal riderAnimal;
     [SerializeField] private List<AIRacingRider> aiRiders;
@@ -41,7 +51,7 @@ public class RacingController : MonoBehaviour
     [SerializeField] private GameObject sliderObject;
 
     [Header("Walk Zone Prefab")]
-    public GameObject walkZonePrefab;
+   // public GameObject walkZonePrefab;
     public GameObject oneTimeFlashEffect;
     public GameObject walkZoneFlash;
     public GameObject triggerPointProjectile;
@@ -60,6 +70,9 @@ public class RacingController : MonoBehaviour
     }
     public CameraTypes cameraTypes = CameraTypes.ThirdMain;
     private Coroutine _fpCullCo;
+
+    public static Action<bool> OnFirstPersonCamera;
+    public static Action<bool> OnTargetDismessed;
 
     public float cameraDistance = 4.5f;
     [SerializeField] private float frontDistance = 6f;
@@ -137,7 +150,7 @@ public class RacingController : MonoBehaviour
     async void Start()
     {
         InitLeaderboardPanelHidden();
-        SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
+       // SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
         SimplePool.CreatePool(oneTimeFlashEffect, prewarm: 5, maxSize: 8, expandable: true);
         SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 8, expandable: true);
         SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
@@ -249,10 +262,18 @@ public class RacingController : MonoBehaviour
     #region Start and Stop Racing
     public void StartRacing()
     {
-        EnableNavMesh();
+        if (mapType == RacingType.Training)
+        {
+            DisableNavmesh();
+        }
+        else
+        {
+            EnableNavMesh();
+            OnRacingStarted?.Invoke();
+        }
         ShowLeaderboardPanel();
         RacingLeaderboard.Instance.StartRace();
-        OnRacingStarted?.Invoke();
+
     }
 
     public void StopRacing()
@@ -337,6 +358,14 @@ public class RacingController : MonoBehaviour
         for(int i = 0;i < aiRiders.Count; i++)
         {
             aiRiders[i].DisableNavmesh();
+        }
+    }
+    public void DisableSpeed()
+    {
+
+        for (int i = 0; i < aiRiders.Count; i++)
+        {
+            aiRiders[i].DisableSpeed();
         }
     }
     #endregion
@@ -436,72 +465,129 @@ public class RacingController : MonoBehaviour
 
     public void StopHorseRun()
     {
-        StartCoroutine(HorseStopAction());
+        if (mapType == RacingType.Training)
+        {
+            StartCoroutine(HorseStopAction(() =>
+            {
+                UIButtonActions.Instance?.ShowResultTutorial();
+            }));
+        }
+        else
+        {
+            StartCoroutine(HorseStopAction());
+        }
+
     }
-    private IEnumerator HorseStopAction(Action action=null)
+    private IEnumerator HorseStopAction(Action action = null)
+    {
+        PrepareHorseStop();
+
+        yield return new WaitForEndOfFrame();
+
+        MoveCameraToStartFinalPose();
+        HideGameplayUI();
+
+        int playerRank = RacingLeaderboard.Instance.PlayerRank();
+
+
+        PlayRaceFinishSequence(playerRank);
+
+        yield return new WaitForSeconds(2f);
+        horse.StopMoving();
+
+        if (mapType == RacingType.Training)
+        {
+            action?.Invoke();
+            yield break;
+        }
+        PlayFinalSound();
+        OnRacingFinished?.Invoke();
+
+        MoveCameraToEndFinalPose();
+
+        action?.Invoke();
+    }
+
+    private void PrepareHorseStop()
     {
         cameraTypes = CameraTypes.Final;
         FirstPersonDisable();
+
         if (boostRoutine != null)
             StopCoroutine(boostRoutine);
+
         horse.Always_Forward(false);
         horse.Speed_CurrentIndex_Set(2);
+
         UIButtonActions.Instance.DisableShootChainOrSprint();
-        yield return new WaitForEndOfFrame();
-        if (SceneLoadManager.Instance != null)
-        {
-            float x;
-            float y;
-            switch (SceneLoadManager.Instance.CurrentSceneType)
-            {
-                case SceneLoadManager.SceneType.SecondRacing:
-                    x = -189f;
-                    y = -3f;
-                    break;
-                default:
-                    x = 10f;
-                    y = -3f;
-                    break;
-            }
-            CameraPostionCheck(x, y);           
-        }
-        else
-        {
-            CameraPostionCheck(-10f, -3f);
-        }
+    }
+
+    private void HideGameplayUI()
+    {
         HideLeaderboardPanel();
         mobileCanvasPanel.gameObject.SetActive(false);
-        int playerRank = RacingLeaderboard.Instance.PlayerRank();
-        PlayFinalAnim(playerRank);
-        if (winningPanelBG != null) { winningPanelBG.SetActive(true); }
-        SoundManager.Instance.StopRoomSmooth();
-        yield return new WaitForSeconds(2f);
-        PlayFinalSound();
-        OnRacingFinished?.Invoke();
-        horse.StopMoving();
+    }
 
-        if (SceneLoadManager.Instance != null)
+    private void PlayRaceFinishSequence(int playerRank)
+    {
+        PlayFinalAnim(playerRank);
+
+        if (winningPanelBG != null)
+            winningPanelBG.SetActive(true);
+
+        SoundManager.Instance.StopRoomSmooth();
+    }
+
+    private void MoveCameraToStartFinalPose()
+    {
+        Vector2 pos = GetStartFinalCameraPosition(mapType);
+        CameraPostionCheck(pos.x, pos.y);
+    }
+
+    private void MoveCameraToEndFinalPose()
+    {
+        Vector2 pos = GetEndFinalCameraPosition(mapType);
+        CameraPostionCheck(pos.x, pos.y);
+    }
+
+    private Vector2 GetStartFinalCameraPosition(RacingType type)
+    {
+        switch (type)
         {
-            float x;
-            float y;
-            switch (SceneLoadManager.Instance.CurrentSceneType)
-            {
-                case SceneLoadManager.SceneType.SecondRacing:
-                    x = -98f;
-                    y = -8f;
-                    break;
-                default:
-                    x = 10f;
-                    y = -5f;
-                    break;
-            }
-            CameraPostionCheck(x, y);
+            case RacingType.Zarafshan:
+                return new Vector2(-189f, -3f);
+
+            case RacingType.Egypt:
+                return new Vector2(10f, -3f);
+
+            case RacingType.Training:
+                return new Vector2(3f, -3f);
+
+            case RacingType.None:
+                return new Vector2(-10f, -3f);
+
+            default:
+                Debug.Log("StartFinalCameraPosition default ga tushdi");
+                return new Vector2(10f, -3f);
         }
-        else
+    }
+
+    private Vector2 GetEndFinalCameraPosition(RacingType type)
+    {
+        switch (type)
         {
-            CameraPostionCheck(10, -5);
+            case RacingType.Zarafshan:
+                return new Vector2(-98f, -8f);
+
+            case RacingType.Egypt:
+                return new Vector2(10f, -5f);
+
+            case RacingType.None:
+                return new Vector2(10f, -5f);
+
+            default:
+                return new Vector2(10f, -5f);
         }
-        action?.Invoke();
     }
     private void StopMyHorse()
     {
@@ -516,7 +602,18 @@ public class RacingController : MonoBehaviour
         yield return new WaitForSeconds(2);
         horse.StopMoving();
     }
-
+    public void StopHorseImmideate()
+    {
+        horse.Always_Forward(false);
+        horse.StopMoving();
+    }
+    public void EnableSpeedAgain()
+    {
+        OnTargetDismessed?.Invoke(true);
+        EnableNavMesh();
+        horse.Always_Forward(true);
+        horse.Speed_CurrentIndex_Set(5);
+    }
     #endregion
 
 
@@ -530,9 +627,16 @@ public class RacingController : MonoBehaviour
         int mask = _mainCam.cullingMask;
 
         if (isFP)
+        {
             mask &= ~(1 << _fpLayer);   // FP_Hide layerni olib tashla
+            OnFirstPersonCamera?.Invoke(true);
+        }
         else
+        {
             mask |= (1 << _fpLayer);    // qayta ko‘rsat
+            OnFirstPersonCamera?.Invoke(false);
+        }
+
 
         _mainCam.cullingMask = mask;
     }
@@ -569,8 +673,7 @@ public class RacingController : MonoBehaviour
     private IEnumerator DelayFPCullOn()
     {
         // Cinemachine linear 0.8s bo‘lsa, 0.85 yaxshi
-        yield return new WaitForSeconds(0.85f);
-
+        yield return new WaitForSecondsRealtime(0.85f);
         // FP holatda qolgan bo'lsa only
         if (cameraTypes == CameraTypes.First)
             SetFPCulling(isFP: true);

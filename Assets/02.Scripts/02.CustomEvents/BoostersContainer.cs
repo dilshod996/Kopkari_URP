@@ -304,6 +304,12 @@ public class BoostersContainer : MonoBehaviour
 
     public void DropWalkTrap()
     {
+        if (RacingController.Instance.mapType == RacingController.RacingType.Training)
+        {
+            if (TryAlignDropToGround(out var x, out var y))
+                SimplePool.Spawn(walkzonePrefab, x, y);
+            return;
+        }
         int walkZone = GetPrefs(Constants.PlayerItems.SlowDown);
         if (walkZone <= 0) return;
 
@@ -397,7 +403,7 @@ public class BoostersContainer : MonoBehaviour
         if (CurrentDebuff == DebuffState.WebSnare)
         {
             OnWebSnareDamaged?.Invoke(false);
-            HomeHapticsManager.Instance.Play(HomeHapticId.Success);
+            HomeHapticsManager.Instance.Play(HomeHapticId.NotEnoughMoney);
         }
             
 
@@ -450,17 +456,6 @@ public class BoostersContainer : MonoBehaviour
 
     public void DefendPlayer()
     {
-        int defenderCount = GetPrefs(Constants.PlayerItems.Defense);
-        if (defenderCount <= 0) return;
-
-        DecreaseDefend();
-
-        // ✅ Defend faqat damage/debuffni yechadi (sprint/boostni buzmaydi)
-        SetDebuff(DebuffState.None);
-
-        // ✅ Slow coroutine stop bo‘lsin, lekin speedni 5ga “majbur” qaytarmasin
-        CancelSlow(forceRestoreSpeed: true);
-        CancelObstaclePenalty(forceRestoreSpeed: true);
         if (defendCoroutine != null)
         {
             StopCoroutine(defendCoroutine);
@@ -470,10 +465,25 @@ public class BoostersContainer : MonoBehaviour
         if (defendQobiq != null) defendQobiq.SetActive(false);
 
         defendCoroutine = StartCoroutine(DefendObject());
+        SetDebuff(DebuffState.None);
+        CancelSlow(forceRestoreSpeed: true);
         OnDefendActivated?.Invoke();
 
         if (!isNpc)
             OnDefendState?.Invoke(false);
+        if (RacingController.Instance.mapType == RacingController.RacingType.Training)
+        {
+            return;
+        }
+        int defenderCount = GetPrefs(Constants.PlayerItems.Defense);
+        if (defenderCount <= 0) return;
+
+        DecreaseDefend();
+
+        // ✅ Defend faqat damage/debuffni yechadi (sprint/boostni buzmaydi)
+        CancelObstaclePenalty(forceRestoreSpeed: true);
+
+
     }
 
     public void DefendPlayerNpc()
@@ -596,6 +606,16 @@ public class BoostersContainer : MonoBehaviour
             OnVerySlowState?.Invoke();
             horseAnimal.Mode_Activate(3, -99);
         }
+        else
+        {
+            if(RacingController.Instance!=null)
+            {
+                if(RacingController.Instance.mapType == RacingController.RacingType.Training)
+                {
+                    RacingController.Instance.EnableSpeedAgain();
+                }
+            }
+        }
 
         if (slowEffectObj != null)
             slowEffectObj.SetActive(true);
@@ -648,6 +668,7 @@ public class BoostersContainer : MonoBehaviour
     #region ========================= Obstacle Penalty =========================
     public void NotifyObstacleTouched()
     {
+        if (RacingController.Instance?.mapType == RacingController.RacingType.Training) return;
         Sprite obstacleIcon;
         if (UIButtonActions.Instance != null)
             obstacleIcon = UIButtonActions.Instance.obstacleHitSprite;

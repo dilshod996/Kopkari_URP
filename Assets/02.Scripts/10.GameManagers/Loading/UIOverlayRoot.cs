@@ -14,6 +14,7 @@ public enum UIPanelType
     Sibiria = 5,
     KopkariRegistan = 6,
     Custom = 7,
+    RacingTutorial = 8,
 }
 
 [Serializable]

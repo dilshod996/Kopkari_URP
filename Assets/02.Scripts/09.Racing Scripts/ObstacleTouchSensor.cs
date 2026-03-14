@@ -11,9 +11,14 @@ public class ObstacleTouchSensor : MonoBehaviour
     private float lastHitTime = -999f;
 
     public event Action OnTouched;
+    public GameObject defendSphere;
 
     private void OnTriggerEnter(Collider other)
     {
+        if(defendSphere != null && defendSphere.activeSelf)
+        {
+            return;
+        }
         if (((1 << other.gameObject.layer) & obstacleLayer.value) == 0)
             return;
 

@@ -67,6 +67,13 @@ public class RewardPopup : MonoBehaviour
 
     private void OnDisable()
     {
+        if (panel != null)
+        {
+            panel.anchorMin = new Vector2(0f, 0f);
+            panel.anchorMax = new Vector2(1f, 1f);
+            panel.offsetMin = Vector2.zero;
+            panel.offsetMax = Vector2.zero;
+        }
         _seq?.Kill();
         closeButton.onClick.RemoveListener(CloseTween);
     }

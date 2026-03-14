@@ -19,7 +19,7 @@ using UnityEngine.UI;
 public class LobbyManager : MonoBehaviour
 {
 
-    public ModalWindowManager detailsPopupManager;
+    //public ModalWindowManager detailsPopupManager;
     [Header("Scene Refs")]
     [SerializeField] private Transform environmentRoot;
     private GameObject _currentEnvInstance;
@@ -153,13 +153,13 @@ public class LobbyManager : MonoBehaviour
 
     #region Popup va Infolar
 
-    public void InfoPopup()
-    {
-        detailsPopupManager.UpdateUICustomWithButtons(LanguageManager.Instance.GetText(44),
-            LanguageManager.Instance.GetText(45),
-            LanguageManager.Instance.GetText(1),
-            LanguageManager.Instance.GetText(2));
-    }
+    //public void InfoPopup()
+    //{
+    //    detailsPopupManager.UpdateUICustomWithButtons(LanguageManager.Instance.GetText(44),
+    //        LanguageManager.Instance.GetText(45),
+    //        LanguageManager.Instance.GetText(1),
+    //        LanguageManager.Instance.GetText(2));
+    //}
 
     #endregion
 
@@ -186,20 +186,16 @@ public class LobbyManager : MonoBehaviour
     {
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.FirstRacing, preloadAddresses);
     }
+    public void TrainRacing()
+    {
+        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, "Welcome to the Game", instant: false);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.TrainingRacing, preloadAddresses);
+    }
     public void BaxmalRacing()
     {
         float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        //int langId=-1;
-        //if (currentPower < 30)
-        //    langId = 334;
-
-        //if (currentCooling < 30)
-        //    langId = 335;
-
-        //if (currentStamina < 30)
-        //    langId = 336;
         
 
         if (currentPower < Constants.HorseConditionNum.Power || currentCooling < Constants.HorseConditionNum.Cool || currentStamina < Constants.HorseConditionNum.Stamina)
@@ -219,16 +215,6 @@ public class LobbyManager : MonoBehaviour
         float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        //int langId = -1;
-        //if (currentPower < 20)
-        //    langId = 334;
-
-        //if (currentCooling < 10)
-        //    langId = 335;
-
-        //if (currentStamina < 30)
-        //    langId = 336;
-
 
         if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
         {

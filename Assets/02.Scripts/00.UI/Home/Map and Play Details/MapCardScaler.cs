@@ -6,6 +6,13 @@ using UnityEngine.UI;
 
 public class MapCardScaler : MonoBehaviour
 {
+    public enum MapScalerType
+    {
+        Racing,
+        Kopkari,
+        Archery
+    }
+    public MapScalerType mapType = MapScalerType.Racing;
     public ScrollRect scrollRect;
     public float lerpSpeed = 5f;
 
@@ -16,6 +23,7 @@ public class MapCardScaler : MonoBehaviour
     [Header("Texts")]
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private Button closeBtn;
+    [SerializeField] private TMP_Text closeText;
 
     [Header("Main Background")]
     [SerializeField] private Image mainBackgroundImage; // <-- background image
@@ -179,31 +187,48 @@ public class MapCardScaler : MonoBehaviour
 
         // ✅ page ochilganda qaysi card main bo'lsa background ham shunga o‘tadi
         // (sen hozir second cardni markazga olib kelasanyapti)
-        if (mapCards.Length >= 2)
-        {
-            ScrollToCard(mapCards[1]);
-            // backgroundni darrov moslab qo'yamiz (scroll tugashini kutmay)
-            currentMainCard = mapCards[1];
-            ApplyMainBackgroundFromCard(currentMainCard);
-        }
-        else if (mapCards.Length == 1)
-        {
-            currentMainCard = mapCards[0];
-            ApplyMainBackgroundFromCard(currentMainCard);
-        }
+        //if (mapCards.Length >= 2)
+        //{
+        //    ScrollToCard(mapCards[1]);
+        //    // backgroundni darrov moslab qo'yamiz (scroll tugashini kutmay)
+        //    currentMainCard = mapCards[1];
+        //    ApplyMainBackgroundFromCard(currentMainCard);
+        //}
+        //else if (mapCards.Length == 1)
+        //{
+        //    currentMainCard = mapCards[0];
+        //    ApplyMainBackgroundFromCard(currentMainCard);
+        //}
+        ScrollToCard(mapCards[0]);
+        currentMainCard = mapCards[0];
+        ApplyMainBackgroundFromCard(currentMainCard);
     }
 
     private void OnEnable()
     {
-        titleText.text = LanguageManager.Instance.GetText(375);
+        UITransilitions();
         closeBtn.onClick.AddListener(ClosePage);
+
+        bool canScroll = IsTutorialFinished();
+        scrollRect.enabled = canScroll;
+        scrollRect.horizontal = canScroll;
 
         if (uiSlideRoutine != null) StopCoroutine(uiSlideRoutine);
         uiSlideRoutine = StartCoroutine(PlayTopBottomSlideNextFrame());
-        // ✅ enable bo‘lganda ham “hozir main qaysi?” topib backgroundni set qilish
         StartCoroutine(ApplyBackgroundNextFrame());
     }
-
+    private void UITransilitions()
+    {
+        if (mapType == MapScalerType.Racing)
+        {
+            titleText.text = LanguageManager.Instance.GetText(375);
+        }
+        else if(mapType == MapScalerType.Kopkari)
+        {
+            titleText.text = LanguageManager.Instance.GetText(482);
+        }
+        closeText.text = LanguageManager.Instance.GetText(362);
+    }
     private IEnumerator ApplyBackgroundNextFrame()
     {
         yield return null;
@@ -236,6 +261,12 @@ public class MapCardScaler : MonoBehaviour
         ResetTopBottomToOff();
         closeBtn.onClick.RemoveListener(ClosePage);
     }
+    private bool IsTutorialFinished()
+    {
+        return PlayerPrefs.GetInt(Constants.Tutorial.TutorialPlay, 0) == 1;
+    }
+
+
     #region Top And Bottom UI Anim
     private IEnumerator PlayTopBottomSlideNextFrame()
     {

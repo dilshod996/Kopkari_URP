@@ -56,11 +56,22 @@ public class AIRacingRider : MonoBehaviour
             agent.isStopped = true;
         }
     }
+    public void DisableSpeed()
+    {
+        if(aiHorse != null)
+        {
+            aiHorse.Speed_CurrentIndex_Set(0);
+        }
+    }
     public void EnableNavmesh()
     {
         if(agent != null)
         {
             agent.isStopped = false;
+            if (RacingController.Instance.mapType == RacingController.RacingType.Training)
+            {
+                aiHorse.Speed_CurrentIndex_Set(5);
+            }
         }
     }
     #endregion

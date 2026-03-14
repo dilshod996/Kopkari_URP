@@ -12,11 +12,7 @@ public class GameplayMode : MonoBehaviour
     [SerializeField] private TMP_Text racingLeagueText;
     [SerializeField] private TMP_Text archeryLeagueText;
     [SerializeField] private TMP_Text friendsPlayText;
-    [SerializeField] private TMP_Text soonText1;
-    [SerializeField] private TMP_Text soonText2;
-
-
-    public int soonTextId = -1;
+    [SerializeField] private TMP_Text kopkariBtnText, racingBtnText, archeryBtnText, localTeamBtnText;
 
     [Header("UI Buttons")]
     [SerializeField] private Button kopkariLeagueBtn;
@@ -24,13 +20,12 @@ public class GameplayMode : MonoBehaviour
     [SerializeField] private Button archeryLeagueBtn;
     [SerializeField] private Button racingLeagueBtn;
 
-    [Header("Other Panels")]
-    [SerializeField] private GameObject leaguePanel;
-    [SerializeField] private GameObject racingMaps;
+
+
 
     private void OnEnable()
     {
-        //UITransilations();
+        UITransilations();
         kopkariLeagueBtn.onClick.AddListener(OpenLeaguePanel);
         racingLeagueBtn.onClick.AddListener(OpenRacingMaps);
         closeBtn.onClick.AddListener(CloseGameObject);
@@ -38,22 +33,24 @@ public class GameplayMode : MonoBehaviour
 
     private void UITransilations()
     {
-        titleText.text = LanguageManager.Instance.GetText(306);
-        kopkariLeagueText.text = LanguageManager.Instance.GetText(307);
+        titleText.text = LanguageManager.Instance.GetText(474);
+        kopkariLeagueText.text = LanguageManager.Instance.GetText(306);
         archeryLeagueText.text = LanguageManager.Instance.GetText(381);
         racingLeagueText.text = LanguageManager.Instance.GetText(382);
         friendsPlayText.text = LanguageManager.Instance.GetText(383);
-        soonText1.text = LanguageManager.Instance.GetText(soonTextId);
-        soonText2.text = LanguageManager.Instance.GetText(soonTextId);
+        kopkariBtnText.text = LanguageManager.Instance.GetText(4);
+        racingBtnText.text = LanguageManager.Instance.GetText(4);
+        archeryBtnText.text = LanguageManager.Instance.GetText(125);
+        localTeamBtnText.text = LanguageManager.Instance.GetText(125);
     }
     private void OpenLeaguePanel()
     {
-        HomeMainUI.Instance.ShowUI(leaguePanel);
+        HomeMainUI.Instance.OpenKopkariMaps();
         this.gameObject.SetActive(false);
     }
     private void OpenRacingMaps()
     {
-        HomeMainUI.Instance.ShowUI(racingMaps);
+        HomeMainUI.Instance.OpenRacingMaps();
         this.gameObject.SetActive(false);
     }
     public void CloseGameObject()

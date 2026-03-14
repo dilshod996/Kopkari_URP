@@ -29,6 +29,8 @@ public class ReverseWarningUI : MonoBehaviour
     private Tween panelTween;
     private bool isActive=false;
 
+    public static event Action OnTimerShowed;
+
     // ✅ NEW: External UI-only method
     // Har safar chaqirilsa: hammasini stop qilib qaytadan show qiladi
     public void ShowPanel(float timer)
@@ -56,7 +58,9 @@ public class ReverseWarningUI : MonoBehaviour
         // slide in
         panelTween = reversePanel
             .DOAnchorPosY(panelShownY, slideDuration)
-            .SetEase(Ease.OutCubic);
+            .SetEase(Ease.OutCubic).SetUpdate(true);
+        Debug.Log("Showed " + timer);
+        OnTimerShowed?.Invoke();
     }
     public void HidePanelNotTimeBased()
     {
