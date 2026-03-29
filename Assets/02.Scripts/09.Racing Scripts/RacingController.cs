@@ -79,6 +79,9 @@ public class RacingController : MonoBehaviour
     [SerializeField] private float backDistance = 3f;
     [SerializeField] private float backOffsetY = 0.4f;
 
+    [SerializeField] private float firstPersonBackDistance = 0.5f;
+    [SerializeField] private float firstPersonOffsetY = 0f;
+
     [Header("Starting Point Slider Values")]
     [SerializeField] private int defaultSpeedIndex = 5;  // odatiy tezlik
     [SerializeField] private int boostSpeedIndex = 6;    // max tezlik
@@ -718,11 +721,23 @@ public class RacingController : MonoBehaviour
         horse.UseCameraInput = false;
 
         // masofani va offsetni biroz o'zgartirishni xohlasang:
-        mainCam.SetCameraDistance(backDistance);
-        mainCam.AddVerticalOffset(backOffsetY);
+        if (cameraTypes == CameraTypes.ThirdMain)
+        {
+            mainCam.SetCameraDistance(backDistance);
+            mainCam.AddVerticalOffset(backOffsetY);
 
-        // faqat flag'ni yoqamiz
-        mainCam.SetLookBackMode(true);
+            // faqat flag'ni yoqamiz
+            mainCam.SetLookBackMode(true);
+        }
+        else if(cameraTypes == CameraTypes.First)
+        {
+            firstPersonCam.SetCameraDistance(firstPersonBackDistance);
+            firstPersonCam.AddVerticalOffset(firstPersonOffsetY);
+
+            // faqat flag'ni yoqamiz
+            firstPersonCam.SetLookBackMode(true);
+        }
+
     }
 
     public void MainCam()
@@ -730,10 +745,20 @@ public class RacingController : MonoBehaviour
         if (mainCam == null) return;
 
         // masofani va offsetni front holatga qaytaramiz
-        mainCam.SetCameraDistance(frontDistance);
-        mainCam.AddVerticalOffset(0f); // yoki front uchun alohida offset bo'lsa o'shani
+        if (cameraTypes == CameraTypes.ThirdMain)
+        {
+            mainCam.SetCameraDistance(frontDistance);
+            mainCam.AddVerticalOffset(0f); // yoki front uchun alohida offset bo'lsa o'shani
 
-        mainCam.SetLookBackMode(false);
+            mainCam.SetLookBackMode(false);
+        }
+        else if (cameraTypes == CameraTypes.First)
+        {
+            firstPersonCam.SetCameraDistance(-0.5f); //-0.5
+            firstPersonCam.AddVerticalOffset(-0.1f); // yoki front uchun alohida offset bo'lsa o'shani
+
+            firstPersonCam.SetLookBackMode(false);
+        }
 
         StartCoroutine(EnableHorseInputDelayed());
     }

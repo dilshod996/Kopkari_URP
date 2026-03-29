@@ -22,17 +22,21 @@ public class UserDetails : MonoBehaviour
     [SerializeField] private Button closeButton;
     [SerializeField] private Button saveButton;
     [SerializeField] private CustomDropdown countryDropdown;
-    [SerializeField] private TMP_Text levelCountText;
+
     [SerializeField] private TMP_Text playerName;
     [SerializeField] private TMP_Text closeText;
 
-    [SerializeField] private PlayerPrefsData playerPrefsObj;
+    //[SerializeField] private PlayerPrefsData playerPrefsObj;
     //[SerializeField] private LobbyManager lobbyManager;
 
     [Header("User Details Settings")]
     [SerializeField] private float scaleUp = 1.2f;
     [SerializeField] private float duration = 0.7f;
     [SerializeField] private GameObject nameContainerObj;
+
+    [Header("Level details")]
+    [SerializeField] private TMP_Text levelCountText;
+    [SerializeField] private ProgressBar levelProgress;
     void Start()
     {
         if (PlayerPrefs.HasKey(Constants.Player.UsernameKey))
@@ -46,19 +50,6 @@ public class UserDetails : MonoBehaviour
         closeButton.onClick.AddListener(CloseEvent);
         nameInputField.onEndEdit.AddListener(OnNameInputClosed);
         //ShowNameFieldShower();
-    }
-    private void ShowNameFieldShower()
-    {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
-        {
-            StartCoroutine(DelayNameFieldShow());
-
-        }
-    }
-    IEnumerator DelayNameFieldShow()
-    {
-        yield return new WaitForEndOfFrame(); 
-        //HomeMainUI.Instance.ShowNameField();
     }
     public void OnNameInputClosed(string value)
     {
@@ -95,24 +86,12 @@ public class UserDetails : MonoBehaviour
        // nameContainerObj.transform.localScale = Vector3.one; // Reset scale to original size
         CountrySelection();
         UITransilations();
+        RefreshLevelUI();
     }
 
     private void CloseEvent()
     {
         HomeMainUI.Instance.CloseUserDetailsPanel();
-        //if (!PlayerPrefs.HasKey(Constants.Player.UsernameKey))
-        //{
-        //    StartScaleLoop(nameContainerObj);
-        //}
-        //else
-        //{
-        //    gameObject.SetActive(false);
-        //    if (!PlayerPrefs.HasKey("horseData"))
-        //    {
-        //        playerPrefsObj.gameObject.SetActive(true);
-        //        playerPrefsObj.HorseDataCheck();
-        //    }
-        //}
     }
 
     private void CountrySelection()
@@ -171,4 +150,24 @@ public class UserDetails : MonoBehaviour
         obj.transform.localScale = targetScale;
     }
     #endregion
+
+    private void RefreshLevelUI()
+    {
+        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
+        int currentXp = PlayerPrefs.GetInt(Constants.Level.XP, 0);
+
+        if (levelCountText != null)
+            levelCountText.text = currentLevel.ToString();
+
+        if (levelProgress != null)
+        {
+            // Agar ProgressBar 0-100 qiymat olsa
+            levelProgress.currentPercent = currentXp;
+            levelProgress.UpdateUI();
+
+            // Agar max value ham kerak bo‘lsa:
+            // levelProgress.SetMax(100);
+            // levelProgress.SetValue(currentXp);
+        }
+    }
 }

@@ -42,6 +42,7 @@ public class KopkariResultUI : MonoBehaviour
     [SerializeField] private TMP_Text horseNameText;
     [SerializeField] private TMP_Text nyufiyEarningAmount;
     [SerializeField] private TMP_Text coinEarningAmount;
+    [SerializeField] private TMP_Text xpAddAmountText;
     [SerializeField] private TMP_Text totalCatchTime;
     [SerializeField] private TMP_Text currentRecordCatchTime;
 
@@ -92,7 +93,7 @@ public class KopkariResultUI : MonoBehaviour
             powerText.text = LanguageManager.Instance.GetText(326);
             staminaText.text = LanguageManager.Instance.GetText(328);
             coolingText.text = LanguageManager.Instance.GetText(327);
-            levelText.text = LanguageManager.Instance.GetText(319);
+            //levelText.text = LanguageManager.Instance.GetText(319);
             nameTeamNameInfoText.text = LanguageManager.Instance.GetText(340);
             racingStatsText.text = LanguageManager.Instance.GetText(341);
             recordText.text = LanguageManager.Instance.GetText(315);
@@ -198,6 +199,39 @@ public class KopkariResultUI : MonoBehaviour
             default: return 0;
         }
     }
+    private int GetRandomXpByRank(int ranking)
+    {
+        return ranking switch
+        {
+            1 => Random.Range(22, 26), // 18-22
+            2 => Random.Range(15, 21), // 12-16
+            3 => Random.Range(10, 15),  // 8-12
+            _ => Random.Range(7, 11)    // 4-6
+        };
+    }
+    private void AddLevelPoint(int earnedXp)
+    {
+        if (earnedXp <= 0)
+            return;
+
+        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
+        int currentXp = PlayerPrefs.GetInt(Constants.Level.XP, 0); // sliderdagi xp
+        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
+
+        currentXp += earnedXp;
+
+        while (currentXp >= 100)
+        {
+            currentXp -= 100;
+            currentLevel++;
+            pendingCount++;
+        }
+
+        PlayerPrefs.SetInt(Constants.Level.LevelAmount, currentLevel);
+        PlayerPrefs.SetInt(Constants.Level.XP, currentXp);
+        PlayerPrefs.SetInt(Constants.Level.LevelUpPending, pendingCount);
+        PlayerPrefs.Save();
+    }
     private void ApplyPlayerRankRewards()
     {
         var mgr = KopkariResultsManager.Instance;
@@ -242,12 +276,18 @@ public class KopkariResultUI : MonoBehaviour
         int rank = playerIndex + 1;               // 1-based
         int nyufiyReward = GetNyufiyByRank(rank);
         int coinReward = GetCoinByRank(rank);
-
-
+        int xpAmount = GetRandomXpByRank(rank);
+        AddLevelPoint(xpAmount);
+        if(xpAddAmountText != null)
+        {
+            xpAddAmountText.text = xpAmount.ToString();
+        }
 
         // UI ga chiqarish
         if (nyufiyEarningAmount) nyufiyEarningAmount.text = nyufiyReward.ToString();
         if(coinEarningAmount) coinEarningAmount.text = coinReward.ToString();
+        int getLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
+        levelText.text = $"{LanguageManager.Instance.GetText(319)} {getLevel}/20";
         bonusAmountText.text = $"+{bonusAmount.ToString()}";
         nyufiyReward = nyufiyReward+bonusAmount;
 

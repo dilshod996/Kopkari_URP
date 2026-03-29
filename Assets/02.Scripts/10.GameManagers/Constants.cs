@@ -69,6 +69,7 @@ public static class Constants
         public const string Settings = "settings";
         public const string HomeTutorial = "homeDone";
         public const string TutorialReward = "tutoreward";
+        public const string OptionalTutorial = "optTutorial";
     }
     public static class Initialize
     {
@@ -194,7 +195,15 @@ public static class Constants
     }
     public static class Level
     {
-        public const string CurrentLevel = "level";
-        public const string LevelAmount = "levelAmount";
+        public const string LevelAmount = "PlayerProgress_Level";
+        public const string XP = "PlayerProgress_XP";
+        public const string LevelUpPending = "PlayerProgress_PendingLevelUpPopup";
+    }
+    public static class RoomEnterCosts
+    {
+        public const int ZarafshanCost = 400;
+        public const int EgyptCost = 500;
+        public const int JapanCost = 750;
+        public const int RegistanSquare = 850;
     }
 }

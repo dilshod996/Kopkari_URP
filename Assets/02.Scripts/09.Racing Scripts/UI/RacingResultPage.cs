@@ -36,8 +36,8 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private TMP_Text racingStatsTitleText;
     [SerializeField] private TMP_Text nyufiyAmountText;
     [SerializeField] private TMP_Text coinAmountText;
-    [SerializeField] private TMP_Text eleksirAmountText;
-    [SerializeField] private TMP_Text waterAmountText;
+    [SerializeField] private TMP_Text xpAmountText;
+
 
     [Header("RecordSection")]
     [SerializeField] private TMP_Text recordText;
@@ -154,16 +154,19 @@ public class RacingResultPage : MonoBehaviour
 
             if (e.isPlayer)
             {
-                int level = PlayerPrefs.GetInt(Constants.HorseCondition.Level, 0);
-
-                levelText.text = LanguageManager.Instance?.GetText(319) + $"{level}" +"/20";
                 var prize = GetRacePrizeByMapAndRank(e.Ranking);
 
                 int taqaPrize = prize.taqaPrize;
                 int nyufiyPrize = prize.nyufiyPrize;
                 int levelUpPoint = prize.levelUpPoint;
+                if(xpAmountText!=null)
+                {
+                    xpAmountText.text = levelUpPoint.ToString();
+                }
+                AddLevelPoint(levelUpPoint);
                 OnGetRiderRank?.Invoke(e.Ranking);
-
+                int getLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
+                levelText.text = $"{LanguageManager.Instance.GetText(319)} {getLevel}/20";
                 nyufiyAmountText.text = $"+{nyufiyPrize:N0}";
                 coinAmountText.text = $"+{taqaPrize:N0}";
 
@@ -208,58 +211,84 @@ public class RacingResultPage : MonoBehaviour
         {
             case RacingController.RacingType.Training:
                 {
-                    // misol key nomi, o'zingizdagi keyga moslab o'zgartiring
                     bool hasFinishedTutorial = PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay);
 
-                    // agar tutorial oldin tugagan bo‘lsa, training uchun reward yo‘q
                     if (hasFinishedTutorial)
                         return (0, 0, 0);
 
-                    return ranking switch
-                    {
-                        1 => (10, 4000, 100),
-                        2 => (1, 700, 50),
-                        3 => (0, 500, 0),
-                        _ => (0, 200, 0)
-                    };
+                    // tutorial birinchi marta tugaganda fixed 100 XP
+                    return (10, 4000, 100);
                 }
 
             case RacingController.RacingType.Zarafshan:
                 return ranking switch
                 {
-                    1 => (3, 2200,15),
-                    2 => (1, 1700,10),
-                    3 => (1, 1300,5),
-                    _ => (0, 500,2)
+                    1 => (3, 2200, GetRandomXpByRank(1)),
+                    2 => (1, 1700, GetRandomXpByRank(2)),
+                    3 => (1, 1300, GetRandomXpByRank(3)),
+                    _ => (0, 500, GetRandomXpByRank(4))
                 };
 
             case RacingController.RacingType.Egypt:
                 return ranking switch
                 {
-                    1 => (4, 2600,18),
-                    2 => (3, 2000,13),
-                    3 => (2, 1500,8),
-                    _ => (0, 600,2)
+                    1 => (4, 2600, GetRandomXpByRank(1)),
+                    2 => (3, 2000, GetRandomXpByRank(2)),
+                    3 => (2, 1500, GetRandomXpByRank(3)),
+                    _ => (0, 600, GetRandomXpByRank(4))
                 };
 
             case RacingController.RacingType.Texas:
                 return ranking switch
                 {
-                    1 => (6, 3000,20),
-                    2 => (3, 2300, 15),
-                    3 => (2, 1800, 10),
-                    _ => (0, 700,2)
+                    1 => (6, 3000, GetRandomXpByRank(1)),
+                    2 => (3, 2300, GetRandomXpByRank(2)),
+                    3 => (2, 1800, GetRandomXpByRank(3)),
+                    _ => (0, 700, GetRandomXpByRank(4))
                 };
 
             default:
                 return ranking switch
                 {
-                    1 => (1, 1000,5),
-                    2 => (0, 700,3),
-                    3 => (0, 500,2),
-                    _ => (0, 200,1)
+                    1 => (1, 1000, GetRandomXpByRank(1)),
+                    2 => (0, 700, GetRandomXpByRank(2)),
+                    3 => (0, 500, GetRandomXpByRank(3)),
+                    _ => (0, 200, GetRandomXpByRank(4))
                 };
         }
+    }
+    private int GetRandomXpByRank(int ranking)
+    {
+        return ranking switch
+        {
+            1 => UnityEngine.Random.Range(18, 23), // 18-22
+            2 => UnityEngine.Random.Range(12, 17), // 12-16
+            3 => UnityEngine.Random.Range(8, 13),  // 8-12
+            _ => UnityEngine.Random.Range(4, 7)    // 4-6
+        };
+    }
+    private void AddLevelPoint(int earnedXp)
+    {
+        if (earnedXp <= 0)
+            return;
+
+        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
+        int currentXp = PlayerPrefs.GetInt(Constants.Level.XP, 0); // sliderdagi xp
+        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
+
+        currentXp += earnedXp;
+
+        while (currentXp >= 100)
+        {
+            currentXp -= 100;
+            currentLevel++;
+            pendingCount++;
+        }
+
+        PlayerPrefs.SetInt(Constants.Level.LevelAmount, currentLevel);
+        PlayerPrefs.SetInt(Constants.Level.XP, currentXp);
+        PlayerPrefs.SetInt(Constants.Level.LevelUpPending, pendingCount);
+        PlayerPrefs.Save();
     }
     #endregion
 
@@ -386,6 +415,15 @@ public class RacingResultPage : MonoBehaviour
 
     public void Replay()
     {
+        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        if(nyufiyAmount < CheckRoomCost())
+        {
+            // pul yetmayapti
+            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
+            return;
+        }
+        nyufiyAmount -= CheckRoomCost();
+        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
             SHowResourcesNotEnough();
@@ -393,37 +431,62 @@ public class RacingResultPage : MonoBehaviour
          
             return;  // Racing davom etmaydi
         }
-        //Clear();
-        PlayAgainText();
+        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        if (defenseCheck < 1)
+        {
+            UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
+        }
+        else
+        {
+            PlayAgain();
+        }
+
+    }
+    private void OnMoneyNotEnough()
+    {
+        //Watch ads
+    }
+    public void PlayAgain()
+    {
         if (sceneType == SceneLoadManager.SceneType.TrainingRacing)
         {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, "Welcome to the Game", instant: false);
+            UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, LanguageManager.Instance.GetText(497), instant: false);
         }
-        else if(sceneType == SceneLoadManager.SceneType.SecondRacing){
+        else if (sceneType == SceneLoadManager.SceneType.SecondRacing)
+        {
             UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false);
         }
-        else if(sceneType == SceneLoadManager.SceneType.EgyptRacing)
+        else if (sceneType == SceneLoadManager.SceneType.EgyptRacing)
         {
             UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
         }
         SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
     }
-    public void PlayAgainText()
+    private void OpenTacticItemsPanel()
     {
-        switch (sceneType)
-        {
-            case SceneLoadManager.SceneType.SecondRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "This time is your win!");
-                break;
-            case SceneLoadManager.SceneType.EgyptRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
-                break;
-        }
+        UIButtonActions.Instance.OpenItemsPanel();
     }
     public void BackLobby()
     {
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
+    }
+    private int CheckRoomCost()
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.SecondRacing:
+                return Constants.RoomEnterCosts.ZarafshanCost;
+
+            case SceneLoadManager.SceneType.EgyptRacing:
+                return Constants.RoomEnterCosts.EgyptCost;
+
+            //case SceneLoadManager.SceneType.TexasRacing:
+            //    return 2;
+
+            default:
+                return 0;
+        }
     }
     #region Resources
     private void SHowResourcesNotEnough()

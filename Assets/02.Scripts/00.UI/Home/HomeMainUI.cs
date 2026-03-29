@@ -99,11 +99,12 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private ConditionCheck conditionCheckObj;
     [SerializeField] private GameObject tutorialPanels;
     [SerializeField] private EsportUITutorial tutorial;
+    [SerializeField] private LevelUPUI levelUPUI;
 
     #region Horse and Player Data
 
     [Header("PlayerData")]
-    [SerializeField] private TMP_Text playerName;
+    [SerializeField] private TMP_Text playerName, suppliesName;
     [SerializeField] private TMP_Text defenseText, slowDownText, webText, whipText;
 
     [SerializeField] private TMP_Text defenseAmountText, webAmountText, slowDownAmountText, whipAmountText;
@@ -158,6 +159,7 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     public event Action<bool> OnCoinsButtonPressed;
+    private Coroutine levelUpCheckRoutine;
     private void Awake()
     {
         if (Instance == null)
@@ -176,7 +178,11 @@ public class HomeMainUI : MonoBehaviour
     {
         ApplyOfflineRegen();
         AvailableMap();
-        CheckHomeTutorial();
+        DailyReward();
+        if(levelUpCheckRoutine != null)
+        StopCoroutine(levelUpCheckRoutine);
+
+        levelUpCheckRoutine = StartCoroutine(CheckLevelUpAfterDailyReward());
         saleBtn.onClick.AddListener(OnClickNextDayDebug);
         lastInputTime = Time.realtimeSinceStartup;
 
@@ -203,7 +209,7 @@ public class HomeMainUI : MonoBehaviour
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
         NameTutorial();
-        CheckTutorialRewardOnReturn();
+        //CheckTutorialRewardOnReturn();
     }
     private void OnDisable()
     {
@@ -295,13 +301,13 @@ public class HomeMainUI : MonoBehaviour
 
 
         // Coins – default 0
-        int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
+        int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 3000);
         //if (nyufiyAmount < 1000)
         //{
         //    nyufiyAmount = 4000;
         //    PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         //}
-        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 0);
+        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 10);
 
         // Formatlash xohishingga qarab
         nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
@@ -431,6 +437,7 @@ public class HomeMainUI : MonoBehaviour
     #region Transilations
     public void UITransilations()
     {
+        suppliesName.text = LanguageManager.Instance.GetText(495);
         webText.text = LanguageManager.Instance.GetText(322);
         defenseText.text = LanguageManager.Instance.GetText(324);
         slowDownText.text = LanguageManager.Instance.GetText(323);
@@ -547,9 +554,9 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     #region Daily Reward
-    public void CheckHomeTutorial()
+    public void DailyReward()
     {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.HomeTutorial))
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
         {
             return;
         }
@@ -809,14 +816,14 @@ public class HomeMainUI : MonoBehaviour
     {
         ShowUI(playMode.gameObject, () =>
         {
-            ShowGameModesTutorial();
+            //ShowGameModesTutorial();
         });
     }
     public void OpenRacingMaps()
     {
         ShowUI(racingMaps, () =>
         {
-            ShowRacingRoomTutorial();
+            //ShowRacingRoomTutorial();
         });
     }
     public void OpenKopkariMaps()
@@ -862,7 +869,7 @@ public class HomeMainUI : MonoBehaviour
     {
         HideUI(userDetailsPanel, () =>
         {
-            ShowPlayButton();
+            ShowOptionalPlayTutorial();
         });
     }
     public void OpenCollectionPage()
@@ -896,6 +903,7 @@ public class HomeMainUI : MonoBehaviour
             return;
         }
         PlayerPrefs.SetInt(Constants.MapNames.RacingTraining, 1);
+        PlayerPrefs.SetInt(Constants.MapNames.Zarafshan, 1);
     }
     private void LobbyName(string name)
     {
@@ -941,7 +949,7 @@ public class HomeMainUI : MonoBehaviour
         }
         else if (!PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
         {
-            StartCoroutine(ShowPlayButtonDelay());
+            //StartCoroutine(ShowPlayButtonDelay());
         }
 
     }
@@ -961,6 +969,10 @@ public class HomeMainUI : MonoBehaviour
     }
     public void ShowNameBtn()
     {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        {
+            return;
+        }
         tutorial.ShowStep(0);
         tutorialPanels.SetActive(true);
     }
@@ -1006,7 +1018,28 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     #region Play Tutorial
-    
+    public void ShowOptionalPlayTutorial()
+    {
+        if (PlayerPrefs.HasKey(Constants.Tutorial.OptionalTutorial))
+            return;
+        PlayerPrefs.SetInt(Constants.Tutorial.OptionalTutorial, 1);
+
+        UIOverlayRoot.I.Confirm(
+        titleId: 491,          
+        descId: 492,           
+        okTextId: 1,         
+        cancelTextId: 2,     
+        onOk: MoveTutorialRoom,
+        onCancel: null 
+    );
+    }
+    public void MoveTutorialRoom()
+    {
+        List<string> preloadRacing = new List<string>() { Constants.RoomSound.RacingSound };
+        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, LanguageManager.Instance.GetText(486), instant: false);
+        HomeHapticsManager.Instance.Play(HomeHapticId.Success);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.TrainingRacing, preloadRacing);
+    }
     public void ShowPlayButton()
     {
         if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
@@ -1065,5 +1098,61 @@ public class HomeMainUI : MonoBehaviour
     }
     #endregion
 
+    #endregion
+
+    #region LevelUP
+    private IEnumerator CheckLevelUpAfterDailyReward()
+    {
+        yield return null;
+
+        while ((dailyRewardUI != null && dailyRewardUI.gameObject.activeInHierarchy) ||
+               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy))
+        {
+            yield return null;
+        }
+
+        CheckLevelUpPopup();
+    }
+
+    private void CheckLevelUpPopup()
+    {
+        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
+
+        if (pendingCount <= 0)
+            return;
+
+        if (levelUPUI != null)
+            ShowUI(levelUPUI);
+    }
+
+    public void OnLevelUpPopupClosed()
+    {
+        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
+
+        if (pendingCount <= 0)
+            return;
+
+        pendingCount--;
+
+        PlayerPrefs.SetInt(Constants.Level.LevelUpPending, pendingCount);
+        PlayerPrefs.Save();
+
+        if (pendingCount > 0)
+            StartCoroutine(ShowNextLevelUpPopup());
+    }
+
+    private IEnumerator ShowNextLevelUpPopup()
+    {
+        yield return null;
+
+        while ((dailyRewardUI != null && dailyRewardUI.gameObject.activeInHierarchy) ||
+               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy))
+        {
+            yield return null;
+        }
+
+        if (levelUPUI != null)
+            ShowUI(levelUPUI);
+    }
     #endregion
 }

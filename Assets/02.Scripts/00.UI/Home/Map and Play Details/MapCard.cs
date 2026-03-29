@@ -123,6 +123,18 @@ public class MapCard : MonoBehaviour
         {
             preloadRacing.Add(Constants.RoomSound.RacingSound);
         }
+        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        if(defenseCheck <1)
+        {
+            UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, MovingRacingRoom);
+        }
+        else
+        {
+            MovingRacingRoom();
+        }
+    }
+    private void MovingRacingRoom()
+    {
         switch (movingRoom)
         {
             case SceneLoadManager.SceneType.TrainingRacing:
@@ -138,6 +150,10 @@ public class MapCard : MonoBehaviour
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         SceneLoadManager.Instance.LoadSceneNew(movingRoom, preloadRacing);
     }
+    private void OpenTacticItemsPanel()
+    {
+        HomeMainUI.Instance.ShowSuppliesPanel();
+    }
     private void MoveToShop()
     {
         HomeMainUI.Instance.NyufiyClicked();
@@ -146,7 +162,9 @@ public class MapCard : MonoBehaviour
     }
     private void WatchAdds()
     {
-
+        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        nyufiyAmount += playCost;
+        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
     }
     private void MapDetails()
     {

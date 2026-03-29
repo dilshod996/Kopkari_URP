@@ -98,25 +98,71 @@ public class GameOver : MonoBehaviour
     }
     public void PlayAgainAction()
     {
+        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        if (nyufiyAmount < CheckRoomCost())
+        {
+            // pul yetmayapti
+            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
+            return;
+        }
+        nyufiyAmount -= CheckRoomCost();
+        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
             UIOverlayRoot.I.Done(431, 432, 433, ResourceNotEnoughPopup, null);
             return;  // Racing davom etmaydi
         }
-        PlayAgainText();
-        SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
+        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        if (defenseCheck < 1)
+        {
+            UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
+        }
+        else
+        {
+            PlayAgain();
+        }
+        
     }
-    public void PlayAgainText()
+    public void PlayAgain()
     {
         switch(sceneType)
         {
             case SceneLoadManager.SceneType.SecondRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "This time is your win!");
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(500));
                 break;
             case SceneLoadManager.SceneType.EgyptRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(499));
                 break;
         }
+        SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
+    }
+    private void OpenTacticItemsPanel()
+    {
+        UIButtonActions.Instance.OpenItemsPanel();
+    }
+    private int CheckRoomCost()
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.SecondRacing:
+                return Constants.RoomEnterCosts.ZarafshanCost;
+
+            case SceneLoadManager.SceneType.EgyptRacing:
+                return Constants.RoomEnterCosts.EgyptCost;
+
+            //case SceneLoadManager.SceneType.TexasRacing:
+            //    return 2;
+
+            default:
+                return 0;
+        }
+    }
+    private void OnMoneyNotEnough()
+    {
+        //Watch ads Hozircha shunday qoldi
+        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        nyufiyAmount += CheckRoomCost();
+        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
     }
     private void BackHome()
     {

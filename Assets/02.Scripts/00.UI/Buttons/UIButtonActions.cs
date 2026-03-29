@@ -67,6 +67,7 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private GameObject resultPage;
     [SerializeField] private GameObject foodPanel;
     [SerializeField] private UIPauseGame pauseMenu;
+    [SerializeField] private PlayerItems itemsPanel;
     [SerializeField] private Image blinkOverlay;      // UI Image
 
     [Header("Animation Settings")]
@@ -511,7 +512,7 @@ public class UIButtonActions : MonoBehaviour
 
         while (!isPressing && sprintSlider != null && sprintSlider.value < 1f)
         {
-            sprintSlider.value = Mathf.Min(1f, sprintSlider.value + refillRate * Time.unscaledDeltaTime);
+            sprintSlider.value = Mathf.Min(1f, sprintSlider.value + refillRate * Time.deltaTime);
             yield return null;
         }
 
@@ -907,6 +908,14 @@ public class UIButtonActions : MonoBehaviour
         {
             RacingController.Instance.FirstPersonDisable();
         }
+    }
+    #endregion
+
+    #region Tactic Items
+    public void OpenItemsPanel()
+    {
+        if(itemsPanel !=null)
+            ShowUI(itemsPanel);
     }
     #endregion
 }

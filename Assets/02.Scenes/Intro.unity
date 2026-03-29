@@ -9968,6 +9968,11 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.x
       value: -1.6994934
       objectReference: {fileID: 0}
+    - target: {fileID: 3288719407604077217, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4444441003050864426, guid: c260c14bff232984d83d9c6ffce496df,
         type: 3}
       propertyPath: m_fontColor.b
@@ -9998,6 +10003,11 @@ PrefabInstance:
       propertyPath: root
       value: 
       objectReference: {fileID: 407114731}
+    - target: {fileID: 5646914108937996082, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5725572981981143080, guid: c260c14bff232984d83d9c6ffce496df,
         type: 3}
       propertyPath: m_SizeDelta.x
@@ -10007,6 +10017,36 @@ PrefabInstance:
         type: 3}
       propertyPath: m_AnchoredPosition.x
       value: -3.3807
+      objectReference: {fileID: 0}
+    - target: {fileID: 6061292793283322657, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_text
+      value: Reklama orqali kirish
+      objectReference: {fileID: 0}
+    - target: {fileID: 6061292793283322657, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_fontSize
+      value: 31.9
+      objectReference: {fileID: 0}
+    - target: {fileID: 6666486189564546240, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: -42.3191
+      objectReference: {fileID: 0}
+    - target: {fileID: 6666486189564546240, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_SizeDelta.y
+      value: -33.8166
+      objectReference: {fileID: 0}
+    - target: {fileID: 6666486189564546240, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0.12660217
+      objectReference: {fileID: 0}
+    - target: {fileID: 6666486189564546240, guid: c260c14bff232984d83d9c6ffce496df,
+        type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 9.683998
       objectReference: {fileID: 0}
     - target: {fileID: 7193820848482706794, guid: c260c14bff232984d83d9c6ffce496df,
         type: 3}

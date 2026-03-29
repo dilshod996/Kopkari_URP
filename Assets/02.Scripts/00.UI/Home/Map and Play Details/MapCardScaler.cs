@@ -186,22 +186,22 @@ public class MapCardScaler : MonoBehaviour
         mapCards = scrollRect.content.GetComponentsInChildren<MapCard>();
 
         // ✅ page ochilganda qaysi card main bo'lsa background ham shunga o‘tadi
-        // (sen hozir second cardni markazga olib kelasanyapti)
-        //if (mapCards.Length >= 2)
-        //{
-        //    ScrollToCard(mapCards[1]);
-        //    // backgroundni darrov moslab qo'yamiz (scroll tugashini kutmay)
-        //    currentMainCard = mapCards[1];
-        //    ApplyMainBackgroundFromCard(currentMainCard);
-        //}
-        //else if (mapCards.Length == 1)
-        //{
-        //    currentMainCard = mapCards[0];
-        //    ApplyMainBackgroundFromCard(currentMainCard);
-        //}
-        ScrollToCard(mapCards[0]);
-        currentMainCard = mapCards[0];
-        ApplyMainBackgroundFromCard(currentMainCard);
+        //(sen hozir second cardni markazga olib kelasanyapti)
+        if (mapCards.Length >= 2)
+        {
+            ScrollToCard(mapCards[1]);
+            // backgroundni darrov moslab qo'yamiz (scroll tugashini kutmay)
+            currentMainCard = mapCards[1];
+            ApplyMainBackgroundFromCard(currentMainCard);
+        }
+        else if (mapCards.Length == 1)
+        {
+            currentMainCard = mapCards[0];
+            ApplyMainBackgroundFromCard(currentMainCard);
+        }
+        //ScrollToCard(mapCards[0]);
+        //currentMainCard = mapCards[0];
+        //ApplyMainBackgroundFromCard(currentMainCard);
     }
 
     private void OnEnable()
@@ -209,9 +209,9 @@ public class MapCardScaler : MonoBehaviour
         UITransilitions();
         closeBtn.onClick.AddListener(ClosePage);
 
-        bool canScroll = IsTutorialFinished();
-        scrollRect.enabled = canScroll;
-        scrollRect.horizontal = canScroll;
+        //bool canScroll = IsTutorialFinished();
+        //scrollRect.enabled = canScroll;
+        //scrollRect.horizontal = canScroll;
 
         if (uiSlideRoutine != null) StopCoroutine(uiSlideRoutine);
         uiSlideRoutine = StartCoroutine(PlayTopBottomSlideNextFrame());
