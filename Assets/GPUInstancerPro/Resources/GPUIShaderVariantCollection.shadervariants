@@ -83,6 +83,8 @@ ShaderVariantCollection:
       variants:
       - keywords: 
         passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _METALLICSPECGLOSSMAP
+        passType: 0
       - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _METALLICSPECGLOSSMAP _NORMALMAP
         passType: 0
       - keywords: LOD_FADE_CROSSFADE

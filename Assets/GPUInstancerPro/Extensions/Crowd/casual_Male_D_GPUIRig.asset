@@ -1,0 +1,561 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20646e2b196be7543baf137045366b17, type: 3}
+  m_Name: casual_Male_D_GPUIRig
+  m_EditorClassIdentifier: 
+  bones:
+  - boneName: bip R Calf
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip R Thigh/bip R Calf
+  - boneName: bip R Foot
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip R Thigh/bip R Calf/bip R Foot
+  - boneName: bip R Thigh
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip R Thigh
+  - boneName: bip L Thigh
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip L Thigh
+  - boneName: bip Pelvis
+    fullPath: rig_CharRoot/bip/bip Pelvis
+  - boneName: bip Spine
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine
+  - boneName: bip Spine1
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1
+  - boneName: bip R Clavicle
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle
+  - boneName: bip R UpperArm
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm
+  - boneName: bip R Forearm
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm/bip R Forearm
+  - boneName: bip R Hand
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm/bip R Forearm/bip R Hand
+  - boneName: bip R Finger0
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm/bip R Forearm/bip R Hand/bip R Finger0
+  - boneName: bip R Finger1
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm/bip R Forearm/bip R Hand/bip R Finger1
+  - boneName: bip R Finger11
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm/bip R Forearm/bip R Hand/bip R Finger1/bip R Finger11
+  - boneName: bip R Finger01
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip R Clavicle/bip
+      R UpperArm/bip R Forearm/bip R Hand/bip R Finger0/bip R Finger01
+  - boneName: bip Neck
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip Neck
+  - boneName: bip Head
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip Neck/bip Head
+  - boneName: bip R Toe0
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip R Thigh/bip R Calf/bip R Foot/bip R
+      Toe0
+  - boneName: bip L Clavicle
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle
+  - boneName: bip L Calf
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip L Thigh/bip L Calf
+  - boneName: bip L Foot
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip L Thigh/bip L Calf/bip L Foot
+  - boneName: bip L UpperArm
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm
+  - boneName: bip L Forearm
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm/bip L Forearm
+  - boneName: bip L Hand
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm/bip L Forearm/bip L Hand
+  - boneName: bip L Finger0
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm/bip L Forearm/bip L Hand/bip L Finger0
+  - boneName: bip L Finger1
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm/bip L Forearm/bip L Hand/bip L Finger1
+  - boneName: bip L Finger11
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm/bip L Forearm/bip L Hand/bip L Finger1/bip L Finger11
+  - boneName: bip L Finger01
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip Spine/bip Spine1/bip L Clavicle/bip
+      L UpperArm/bip L Forearm/bip L Hand/bip L Finger0/bip L Finger01
+  - boneName: bip L Toe0
+    fullPath: rig_CharRoot/bip/bip Pelvis/bip L Thigh/bip L Calf/bip L Foot/bip L
+      Toe0
+  skinnedMeshes:
+  - skinnedMesh: {fileID: -7384267063625383288, guid: 46bf37fb54ec8f54bba05d71cc7b4b25,
+      type: 3}
+    boneIndexes: 000000000100000002000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c000000
+    bindPoseIndex: 0
+  bindPoseDataList:
+  - bindPoses:
+    - e00: -0.05634807
+      e01: -0.14109619
+      e02: 0.9883909
+      e03: -0.49828425
+      e10: 0.15603206
+      e11: -0.97904456
+      e12: -0.13086656
+      e13: 0.050848715
+      e20: 0.9861434
+      e21: 0.14684664
+      e22: 0.07718279
+      e23: -0.16974187
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.00000004371139
+      e01: 8.881784e-14
+      e02: 1
+      e03: -0.0987317
+      e10: 0.07322242
+      e11: -0.99731565
+      e12: -0.0000000032007286
+      e13: 0.05191871
+      e20: 0.99731565
+      e21: 0.07322243
+      e22: -0.000000043594138
+      e23: -0.1591823
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.08278954
+      e01: 0.03245107
+      e02: 0.9960385
+      e03: -0.87732744
+      e10: 0.14376026
+      e11: -0.9886268
+      e12: 0.044158775
+      e13: -0.037154485
+      e20: 0.9861433
+      e21: 0.14684665
+      e22: 0.07718278
+      e23: -0.16974182
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.08278947
+      e01: 0.032450847
+      e02: 0.9960387
+      e03: -0.87732744
+      e10: -0.14376305
+      e11: -0.9886265
+      e12: 0.044158757
+      e13: -0.037154473
+      e20: 0.986143
+      e21: -0.1468494
+      e22: -0.0771826
+      e23: 0.16974173
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.0000013868001
+      e01: 0
+      e02: -1
+      e03: 0.8885936
+      e10: -0.0000027577069
+      e11: -1
+      e12: -3.819167e-12
+      e13: 0.016664496
+      e20: -1
+      e21: 0.000002757707
+      e22: -0.0000013868002
+      e23: 0.000001186346
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.0000001533617
+      e01: 0.05569547
+      e02: -0.99844784
+      e03: 0.96199673
+      e10: 0.0000014069377
+      e11: -0.9984477
+      e12: -0.055695478
+      e13: 0.06089836
+      e20: -1
+      e21: -0.0000013962122
+      e22: -0.00000023148374
+      e23: 0.00000027226065
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.0000005941281
+      e01: -0.21542141
+      e02: -0.97652113
+      e03: 1.1390958
+      e10: 0.0000015092434
+      e11: -0.97652125
+      e12: 0.21542141
+      e13: -0.25530577
+      e20: -1
+      e21: -0.0000013458201
+      e22: 0.0000009053019
+      e23: -0.0000010540381
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.9910737
+      e01: -0.02882122
+      e02: -0.13016175
+      e03: 0.23164193
+      e10: 0.0000012747478
+      e11: 0.9763493
+      e12: -0.21619895
+      e13: 0.25599957
+      e20: 0.13331443
+      e21: -0.21426925
+      e22: -0.9676341
+      e23: 1.3742499
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.99944717
+      e01: -0.031866908
+      e02: -0.009474995
+      e03: 0.19409102
+      e10: -0.032476038
+      e11: 0.9967887
+      e12: 0.07319457
+      e13: -0.15392204
+      e20: 0.007112082
+      e21: 0.07346184
+      e22: -0.9972725
+      e23: 1.4234471
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.99425983
+      e01: 0.10698825
+      e02: 0.0007904484
+      e03: 0.423496
+      e10: 0.10675449
+      e11: 0.99154264
+      e12: 0.07380107
+      e13: -0.21487032
+      e20: 0.007112082
+      e21: 0.073461846
+      e22: -0.9972727
+      e23: 1.423447
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.94216204
+      e01: 0.21258494
+      e02: 0.25911057
+      e03: 0.26362878
+      e10: -0.23476449
+      e11: 0.13316223
+      e12: -0.9628882
+      e13: 1.5370517
+      e20: -0.23919927
+      e21: -0.96802664
+      e22: -0.075553015
+      e23: 0.3069409
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.76997775
+      e01: 0.42936713
+      e02: 0.47199377
+      e03: -0.09554379
+      e10: 0.37114942
+      e11: 0.903087
+      e12: -0.21606034
+      e13: 0.060949825
+      e20: -0.5190207
+      e21: 0.008818616
+      e22: -0.85471624
+      e23: 1.5603863
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.90546906
+      e01: 0.1943984
+      e02: 0.37727287
+      e03: 0.18670109
+      e10: -0.35071182
+      e11: 0.15788944
+      e12: -0.92307746
+      e13: 1.5794933
+      e20: -0.23901221
+      e21: -0.9681324
+      e22: -0.0747862
+      e23: 0.30529773
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.79956686
+      e01: 0.1525246
+      e02: 0.58088624
+      e03: -0.14557986
+      e10: -0.5509681
+      e11: 0.19863555
+      e12: -0.81054187
+      e13: 1.5890044
+      e20: -0.23901218
+      e21: -0.96813244
+      e22: -0.0747862
+      e23: 0.3052978
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.7815495
+      e01: 0.4000118
+      e02: 0.47871786
+      e03: -0.051562622
+      e10: 0.34611824
+      e11: 0.9164676
+      e12: -0.20072225
+      e13: 0.059317373
+      e20: -0.5190207
+      e21: 0.008818609
+      e22: -0.85471624
+      e23: 1.5603863
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.00000018190896
+      e01: 0.34547552
+      e02: -0.9384276
+      e03: 1.3714298
+      e10: 0.0000013885026
+      e11: -0.9384276
+      e12: -0.3454755
+      e13: 0.5409581
+      e20: -1
+      e21: -0.0000012401641
+      e22: -0.000000650402
+      e23: 0.0000011836008
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.000000026696103
+      e01: 0.019470438
+      e02: -0.99981034
+      e03: 1.5249606
+      e10: 0.000001402953
+      e11: -0.99981034
+      e12: -0.01947044
+      e13: 0.04453535
+      e20: -1
+      e21: -0.0000014021674
+      e22: -0.000000054007117
+      e23: 0.00000027618057
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: -0.07262722
+      e01: 0.98920864
+      e02: -0.12724583
+      e03: 0.09699426
+      e10: -0.009317252
+      e11: 0.12690426
+      e12: 0.9918713
+      e13: 0.0039516655
+      e20: 0.99731565
+      e21: 0.07322243
+      e22: 0.0000000035554004
+      e23: -0.16071863
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.9910738
+      e01: -0.02882391
+      e02: -0.13016236
+      e03: 0.2316426
+      e10: 0.0000012718374
+      e11: 0.97634923
+      e12: -0.21619892
+      e13: 0.25599954
+      e20: 0.13331561
+      e21: 0.2142689
+      e22: 0.9676341
+      e23: -1.3742498
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.05634752
+      e01: -0.14109631
+      e02: 0.98839116
+      e03: -0.4982843
+      e10: -0.15603466
+      e11: -0.979044
+      e12: -0.13086659
+      e13: 0.050848745
+      e20: 0.986143
+      e21: -0.1468492
+      e22: -0.077182606
+      e23: 0.16974173
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.000000043711488
+      e01: -8.881784e-14
+      e02: 1
+      e03: -0.09873167
+      e10: -0.07322517
+      e11: -0.99731547
+      e12: 0.0000000032007286
+      e13: 0.05191873
+      e20: 0.99731535
+      e21: -0.07322517
+      e22: -0.000000043593985
+      e23: 0.15918219
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.99944717
+      e01: -0.031869642
+      e02: -0.009474995
+      e03: 0.19409086
+      e10: 0.032478783
+      e11: 0.9967887
+      e12: 0.07319458
+      e13: -0.15392205
+      e20: 0.007111882
+      e21: -0.07346186
+      e22: 0.9972725
+      e23: -1.4234471
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.99426013
+      e01: 0.10698552
+      e02: 0.0007904493
+      e03: 0.4234959
+      e10: -0.1067518
+      e11: 0.991543
+      e12: 0.073801085
+      e13: -0.21487032
+      e20: 0.0071118833
+      e21: -0.07346186
+      e22: 0.9972727
+      e23: -1.4234471
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.9421627
+      e01: 0.21258236
+      e02: 0.25911048
+      e03: 0.2636286
+      e10: 0.23476484
+      e11: 0.13316156
+      e12: -0.96288806
+      e13: 1.5370517
+      e20: -0.2391966
+      e21: 0.96802723
+      e22: 0.075553
+      e23: -0.30694082
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.76997894
+      e01: 0.42936498
+      e02: 0.4719937
+      e03: -0.095543884
+      e10: -0.37114695
+      e11: 0.90308803
+      e12: -0.21606027
+      e13: 0.06094989
+      e20: -0.5190207
+      e21: -0.008817169
+      e22: 0.85471624
+      e23: -1.5603862
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.9054697
+      e01: 0.19439593
+      e02: 0.37727296
+      e03: 0.18670085
+      e10: 0.3507123
+      e11: 0.1578885
+      e12: -0.9230776
+      e13: 1.5794934
+      e20: -0.23900957
+      e21: 0.96813303
+      e22: 0.074786216
+      e23: -0.30529773
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.79956734
+      e01: 0.15252237
+      e02: 0.5808863
+      e03: -0.14558022
+      e10: 0.55096865
+      e11: 0.19863397
+      e12: -0.810542
+      e13: 1.5890045
+      e20: -0.23900954
+      e21: 0.9681329
+      e22: 0.0747862
+      e23: -0.30529767
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.78155065
+      e01: 0.4000097
+      e02: 0.47871792
+      e03: -0.051562876
+      e10: -0.3461157
+      e11: 0.9164686
+      e12: -0.20072223
+      e13: 0.059317455
+      e20: -0.5190206
+      e21: -0.008817161
+      e22: 0.85471624
+      e23: -1.5603863
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 0.07262992
+      e01: 0.98920846
+      e02: -0.12724574
+      e03: 0.09699425
+      e10: 0.009317593
+      e11: 0.12690413
+      e12: 0.99187124
+      e13: 0.003951656
+      e20: 0.99731535
+      e21: -0.07322516
+      e22: -0.000000004066986
+      e23: 0.1607185
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+  skinWeights: 2
