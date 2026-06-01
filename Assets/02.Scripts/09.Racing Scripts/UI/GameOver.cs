@@ -6,6 +6,12 @@ using UnityEngine.UI;
 public class GameOver : MonoBehaviour
 {
 
+    public enum GameType
+    {
+        Racing,
+        Kopkari
+    }
+    public GameType gameType = GameType.Racing;
     [Header("UI Refs")]
     [SerializeField] private TMP_Text gameOverTitle;
     [SerializeField] private CanvasGroup canvasGroup;
@@ -24,6 +30,7 @@ public class GameOver : MonoBehaviour
     private float overAllTime = 0f;
     private float overAllBoostTime = 0f;
     private float overAllPenaltyTime = 0f;
+    private float overAllWalkZoneTime =0f;
 
     // Horse Last stats
 
@@ -31,18 +38,29 @@ public class GameOver : MonoBehaviour
     private float lastCooling = 0f;
     private float lastStamina = 0f;
     private void OnEnable()
-    { 
+    {
         GetGameFinishedTime();
+        if (gameType == GameType.Racing)
+        {
+            var rc = RacingController.Instance;
+            if (rc == null) return;
+            GetGameOverType(rc.gameOverType);
+        }
+        else
+        {
+            var km = KopkariManager.Instance;
+            if (km == null) return;
+            GameOverByType(km.gameOverTypes);
+            //TextDetails();
+        }
         GetOverallPenaltyTimeAndBoost();
+        HorseStats();
         backLobby.onClick.AddListener(BackHome);
         playAgain.onClick.AddListener(PlayAgainAction);
         support.onClick.AddListener(OpenSuppliesPage);
         UITransilations();
 
-        var rc = RacingController.Instance;
-        if (rc == null) return;
-        GetGameOverType(rc.gameOverType);
-        HorseStats();
+        Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
     }
 
     private void OnDisable()
@@ -50,36 +68,39 @@ public class GameOver : MonoBehaviour
         playAgain.onClick.RemoveAllListeners();
         backLobby.onClick.RemoveAllListeners();
         support.onClick.RemoveAllListeners();
+        Booster.OnWalkZoneDamagedTime -= GetWalkZoneOverAllTime;
     }
-    private void GetGameFinishedTime()
-    {
-        if(RacingController.Instance != null)
-            overAllTime = RacingController.Instance.ElapsedTime;
-    }
+
+    #region Racing Over
     public void GetGameOverType(GameOverTypes type)
     {
-        if (type == GameOverTypes.ObstacleHit)
+        if(LanguageManager.Instance != null)
         {
-            gameOverTitle.text = LanguageManager.Instance.GetText(215);
-            infoText.text = LanguageManager.Instance.GetText(217);
+            if (type == GameOverTypes.ObstacleHit)
+            {
+                gameOverTitle.text = LanguageManager.Instance.GetText(215);
+                infoText.text = LanguageManager.Instance.GetText(217);
+            }
+            else if (type == GameOverTypes.Offside)
+            {
+                gameOverTitle.text = LanguageManager.Instance.GetText(219);
+                infoText.text = LanguageManager.Instance.GetText(218);
+            }
+            else if (type == GameOverTypes.ByTime)
+            {
+                gameOverTitle.text = LanguageManager.Instance.GetText(196);
+                infoText.text = LanguageManager.Instance.GetText(216);
+            }
+            else
+            {
+                // None yoki default
+                gameOverTitle.text = LanguageManager.Instance.GetText(196);
+                infoText.text = "";
+            }
         }
-        else if (type == GameOverTypes.Offside)
-        {
-            gameOverTitle.text = LanguageManager.Instance.GetText(219);
-            infoText.text = LanguageManager.Instance.GetText(218);
-        }
-        else if (type == GameOverTypes.ByTime)
-        {
-            gameOverTitle.text = LanguageManager.Instance.GetText(196);
-            infoText.text = LanguageManager.Instance.GetText(216);
-        }
-        else
-        {
-            // None yoki default
-            gameOverTitle.text = LanguageManager.Instance.GetText(196);
-            infoText.text = "";
-        }
+
     }
+    #endregion
 
     private void UITransilations()
     {
@@ -88,58 +109,22 @@ public class GameOver : MonoBehaviour
             backText.text = LanguageManager.Instance.GetText(302);
             replayText.text = LanguageManager.Instance.GetText(197);
             supportText.text = LanguageManager.Instance.GetText(198);
-            infoText.text = LanguageManager.Instance.GetText(194);
         }
     }
-    private void ResourceNotEnoughPopup()
-    {
-        UIButtonActions.Instance?.ShowUI(foodPage);
-        this.gameObject.SetActive(false);
-    }
-    public void PlayAgainAction()
-    {
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        if (nyufiyAmount < CheckRoomCost())
-        {
-            // pul yetmayapti
-            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
-            return;
-        }
-        nyufiyAmount -= CheckRoomCost();
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
-        if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
-        {
-            UIOverlayRoot.I.Done(431, 432, 433, ResourceNotEnoughPopup, null);
-            return;  // Racing davom etmaydi
-        }
-        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
-        if (defenseCheck < 1)
-        {
-            UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
-        }
-        else
-        {
-            PlayAgain();
-        }
-        
-    }
-    public void PlayAgain()
-    {
-        switch(sceneType)
-        {
-            case SceneLoadManager.SceneType.SecondRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(500));
-                break;
-            case SceneLoadManager.SceneType.EgyptRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(499));
-                break;
-        }
-        SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
-    }
+
+    #region Tactic Items and Supplies
     private void OpenTacticItemsPanel()
     {
         UIButtonActions.Instance.OpenItemsPanel();
     }
+    private void OpenSuppliesPage()
+    {
+        this.gameObject.SetActive(false);
+        UIButtonActions.Instance?.ShowUI(foodPage);
+    }
+    #endregion
+
+    #region Room Info
     private int CheckRoomCost()
     {
         switch (sceneType)
@@ -169,11 +154,52 @@ public class GameOver : MonoBehaviour
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }
-    private void OpenSuppliesPage()
+    private void ResourceNotEnoughPopup()
     {
-        this.gameObject.SetActive(false);
         UIButtonActions.Instance?.ShowUI(foodPage);
+        this.gameObject.SetActive(false);
     }
+    public void PlayAgain()
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.SecondRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(500));
+                break;
+            case SceneLoadManager.SceneType.EgyptRacing:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(499));
+                break;
+        }
+        SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
+    }
+    public void PlayAgainAction()
+    {
+        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        if (nyufiyAmount < CheckRoomCost())
+        {
+            // pul yetmayapti
+            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
+            return;
+        }
+        nyufiyAmount -= CheckRoomCost();
+        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
+        if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
+        {
+            UIOverlayRoot.I.Done(431, 432, 433, ResourceNotEnoughPopup, null);
+            return;  // Racing davom etmaydi
+        }
+        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        if (defenseCheck < 1)
+        {
+            UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
+        }
+        else
+        {
+            PlayAgain();
+        }
+
+    }
+    #endregion
 
     #region Horse Statistics
     private void GetOverallPenaltyTimeAndBoost()
@@ -183,6 +209,25 @@ public class GameOver : MonoBehaviour
             overAllPenaltyTime = UIButtonActions.Instance.GetTotalWebSnareTime();
             overAllBoostTime = UIButtonActions.Instance.GetTotalHoldTime();
         }
+        if(KopkariMainUI.Instance != null)
+        {
+            overAllPenaltyTime = KopkariMainUI.Instance.GetTotalWebSnareTime();
+            overAllBoostTime = KopkariMainUI.Instance.GetTotalHoldTime();
+        }
+    }
+    private void GetGameFinishedTime()
+    {
+        if (RacingController.Instance != null)
+            overAllTime = RacingController.Instance.ElapsedTime;
+        if (KopkariManager.Instance != null)
+        {
+            overAllTime = KopkariManager.Instance.GetUsedMainTime();
+        }
+    }
+    private void GetWalkZoneOverAllTime(float time)
+    {
+        overAllWalkZoneTime = time;
+        Debug.Log($"[WalkZone time] {overAllWalkZoneTime}");
     }
 
     private void HorseStats()
@@ -191,10 +236,10 @@ public class GameOver : MonoBehaviour
         float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}");
+        Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime} over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
-        float nonPenaltyTime = overAllTime - overAllPenaltyTime;     // penalty bo¡®lmagan vaqt
+        float nonPenaltyTime = overAllTime - (overAllPenaltyTime+overAllWalkZoneTime);     // penalty bo¡®lmagan vaqt
 
         float newPower = horsePowerMain - (overAllBoostTime * 0.4f + basicTime * 0.2f);
         float newStamina = horseStaminaMain - (overAllTime * 0.3f);
@@ -220,6 +265,50 @@ public class GameOver : MonoBehaviour
         PlayerPrefs.Save();
 
         Debug.Log($"Horse Stats Updated ¡æ Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
+    }
+    #endregion
+
+    #region Kopkari Details
+    private void GameOverByType(GameOverTypes type)
+    {
+        string gameOverTitleS = string.Empty;
+        string gameOverDescription = string.Empty;
+        var lang = LanguageManager.Instance;
+        if(lang == null )
+        {
+            Debug.Log("[Game Over] Language Manager is not working");
+        }
+
+        switch (type)
+        {
+            case GameOverTypes.None:
+                break;
+            case GameOverTypes.ByTime:
+                gameOverTitleS = lang.GetText(501);
+                gameOverDescription = lang.GetText(502);
+                break;
+            case GameOverTypes.Offside:
+                gameOverTitleS = lang.GetText(219);
+                gameOverDescription = lang.GetText(503);
+                break;
+            case GameOverTypes.KopkariStartFailed:
+                gameOverTitleS = lang.GetText(504);
+                gameOverDescription = lang.GetText(505);
+                break;
+            default:
+                Debug.Log("[Game Over ] default is running");
+                break;
+        }
+        gameOverTitle.text = gameOverTitleS;
+        infoText.text = gameOverDescription;
+    }
+    private void TextDetails()
+    {
+        if(LanguageManager.Instance != null)
+        {
+            gameOverTitle.text = LanguageManager.Instance.GetText(501);
+            infoText.text = LanguageManager.Instance.GetText(502);
+        }
     }
     #endregion
 }

@@ -83,9 +83,17 @@ ShaderVariantCollection:
       variants:
       - keywords: 
         passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 LOD_FADE_CROSSFADE _METALLICSPECGLOSSMAP
+        passType: 0
       - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _METALLICSPECGLOSSMAP
         passType: 0
       - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _METALLICSPECGLOSSMAP _NORMALMAP
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _NORMALMAP
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _NORMALMAP _RECEIVE_SHADOWS_OFF
         passType: 0
       - keywords: LOD_FADE_CROSSFADE
         passType: 0
@@ -111,10 +119,29 @@ ShaderVariantCollection:
   - first: {fileID: 4800000, guid: b9c7c1fa1b05472438bd30e8a3543734, type: 3}
     second:
       variants:
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _ALPHAPREMULTIPLY_ON _SURFACE_TYPE_TRANSPARENT
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _ALPHATEST_ON _SURFACE_TYPE_TRANSPARENT
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _NORMALMAP
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _NORMALMAP _RECEIVE_SHADOWS_OFF
+        passType: 0
       - keywords: LOD_FADE_CROSSFADE _EMISSION _NORMALMAP
         passType: 0
   - first: {fileID: 4800000, guid: 232f1f0285b25844089437f9161eb36f, type: 3}
     second:
       variants:
       - keywords: 
+        passType: 0
+  - first: {fileID: 4800000, guid: 926029e745087bc4b8d70bd8857e2175, type: 3}
+    second:
+      variants:
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _ALPHATEST_ON
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _ALPHATEST_ON _SURFACE_TYPE_TRANSPARENT
+        passType: 0
+      - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _SURFACE_TYPE_TRANSPARENT
         passType: 0

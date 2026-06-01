@@ -14,12 +14,11 @@ public class KopkariManager : MonoBehaviour
     public MAnimal playerAnim;
     public PlayerDataManager playerDataManager;
 
-    [Header("-------------Speed info---------------")]
-    public ModalWindowManager modalWindowPopup;
 
     [Header("Main Time")]
     public TMP_Text timeText;
     public float mainTime = 0f;
+    private float totalMainTime;
 
     [Header("Lamp Realated")]
     public string LambOwner;
@@ -103,6 +102,7 @@ public class KopkariManager : MonoBehaviour
     public static Action<float> OnGoatPickedTime;
     public static Action OnResetTarget;
     public static Action<bool> OnGoatPicked;
+    public static Action OnTimeFinished;
     #endregion
 
     [Header("Checkpoints")]
@@ -134,12 +134,16 @@ public class KopkariManager : MonoBehaviour
     private int UserId;
     private bool roundEnded = false;
     private bool droppedReported = false;
-
+    private bool timeFinishedHandled = false;
     // ✅ Eski BaseManager.Instance o‘rniga shu ishlaydi
     public static KopkariManager Instance { get; private set; }
 
     private bool poolsCreated = false;
 
+    //Horse Statistics
+    private float webSnareDamageTime;
+    private float boostTime;
+    public GameOverTypes gameOverTypes = GameOverTypes.None;
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -147,13 +151,6 @@ public class KopkariManager : MonoBehaviour
 
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
-
-        if (modalWindowPopup != null)
-        {
-            // ⚠️ Scene reload bo‘lsa double listener bo‘lmasin
-            modalWindowPopup.onConfirm.RemoveListener(MoveLobby);
-            modalWindowPopup.onConfirm.AddListener(MoveLobby);
-        }
     }
 
     private void Start()
@@ -169,6 +166,10 @@ public class KopkariManager : MonoBehaviour
 
         RegisterStartPoint(startTarget, warmUpTime);
         DisableMainGameObjects();
+        if(gameOverTypes != GameOverTypes.None)
+        {
+            gameOverTypes = GameOverTypes.None;
+        }
     }
 
     private void Update()
@@ -182,7 +183,9 @@ public class KopkariManager : MonoBehaviour
             case RoomState.GameStarted:
                 MainGameTimeTick();
                 break;
-
+            case RoomState.TimeFinished:
+                GameOverAction();
+                break;
             case RoomState.GameFinished:
                 break;
         }
@@ -206,6 +209,8 @@ public class KopkariManager : MonoBehaviour
         // ✅ BeginerRoomManager flow
         KopkariMainUI.OnEverythingReadyStart += StartGame;
         UILookBackButton.OnCameraPressedState += CameraBackState;
+        BoostersContainer.OnBoostTime += SetBoostTime;
+        BoostersContainer.OnPenaltyTime += SetPenaltyTime;
     }
 
     private void OnDisable()
@@ -226,6 +231,8 @@ public class KopkariManager : MonoBehaviour
         // ✅ BeginerRoomManager flow
         KopkariMainUI.OnEverythingReadyStart -= StartGame;
         UILookBackButton.OnCameraPressedState -= CameraBackState;
+        BoostersContainer.OnPenaltyTime -= SetPenaltyTime;
+        BoostersContainer.OnBoostTime -= SetBoostTime;
     }
 
     private void OnDestroy()
@@ -233,44 +240,7 @@ public class KopkariManager : MonoBehaviour
         if (Instance == this) Instance = null;
         SimplePool.ClearAll();
     }
-
-    private void CreatePoolsOnce()
-    {
-        if (poolsCreated) return;
-        poolsCreated = true;
-
-        if (walkZonePrefab != null)
-            SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
-
-        if (oneTimeGetEffect != null)
-            SimplePool.CreatePool(oneTimeGetEffect, prewarm: 5, maxSize: 40, expandable: true);
-
-        if (walkZoneFlash != null)
-            SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 40, expandable: true);
-    }
-
-    private void MainGameTimeTick()
-    {
-        if (mainTime > 0f)
-        {
-            mainTime -= Time.deltaTime;
-
-            int minutes = Mathf.FloorToInt(mainTime / 60);
-            int seconds = Mathf.FloorToInt(mainTime % 60);
-
-            if (timeText != null)
-            {
-                timeText.SetText($"{minutes:00}:{seconds:00}");
-                if (mainTime <= 3f) timeText.color = Color.red;
-            }
-        }
-        else
-        {
-            if (timeText != null) timeText.SetText("00:00");
-            roomState = RoomState.GameFinished;
-        }
-    }
-
+    #region Warm Up
     private void WarmUpTick()
     {
         if (playerReachedStart)
@@ -297,7 +267,98 @@ public class KopkariManager : MonoBehaviour
             HandlePlayerNotReachedInTime();
         }
     }
+    private void HandlePlayerReachedStart()
+    {
+        playerReachedStart = true;
+        EnableULoq();
+        StartMainGame();
 
+        if (timeText != null) timeText.color = Color.white;
+    }
+
+    private void PlayerReachPoint()
+    {
+        StartCoroutine(DelayReachStart());
+
+        if (horseAnimal != null)
+            OnHorseTransform?.Invoke(horseAnimal.transform);
+    }
+
+    private IEnumerator DelayReachStart()
+    {
+        speechBubble?.ShowPopup(LanguageManager.Instance?.GetText(508)); //Are you ready!!!
+        DisableStartPoint();
+
+        yield return new WaitForSeconds(2f);
+
+        speechBubble?.ShowPopup(LanguageManager.Instance?.GetText(508)); //LET'S GOOO!!!
+        HandlePlayerReachedStart();
+    }
+
+    private void HandlePlayerNotReachedInTime()
+    {
+        roomState = RoomState.PlayerEliminated;
+        if (timeText != null) timeText.SetText("DQ");
+        gameOverTypes = GameOverTypes.KopkariStartFailed;
+        KopkariMainUI.Instance.GameOverShow();
+        // mana shu yerda mobile ui di yopib game over page di chiqarish kerak
+        // Bu yerda xohlasang control lock / popup / retry qo‘shasan
+    }
+    private void StartMainGame()
+    {
+        totalMainTime = mainTime;
+        roomState = RoomState.GameStarted;
+        webSnareDamageTime = 0;
+    }
+    #endregion
+
+    #region Game Starting
+    private void CreatePoolsOnce()
+    {
+        if (poolsCreated) return;
+        poolsCreated = true;
+
+        if (walkZonePrefab != null)
+            SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
+
+        if (oneTimeGetEffect != null)
+            SimplePool.CreatePool(oneTimeGetEffect, prewarm: 5, maxSize: 40, expandable: true);
+
+        if (walkZoneFlash != null)
+            SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 40, expandable: true);
+    }
+    private void MainGameTimeTick()
+    {
+
+        if (mainTime > 0f && !timeFinishedHandled)
+        {
+            mainTime -= Time.deltaTime;
+
+            if (mainTime < 0f)
+                mainTime = 0f;
+
+            int minutes = Mathf.FloorToInt(mainTime / 60);
+            int seconds = Mathf.FloorToInt(mainTime % 60);
+
+            if (timeText != null)
+            {
+                timeText.SetText($"{minutes:00}:{seconds:00}");
+                if (mainTime <= 3f) timeText.color = Color.red;
+            }
+        }
+        else
+        {
+            if (timeText != null) timeText.SetText("00:00");
+            roomState = RoomState.TimeFinished;
+            gameOverTypes = GameOverTypes.ByTime;
+        }
+    }
+    public float GetUsedMainTime()
+    {
+        return totalMainTime - mainTime;
+    }
+
+    #endregion
     public void DisableMainGameObjects()
     {
         myLamb?.SetActive(false);
@@ -345,40 +406,7 @@ public class KopkariManager : MonoBehaviour
         if (finalFlag != null) finalFlag.SetActive(state);
     }
 
-    private void HandlePlayerReachedStart()
-    {
-        playerReachedStart = true;
-        EnableULoq();
-        roomState = RoomState.GameStarted;
 
-        if (timeText != null) timeText.color = Color.white;
-    }
-
-    private void PlayerReachPoint()
-    {
-        StartCoroutine(DelayReachStart());
-
-        if (horseAnimal != null)
-            OnHorseTransform?.Invoke(horseAnimal.transform);
-    }
-
-    private IEnumerator DelayReachStart()
-    {
-        speechBubble?.ShowPopup("Are you ready!!!");
-        DisableStartPoint();
-
-        yield return new WaitForSeconds(2f);
-
-        speechBubble?.ShowPopup("LET'S GOOO!!!");
-        HandlePlayerReachedStart();
-    }
-
-    private void HandlePlayerNotReachedInTime()
-    {
-        roomState = RoomState.PlayerEliminated;
-        if (timeText != null) timeText.SetText("DQ");
-        // Bu yerda xohlasang control lock / popup / retry qo‘shasan
-    }
 
     #region Pick Up Uloq
     public void StartPickUpTime()
@@ -431,13 +459,18 @@ public class KopkariManager : MonoBehaviour
 
         if (kopkariResult != null && kopkariResult.UloqOwner == pickerName)
         {
-            speechBubble?.ShowPopup("Lets go!!! Faster Polvon");
+            speechBubble?.ShowPopup(LanguageManager.Instance?.GetText(510)); // Lets go!!! Faster Polvon"
             TriggerPointNotFinished();
         }
         else
         {
             if (kopkariResult != null)
-                speechBubble?.ShowPopup($"<color=#FFD700>{kopkariResult.UloqOwner} Polvon</color> has taken the Ulak.");
+            {
+                string ownerName = $"<color=#FFD700>{kopkariResult.UloqOwner} Polvon</color>";
+                string message = string.Format(LanguageManager.Instance.GetText(511), ownerName);
+                speechBubble?.ShowPopup(message);
+            }
+               // speechBubble?.ShowPopup($"<color=#FFD700>{kopkariResult.UloqOwner} Polvon</color> has taken the Ulak.");
         }
     }
 
@@ -543,7 +576,7 @@ public class KopkariManager : MonoBehaviour
         OnGameStartFinishState?.Invoke(true);
         OnGameStarted?.Invoke();
 
-        speechBubble?.ShowPopup("You have 30 seconds to reach your position!");
+        speechBubble?.ShowPopup(LanguageManager.Instance?.GetText(507));//You have 30 seconds to reach your position!
         UserId = PlayerPrefs.GetInt(Constants.Player.Userid, 0);
     }
 
@@ -566,7 +599,9 @@ public class KopkariManager : MonoBehaviour
         if (targetVFX != null && targetTr != null)
             targetVFX.transform.position = targetTr.position;
     }
-
+    /// <summary>
+    /// Finish is here
+    /// </summary>
     public void MarkPlayerReachedTarget()
     {
         if (roundEnded) return;
@@ -708,21 +743,45 @@ public class KopkariManager : MonoBehaviour
     }
     #endregion
 
+    #region Game Over Actions
+    private void GameOverAction()
+    {
+        if (timeFinishedHandled) return;
+        timeFinishedHandled = true;
+
+        OnTimeFinished?.Invoke();     // NPC, boshqa riderlar shu eventni ushlaydi
+
+        //HandleLose();
+    }
+    public void OffsideAction()
+    {
+        gameOverTypes = GameOverTypes.Offside;
+        GameOverAction();
+    }
+    #endregion
+
+    #region Horse Statistics(Damages)
+
+    public void SetPenaltyTime(float time)
+    {
+        webSnareDamageTime = webSnareDamageTime + time;
+    }
+    public float GetWebSnareDamageTime()
+    {
+        return webSnareDamageTime;
+    }
+    public float GetBoostTime()
+    {
+        return boostTime;
+    }
+    public void SetBoostTime(float time)
+    {
+        boostTime = boostTime + time;
+    }
+    #endregion
     // ✅ BeginerRoomManager’dagi metodlar
     public void MoveLobby()
     {
         SceneLoadManager.Instance?.LoadScene(SceneLoadManager.SceneType.Home);
-    }
-
-    public void BackMessage()
-    {
-        if (modalWindowPopup == null) return;
-
-        modalWindowPopup.UpdateUICustomWithButtons(
-            LanguageManager.Instance.GetText(280),
-            LanguageManager.Instance.GetText(281),
-            LanguageManager.Instance.GetText(1),
-            LanguageManager.Instance.GetText(2)
-        );
     }
 }

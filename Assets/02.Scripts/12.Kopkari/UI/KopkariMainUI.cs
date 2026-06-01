@@ -55,6 +55,7 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private KopkariResultUI resultPage;
     [SerializeField] private UIPauseGame pauseMenu;
     [SerializeField] private GameObject foodPanel;
+    [SerializeField] private GameOver gameOverPage;
 
     [Header("Scale Settings")]
     [SerializeField] private float startScale = 0.8f;
@@ -122,6 +123,7 @@ public class KopkariMainUI : MonoBehaviour
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
     private float totalHoldTime = 0f;
+    private float totalWebSnareTime = 0f;
     #endregion
     private Coroutine canvasRoutine;
     private Coroutine moveBottomRoutine;
@@ -167,6 +169,8 @@ public class KopkariMainUI : MonoBehaviour
         TargetReachEvent.OnRoundEnded += DisableMeters;
         pushButton.onClick.AddListener(PushEffectStart);
         pauseButton.onClick.AddListener(PauseMenu);
+
+        KopkariManager.OnTimeFinished += GameOverShow;
     }
 
     private void OnDisable()
@@ -189,7 +193,7 @@ public class KopkariMainUI : MonoBehaviour
 
         //KopkariManager.OnRacingFinished -= ShowResultPage;
         //RacingController.OnRacingStarted -= GetData;
-
+        KopkariManager.OnTimeFinished -= GameOverShow;
         BoostersContainer.OnDefendState -= SetDefendState;
         BoostersContainer.OnWalkZoneDamaged -= EnableSprint;
         BoostersContainer.OnWebSnareDamaged -= EnableSprint;
@@ -784,6 +788,30 @@ public class KopkariMainUI : MonoBehaviour
     {
         if (hitCountSlider == null) return;
         hitCountSlider.value = hitCountSlider.maxValue;
+    }
+    #endregion
+
+    #region Game Over Panel
+    public void GameOverShow()
+    {
+        if(mobileCanvas != null) mobileCanvas.SetActive(false); 
+        ShowUI(gameOverPage);
+    }
+    #endregion
+
+    #region Game Stats
+    public float GetTotalHoldTime()
+    {
+        float autoBoostTime = KopkariManager.Instance.GetBoostTime();
+        Debug.Log("[AUTO BOOST]" + autoBoostTime);
+        totalHoldTime += autoBoostTime;
+        return totalHoldTime;
+    }
+    public float GetTotalWebSnareTime()
+    {
+        float get = KopkariManager.Instance.GetWebSnareDamageTime();
+        totalWebSnareTime += get;
+        return totalWebSnareTime;
     }
     #endregion
 }

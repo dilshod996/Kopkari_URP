@@ -120,7 +120,7 @@ public class KopkariResultUI : MonoBehaviour
         // RaceDuration ni managerdan olamiz
         float raceDuration = 0f;
         if (KopkariResultsManager.Instance != null)
-            raceDuration = KopkariResultsManager.Instance.RaceDuration;
+            raceDuration = KopkariResultsManager.Instance.RaceDuration; // shu yerda tuxtadim
 
         string timeStr = FormatTime(raceDuration);
         if (mainTimeAmountText) mainTimeAmountText.text = timeStr; // agar shu joyga ham yozmoqchi bo‘lsang
@@ -446,14 +446,6 @@ public class KopkariResultUI : MonoBehaviour
         PlayerPrefs.Save();
 
         Debug.Log($"Horse Stats Updated → Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
-    }
-    private void GetOverallBoostTime(float time)
-    {
-        overAllBoostTime += time;
-    }
-    private void GetOverallPenaltyTime(float time)
-    {
-        overAllPenaltyTime += time;
     }
 
     private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)

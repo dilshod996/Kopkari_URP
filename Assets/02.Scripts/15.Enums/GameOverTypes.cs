@@ -3,5 +3,8 @@ public enum GameOverTypes
     None,
     ByTime,
     ObstacleHit,
-    Offside
+    Offside,
+    OtherRiderFirst,
+    KopkariStartFailed
 }
+

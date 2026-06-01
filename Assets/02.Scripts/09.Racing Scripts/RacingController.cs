@@ -49,6 +49,7 @@ public class RacingController : MonoBehaviour
     [Header("Sprint UI Effect")]
     [SerializeField] private Image sprintImg;
     [SerializeField] private GameObject sliderObject;
+    [SerializeField] private RacingControllerSelecterUI controllSelector;
 
     [Header("Walk Zone Prefab")]
    // public GameObject walkZonePrefab;
@@ -178,7 +179,7 @@ public class RacingController : MonoBehaviour
         UILookBackButton.OnCameraPressedState += CameraBackState;
         FoodInfo.OnFoodAddToHorse += AddFoods;
 
-        StartSound();
+        //StartSound();
 
     }
     private void OnDestroy()
@@ -790,7 +791,7 @@ public class RacingController : MonoBehaviour
 
 
 #region Horse Statistics
-public float GetBoostTime()
+    public float GetBoostTime()
     {
         return boostTime;
     }
@@ -905,7 +906,8 @@ public float GetBoostTime()
     {
         yield return new WaitForSeconds(time);
         UIOverlayRoot.I?.HideCurrentPanel();
-        if (sliderObject != null) sliderObject.SetActive(true);
+        if(controllSelector != null) { controllSelector.gameObject.SetActive(true); }
+        //if (sliderObject != null) sliderObject.SetActive(true);
         Finalsound();
     }
     private async void Finalsound()

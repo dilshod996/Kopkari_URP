@@ -119,7 +119,7 @@ public class GoatDistanceUI : MonoBehaviour
     }
     void ShowWarning()
     {
-        KopkariManager.Instance?.speechBubble.ShowPopup("You are out of Kopkari! Return to the goat!");
+        KopkariManager.Instance?.speechBubble.ShowPopup(LanguageManager.Instance.GetText(512));//"You are out of Kopkari! Return to the goat!"
         // UI popup yoki HUD text
         //Debug.Log("You are out of Kopkari! Return to the goat!");
     }
@@ -127,9 +127,8 @@ public class GoatDistanceUI : MonoBehaviour
     void TriggerGameOver()
     {
         Debug.Log("GAME OVER: Out of Kopkari");
-
+        KopkariManager.Instance.OffsideAction();
         // O'yinni to'xtatish game over page di chaqirish shu yerda
-
     }
 
     float GetDistanceMeters(Vector3 a, Vector3 b)

@@ -45,8 +45,8 @@ MonoBehaviour:
   - 5
   - 6
   - 7
-  lodCrossFadeAnimateSpeed: 4
-  maximumLODLevel: 4
+  lodCrossFadeAnimateSpeed: 3
+  maximumLODLevel: 3
   shadowLayerOverride: 0
   shadowRenderingLayerOverride: 0
   enablePerObjectMotionVectors: 0

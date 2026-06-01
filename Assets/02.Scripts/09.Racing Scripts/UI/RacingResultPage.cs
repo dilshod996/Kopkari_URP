@@ -58,6 +58,7 @@ public class RacingResultPage : MonoBehaviour
     private float overAllTime = 0f;
     private float overAllBoostTime=0f;
     private float overAllPenaltyTime=0f;
+    private float overAllWalkZoneTime = 0f;
 
     private float lastPower = 0f;
     private float lastCooling = 0f;
@@ -88,12 +89,14 @@ public class RacingResultPage : MonoBehaviour
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
         foodPanelEnablerBtn.onClick.AddListener(OpenFoodPanelPopup);
+        Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
     }
     private void OnDisable()
     {
         replayButton.onClick.RemoveAllListeners();
         backToHome.onClick.RemoveAllListeners();
         Clear();
+        Booster.OnWalkZoneDamagedTime -= GetWalkZoneOverAllTime;
     }
     #region Player List && Racing Stats && Records
     public void ShowResults()
@@ -299,10 +302,10 @@ public class RacingResultPage : MonoBehaviour
         float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
         float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
         float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-        Debug.Log($"Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}");
+        Debug.Log($"Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}  over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
-        float nonPenaltyTime = overAllTime - overAllPenaltyTime;     // penalty bo‘lmagan vaqt
+        float nonPenaltyTime = overAllTime - (overAllPenaltyTime + overAllWalkZoneTime);     // penalty bo‘lmagan vaqt
 
         float newPower = horsePowerMain - (overAllBoostTime * 0.2f + basicTime * 0.2f);
         float newStamina = horseStaminaMain - (overAllTime * 0.2f);
@@ -341,6 +344,11 @@ public class RacingResultPage : MonoBehaviour
     private void GetOverallPenaltyTime()
     {
         overAllPenaltyTime = UIButtonActions.Instance?.GetTotalWebSnareTime() ?? 0f; 
+    }
+    private void GetWalkZoneOverAllTime(float time)
+    {
+        overAllWalkZoneTime= time;
+        Debug.Log($"[WalkZone time] {overAllWalkZoneTime}");
     }
     private void GetBoostTime()
     {

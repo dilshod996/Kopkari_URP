@@ -29,6 +29,8 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private Button chainContainerBtn;
     [SerializeField] private Button pauseButton;
     [SerializeField] private Slider cameraSwitchSlider;
+    //[SerializeField] private GameObject reinController;
+    //[SerializeField] private GameObject buttonController;
     #endregion
 
     #region Inspector - Texts
@@ -110,22 +112,22 @@ public class UIButtonActions : MonoBehaviour
     private float totalWebSnareTime = 0f;
     #endregion
 
-    #region Speed State UI
-    [Header("Speed Icon & Text Details")]
-    [SerializeField] private Image speedStateImage;
-    [SerializeField] private Sprite runStateSprite;
-    [SerializeField] private Sprite slowStateSprite;
-    [SerializeField] private Sprite verySlowSprite;
-    [SerializeField] private TMP_Text speedTitleText;
+    //#region Speed State UI
+    //[Header("Speed Icon & Text Details")]
+    //[SerializeField] private Image speedStateImage;
+    //[SerializeField] private Sprite runStateSprite;
+    //[SerializeField] private Sprite slowStateSprite;
+    //[SerializeField] private Sprite verySlowSprite;
+    //[SerializeField] private TMP_Text speedTitleText;
 
-    public enum HorseSpeedState
-    {
-        Run,
-        Slow,
-        VerySlow
-    }
-    public HorseSpeedState speedState = HorseSpeedState.Run;
-    #endregion
+    //public enum HorseSpeedState
+    //{
+    //    Run,
+    //    Slow,
+    //    VerySlow
+    //}
+    //public HorseSpeedState speedState = HorseSpeedState.Run;
+    //#endregion
 
     [Header("Popup Data")]
     [SerializeField] UISpeechBuble speechBubble;
@@ -139,6 +141,7 @@ public class UIButtonActions : MonoBehaviour
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
     {
+        //ControllerEnable();
         isFinished = false;
         Booster.OnSprintFull += HandleSprintFull;
 
@@ -159,9 +162,9 @@ public class UIButtonActions : MonoBehaviour
         BoostersContainer.OnDefendState += SetDefendStateTime;
         HorseMine.OnObstacleTouchedEvent += PlayShock;
 
-        BoostersContainer.OnNormalState += NormalState;
-        BoostersContainer.OnSlowState += SlowState;
-        BoostersContainer.OnVerySlowState += VerySlowState;
+        //BoostersContainer.OnNormalState += NormalState;
+        //BoostersContainer.OnSlowState += SlowState;
+        //BoostersContainer.OnVerySlowState += VerySlowState;
 
         OnBindRequested += Bind;
 
@@ -196,9 +199,9 @@ public class UIButtonActions : MonoBehaviour
         BoostersContainer.OnDefendState -= SetDefendStateTime;
         HorseMine.OnObstacleTouchedEvent -= PlayShock;
 
-        BoostersContainer.OnNormalState -= NormalState;
-        BoostersContainer.OnSlowState -= SlowState;
-        BoostersContainer.OnVerySlowState -= VerySlowState;
+        //BoostersContainer.OnNormalState -= NormalState;
+        //BoostersContainer.OnSlowState -= SlowState;
+        //BoostersContainer.OnVerySlowState -= VerySlowState;
 
         OnBindRequested -= Bind;
 
@@ -282,6 +285,20 @@ public class UIButtonActions : MonoBehaviour
     #endregion
 
     #region Button State Updates
+
+    //private void ControllerEnable()
+    //{
+    //    int controllerId = PlayerPrefs.GetInt("Racing_Controller_Type");
+    //    if(controllerId == 0)
+    //    {
+    //        reinController.SetActive(true);
+
+    //    }
+    //    else
+    //    {
+    //        buttonController.SetActive(true);
+    //    }
+    //}
     public void SetSprintState(bool state)
     {
         // canSprint — umumiy ruxsat (page/scene)
@@ -585,7 +602,7 @@ public class UIButtonActions : MonoBehaviour
         UpdateWalkZoneText(walkZoneCount);
         UpdateHitText(hitCount);
         UpdateWebCount(webCount);
-        NormalState();
+        //NormalState();
     }
 
     private void SaveToPrefs(string prefsName, int value)
@@ -616,7 +633,7 @@ public class UIButtonActions : MonoBehaviour
                 if (boosters != null && !boosters.isNpc)
                 {
                     boosters.DefendPlayer();
-                    SetSpeedState(HorseSpeedState.Run);
+                    //SetSpeedState(HorseSpeedState.Run);
                 }
             });
         }
@@ -717,37 +734,37 @@ public class UIButtonActions : MonoBehaviour
     }
     #endregion
 
-    #region Speed State
-    public void SetSpeedState(HorseSpeedState state)
-    {
-        if (speedState == state) return;
+    //#region Speed State
+    //public void SetSpeedState(HorseSpeedState state)
+    //{
+    //    if (speedState == state) return;
 
-        switch (state)
-        {
-            case HorseSpeedState.Run:
-                speedTitleText.text = (LanguageManager.Instance != null) ? LanguageManager.Instance.GetText(365) : "Stable";
-                speedStateImage.sprite = runStateSprite;
-                break;
+    //    switch (state)
+    //    {
+    //        case HorseSpeedState.Run:
+    //            speedTitleText.text = (LanguageManager.Instance != null) ? LanguageManager.Instance.GetText(365) : "Stable";
+    //            speedStateImage.sprite = runStateSprite;
+    //            break;
 
-            case HorseSpeedState.Slow:
-                speedTitleText.text = (LanguageManager.Instance != null) ? LanguageManager.Instance.GetText(366) : "Slow";
-                speedStateImage.sprite = slowStateSprite;
-                break;
+    //        case HorseSpeedState.Slow:
+    //            speedTitleText.text = (LanguageManager.Instance != null) ? LanguageManager.Instance.GetText(366) : "Slow";
+    //            speedStateImage.sprite = slowStateSprite;
+    //            break;
 
-            case HorseSpeedState.VerySlow:
-                speedTitleText.text = (LanguageManager.Instance != null) ? LanguageManager.Instance.GetText(367) : "Stuck";
-                speedStateImage.sprite = verySlowSprite;
-                break;
-        }
+    //        case HorseSpeedState.VerySlow:
+    //            speedTitleText.text = (LanguageManager.Instance != null) ? LanguageManager.Instance.GetText(367) : "Stuck";
+    //            speedStateImage.sprite = verySlowSprite;
+    //            break;
+    //    }
 
-        BoosterUIAnimator.RaiseBoosterPicked(Booster.BoosterType.SpeedState, speedStateImage.sprite);
-        speedState = state;
-    }
+    //    BoosterUIAnimator.RaiseBoosterPicked(Booster.BoosterType.SpeedState, speedStateImage.sprite);
+    //    speedState = state;
+    //}
 
-    public void NormalState() => SetSpeedState(HorseSpeedState.Run);
-    public void SlowState() => SetSpeedState(HorseSpeedState.Slow);
-    public void VerySlowState() => SetSpeedState(HorseSpeedState.VerySlow);
-    #endregion
+    //public void NormalState() => SetSpeedState(HorseSpeedState.Run);
+    //public void SlowState() => SetSpeedState(HorseSpeedState.Slow);
+    //public void VerySlowState() => SetSpeedState(HorseSpeedState.VerySlow);
+    //#endregion
 
     #region Utils
     private void StopIfRunning(ref Coroutine c)
@@ -773,17 +790,17 @@ public class UIButtonActions : MonoBehaviour
     private void OnObstacleDamageHandler(bool isDamaged)
     {
         // slow visual (xohlasang)
-        if (isDamaged)
-            PlaySlow();
+        //if (isDamaged)
+        //    PlaySlow();
 
         // sprintni bloklash / qaytarish
         EnableSprint(isDamaged);
     }
 
-    public void PlaySlow()
-    {
-        SlowState();
-    }
+    //public void PlaySlow()
+    //{
+    //    SlowState();
+    //}
 
     public void SliderValueRestore()
     {

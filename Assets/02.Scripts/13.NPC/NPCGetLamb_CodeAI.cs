@@ -31,7 +31,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
 
     private int currentCheckpointIndex = -1;
     public bool hasLamb = false;
-
+    private bool timeFinishedProcessed = false;
     // ⏱ coroutinelar
     private Coroutine waitCoroutine;
     private Coroutine itemTimerCoroutine;
@@ -66,6 +66,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         HorseMine.OnReachedStartTarget += OnPlayerReachedStart;
         TargetReachEvent.OnReachedTargetWithLamb += HandleReachedTargetWithLamb;
         TargetReachEvent.OnRoundEnded += HandleFinish;
+        KopkariManager.OnTimeFinished += HandleTimeFinished;
         //BaseManager.OnGoatPicked += HandleGoatOwnership;
     }
 
@@ -75,6 +76,7 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
         HorseMine.OnReachedStartTarget -= OnPlayerReachedStart;
         TargetReachEvent.OnReachedTargetWithLamb -= HandleReachedTargetWithLamb;
         TargetReachEvent.OnRoundEnded -= HandleFinish;
+        KopkariManager.OnTimeFinished -= HandleTimeFinished;
         //BaseManager.OnGoatPicked -= HandleGoatOwnership;
 
         // xavfsizlik uchun
@@ -592,6 +594,54 @@ public class NPCGetLamb_CodeAI : MonoBehaviour
     }
     #endregion
 
+    #region Time finished Stop Rider
+    private void HandleTimeFinished()
+    {
+        if (timeFinishedProcessed) return;
+        timeFinishedProcessed = true;
+
+        // coroutinelarni to'xtatamiz
+        if (waitCoroutine != null)
+        {
+            StopCoroutine(waitCoroutine);
+            waitCoroutine = null;
+        }
+
+        StopItemTimer();
+
+        // agar uloq NPCda bo'lsa drop qilamiz
+        if (hasLamb)
+        {
+            hasLamb = false;
+
+            if (pickUp != null && pickUp.Has_Item)
+            {
+                pickUp.DropItem();
+                KopkariResultsManager.Instance?.OnLambDropped(id);
+            }
+
+            KopkariManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
+        }
+
+        StopRiderAI();
+    }
+    private void StopRiderAI()
+    {
+        isFinished = true;
+        allCheckpointsDone = false;
+        currentCheckpointIndex = -1;
+
+        if (ai != null)
+            ai.enabled = false;
+
+        if (brain != null)
+            brain.enabled = false;
+
+        var animal = GetComponentInParent<MAnimal>();
+        if (animal != null)
+            animal.Speed_CurrentIndex_Set(0);
+    }
+    #endregion
 
 
 }

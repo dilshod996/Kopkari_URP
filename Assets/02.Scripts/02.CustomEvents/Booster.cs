@@ -61,7 +61,14 @@ public class Booster : MonoBehaviour
     private Coroutine walkZoneCo;
     private BoostersContainer walkZoneTarget;
     private Action defendHandlerCached;
-    
+
+
+    private float walkZoneStartTime;
+    private float walkZoneFinishTime;
+
+    private bool walkZoneActive;
+    private bool walkZoneTimeAdded;
+    public static event Action<float> OnWalkZoneDamagedTime;
 
     private void Awake()
     {
@@ -117,7 +124,7 @@ public class Booster : MonoBehaviour
         if (isPlayer)
             PlayPickupFeedback();
         DisableAndDespawn();
-        if (RacingController.Instance.mapType==RacingController.RacingType.Training)
+        if (RacingController.Instance!= null && RacingController.Instance.mapType==RacingController.RacingType.Training)
         {
             RacingTutorials.OnItemPicked?.Invoke(boosterType, mode);
             if(boosterType == BoosterType.SprintFull)
@@ -233,6 +240,7 @@ public class Booster : MonoBehaviour
         }
     }
     #region Walk Zone
+
     private void TryApplyWalkZoneSlow(BoostersContainer boosters)
     {
         if (!boosters || !boosters.horseAnimal) { DisableAndDespawn(); return; }
@@ -247,6 +255,12 @@ public class Booster : MonoBehaviour
 
         walkZoneTarget = boosters;
 
+        // ✅ effected time start
+        walkZoneStartTime = Time.time;
+        walkZoneFinishTime = 0f;
+        walkZoneActive = true;
+        walkZoneTimeAdded = false;
+
         void CancelZone(bool despawn)
         {
             if (walkZoneCo != null)
@@ -255,39 +269,44 @@ public class Booster : MonoBehaviour
                 walkZoneCo = null;
             }
 
+            // ✅ effected time ni bir marta yuboradi
+            AddWalkZoneDamagedTimeOnce();
+
+            // ✅ speed restore
+            if (animal != null && animal.CurrentSpeedIndex == appliedIndex)
+                animal.Speed_CurrentIndex_Set(originalIndex);
+
             if (walkZoneTarget != null && defendHandlerCached != null)
             {
                 walkZoneTarget.OnDefendActivated -= defendHandlerCached;
                 defendHandlerCached = null;
             }
 
-
             _affected.Remove(walkZoneTarget);
 
-            // ✅ debuff OFF (null qilishdan oldin!)
             walkZoneTarget?.SetDebuff(BoostersContainer.DebuffState.None);
-
-            // UI normal
             walkZoneTarget?.NormalSpeedInvoke();
 
             walkZoneTarget = null;
+            walkZoneActive = false;
 
             if (despawn)
                 SimplePool.Despawn(gameObject);
         }
 
-
         // ✅ defend handler
         Action defendHandler = null;
         defendHandler = () => CancelZone(despawn: true);
+
         defendHandlerCached = defendHandler;
         boosters.OnDefendActivated += defendHandler;
-
 
         boosters.EnteredSpeedInvoke();
         animal.Speed_CurrentIndex_Set(appliedIndex);
 
-        if (walkZoneCo != null) StopCoroutine(walkZoneCo);
+        if (walkZoneCo != null)
+            StopCoroutine(walkZoneCo);
+
         walkZoneCo = StartCoroutine(WalkZoneRoutine(animal, originalIndex, appliedIndex, slowDuration, CancelZone));
     }
 
@@ -300,12 +319,22 @@ public class Booster : MonoBehaviour
     {
         yield return new WaitForSeconds(duration);
 
-        // Duration tugadi => restore
-        if (animal != null && animal.CurrentSpeedIndex == appliedIndex)
-            animal.Speed_CurrentIndex_Set(originalIndex);
-
-        // ✅ End naturally => cleanup + despawn
         CancelZone?.Invoke(true);
+    }
+
+    private void AddWalkZoneDamagedTimeOnce()
+    {
+        if (!walkZoneActive) return;
+        if (walkZoneTimeAdded) return;
+
+        walkZoneTimeAdded = true;
+
+        walkZoneFinishTime = Time.time;
+
+        float damagedTime = walkZoneFinishTime - walkZoneStartTime;
+        damagedTime = Mathf.Clamp(damagedTime, 0f, slowDuration);
+
+        OnWalkZoneDamagedTime?.Invoke(damagedTime);
     }
     #endregion
 
