@@ -15,6 +15,8 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnluckSoftware;
+using static Constants;
 
 public class LobbyManager : MonoBehaviour
 {
@@ -81,6 +83,8 @@ public class LobbyManager : MonoBehaviour
     [SerializeField] private GPUIPrefabManager prefabManager;
     public static event Action<string> OnNameChanged;
 
+    [SerializeField] private StylizedWeatherController weatherController;
+
     private async void Start()
     {
         SceneLoadManager.Instance.SetAssetInstantiationFinished(false);
@@ -126,6 +130,7 @@ public class LobbyManager : MonoBehaviour
 
         RoomSound();
         UIOverlayRoot.I.HidePanel(UIPanelType.Home, instant: false);
+        SetWeather();
     }
 
     private void OnEnable()
@@ -142,7 +147,7 @@ public class LobbyManager : MonoBehaviour
         }
         FoodShowerPopup.OnWaterDrink += PlayDrink;
         FoodShowerPopup.OnFoodEat += PlayEat;
-
+        
     }
     private void OnDisable()
     {
@@ -226,6 +231,23 @@ public class LobbyManager : MonoBehaviour
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.EgyptRacing, preloadRacing);
+    }
+    public void TexasRacing()
+    {
+        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
+        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
+        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+
+        if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
+        {
+            //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
+            HomeMainUI.Instance?.SHowFoodPanel();
+            HomeHapticsManager.Instance.Play(HomeHapticId.LowCondition);
+            return;  // Racing boshlanmaydi
+        }
+        HomeHapticsManager.Instance.Play(HomeHapticId.Success);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.Kansas, preloadRacing);
     }
     #endregion
 
@@ -484,7 +506,7 @@ public class LobbyManager : MonoBehaviour
     public async Task SwitchEnvironmentAsync(string envAddress)
     {
         await SetLoading(true);
-
+        ChangeWeather(envAddress);
         // ✅ 0) Old envni aniq unload qil
         if (_currentEnvInstance != null)
         {
@@ -626,6 +648,32 @@ public class LobbyManager : MonoBehaviour
         if(clip != null && SoundManager.Instance !=null)
         {
             SoundManager.Instance.PlayRoom(clip);
+        }
+    }
+    #endregion
+
+    #region Wheater Controller
+    private void SetWeather()
+    {
+        string mapname = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
+        if (mapname == Constants.MapNames.Zarafshan)
+        {
+            weatherController.ChangeWeather("Lightning");
+        }
+        else if (mapname == Constants.MapNames.Egypt)
+        {
+            weatherController.ChangeWeather("Dust Storm");
+        }
+    }
+    public void ChangeWeather(string mapname)
+    {
+        if (mapname == Constants.MapNames.Zarafshan)
+        {
+            weatherController.ChangeWeather("Lightning");
+        }
+        else if (mapname == Constants.MapNames.Egypt)
+        {
+            weatherController.ChangeWeather("Dust Storm");
         }
     }
     #endregion

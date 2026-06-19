@@ -146,6 +146,12 @@ public class MapCard : MonoBehaviour
             case SceneLoadManager.SceneType.EgyptRacing:
                 UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
                 break;
+            //case SceneLoadManager.SceneType.SibiriaRacing:
+            //    UIOverlayRoot.I.ShowPanel(UIPanelType.Sibiria, LanguageManager.Instance.GetText(211), instant: false);
+            //    break;
+            case SceneLoadManager.SceneType.Kansas:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(519), instant: false);
+                break;
         }
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         SceneLoadManager.Instance.LoadSceneNew(movingRoom, preloadRacing);

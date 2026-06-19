@@ -15,6 +15,7 @@ public enum UIPanelType
     KopkariRegistan = 6,
     Custom = 7,
     RacingTutorial = 8,
+    Kansas = 9,
 }
 
 [Serializable]

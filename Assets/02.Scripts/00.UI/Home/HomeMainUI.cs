@@ -307,7 +307,7 @@ public class HomeMainUI : MonoBehaviour
         //    nyufiyAmount = 4000;
         //    PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         //}
-        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 10);
+        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 100);
 
         // Formatlash xohishingga qarab
         nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";

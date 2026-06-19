@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/02.Scenes/Racing Rooms/TrainingRacing.unity
     guid: eed281d424232a04b8ecdef9d09add4e
+  - enabled: 1
+    path: Assets/02.Scenes/Racing Rooms/Kansas.unity
+    guid: c18aa708ec1a2fd4795687c6369928ce
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 76785f93504f65749b446b828074051a,
       type: 2}

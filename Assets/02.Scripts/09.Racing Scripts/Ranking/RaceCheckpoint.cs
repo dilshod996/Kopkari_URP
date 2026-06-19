@@ -110,6 +110,7 @@ public class RaceCheckpoint : MonoBehaviour
             {
                 agent.EndRace();
                 RacingController.Instance.FinishRace();
+                Debug.Log($"Agent {agent.name} finished {agent.ElapsedTime}");
             }
                 
 

@@ -29,5 +29,5 @@ MonoBehaviour:
   ShowSelectedObjectPositionWarning: 1
   RedoKey: 121
   UndoKey: 122
-  WindowPosition: {x: 710.4001, y: 179.10004}
+  WindowPosition: {x: -1, y: -1}
   SelectionSnapshots: []

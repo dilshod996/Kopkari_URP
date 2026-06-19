@@ -17,28 +17,28 @@ MonoBehaviour:
     replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Grass
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 12/22/2025 19:34:35.219
+    modifiedDate: 06/06/2026 16:18:26.086
   - shaderName: ANGRYMESH/Stylized Pack/Tree Bark
     replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Tree Bark
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 12/22/2025 21:44:00.186
+    modifiedDate: 06/06/2026 16:18:26.474
   - shaderName: ANGRYMESH/Stylized Pack/Tree Leaf
     replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Tree Leaf
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 12/22/2025 21:44:01.595
+    modifiedDate: 06/06/2026 16:18:26.820
   - shaderName: Hidden/Amplify Impostors/Octahedron Impostor URP
     replacementShaderName: Hidden/GPUInstancerPro/Amplify Impostors/Octahedron Impostor
       URP
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 12/22/2025 21:44:02.920
+    modifiedDate: 06/06/2026 16:18:27.161
   - shaderName: ANGRYMESH/Stylized Pack/Props
     replacementShaderName: GPUInstancerPro/ANGRYMESH/Stylized Pack/Props
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 12/22/2025 22:04:32.925
+    modifiedDate: 06/06/2026 16:18:27.522
   - shaderName: Universal Render Pipeline/Lit
     replacementShaderName: GPUInstancerPro/Universal Render Pipeline/Lit
     extensionCode: 
@@ -48,7 +48,7 @@ MonoBehaviour:
     replacementShaderName: GPUInstancerPro/Custom/SpectatorWobble_URP
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 12/22/2025 22:26:30.360
+    modifiedDate: 06/06/2026 16:18:27.815
   - shaderName: Universal Render Pipeline/Lit
     replacementShaderName: GPUInstancerPro/CrowdAnimations/Universal Render Pipeline/Lit
     extensionCode: CROWD
@@ -63,7 +63,7 @@ MonoBehaviour:
     replacementShaderName: GPUInstancerPro/Malbers/MWater2
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 01/06/2026 22:46:41.785
+    modifiedDate: 06/06/2026 16:18:28.181
   - shaderName: Universal Render Pipeline/Simple Lit
     replacementShaderName: GPUInstancerPro/CrowdAnimations/Universal Render Pipeline/Simple
       Lit
@@ -74,7 +74,7 @@ MonoBehaviour:
     replacementShaderName: GPUInstancerPro/Toon/TFP_CustomToonVegetation
     extensionCode: 
     isUseOriginal: 0
-    modifiedDate: 01/31/2026 16:31:03.563
+    modifiedDate: 06/06/2026 16:18:28.494
   - shaderName: Universal Render Pipeline/Unlit
     replacementShaderName: GPUInstancerPro/CrowdAnimations/Universal Render Pipeline/Unlit
     extensionCode: CROWD

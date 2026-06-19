@@ -92,6 +92,9 @@ public class GameFood : MonoBehaviour
             case SceneLoadManager.SceneType.EgyptRacing:
                 UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
                 break;
+            case SceneLoadManager.SceneType.Kansas:
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, "Kansas is ready for");
+                break;
         }
     }
     #region UI Transilations

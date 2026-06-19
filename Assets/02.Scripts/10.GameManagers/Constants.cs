@@ -87,6 +87,7 @@ public static class Constants
         public const string Egypt = "egypt";
         public const string Registon = "registon";
         public const string JomboyKopkari = "jomboyk";
+        public const string Kansas = "kansas";
     }
     public static class HorseCondition
     {
@@ -203,7 +204,7 @@ public static class Constants
     {
         public const int ZarafshanCost = 400;
         public const int EgyptCost = 500;
-        public const int JapanCost = 750;
+        public const int Kansas = 750;
         public const int RegistanSquare = 850;
     }
 }

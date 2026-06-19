@@ -169,6 +169,9 @@ public class GameOver : MonoBehaviour
             case SceneLoadManager.SceneType.EgyptRacing:
                 UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(499));
                 break;
+            case SceneLoadManager.SceneType.Kansas:            
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(519));
+                break;
         }
         SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
     }

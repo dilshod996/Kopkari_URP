@@ -181,7 +181,21 @@ public class RacingResultPage : MonoBehaviour
                 allCoinText.text = $"{allCoin:N0}";
                 PlayerPrefs.SetInt(Constants.Coins.Nyufiy, allNyufiy);
                 PlayerPrefs.SetInt(Constants.Coins.Coin, allCoin);
-                float savedTime = PlayerPrefs.GetFloat(Constants.Record.Zarafshan);
+
+                // Record tekshirish va yangilash bu faqat hozir Zarafshan uchun ishlaydi, boshqa xaritalar uchun kerak bo‘lsa shartni kengaytirish kerak
+                float savedTime = 0;
+                if (sceneType == SceneLoadManager.SceneType.SecondRacing)
+                {
+                    savedTime = PlayerPrefs.GetFloat(Constants.Record.Zarafshan);
+                }
+                else if (sceneType == SceneLoadManager.SceneType.EgyptRacing)
+                {
+                    savedTime = PlayerPrefs.GetFloat(Constants.Record.Egypt);
+                }
+                else if (sceneType == SceneLoadManager.SceneType.Kansas)
+                {
+                    savedTime = PlayerPrefs.GetFloat(Constants.Record.Kansas);
+                }
 
                 if (savedTime == 0 || savedTime > e.LastSplitTime)
                 {
@@ -241,7 +255,7 @@ public class RacingResultPage : MonoBehaviour
                     _ => (0, 600, GetRandomXpByRank(4))
                 };
 
-            case RacingController.RacingType.Texas:
+            case RacingController.RacingType.Kansas:
                 return ranking switch
                 {
                     1 => (6, 3000, GetRandomXpByRank(1)),
@@ -468,6 +482,10 @@ public class RacingResultPage : MonoBehaviour
         {
             UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
         }
+        else if(sceneType == SceneLoadManager.SceneType.Kansas)
+        {
+            UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(519), instant: false);
+        }
         SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
     }
     private void OpenTacticItemsPanel()
@@ -488,7 +506,8 @@ public class RacingResultPage : MonoBehaviour
 
             case SceneLoadManager.SceneType.EgyptRacing:
                 return Constants.RoomEnterCosts.EgyptCost;
-
+            case SceneLoadManager.SceneType.Kansas:
+                return Constants.RoomEnterCosts.Kansas;
             //case SceneLoadManager.SceneType.TexasRacing:
             //    return 2;
 

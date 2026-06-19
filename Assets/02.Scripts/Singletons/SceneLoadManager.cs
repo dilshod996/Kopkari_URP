@@ -28,7 +28,8 @@ public class SceneLoadManager : MonoBehaviour
         FirstRacing,
         TrainingRacing,
         SecondRacing,
-        EgyptRacing
+        EgyptRacing,
+        Kansas
     }
 
     public SceneType CurrentSceneType  = SceneType.None;

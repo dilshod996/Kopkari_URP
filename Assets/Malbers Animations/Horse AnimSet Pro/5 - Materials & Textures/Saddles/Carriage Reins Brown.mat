@@ -32,7 +32,7 @@ Material:
   m_LightmapFlags: 1
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 2000
   stringTagMap:
     RenderType: Opaque
   disabledShaderPasses: []
@@ -119,6 +119,7 @@ Material:
     - _BUILTIN_ZWriteControl: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
+    - _BottomStrength: 0
     - _BumpScale: 1.87
     - _CastShadows: 1
     - _Cull: 2
@@ -133,6 +134,8 @@ Material:
     - _Hue: 0
     - _Metallic: 0
     - _Mode: 0
+    - _NoiseScale: 4
+    - _NoiseStrength: 0.4
     - _Normal_Power: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
@@ -156,6 +159,7 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _Metallic_Max: {r: 0, g: 1, b: 0, a: 0}
     - _Metallic_Min: {r: 0, g: 1, b: 0, a: 0}
+    - _NewBottomColor: {r: 0, g: 0, b: 0, a: 0}
     - _Offset: {r: 0, g: 0, b: 0, a: 0}
     - _Rough_Max: {r: 0, g: 0.8, b: 0, a: 0}
     - _Rough_Min: {r: 0, g: 0.8, b: 0, a: 0}

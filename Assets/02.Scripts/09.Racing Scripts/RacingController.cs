@@ -15,6 +15,7 @@ using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using DG.Tweening;
+using UnluckSoftware;
 public class RacingController : MonoBehaviour
 {
     public static RacingController Instance { get; protected set; }
@@ -25,7 +26,7 @@ public class RacingController : MonoBehaviour
         Training,
         Zarafshan,
         Egypt,
-        Texas
+        Kansas
     }
     public RacingType mapType = RacingType.None;
     public MAnimal horse;
@@ -62,6 +63,9 @@ public class RacingController : MonoBehaviour
     [SerializeField] private ThirdPersonFollowTarget finishCam;
     [SerializeField] private ThirdPersonFollowTarget sprintCam;
     [SerializeField] private ThirdPersonFollowTarget firstPersonCam;
+
+    [Header("Weather Controller")]
+    [SerializeField] private StylizedWeatherController weatherController;
     public enum CameraTypes
     {
         ThirdMain,
@@ -155,7 +159,7 @@ public class RacingController : MonoBehaviour
     {
         InitLeaderboardPanelHidden();
        // SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
-        SimplePool.CreatePool(oneTimeFlashEffect, prewarm: 5, maxSize: 8, expandable: true);
+        SimplePool.CreatePool(oneTimeFlashEffect, prewarm: 5, maxSize: 8, expandable: true); 
         SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 8, expandable: true);
         SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
         SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
@@ -164,6 +168,7 @@ public class RacingController : MonoBehaviour
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
 
         LoadingPanel(2f);
+        ChangeWeather();
     }
     private void OnEnable()
     {
@@ -236,32 +241,6 @@ public class RacingController : MonoBehaviour
     }
     #endregion
 
-    #region Removed Boshlanish player ruyxat
-    //public void OnStartButtonPressed()
-    //{
-    //    StartCoroutine(StartCountdown());
-    //}
-
-    //private IEnumerator StartCountdown()
-    //{
-    //    countText.gameObject.SetActive(true);
-
-    //    for (int i = 3; i >= 1; i--)
-    //    {
-    //        countText.text = i.ToString();
-    //        yield return new WaitForSeconds(countdownDelay);
-    //    }
-
-    //    // "Start" yozuvi
-    //    countText.text = "Start!";
-    //    yield return new WaitForSeconds(startTextDuration);
-
-    //    //countText.gameObject.SetActive(false);
-
-    //    // endi poyga boshlanadi
-    //    //StartRacing();
-    //}
-    #endregion
 
     #region Start and Stop Racing
     public void StartRacing()
@@ -588,6 +567,8 @@ public class RacingController : MonoBehaviour
 
             case RacingType.None:
                 return new Vector2(10f, -5f);
+            case RacingType.Kansas:
+                return new Vector2(-57f, -8f);
 
             default:
                 return new Vector2(10f, -5f);
@@ -790,7 +771,7 @@ public class RacingController : MonoBehaviour
     #endregion
 
 
-#region Horse Statistics
+    #region Horse Statistics
     public float GetBoostTime()
     {
         return boostTime;
@@ -948,4 +929,17 @@ public class RacingController : MonoBehaviour
     }
     #endregion
 
+    #region Weather
+    public void ChangeWeather()
+    {
+        if(mapType== RacingType.Zarafshan)
+        {
+            weatherController.ChangeWeather("Lightning");
+        }
+        else if(mapType == RacingType.Egypt)
+        {
+            weatherController.ChangeWeather("Dust Storm");
+        }
+    }
+    #endregion
 }

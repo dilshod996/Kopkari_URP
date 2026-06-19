@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-
+using UnityEngine.InputSystem;
 namespace PilotoStudio
 {
     public class ParticleShowcase : MonoBehaviour
@@ -74,24 +74,29 @@ namespace PilotoStudio
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Q))
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard == null)
+                return;
+
+            if (keyboard.qKey.wasPressedThisFrame)
             {
                 ActivatePrevious();
             }
 
-            if (Input.GetKeyDown(KeyCode.W))
+            if (keyboard.wKey.wasPressedThisFrame)
             {
                 ActivateNext();
             }
 
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (keyboard.spaceKey.wasPressedThisFrame)
             {
-          
                 if (particles[currentlyActive].TryGetComponent<ParticleSystem>(out ParticleSystem ps))
                 {
                     ps.Play();
                 }
-                PostUpdateLogic() ;
+
+                PostUpdateLogic();
             }
         }
 

@@ -24,7 +24,12 @@ ShaderVariantCollection:
       - keywords: 
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON
+          _ENABLETINTVARIATIONCOLOR_ON
+        passType: 0
+      - keywords: LOD_FADE_CROSSFADE _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON
           _ENABLETINTVARIATIONCOLOR_ON _ENABLEWIND_ON
+        passType: 0
+      - keywords: LOD_FADE_CROSSFADE _ENABLEBOTTOMCOLOR_ON _ENABLETINTVARIATIONCOLOR_ON
         passType: 0
       - keywords: _ENABLEBOTTOMCOLOR_ON _ENABLESMOOTHNESSWAVES_ON _ENABLETINTVARIATIONCOLOR_ON
         passType: 0
@@ -66,6 +71,8 @@ ShaderVariantCollection:
       - keywords: LOD_FADE_CROSSFADE _ALPHATEST_ON
         passType: 0
       - keywords: LOD_FADE_CROSSFADE _NORMALMAP
+        passType: 0
+      - keywords: LOD_FADE_CROSSFADE _RECEIVE_SHADOWS_OFF
         passType: 0
       - keywords: _ENVIRONMENTREFLECTIONS_OFF
         passType: 0
