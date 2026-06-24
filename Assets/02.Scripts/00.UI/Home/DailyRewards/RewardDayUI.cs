@@ -6,7 +6,7 @@ using UnityEngine.UI;
 public class RewardDayUI : MonoBehaviour
 {
     [Header("Reward Data (only one will be not-None)")]
-    public FoodInfo.HorseFood horseFood = FoodInfo.HorseFood.None;
+    public CurrencyRewardType currencyReward = CurrencyRewardType.None;
     public PlayerResourse.Resources playerSupplies = PlayerResourse.Resources.None;
 
     [Header("UI Refs")]
@@ -24,12 +24,7 @@ public class RewardDayUI : MonoBehaviour
 
     private bool isClaimed;
     private bool isToday;
-    public static event Action<RewardType, int, FoodInfo.HorseFood, PlayerResourse.Resources, int, Sprite, string> OnTodayRewardPrepared;
-    // (type, amountInt, food, resource, languageId, icon, amountText)
-
-    // args: (type, amount, horseFood, playerResource, languageId, icon)
-
-    // args: (type, amount, horseFood, playerResource, languageId, icon)
+    public static event Action<RewardType, int, CurrencyRewardType, PlayerResourse.Resources, int, Sprite, string> OnTodayRewardPrepared;
 
     /// <summary>
     /// claimed  = oldin olingan kun
@@ -80,7 +75,7 @@ public class RewardDayUI : MonoBehaviour
             OnTodayRewardPrepared?.Invoke(
                     type,
                     amountPrize,
-                    horseFood,
+                    currencyReward,
                     playerSupplies,
                     languageId,
                     icon,
@@ -97,10 +92,10 @@ public class RewardDayUI : MonoBehaviour
 
         // enum value
         int enumValue = 0;
-        if (type == RewardType.HorseFood) enumValue = (int)horseFood;
+        if (type == RewardType.Currency) enumValue = (int)currencyReward;
         else if (type == RewardType.PlayerSupplies) enumValue = (int)playerSupplies;
 
-        //PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_TODAY_REWARD_ENUM, enumValue); boshqatdan qilinadi
+        PlayerPrefs.SetInt(Constants.DailyPrizes.PREF_TODAY_REWARD_ENUM, enumValue);
         PlayerPrefs.Save();
     }
 
@@ -109,19 +104,16 @@ public class RewardDayUI : MonoBehaviour
     {
         languageId = 0;
 
-        // 1) HorseFood bo'lsa
-        if (horseFood != FoodInfo.HorseFood.None)
+        // 1) Currency bo'lsa
+        if (currencyReward != CurrencyRewardType.None)
         {
-            switch (horseFood)
+            switch (currencyReward)
             {
-                case FoodInfo.HorseFood.Wheat: languageId = 108; break;
-                case FoodInfo.HorseFood.Barley: languageId = 109; break;
-                case FoodInfo.HorseFood.Apple: languageId = 110; break;
-                case FoodInfo.HorseFood.Water: languageId = 111; break;
-                case FoodInfo.HorseFood.StaminWater: languageId = 112; break;
+                case CurrencyRewardType.Nyufiy: languageId = 409; break;
+                case CurrencyRewardType.Coin: languageId = 390; break;
                 default: languageId = 0; break;
             }
-            return RewardType.HorseFood;
+            return RewardType.Currency;
         }
 
         // 2) PlayerSupplies bo'lsa
@@ -146,6 +138,13 @@ public class RewardDayUI : MonoBehaviour
 public enum RewardType
 {
     None = 0,
-    HorseFood = 1,
+    Currency = 1,
     PlayerSupplies = 2
+}
+
+public enum CurrencyRewardType
+{
+    None = 0,
+    Nyufiy = 1,
+    Coin = 2
 }

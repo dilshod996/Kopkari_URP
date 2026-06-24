@@ -504,6 +504,8 @@ public class RacingTutorials : MonoBehaviour
             {
                 PlayerPrefs.SetInt(Constants.Tutorial.TutorialPlay, 1);
             }
+
+            DataManager.Instance?.SetTutorialDone();
         }
         //else if (currentState == TutorialState.WebSnare)
 

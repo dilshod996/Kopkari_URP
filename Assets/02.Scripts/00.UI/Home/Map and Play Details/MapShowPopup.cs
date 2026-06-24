@@ -69,21 +69,50 @@ public class MapShowPopup : MonoBehaviour
     }
     private void BuyMap()
     {
-        int getQorak = PlayerPrefs.GetInt(Constants.Coins.Coin);
-        if (mapCost > getQorak)
+        if (IsMapAlreadyUnlocked())
         {
-            //money not enough
-            MoneyNotEnoughText();
-        }
-        else 
-        {
-            //buy map
             CloseOpenPages();
-            getQorak -= mapCost;
-            PlayerPrefs.SetInt(Constants.Coins.Coin, getQorak);
-            HomeMainUI.Instance.DisplayAutoReward(mapImage.sprite, LanguageManager.Instance.GetText(409), LanguageManager.Instance.GetText(405), mapName.text);
-            PlayerPrefs.SetInt(mapConstantName, 1);
+            return;
         }
+
+        bool success = CurrencyManager.Instance.SpendCoin(mapCost, true);
+
+        if (!success)
+        {
+            HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
+            MoneyNotEnoughText();
+            return;
+        }
+
+        CloseOpenPages();
+
+        HomeMainUI.Instance.DisplayAutoReward(
+            mapImage.sprite,
+            LanguageManager.Instance.GetText(409),
+            LanguageManager.Instance.GetText(405),
+            mapName.text
+        );
+
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.UnlockMap(mapConstantName, true);
+        }
+        else
+        {
+            PlayerPrefs.SetInt(mapConstantName, 1);
+            PlayerPrefs.Save();
+        }
+
+        HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
+    }
+
+    private bool IsMapAlreadyUnlocked()
+    {
+        if (DataManager.Instance != null)
+            return DataManager.Instance.IsMapUnlocked(mapConstantName);
+
+        int defaultValue = mapConstantName == Constants.MapNames.RacingTraining || mapConstantName == Constants.MapNames.Zarafshan ? 1 : 0;
+        return PlayerPrefs.GetInt(mapConstantName, defaultValue) == 1;
     }
     private void MoveQorakPage()
     {

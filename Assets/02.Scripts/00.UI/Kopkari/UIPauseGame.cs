@@ -110,9 +110,11 @@ public class UIPauseGame : MonoBehaviour
     private void HorseStats()
     {
         // --- Load ---
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float horsePowerMain = current.Power;
+        float horseCoolingMain = current.Cooling;
+        float horseStaminaMain = current.Stamina;
         Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
@@ -132,11 +134,7 @@ public class UIPauseGame : MonoBehaviour
         float rCooling = Mathf.Round(newCooling);
         // Progress Bar Updatelar
 
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, rPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, rStamina);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, rCooling);
-
-        PlayerPrefs.Save();
+        HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
 
         Debug.Log($"Horse Stats Updated ¡æ Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
     }

@@ -27,19 +27,19 @@ public class LobbyAvatarController : MonoBehaviour
         AIAnimator = GetComponent<Animator>();
         agent = GetComponent<NavMeshAgent>();
 
-        if(!DataManager.Instance.LobbyAnimPlayed())
-        {
-            agent.speed = moveSpeed;
-            agent.stoppingDistance = 0.2f;
+        //if(!DataManager.Instance.LobbyAnimPlayed())
+        //{
+        //    agent.speed = moveSpeed;
+        //    agent.stoppingDistance = 0.2f;
 
-            StartCoroutine(StartPlaying());
-        }
-        else
-        {
-            transform.position = new Vector3(268.97f, 0.39f, 317.56f);
-            transform.rotation = Quaternion.Euler(0f, 92.55f, 0f);
-            StartCoroutine(PlayRandomIdleLoop());
-        }
+        //    StartCoroutine(StartPlaying());
+        //}
+        //else
+        //{
+        //    transform.position = new Vector3(268.97f, 0.39f, 317.56f);
+        //    transform.rotation = Quaternion.Euler(0f, 92.55f, 0f);
+        //    StartCoroutine(PlayRandomIdleLoop());
+        //}
 
     }
     IEnumerator PlayRandomIdleLoop()
@@ -102,7 +102,7 @@ public class LobbyAvatarController : MonoBehaviour
 
                     // **Avatarning rotation ni sozlash (Euler graduslarda)**
                     transform.rotation = Quaternion.Euler(0f, 92.55f, 0f);
-                    DataManager.Instance.animPlayed = true;
+                    //DataManager.Instance.animPlayed = true;
                 }
             }
         }

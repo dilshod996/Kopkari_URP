@@ -55,6 +55,8 @@ public class OptionItemUI : MonoBehaviour
         _playerId = playerId;
         _slotId = slotId;
         _loader = loader;
+        _horseLoader = null;
+        _isHorse = false;
 
         _ = LoadIconAsync(entry.IconKey);
 
@@ -62,17 +64,7 @@ public class OptionItemUI : MonoBehaviour
         bool isSelected = IsSelected(entry);
         if (nameCodeText.text != null)
             nameCodeText.text = LanguageManager.Instance.GetText(entry.NameCode);
-        if (btnText)
-        {
-            if (!isUnlocked)
-            {
-                btnText.text = LanguageManager.Instance.GetText(427);
-            }
-            else
-            {
-                btnText.text = isSelected ? LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
-            }
-        }
+        UpdateButtonText(isUnlocked, isSelected);
 
         // ---- CLICK ----
         if (button)
@@ -91,6 +83,7 @@ public class OptionItemUI : MonoBehaviour
         ApplyTheme(false);
         _isHorse = true;
         _horseLoader = loader;
+        _loader = null;
 
         _entry = entry;
         _popup = popup;
@@ -104,17 +97,7 @@ public class OptionItemUI : MonoBehaviour
 
         if(nameCodeText.text!=null)
             nameCodeText.text = LanguageManager.Instance.GetText(entry.NameCode);
-        if (btnText)
-        {
-            if (!isUnlocked)
-            {
-                btnText.text = LanguageManager.Instance.GetText(424);
-            }
-            else
-            {
-                btnText.text = isSelected ? LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
-            }
-        }
+        UpdateButtonText(isUnlocked, isSelected);
 
         if (button)
         {
@@ -123,15 +106,20 @@ public class OptionItemUI : MonoBehaviour
         }
     }
 
-    private void OnClick()
+    private async void OnClick()
     {
         if (_entry == null) return;
 
-        // Selected bo'lsa popup ochmaymiz
-        if (IsSelected(_entry))
+        bool isUnlocked = _entry.IsDefault || IsUnlocked(_entry);
+
+        // Unlocked selected bo'lsa popup ochmaymiz. Locked preview selected bo'lsa buy popup ochilsin.
+        if (IsSelected(_entry) && isUnlocked)
             return;
 
-        bool isUnlocked = _entry.IsDefault || IsUnlocked(_entry);
+        if (!IsSelected(_entry))
+            await ApplyPreview();
+
+        Sprite popupSprite = icon != null ? icon.sprite : null;
 
         if (_popup != null)
         {
@@ -139,81 +127,21 @@ public class OptionItemUI : MonoBehaviour
                 _entry,
                 _playerId,
                 _slotId,
-                icon.sprite,
-                onApply: async () =>
-                {
-                    bool isUnlockedNow = isUnlocked;
-
-                    if (isUnlockedNow)
-                    {
-                        if (_isHorse)
-                        {
-                            await ApplyToHorse();
-                            Setup(_entry, _popup, _playerId, _slotId, _horseLoader); // ✅ horse refresh
-                        }
-                        else
-                        {
-                            await ApplyToPlayer();
-                            Setup(_entry, _popup, _playerId, _slotId, _loader);      // ✅ player refresh (old)
-                        }
-                        return true;
-                    }
-                    else
-                    {
-                        bool bought = TryBuy(_entry);
-
-                        if (!bought)
-                        {
-                            if (_isHorse)
-                                Setup(_entry, _popup, _playerId, _slotId, _horseLoader);
-                            else
-                                Setup(_entry, _popup, _playerId, _slotId, _loader);
-                            return false;
-                        }
-
-                        if (_isHorse)
-                        {
-                            await ApplyToHorse();
-                            Setup(_entry, _popup, _playerId, _slotId, _horseLoader);
-                        }
-                        else
-                        {
-                            await ApplyToPlayer();
-                            Setup(_entry, _popup, _playerId, _slotId, _loader);
-                        }
-
-                        return true;
-                    }
-                });
+                popupSprite,
+                onApply: BuyPreviewedItem);
         }
         else
         {
-            _ = HandleNoPopupAsync(isUnlocked);
+            if (_isHorse)
+                Setup(_entry, _popup, _playerId, _slotId, _horseLoader);
+            else
+                Setup(_entry, _popup, _playerId, _slotId, _loader);
         }
+
+        RefreshState();
     }
 
 
-    private async Task HandleNoPopupAsync(bool isUnlocked)
-    {
-        if (isUnlocked)
-        {
-            if (_isHorse) await ApplyToHorse();
-            else await ApplyToPlayer();
-        }
-        else
-        {
-            if (TryBuy(_entry))
-            {
-                if (_isHorse) await ApplyToHorse();
-                else await ApplyToPlayer();
-            }
-        }
-
-        if (_isHorse)
-            Setup(_entry, _popup, _playerId, _slotId, _horseLoader);
-        else
-            Setup(_entry, _popup, _playerId, _slotId, _loader);
-    }
     private void ApplyTheme(bool player)
     {
         background.color = player ? playerCardBgColor : horseCardBgColor;
@@ -232,25 +160,47 @@ public class OptionItemUI : MonoBehaviour
 
     }
 
-    private bool TryBuy(CatalogEntry entry)
+    private async Task ApplyPreview()
     {
-        if (entry == null) return false;
+        if (_entry == null) return;
 
-        int coins = PlayerPrefs.GetInt(Constants.Coins.Coin, 0);
-        if (coins < entry.Price)
+        if (_isHorse)
+            await ApplyToHorse();
+        else
+            await ApplyToPlayer();
+
+        AvatarCustomizationCart.Register(_entry, _playerId, _slotId);
+    }
+
+    private Task<bool> BuyPreviewedItem()
+    {
+        if (_entry == null)
+            return Task.FromResult(false);
+
+        if (_entry.IsDefault || IsUnlocked(_entry))
+            return Task.FromResult(true);
+
+        if (_entry.Price > 0)
         {
-            Debug.Log("❌ Not enough coins");
-            OnNotEnoughCoins?.Invoke();  
-            return false;
+            CurrencyManager currency = CurrencyManager.Instance;
+            if (currency == null || !currency.SpendCoin(_entry.Price, true))
+            {
+                Debug.Log("Not enough coins");
+                HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
+                OnNotEnoughCoins?.Invoke();
+                return Task.FromResult(false);
+            }
         }
 
-        PlayerPrefs.SetInt(Constants.Coins.Coin, coins - entry.Price);
-        OnCoinUpdated?.Invoke();
-        string unlockKey = $"Unlock_{_playerId}_{_slotId}_{entry.OptionId}";
-        PlayerPrefs.SetInt(unlockKey, 1);
+        AvatarCustomPrefs.SetUnlocked(_playerId, _slotId, _entry.OptionId);
         PlayerPrefs.Save();
+        CustomizationManager.Instance?.SyncUnlock(_playerId, _slotId, _entry.OptionId);
+        AvatarCustomizationCart.NotifyChanged();
+        OnCoinUpdated?.Invoke();
+        RefreshState();
+        HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
 
-        return true;
+        return Task.FromResult(true);
     }
 
     private async Task LoadIconAsync(string key)
@@ -264,8 +214,7 @@ public class OptionItemUI : MonoBehaviour
 
     private bool IsUnlocked(CatalogEntry entry)
     {
-        string key = $"Unlock_{_playerId}_{_slotId}_{entry.OptionId}";
-        return PlayerPrefs.GetInt(key, 0) == 1;
+        return AvatarCustomPrefs.IsUnlocked(_playerId, _slotId, entry.OptionId);
     }
 
     private bool IsSelected(CatalogEntry entry)
@@ -286,8 +235,7 @@ public class OptionItemUI : MonoBehaviour
             return cur == entry.OptionId;
         }
 
-        string key = $"Sel_{_playerId}_{_slotId}";
-        return PlayerPrefs.GetString(key, "") == entry.OptionId;
+        return AvatarCustomPrefs.IsSelected(_playerId, _slotId, entry.OptionId);
     }
 
 
@@ -306,16 +254,26 @@ public class OptionItemUI : MonoBehaviour
         //if (notOpendObj) notOpendObj.SetActive(!isUnlocked);
         //if (selectedMark) selectedMark.SetActive(isSelected);
 
-        if (btnText)
+        UpdateButtonText(isUnlocked, isSelected);
+    }
+
+    private void UpdateButtonText(bool isUnlocked, bool isSelected)
+    {
+        if (!btnText) return;
+
+        if (isSelected)
         {
-            if (!isUnlocked)
-            {
-                btnText.text = /*entry.Price.ToString()*/LanguageManager.Instance.GetText(427);   // listda narx ko'rinsin
-                //priceText.text = _entry.Price.ToString();
-            }
-            else
-                btnText.text = isSelected ? LanguageManager.Instance.GetText(425) : LanguageManager.Instance.GetText(426);
+            btnText.text = LanguageManager.Instance.GetText(425);
+            return;
         }
+
+        if (!isUnlocked)
+        {
+            btnText.text = LanguageManager.Instance.GetText(_isHorse ? 424 : 427);
+            return;
+        }
+
+        btnText.text = LanguageManager.Instance.GetText(426);
     }
     private async Task ApplyToHorse()
     {

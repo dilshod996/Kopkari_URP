@@ -259,6 +259,13 @@ public class UIOverlayRoot : MonoBehaviour
         Enqueue(new ConfirmRequest(titleId, descId, okTextId, cancelTextId, onOk, onCancel, options));
     }
 
+    public void Confirm(string title, string desc, string okText, string cancelText,
+        Action onOk, Action onCancel,
+        ConfirmationPopupController.Options options = null)
+    {
+        Enqueue(new ConfirmTextRequest(title, desc, okText, cancelText, onOk, onCancel, options));
+    }
+
     public void Done(int titleId, int descId, int doneTextId,
         Action onDone,
         ConfirmationPopupController.Options options = null)
@@ -339,6 +346,35 @@ public class UIOverlayRoot : MonoBehaviour
         }
     }
 
+    private class ConfirmTextRequest : IRequest
+    {
+        private readonly string _title, _desc, _ok, _cancel;
+        private readonly Action _onOk, _onCancel;
+        private readonly ConfirmationPopupController.Options _options;
+
+        public ConfirmTextRequest(string title, string desc, string ok, string cancel,
+            Action onOk, Action onCancel,
+            ConfirmationPopupController.Options options)
+        {
+            _title = title;
+            _desc = desc;
+            _ok = ok;
+            _cancel = cancel;
+            _onOk = onOk;
+            _onCancel = onCancel;
+            _options = options;
+        }
+
+        public void Show(ConfirmationPopupController popup, Action onClosed)
+        {
+            popup.Show(
+                _title, _desc, _ok, _cancel,
+                onOk: () => { _onOk?.Invoke(); onClosed?.Invoke(); },
+                onCancel: () => { _onCancel?.Invoke(); onClosed?.Invoke(); },
+                options: _options
+            );
+        }
+    }
     private class DoneRequest : IRequest
     {
         private readonly int _titleId, _descId, _doneId;

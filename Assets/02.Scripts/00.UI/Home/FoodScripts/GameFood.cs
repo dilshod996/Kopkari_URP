@@ -36,7 +36,7 @@ public class GameFood : MonoBehaviour
     private float mStamina;
     private bool resourceUpdated=false;
 
-    private int amountWatch = 0;
+    public int amountWatch = 300;
     private int coin = 0;
     private int nyufiy = 0;
 
@@ -55,16 +55,18 @@ public class GameFood : MonoBehaviour
         EnableAdsPanel(false);
         replayBtn.onClick.AddListener(PlayMore);
         backButton.onClick.AddListener(BackHome);
-        FoodInfo.OnNyufiyUpdate += UpdateOnlyNyufiy;
+        CurrencyManager.Instance.OnNyufiyChanged += UpdateOnlyNyufiy;
         FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
         FoodInfo.OnMoneyNotEnough += AdsPanel;
+        watchBtn.onClick.AddListener(OnAdsButtonAction);
     }
 
     private void OnDisable()
     {
         replayBtn.onClick.RemoveAllListeners();
         backButton.onClick.RemoveAllListeners();
-        FoodInfo.OnNyufiyUpdate -= UpdateOnlyNyufiy;
+        watchBtn.onClick.RemoveAllListeners();
+        CurrencyManager.Instance.OnNyufiyChanged -= UpdateOnlyNyufiy;
         FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
         FoodInfo.OnMoneyNotEnough -= AdsPanel;
     }
@@ -122,8 +124,8 @@ public class GameFood : MonoBehaviour
     #region Get Coin & Nyufiy Data
     private void GetCoins()
     {
-        coin = PlayerPrefs.GetInt(Constants.Coins.Coin);
-        nyufiy = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
+        coin = CurrencyManager.Instance.Coin;
+        nyufiy = CurrencyManager.Instance.Nyufiy;
         UpdateTexts(nyufiy, coin);
     }
     private void UpdateOnlyNyufiy(int amount)
@@ -207,9 +209,12 @@ public class GameFood : MonoBehaviour
     }
     private void GetResources()
     {
-        mPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        mCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        mStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+
+        mPower = current.Power;
+        mCooling = current.Cooling;
+        mStamina = current.Stamina;
         UpdateSliders(mPower, mCooling, mStamina);
     }
     private void UpdateSliders(float powerValue, float coolingValue, float staminValue)
@@ -230,9 +235,16 @@ public class GameFood : MonoBehaviour
         resourceUpdated = true;
 
         // 2) Bufflarni qo¡®shamiz
-        mPower = Mathf.Clamp(mPower + powerPercent, 0f, 100f);
-        mCooling = Mathf.Clamp(mCooling + coolingPercent, 0f, 100f);
-        mStamina = Mathf.Clamp(mStamina + staminaPercent, 0f, 100f);
+        HorseConditionStats current = new HorseConditionStats(mPower, mCooling, mStamina);
+        HorseConditionStats updated = HorseConditionStatsService.AddFood(
+            powerPercent,
+            coolingPercent,
+            staminaPercent,
+            current);
+
+        mPower = updated.Power;
+        mCooling = updated.Cooling;
+        mStamina = updated.Stamina;
 
 
 
@@ -244,9 +256,7 @@ public class GameFood : MonoBehaviour
         if(!resourceUpdated)
             return;
         // 3) Yangi qiymatlarni saqlaymiz
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, mPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, mCooling);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, mStamina);
+        HorseConditionStatsService.SaveCurrent(new HorseConditionStats(mPower, mCooling, mStamina));
     }
     #endregion
 
@@ -309,6 +319,47 @@ public class GameFood : MonoBehaviour
             bottomAlarmObj.gameObject.SetActive(true);
             bottomAlarmText.text = LanguageManager.Instance.GetText(200);
         }
+    }
+    #endregion
+
+    #region Ads Section
+    public void OnAdsButtonAction()
+    {
+        GameAnalyticsEvents.RewardedAdClicked(
+            placement: "coin_shop",
+            rewardType: "nyufiy",
+            rewardAmount: amountWatch
+        );
+
+        if (AdsManager.Instance == null)
+        {
+            GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+            return;
+        }
+
+        AdsManager.Instance.ShowRewarded(() =>
+        {
+            CurrencyManager.Instance.AddNyufiy(amountWatch, true);
+
+            UpdateTexts(
+                CurrencyManager.Instance.Nyufiy,
+                CurrencyManager.Instance.Coin
+            );
+
+            GameAnalyticsEvents.RewardedAdCompleted(
+                placement: "coin_shop",
+                rewardType: "nyufiy",
+                rewardAmount: amountWatch
+            );
+
+            GameAnalyticsEvents.CoinRewardClaimed(
+                source: "rewarded_ad_coin_shop",
+                amount: amountWatch
+            );
+
+            EnableAdsPanel(false);
+        },
+        () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
     }
     #endregion
 }

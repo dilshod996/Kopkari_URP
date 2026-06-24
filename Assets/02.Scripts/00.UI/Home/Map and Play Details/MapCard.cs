@@ -54,7 +54,7 @@ public class MapCard : MonoBehaviour
     [SerializeField] private int costMap;
     [SerializeField] private int playCost;
     private MapCardScaler manager;
-
+    public int amountWatch = 500;
     //[Header("Moving Scene Details")]
     //[SerializeField] private SceneLoadManager.SceneType selectedScene;
     //[SerializeField] private Button selectBtn;
@@ -63,6 +63,7 @@ public class MapCard : MonoBehaviour
 
     private void OnEnable()
     {
+        DataManager.OnMapUnlocked += HandleMapUnlocked;
         LockeMap();
         UIUpdates();
         buySection.onClick.AddListener(MapDetails);
@@ -70,6 +71,7 @@ public class MapCard : MonoBehaviour
     }
     private void OnDisable()
     {
+        DataManager.OnMapUnlocked -= HandleMapUnlocked;
         buySection?.onClick.RemoveAllListeners();
         playRoomBtn?.onClick.RemoveAllListeners();
     }
@@ -93,37 +95,33 @@ public class MapCard : MonoBehaviour
         //{
 
         //}
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
 
-        if (currentPower < Constants.HorseConditionNum.Power || currentCooling < Constants.HorseConditionNum.Cool || currentStamina < Constants.HorseConditionNum.Stamina)
+        if (current.Power < Constants.HorseConditionNum.Power || current.Cooling < Constants.HorseConditionNum.Cool || current.Stamina < Constants.HorseConditionNum.Stamina)
         {
             //HomeMainUI.Instance?.HorseResourceFinishPopup(LanguageManager.Instance.GetText(langId));
             HomeHapticsManager.Instance.Play(HomeHapticId.LowCondition);
             HomeMainUI.Instance?.SHowFoodPanel();
+            HomeMainUI.Instance.CloseRacingField();
             return;  // Racing boshlanmaydi
         }
+
         if (playCost > 0)
         {
-            int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-            if(nyufiyAmount < playCost)
+            bool success = CurrencyManager.Instance.SpendNyufiy(playCost);
+            if (!success)
             {
                 Debug.Log("Money is not enough to play popup");
                 UIOverlayRoot.I.Confirm(487, 488, 489, 490, MoveToShop, WatchAdds);
                 return;
-            }
-            else
-            {
-                nyufiyAmount -= playCost;  
-                PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
             }
         }
         if (mapType == MapType.Racing)
         {
             preloadRacing.Add(Constants.RoomSound.RacingSound);
         }
-        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        int defenseCheck = DataManager.Instance.GetItemAmount(Constants.PlayerItems.Defense);
         if(defenseCheck <1)
         {
             UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, MovingRacingRoom);
@@ -150,7 +148,7 @@ public class MapCard : MonoBehaviour
             //    UIOverlayRoot.I.ShowPanel(UIPanelType.Sibiria, LanguageManager.Instance.GetText(211), instant: false);
             //    break;
             case SceneLoadManager.SceneType.Kansas:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(519), instant: false);
+                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(518), instant: false);
                 break;
         }
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
@@ -168,9 +166,35 @@ public class MapCard : MonoBehaviour
     }
     private void WatchAdds()
     {
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        nyufiyAmount += playCost;
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
+        GameAnalyticsEvents.RewardedAdClicked(
+            placement: "coin_shop",
+            rewardType: "nyufiy",
+            rewardAmount: amountWatch
+        );
+
+        if (AdsManager.Instance == null)
+        {
+            GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+            return;
+        }
+
+        AdsManager.Instance.ShowRewarded(() =>
+        {
+            CurrencyManager.Instance.AddNyufiy(amountWatch, true);
+
+            GameAnalyticsEvents.RewardedAdCompleted(
+                placement: "coin_shop",
+                rewardType: "nyufiy",
+                rewardAmount: amountWatch
+            );
+
+            GameAnalyticsEvents.CoinRewardClaimed(
+                source: "rewarded_ad_coin_shop",
+                amount: amountWatch
+            );
+
+        },
+        () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
     }
     private void MapDetails()
     {
@@ -210,16 +234,17 @@ public class MapCard : MonoBehaviour
     }
     private void LockeMap()
     {
-        int mapOpen = PlayerPrefs.GetInt(mapLangName, 0);
-        if (mapOpen != 0)
+        bool mapOpen = IsMapOpen();
+
+        if (mapOpen)
         {
-            buySection.gameObject.SetActive(false);
-           if(lockObj != null) lockObj.SetActive(false);
+            if (buySection != null) buySection.gameObject.SetActive(false);
+            if(lockObj != null) lockObj.SetActive(false);
             isUnlocked = true;
         }
         else
         {
-            buySection.gameObject.SetActive(true);
+            if (buySection != null) buySection.gameObject.SetActive(true);
             if (lockObj != null) lockObj.SetActive(true);
             isUnlocked= false;
         }
@@ -231,6 +256,21 @@ public class MapCard : MonoBehaviour
         //{
         //    blockBtn.gameObject.SetActive(false);
         //}
+    }
+
+    private bool IsMapOpen()
+    {
+        if (DataManager.Instance != null)
+            return DataManager.Instance.IsMapUnlocked(mapLangName);
+
+        int defaultValue = mapLangName == Constants.MapNames.RacingTraining || mapLangName == Constants.MapNames.Zarafshan ? 1 : 0;
+        return PlayerPrefs.GetInt(mapLangName, defaultValue) == 1;
+    }
+
+    private void HandleMapUnlocked(string mapKey)
+    {
+        if (mapKey == mapLangName)
+            LockeMap();
     }
 
     void Update()
@@ -270,7 +310,7 @@ public class MapCard : MonoBehaviour
 
     public void UnlockCard()
     {
-        isUnlocked = true;
+        LockeMap();
         //UpdateChooseButtonText();
     }
 

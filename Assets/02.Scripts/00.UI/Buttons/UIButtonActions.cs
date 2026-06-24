@@ -105,6 +105,8 @@ public class UIButtonActions : MonoBehaviour
     private bool isPressing;
     private bool isDamaged;
     private bool canSprint = true;
+    private bool isPointerHeld;
+    private bool autoSprintBoostActive;
 
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
@@ -147,6 +149,7 @@ public class UIButtonActions : MonoBehaviour
 
         BoostersContainer.OnSprintEffectStart += ShowSprintEffectNoForce;
         BoostersContainer.OnSprintEffectEnd += HideSprintEffectNoForce;
+        BoostersContainer.OnAutoSprintBoostStart += StopManualSprintForAutoBoost;
 
         BoostersContainer.OnWalkZoneAdded += UpdateWalkZoneText;
         BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
@@ -184,6 +187,7 @@ public class UIButtonActions : MonoBehaviour
 
         BoostersContainer.OnSprintEffectStart -= ShowSprintEffectNoForce;
         BoostersContainer.OnSprintEffectEnd -= HideSprintEffectNoForce;
+        BoostersContainer.OnAutoSprintBoostStart -= StopManualSprintForAutoBoost;
 
         BoostersContainer.OnWalkZoneAdded -= UpdateWalkZoneText;
         BoostersContainer.OnWalkZoneRemoved -= UpdateWalkZoneText;
@@ -212,6 +216,8 @@ public class UIButtonActions : MonoBehaviour
         StopIfRunning(ref drainRoutine);
         StopIfRunning(ref refillRoutine);
         isPressing = false;
+        isPointerHeld = false;
+        autoSprintBoostActive = false;
         totalHoldTime = 0f;
         pauseButton.onClick.RemoveListener(PauseMenu);
     }
@@ -258,28 +264,28 @@ public class UIButtonActions : MonoBehaviour
     public void UpdateDefendText(int count)
     {
         defendCountText.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.Defense, count);
+        SaveItem(Constants.PlayerItems.Defense, count);
         SetDefendState(count > 0);
     }
 
     public void UpdateWalkZoneText(int count)
     {
         walkZoneCountText.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.SlowDown, count);
+        SaveItem(Constants.PlayerItems.SlowDown, count);
         SetWalkZoneState(count > 0);
     }
 
     public void UpdateHitText(int count)
     {
         hitCountText.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.Whip, count);
+        SaveItem(Constants.PlayerItems.Whip, count);
         SetHitState(count > 0);
     }
 
     public void UpdateWebCount(int count)
     {
         chainCounter.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.WebSnare, count);
+        SaveItem(Constants.PlayerItems.WebSnare, count);
         SetWebState(count > 0);
     }
     #endregion
@@ -310,6 +316,7 @@ public class UIButtonActions : MonoBehaviour
         // ✅ debuff bo‘lsa ham bosilmasin
         bool interactable =
             canSprint &&
+            !autoSprintBoostActive &&
             !isDamaged &&
             !isPressing &&
             sliderFull &&
@@ -327,19 +334,11 @@ public class UIButtonActions : MonoBehaviour
         if (!state)
         {
             defendBtn.interactable = false;
+            return;
         }
-        else
-        {
-            int defendCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
-            if (defendCount > 0)
-            {
-                defendBtn.interactable = true;
-            }
-            else
-            {
-                defendBtn.interactable= false;
-            }
-        }
+
+        int defendCount = GetItemAmount(Constants.PlayerItems.Defense);
+        defendBtn.interactable = defendCount > 0;
     }
     public void SetWalkZoneState(bool state) => walkZoneBtn.interactable = state;
     public void SetHitState(bool state) => hitBtn.interactable = state;
@@ -437,18 +436,34 @@ public class UIButtonActions : MonoBehaviour
 
     private void HandlePointerDown()
     {
-        // ✅ EventTrigger interactable=false bo‘lsa ham callback chaqirishi mumkin
-        if (sprintBtn != null && !sprintBtn.interactable) return;
-        Debug.Log("Pressed");
-        if (isDamaged) return;
-        if (isPressing) return;
-        if (sprintSlider.value <= 0.0001f) return;
+        isPointerHeld = true;
 
+        // ✅ EventTrigger interactable=false bo‘lsa ham callback chaqirishi mumkin
+        if (sprintBtn != null && !sprintBtn.interactable)
+        {
+            HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
+            return;
+        }
+
+        Debug.Log("Pressed");
+        if (isDamaged || isPressing || sprintSlider.value <= 0.0001f)
+        {
+            HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
+            return;
+        }
+
+        StartSprintDrain(stopRefillRoutine: true);
+    }
+
+    private void StartSprintDrain(bool stopRefillRoutine)
+    {
         isPressing = true;
         OnSprintStart?.Invoke();
         sprintImg?.gameObject.SetActive(true);
 
-        StopIfRunning(ref refillRoutine);
+        if (stopRefillRoutine)
+            StopIfRunning(ref refillRoutine);
+
         StopIfRunning(ref drainRoutine);
 
         drainRoutine = StartCoroutine(DrainCoroutine());
@@ -459,6 +474,8 @@ public class UIButtonActions : MonoBehaviour
 
     private void HandlePointerUp()
     {
+        isPointerHeld = false;
+
         // Agar hozir pressing bo‘lsa — har doim release qilamiz
         if (isPressing)
         {
@@ -486,6 +503,7 @@ public class UIButtonActions : MonoBehaviour
             if (sprintSlider != null && sprintSlider.value <= 0.0001f)
             {
                 sprintSlider.value = 0f;
+                HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
 
                 // ✅ tugadi: release + refill boshlansin (bosilganda qaytmasin)
                 ForceReleaseSprint(startRefill: true);
@@ -520,6 +538,26 @@ public class UIButtonActions : MonoBehaviour
         SetSprintState(canSprint);
     }
 
+    private void ForceReleaseSprintForRaceEnd()
+    {
+        bool shouldNotifySprintEnd = isPressing || isPointerHeld || (sprintImg != null && sprintImg.gameObject.activeSelf);
+
+        isPressing = false;
+        isPointerHeld = false;
+        autoSprintBoostActive = false;
+
+        StopIfRunning(ref drainRoutine);
+        StopIfRunning(ref refillRoutine);
+
+        if (sprintImg != null)
+            sprintImg.gameObject.SetActive(false);
+
+        if (shouldNotifySprintEnd)
+            OnSprintEnd?.Invoke();
+
+        SetSprintState(false);
+    }
+
     private IEnumerator RefillDelayedCoroutine()
     {
         yield return new WaitForSecondsRealtime(refillDelay);
@@ -538,7 +576,12 @@ public class UIButtonActions : MonoBehaviour
 
         // ✅ to‘lgandan keyin (debuff yo‘q bo‘lsa) sprint qaytadi
         if (!isDamaged)
+        {
             SetSprintState(true);
+
+            if (isPointerHeld && CanSprintNow() && sprintBtn != null && sprintBtn.interactable)
+                StartSprintDrain(stopRefillRoutine: false);
+        }
 
         refillRoutine = null;
     }
@@ -584,14 +627,13 @@ public class UIButtonActions : MonoBehaviour
     }
     #endregion
 
-    #region Data (PlayerPrefs)
+    #region Data (Inventory)
     public void GetData()
     {
-        int defCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
-        int slowCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
-        int webCount = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
-
-        int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
+        int defCount = GetItemAmount(Constants.PlayerItems.Defense);
+        int slowCount = GetItemAmount(Constants.PlayerItems.SlowDown);
+        int webCount = GetItemAmount(Constants.PlayerItems.WebSnare);
+        int whipCount = GetItemAmount(Constants.PlayerItems.Whip);
 
         InitializeData(defCount, slowCount, whipCount, webCount);
     }
@@ -602,12 +644,25 @@ public class UIButtonActions : MonoBehaviour
         UpdateWalkZoneText(walkZoneCount);
         UpdateHitText(hitCount);
         UpdateWebCount(webCount);
-        //NormalState();
     }
 
-    private void SaveToPrefs(string prefsName, int value)
+    private int GetItemAmount(string itemKey)
     {
-        PlayerPrefs.SetInt(prefsName, value);
+        if (DataManager.Instance != null)
+            return DataManager.Instance.GetItemAmount(itemKey);
+
+        return PlayerPrefs.GetInt(itemKey, 0);
+    }
+
+    private void SaveItem(string itemKey, int value)
+    {
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.SetItemAmountFromGame(itemKey, value, false);
+            return;
+        }
+
+        PlayerPrefs.SetInt(itemKey, value);
         PlayerPrefs.Save();
     }
     #endregion
@@ -675,8 +730,15 @@ public class UIButtonActions : MonoBehaviour
             return;
         }
 
-        int countSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
-        if (countSnare > 0) countSnare--;
+        bool success = false;
+
+        if (DataManager.Instance != null)
+            success = DataManager.Instance.SpendItem(Constants.PlayerItems.WebSnare, 1, false);
+
+        int countSnare = GetItemAmount(Constants.PlayerItems.WebSnare);
+
+        if (!success)
+            countSnare = 0;
 
         UpdateWebCount(countSnare);
         OnWebSnareStart?.Invoke();
@@ -725,7 +787,7 @@ public class UIButtonActions : MonoBehaviour
     }
     public void DisableShootChainOrSprint()
     {
-        if (sprintImg != null && sprintImg.gameObject.activeSelf) sprintImg.gameObject.SetActive(false);
+        ForceReleaseSprintForRaceEnd();
         HideShootChain();
     }
     public void HideShootChain()
@@ -784,9 +846,29 @@ public class UIButtonActions : MonoBehaviour
 
     private void HideSprintEffectNoForce()
     {
+        autoSprintBoostActive = false;
+
         if (sprintImg != null) sprintImg.gameObject.SetActive(false);
         SetSprintState(true);
     }
+
+    private void StopManualSprintForAutoBoost()
+    {
+        autoSprintBoostActive = true;
+
+        if (isPressing)
+            isPressing = false;
+
+        StopIfRunning(ref drainRoutine);
+
+        if (sprintSlider != null && sprintSlider.value < 1f && refillRoutine == null)
+            refillRoutine = StartCoroutine(RefillDelayedCoroutine());
+
+        if (sprintImg != null) sprintImg.gameObject.SetActive(true);
+
+        SetSprintState(false);
+    }
+
     private void OnObstacleDamageHandler(bool isDamaged)
     {
         // slow visual (xohlasang)
@@ -908,6 +990,7 @@ public class UIButtonActions : MonoBehaviour
     public void EndRace()
     {
         Debug.Log("[GAME FINISHED]" + isFinished);
+        ForceReleaseSprintForRaceEnd();
         isFinished = true;
     }
     #endregion

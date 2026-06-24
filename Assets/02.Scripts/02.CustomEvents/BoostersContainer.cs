@@ -41,6 +41,7 @@ public class BoostersContainer : MonoBehaviour
 
     public static Action OnSprintEffectStart;
     public static Action OnSprintEffectEnd;
+    public static Action OnAutoSprintBoostStart;
 
     public static Action<float> OnPenaltyTime;
     public static Action<float> OnBoostTime;
@@ -131,7 +132,7 @@ public class BoostersContainer : MonoBehaviour
         }
     }
 
-    private int GetPrefs(string key) => PlayerPrefs.GetInt(key);
+    private int GetPrefs(string key) => DataManager.Instance.GetItemAmount(key);
 
     private void OnEnable()
     {
@@ -216,6 +217,19 @@ public class BoostersContainer : MonoBehaviour
             OnNormalState?.Invoke();
 
         boostCoroutine = StartCoroutine(ImproveSpeed());
+    }
+
+    public void TriggerAutoBoostSpeed()
+    {
+        if (horseAnimal == null) return;
+
+        if (!isNpc && CurrentDebuff != DebuffState.None)
+            return;
+
+        if (!isNpc)
+            OnAutoSprintBoostStart?.Invoke();
+
+        TriggerBoostSpeed();
     }
 
     private IEnumerator ImproveSpeed()

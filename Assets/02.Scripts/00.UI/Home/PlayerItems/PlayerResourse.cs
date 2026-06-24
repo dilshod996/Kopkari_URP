@@ -64,8 +64,18 @@ public class PlayerResourse : MonoBehaviour
         {
             return;
         }
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
-        if (nyufiyAmount < costOfResource)
+
+        itemName = GetItemKey(playerResources);
+        if (string.IsNullOrEmpty(itemName) || CurrencyManager.Instance == null || DataManager.Instance == null)
+        {
+            Debug.LogWarning($"Cannot buy resource: {playerResources}");
+            SoundManager.Instance?.PlayUI(UISoundType.Error);
+            return;
+        }
+
+        bool success = CurrencyManager.Instance.SpendNyufiy(costOfResource, true);
+
+        if (!success)
         {
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             // money not enough text
@@ -73,8 +83,9 @@ public class PlayerResourse : MonoBehaviour
             SoundManager.Instance?.PlayUI(UISoundType.Error);
             return;
         }
+
+        BuyResourceSave();
         ResourceName();
-        BuyResourceSave(nyufiyAmount);
     }
     private void ResourceName(int amount = 1)
     {
@@ -94,6 +105,14 @@ public class PlayerResourse : MonoBehaviour
                 textId = 323;
                 break;
 
+            case Resources.Whiplash:
+                textId = 384;
+                break;
+
+            case Resources.HorseDust:
+                textId = 387;
+                break;
+
             default:
                 Debug.LogWarning($"Unknown resource: {playerResources}");
                 return;
@@ -104,19 +123,16 @@ public class PlayerResourse : MonoBehaviour
 
         HomeMainUI.Instance.ShowRightPopup(resourceName, iconImage.sprite);
     }
-    private void BuyResourceSave(int nyufiyAmount)
+    private void BuyResourceSave()
     {
-        
+        DataManager.Instance.AddItem(itemName, 1, true);
+        itemAmount = DataManager.Instance.GetItemAmount(itemName);
 
-        int newNyufiyAmount = nyufiyAmount - costOfResource;
-
-        itemAmount += 1; 
-        PlayerPrefs.SetInt(itemName, itemAmount);
-       // resourceAmount.text = $"{itemAmount}X";
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, newNyufiyAmount);
         OnResourseBought?.Invoke(playerResources, itemAmount);
-        // OnNyufiyUpdated?.Invoke();
         OnResourseUpdated?.Invoke(itemName);
+        OnNyufiyUpdated?.Invoke();
+
+        HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
         SoundManager.Instance?.PlayUI(UISoundType.Success);
     }
     private void GetData()
@@ -124,8 +140,11 @@ public class PlayerResourse : MonoBehaviour
         itemName = GetItemKey(playerResources);
         if (string.IsNullOrEmpty(itemName))
             return; // noma'lum resource bo'lsa hech narsa qilmaymiz
-        itemAmount = PlayerPrefs.GetInt(itemName, 0);
-       // resourceAmount.text = $"{itemAmount}X";
+        if (DataManager.Instance == null)
+            return;
+
+        itemAmount = DataManager.Instance.GetItemAmount(itemName);
+        // resourceAmount.text = $"{itemAmount}X";
     }
     private string GetItemKey(Resources resource)
     {

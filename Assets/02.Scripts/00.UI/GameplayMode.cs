@@ -59,8 +59,8 @@ public class GameplayMode : MonoBehaviour
     }
     private void OnDisable()
     {
-        kopkariLeagueBtn.onClick.RemoveListener(OpenLeaguePanel);
-        racingLeagueBtn.onClick.RemoveListener(OpenRacingMaps);
-        closeBtn.onClick.RemoveListener(CloseGameObject);
+        kopkariLeagueBtn.onClick.RemoveAllListeners();
+        racingLeagueBtn.onClick.RemoveAllListeners();
+        closeBtn.onClick.RemoveAllListeners();
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,6 +26,16 @@ public sealed class AddressablesService : MonoBehaviour
     [Header("Network")]
     [SerializeField] private bool requireInternetWhenDownloadNeeded = true;
 
+    [Header("Error Popup")]
+    [SerializeField] private bool showPopupOnErrors = true;
+    [SerializeField] private float popupCooldownSeconds = 2f;
+    [SerializeField] private int popupTitleTextId = 520;
+    [SerializeField] private int popupDescriptionTextId = 521;
+    [SerializeField] private int popupButtonTextId = 428;
+
+    private string _lastPopupMessage;
+    private float _lastPopupTime = -999f;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -50,13 +60,23 @@ public sealed class AddressablesService : MonoBehaviour
 
     private async Task InitInternalAsync()
     {
-        // ❗ MUHIM: hech qanday Status / IsValid YO‘Q
-        await UnityEngine.AddressableAssets.Addressables.InitializeAsync().Task;
+        try
+        {
+            await Addressables.InitializeAsync().Task;
 
-        _initialized = true;
-        Debug.Log("✅ Addressables initialized safely");
+            _initialized = true;
+            Debug.Log("Addressables initialized safely");
+        }
+        catch (Exception ex)
+        {
+            _initialized = false;
+            _initTask = null;
+
+            ReportAddressablesError("Addressables initialization failed.", ex);
+
+            throw;
+        }
     }
-
 
     private bool HasInternetConnection()
     {
@@ -67,7 +87,7 @@ public sealed class AddressablesService : MonoBehaviour
     // 1) PRELOAD / DOWNLOAD (dependencies)
     // ----------------------------
     /// <summary>
-    /// Keys bu: address, label, yoki IResourceLocation bo‘lishi mumkin.
+    /// Keys bu: address, label, yoki IResourceLocation bo'lishi mumkin.
     /// Biz soddaroq: string key (address/label) bilan ishlaymiz.
     /// </summary>
     public async Task<bool> PreloadDependenciesAsync(
@@ -77,47 +97,77 @@ public sealed class AddressablesService : MonoBehaviour
     {
         if (keys == null || keys.Count == 0) { onProgress?.Invoke(1f); return true; }
 
+        AsyncOperationHandle<long> sizeHandle = default;
+        AsyncOperationHandle downloadHandle = default;
+        string keyText = FormatKeys(keys);
+
         try
         {
             await EnsureInitializedAsync();
+
+            sizeHandle = Addressables.GetDownloadSizeAsync(keys);
+            long size = await sizeHandle.Task;
+
+            if (!IsSucceeded(sizeHandle))
+            {
+                ReportAddressablesError(BuildHandleError($"Failed to check download size for: {keyText}", sizeHandle),
+                    GetOperationException(sizeHandle));
+                onProgress?.Invoke(0f);
+                return false;
+            }
+
+            bool isCached = (size == 0);
+
+            if (!isCached && requireInternetWhenDownloadNeeded && !HasInternetConnection())
+            {
+                ReportAddressablesError($"Internet connection is required to download Addressables content: {keyText}");
+                onProgress?.Invoke(0f);
+                return false;
+            }
+
+            if (isCached)
+            {
+                await FakeProgressAsync(onProgress, fakeDurationIfCached);
+                onProgress?.Invoke(1f);
+                return true;
+            }
+
+            downloadHandle = Addressables.DownloadDependenciesAsync(keys, Addressables.MergeMode.Union);
+
+            while (!downloadHandle.IsDone)
+            {
+                onProgress?.Invoke(downloadHandle.PercentComplete);
+                await Task.Yield();
+            }
+
+            bool ok = IsSucceeded(downloadHandle);
+
+            if (!ok)
+            {
+                ReportAddressablesError(BuildHandleError($"Addressables download failed for: {keyText}", downloadHandle),
+                    GetOperationException(downloadHandle));
+            }
+
+            onProgress?.Invoke(ok ? 1f : 0f);
+            return ok;
         }
-        catch
+        catch (Exception ex)
         {
+            if (!WasInitializationFailureAlreadyReported())
+                ReportAddressablesError($"Addressables preload failed for: {keyText}", ex);
+
+            onProgress?.Invoke(0f);
             return false;
         }
-        var sizeHandle = Addressables.GetDownloadSizeAsync(keys);
-        long size = await sizeHandle.Task;
-        if (sizeHandle.IsValid())
-            Addressables.Release(sizeHandle);
-        bool isCached = (size == 0);
-
-        if (!isCached && requireInternetWhenDownloadNeeded && !HasInternetConnection())
-            return false;
-
-        if (isCached)
+        finally
         {
-            await FakeProgressAsync(onProgress, fakeDurationIfCached);
-            onProgress?.Invoke(1f);
-            return true;
+            if (sizeHandle.IsValid())
+                Addressables.Release(sizeHandle);
+
+            if (downloadHandle.IsValid())
+                Addressables.Release(downloadHandle);
         }
-
-        var downloadHandle = Addressables.DownloadDependenciesAsync(keys, Addressables.MergeMode.Union);
-
-        while (!downloadHandle.IsDone)
-        {
-            onProgress?.Invoke(downloadHandle.PercentComplete);
-            await Task.Yield();
-        }
-
-        bool ok = downloadHandle.IsValid() && downloadHandle.Status == AsyncOperationStatus.Succeeded;
-
-        if (downloadHandle.IsValid())
-            Addressables.Release(downloadHandle);
-
-        onProgress?.Invoke(ok ? 1f : 0f);
-        return ok;
     }
-
 
     /// <summary>
     /// Bitta address/label uchun preload.
@@ -148,22 +198,40 @@ public sealed class AddressablesService : MonoBehaviour
     // ----------------------------
     public async Task<T> LoadAssetAsync<T>(string addressOrLabel) where T : UnityEngine.Object
     {
-        await EnsureInitializedAsync();
-
-        // Cache bo‘lsa, handle’dan qaytaramiz
-        if (_assetHandles.TryGetValue(addressOrLabel, out var cachedHandle) && cachedHandle.IsValid())
+        try
         {
-            return (cachedHandle.Result as T);
+            await EnsureInitializedAsync();
+
+            // Cache bo'lsa, handle'dan qaytaramiz
+            if (_assetHandles.TryGetValue(addressOrLabel, out var cachedHandle) && cachedHandle.IsValid())
+            {
+                return cachedHandle.Result as T;
+            }
+
+            var handle = Addressables.LoadAssetAsync<T>(addressOrLabel);
+            await handle.Task;
+
+            if (!IsSucceeded(handle))
+            {
+                ReportAddressablesError(BuildHandleError($"Failed to load Addressables asset: {addressOrLabel}", handle),
+                    GetOperationException(handle));
+
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+
+                return null;
+            }
+
+            _assetHandles[addressOrLabel] = handle;
+            return handle.Result;
         }
+        catch (Exception ex)
+        {
+            if (!WasInitializationFailureAlreadyReported())
+                ReportAddressablesError($"Exception while loading Addressables asset: {addressOrLabel}", ex);
 
-        var handle = Addressables.LoadAssetAsync<T>(addressOrLabel);
-        await handle.Task;
-
-        if (handle.Status != AsyncOperationStatus.Succeeded)
             return null;
-
-        _assetHandles[addressOrLabel] = handle;
-        return handle.Result;
+        }
     }
 
     public void ReleaseLoadedAsset(string addressOrLabel)
@@ -193,17 +261,35 @@ public sealed class AddressablesService : MonoBehaviour
         Quaternion rotation,
         Transform parent = null)
     {
-        await EnsureInitializedAsync();
+        try
+        {
+            await EnsureInitializedAsync();
 
-        var handle = Addressables.InstantiateAsync(address, position, rotation, parent);
-        await handle.Task;
+            var handle = Addressables.InstantiateAsync(address, position, rotation, parent);
+            await handle.Task;
 
-        if (handle.Status != AsyncOperationStatus.Succeeded)
+            if (!IsSucceeded(handle))
+            {
+                ReportAddressablesError(BuildHandleError($"Failed to instantiate Addressables asset: {address}", handle),
+                    GetOperationException(handle));
+
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+
+                return null;
+            }
+
+            var go = handle.Result;
+            _instanceHandles[go.GetInstanceID()] = handle;
+            return go;
+        }
+        catch (Exception ex)
+        {
+            if (!WasInitializationFailureAlreadyReported())
+                ReportAddressablesError($"Exception while instantiating Addressables asset: {address}", ex);
+
             return null;
-
-        var go = handle.Result;
-        _instanceHandles[go.GetInstanceID()] = handle;
-        return go;
+        }
     }
 
     public void ReleaseInstance(GameObject instance)
@@ -238,8 +324,8 @@ public sealed class AddressablesService : MonoBehaviour
     // 4) ENVIRONMENT METHODS (swap)
     // ----------------------------
     /// <summary>
-    /// Environment’ni loading panel ortida preload + instantiate qiladi.
-    /// Old env bo‘lsa - release qiladi.
+    /// Environment'ni loading panel ortida preload + instantiate qiladi.
+    /// Old env bo'lsa - release qiladi.
     /// </summary>
     public async Task<GameObject> LoadEnvironmentAsync(
         string envAddress,
@@ -249,39 +335,28 @@ public sealed class AddressablesService : MonoBehaviour
         Vector3? position = null,
         Quaternion? rotation = null)
     {
-        // 1) Preload dependencies (cached bo‘lsa fake progress)
+        // 1) Preload dependencies (cached bo'lsa fake progress)
         bool ok = await PreloadDependenciesAsync(envAddress, onProgress, fakeDurationIfCached);
         if (!ok) return null;
 
-        // 2) Old env’ni unload
+        // 2) Old env'ni unload
         await UnloadCurrentEnvironmentAsync();
 
         // 3) Instantiate new env
         Vector3 pos = position ?? Vector3.zero;
         Quaternion rot = rotation ?? Quaternion.identity;
 
-        var handle = Addressables.InstantiateAsync(envAddress, pos, rot, parent);
-        await handle.Task;
-
-        if (handle.Status != AsyncOperationStatus.Succeeded)
-            return null;
-
-        CurrentEnvironment = handle.Result;
-        _currentEnvHandle = handle;
-
-        // Track instance handle
-        _instanceHandles[CurrentEnvironment.GetInstanceID()] = handle;
-
-        return CurrentEnvironment;
+        return await InstantiateEnvironmentInternal(envAddress, pos, rot, parent);
     }
+
     public async Task<GameObject> LoadEnvironmentAsync(
-    IList<string> preloadKeys,
-    string envAddress,
-    Transform parent,
-    Action<float> onProgress = null,
-    float fakeDurationIfCached = 1.5f,
-    Vector3? position = null,
-    Quaternion? rotation = null)
+        IList<string> preloadKeys,
+        string envAddress,
+        Transform parent,
+        Action<float> onProgress = null,
+        float fakeDurationIfCached = 1.5f,
+        Vector3? position = null,
+        Quaternion? rotation = null)
     {
         bool ok = await PreloadDependenciesAsync(preloadKeys, onProgress, fakeDurationIfCached);
         if (!ok) return null;
@@ -291,19 +366,45 @@ public sealed class AddressablesService : MonoBehaviour
         Vector3 pos = position ?? Vector3.zero;
         Quaternion rot = rotation ?? Quaternion.identity;
 
-        var handle = Addressables.InstantiateAsync(envAddress, pos, rot, parent);
-        await handle.Task;
-
-        if (handle.Status != AsyncOperationStatus.Succeeded)
-            return null;
-
-        CurrentEnvironment = handle.Result;
-        _currentEnvHandle = handle;
-        _instanceHandles[CurrentEnvironment.GetInstanceID()] = handle;
-
-        return CurrentEnvironment;
+        return await InstantiateEnvironmentInternal(envAddress, pos, rot, parent);
     }
 
+    private async Task<GameObject> InstantiateEnvironmentInternal(
+        string envAddress,
+        Vector3 position,
+        Quaternion rotation,
+        Transform parent)
+    {
+        try
+        {
+            var handle = Addressables.InstantiateAsync(envAddress, position, rotation, parent);
+            await handle.Task;
+
+            if (!IsSucceeded(handle))
+            {
+                ReportAddressablesError(BuildHandleError($"Failed to load environment: {envAddress}", handle),
+                    GetOperationException(handle));
+
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+
+                return null;
+            }
+
+            CurrentEnvironment = handle.Result;
+            _currentEnvHandle = handle;
+            _instanceHandles[CurrentEnvironment.GetInstanceID()] = handle;
+
+            return CurrentEnvironment;
+        }
+        catch (Exception ex)
+        {
+            if (!WasInitializationFailureAlreadyReported())
+                ReportAddressablesError($"Exception while loading environment: {envAddress}", ex);
+
+            return null;
+        }
+    }
 
     public Task UnloadCurrentEnvironmentAsync()
     {
@@ -314,5 +415,93 @@ public sealed class AddressablesService : MonoBehaviour
         _currentEnvHandle = null;
 
         return Task.CompletedTask;
+    }
+
+    private void ReportAddressablesError(string message, Exception exception = null)
+    {
+        string fullMessage = exception == null || string.IsNullOrWhiteSpace(exception.Message)
+            ? message
+            : $"{message}\n{exception.Message}";
+
+        if (exception != null)
+            Debug.LogException(exception);
+
+        Debug.LogError(fullMessage);
+
+        ShowAddressablesErrorPopup();
+    }
+
+    private bool WasInitializationFailureAlreadyReported()
+    {
+        return !_initialized && _initTask == null;
+    }
+
+    private void ShowAddressablesErrorPopup()
+    {
+        if (!showPopupOnErrors || UIOverlayRoot.I == null)
+            return;
+
+        string popupKey = $"{popupTitleTextId}:{popupDescriptionTextId}:{popupButtonTextId}";
+        if (_lastPopupMessage == popupKey && Time.unscaledTime - _lastPopupTime < popupCooldownSeconds)
+            return;
+
+
+        _lastPopupMessage = popupKey;
+        _lastPopupTime = Time.unscaledTime;
+
+        UIOverlayRoot.I.Done(popupTitleTextId, popupDescriptionTextId, popupButtonTextId, null);
+    }
+
+    private static string BuildHandleError(string prefix, AsyncOperationHandle handle)
+    {
+        if (!handle.IsValid())
+            return $"{prefix}\nInvalid Addressables operation handle.";
+
+        Exception operationException = GetOperationException(handle);
+        string operationError = operationException != null
+            ? operationException.Message
+            : $"Status: {handle.Status}";
+
+        return $"{prefix}\n{operationError}";
+    }
+
+    private static string BuildHandleError<T>(string prefix, AsyncOperationHandle<T> handle)
+    {
+        if (!handle.IsValid())
+            return $"{prefix}\nInvalid Addressables operation handle.";
+
+        Exception operationException = GetOperationException(handle);
+        string operationError = operationException != null
+            ? operationException.Message
+            : $"Status: {handle.Status}";
+
+        return $"{prefix}\n{operationError}";
+    }
+
+    private static bool IsSucceeded(AsyncOperationHandle handle)
+    {
+        return handle.IsValid() && handle.Status == AsyncOperationStatus.Succeeded;
+    }
+
+    private static bool IsSucceeded<T>(AsyncOperationHandle<T> handle)
+    {
+        return handle.IsValid() && handle.Status == AsyncOperationStatus.Succeeded;
+    }
+
+    private static Exception GetOperationException(AsyncOperationHandle handle)
+    {
+        return handle.IsValid() ? handle.OperationException : null;
+    }
+
+    private static Exception GetOperationException<T>(AsyncOperationHandle<T> handle)
+    {
+        return handle.IsValid() ? handle.OperationException : null;
+    }
+
+    private static string FormatKeys(IList<string> keys)
+    {
+        return keys == null || keys.Count == 0
+            ? "(empty)"
+            : string.Join(", ", keys.Where(key => !string.IsNullOrWhiteSpace(key)));
     }
 }

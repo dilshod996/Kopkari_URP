@@ -101,31 +101,28 @@ public class FoodShowerPopup : MonoBehaviour
 
     public void BuyAction()
     {
-        int nyufiy = GetNyufiyPrefs();
+        bool success = CurrencyManager.Instance.SpendNyufiy(costOfBooster, true);
 
-        if (nyufiy < costOfBooster)
+        if (!success)
         {
+            HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             bottomAds.SetActive(true);
-            messageToPlayer.text = "Not enough Nyufiy! Watch Adds get more Nyufiy";
+            messageToPlayer.text = "Not enough Nyufiy! Watch Ads get more Nyufiy";
             return;
         }
 
-        // 1) Nyufiy coin ayiriladi
-        nyufiy -= costOfBooster;
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiy);
-
-        // 2) Olingan ovqatga +1 qo‘shamiz
+        // Olingan ovqatga +1 qo‘shamiz
         AddPurchasedFood(currentFoodType);
+
         int newAmount = PlayerPrefs.GetInt(GetFoodKey(currentFoodType), 0);
         OnFoodAmountChanged?.Invoke(currentFoodType, newAmount);
-        // 3) GIVE tugmani yangilab qo‘yish (MUHIM)
+
+        // GIVE tugmani yangilash
         FeedBtnState(GetFoodKey(currentFoodType));
 
-
-        // 5) Event (agar boshqa scriptga kerak bo‘lsa)
+        HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
         OnBuyBtnPressed?.Invoke();
     }
-
 
     private void GiveButton()
     {
@@ -173,11 +170,6 @@ public class FoodShowerPopup : MonoBehaviour
         buffStamina = stamin;
     }
 
-    private int GetNyufiyPrefs()
-    {
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        return nyufiyAmount;
-    }
     private void FeedBtnState(string key)
     {
         if (PlayerPrefs.GetInt(key, 0) < 1)

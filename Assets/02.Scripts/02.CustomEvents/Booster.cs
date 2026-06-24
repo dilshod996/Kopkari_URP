@@ -133,7 +133,7 @@ public class Booster : MonoBehaviour
             }
             else if(boosterType == BoosterType.SetSpeedSprint)
             {
-                boosters.TriggerBoostSpeed();
+                boosters.TriggerAutoBoostSpeed();
             }
             return;
         }
@@ -201,7 +201,21 @@ public class Booster : MonoBehaviour
         if (pickupSfx != null)
             AudioSource.PlayClipAtPoint(pickupSfx, transform.position, sfxVolume);
 
+        HomeHapticsManager.Instance?.Play(GetPickupHapticId());
         BoosterUIAnimator.RaiseBoosterPicked(boosterType, boosterIcon);
+    }
+
+    private HomeHapticId GetPickupHapticId()
+    {
+        switch (boosterType)
+        {
+            case BoosterType.SprintFull:
+            case BoosterType.SetSpeedSprint:
+                return HomeHapticId.BoosterUse;
+
+            default:
+                return HomeHapticId.ItemPickup;
+        }
     }
 
     private void ApplyPickupEffect(BoostersContainer target, bool isPlayer)
@@ -214,7 +228,7 @@ public class Booster : MonoBehaviour
                 break;
 
             case BoosterType.SetSpeedSprint:
-                target.TriggerBoostSpeed();
+                target.TriggerAutoBoostSpeed();
                 break;
 
             case BoosterType.Defend:

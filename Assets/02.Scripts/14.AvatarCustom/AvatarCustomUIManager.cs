@@ -3,11 +3,14 @@ using DG.Tweening;
 using UnityEngine.UI;
 using TMPro;
 using System;
+using System.Collections;
 
 public class AvatarCustomUIManager : MonoBehaviour
 {
     #region Main Pages (Player / Horse)
     [Header("Main Pages (Player / Horse)")]
+    [SerializeField] private TMP_Text player_text;
+    [SerializeField] private TMP_Text horse_text;
     [SerializeField] private GameObject[] mainPages;       // 0=PlayerPanel, 1=HorsePanel
     [SerializeField] private GameObject[] clickedObjsMain; // 0=Player btn selected img, 1=Horse btn selected img
     private int _currentMainIndex = -1;
@@ -43,9 +46,15 @@ public class AvatarCustomUIManager : MonoBehaviour
 
     [Header("Buttons (UI)")]
     [SerializeField] private Button backLobby;
+    [SerializeField] private TMP_Text backLobbyText;
     [SerializeField] private Button saveBtn;
+    [SerializeField] private TMP_Text saveBtnText;
+    [SerializeField] private GameObject pendingButtonRoot;
+    [SerializeField] private Button pendingButton;
+    [SerializeField] private TMP_Text pendingDetailsText;
     [SerializeField] private Button playerButton;
     [SerializeField] private Button horseButton;
+    private Tween _pendingButtonTween;
 
     // Player skin buttons (5)
     [Header("Player Skin Buttons (5)")]
@@ -60,12 +69,16 @@ public class AvatarCustomUIManager : MonoBehaviour
     [SerializeField] private Image coinImage;
     [SerializeField] private TMP_Text nyufiyText;
     [SerializeField] RectTransform bottomObj;
+    [SerializeField] TMP_Text bottomText;
     [SerializeField] CanvasGroup bottomCanvasGroup;
     [SerializeField] RectTransform topObj;
    // [SerializeField] GameObject startingPage;
 
     public static event Action OnSavedBtnClicked;
+    public static event Action OnRevertPreviewRequested;
     private bool isBottomTopShowed=false;
+    private bool _currencySubscribed;
+    private Coroutine _currencyWaitRoutine;
 
     [SerializeField] private RightPopup rightPopup;
     private void Awake()
@@ -73,20 +86,53 @@ public class AvatarCustomUIManager : MonoBehaviour
         SetPanelX(closeX);
         SetCanvasVisible(false);
         GetSetCoins();
+        RefreshPendingDetails();
         //if(!startingPage.activeSelf)
         //    startingPage.SetActive(true);
     }
     private void OnEnable()
     {
         OptionItemUI.OnCoinUpdated += GetSetCoins;
+        AvatarCustomizationCart.OnChanged += RefreshPendingDetails;
         //AvatarCustomManager.OnAllSet += RemovStartPage;
         OptionItemUI.OnNotEnoughCoins += MoneyNotEnough;
+        SubscribeCurrencyEvents();
+
+        if (!_currencySubscribed)
+            _currencyWaitRoutine = StartCoroutine(WaitForCurrencyManager());
+
+        RefreshPendingDetails();
+        UITransilations();
     }
-    private void OnDestroy()
+    private void OnDisable()
     {
         OptionItemUI.OnCoinUpdated -= GetSetCoins;
+        AvatarCustomizationCart.OnChanged -= RefreshPendingDetails;
         //AvatarCustomManager.OnAllSet -= RemovStartPage;
         OptionItemUI.OnNotEnoughCoins -= MoneyNotEnough;
+
+        if (_currencyWaitRoutine != null)
+        {
+            StopCoroutine(_currencyWaitRoutine);
+            _currencyWaitRoutine = null;
+        }
+
+        UnsubscribeCurrencyEvents();
+        StopPendingButtonAnimation();
+    }
+
+    private void UITransilations()
+    {
+        if (backLobbyText != null)
+            backLobbyText.text = LanguageManager.Instance.GetText(362);
+        if (saveBtnText != null)
+            saveBtnText.text = LanguageManager.Instance.GetText(39);
+        if (pendingDetailsText != null)
+            pendingDetailsText.text = LanguageManager.Instance.GetText(435);
+        if (player_text != null)
+            player_text.text = LanguageManager.Instance.GetText(528);
+        if (horse_text != null)
+            horse_text.text = LanguageManager.Instance.GetText(89);
     }
 
     #region Button Events
@@ -126,6 +172,9 @@ public class AvatarCustomUIManager : MonoBehaviour
         if (saveBtn != null)
             saveBtn.onClick.AddListener(SaveSkins); // agar sende Save yo'q bo'lsa, remove qil
 
+        if (pendingButton != null)
+            pendingButton.onClick.AddListener(ShowPendingDetails);
+
         // Player skin buttons
         if (playerSkinButtons != null)
         {
@@ -163,6 +212,7 @@ public class AvatarCustomUIManager : MonoBehaviour
         if (horseButton != null) horseButton.onClick.RemoveAllListeners();
         if (backLobby != null) backLobby.onClick.RemoveAllListeners();
         if (saveBtn != null) saveBtn.onClick.RemoveAllListeners();
+        if (pendingButton != null) pendingButton.onClick.RemoveAllListeners();
 
         if (playerSkinButtons != null)
             foreach (var b in playerSkinButtons)
@@ -331,15 +381,64 @@ public class AvatarCustomUIManager : MonoBehaviour
     #region Coin Details
     private void GetSetCoins()
     {
-        int coin = PlayerPrefs.GetInt(Constants.Coins.Coin);
-        int nyufiy = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        nyufiyText.text = nyufiy > 0 ? $"{nyufiy:N0}" : "0";
-        coinText.text = coin > 0 ? $"{coin:N0}" : "0";
+        int nyufiy = CurrencyManager.Instance != null
+            ? CurrencyManager.Instance.Nyufiy
+            : PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
+
+        int coin = CurrencyManager.Instance != null
+            ? CurrencyManager.Instance.Coin
+            : PlayerPrefs.GetInt(Constants.Coins.Coin, 0);
+
+        SetNyufiyText(nyufiy);
+        SetCoinText(coin);
+    }
+
+    private IEnumerator WaitForCurrencyManager()
+    {
+        yield return new WaitUntil(() => CurrencyManager.Instance != null);
+        _currencyWaitRoutine = null;
+        SubscribeCurrencyEvents();
+    }
+
+    private void SubscribeCurrencyEvents()
+    {
+        if (_currencySubscribed || CurrencyManager.Instance == null)
+            return;
+
+        CurrencyManager.Instance.OnNyufiyChanged += SetNyufiyText;
+        CurrencyManager.Instance.OnCoinChanged += SetCoinText;
+        _currencySubscribed = true;
+        GetSetCoins();
+    }
+
+    private void UnsubscribeCurrencyEvents()
+    {
+        if (!_currencySubscribed || CurrencyManager.Instance == null)
+        {
+            _currencySubscribed = false;
+            return;
+        }
+
+        CurrencyManager.Instance.OnNyufiyChanged -= SetNyufiyText;
+        CurrencyManager.Instance.OnCoinChanged -= SetCoinText;
+        _currencySubscribed = false;
+    }
+
+    private void SetNyufiyText(int amount)
+    {
+        if (nyufiyText != null)
+            nyufiyText.text = $"{amount:N0}";
+    }
+
+    private void SetCoinText(int amount)
+    {
+        if (coinText != null)
+            coinText.text = $"{amount:N0}";
     }
     private void StartingDetails()
     {
         PlayMoveY(bottomObj, fromY:-50, toY:37, t:0.5f,stayTime:5f, cg:bottomCanvasGroup);
-        PlayMoveY(topObj, fromY: 70, toY: -50, t: 1f);
+        PlayMoveY(topObj, fromY: 70, toY: -58, t: 1f);
         isBottomTopShowed = true;
     }
 
@@ -410,9 +509,163 @@ public class AvatarCustomUIManager : MonoBehaviour
     }
     #endregion
 
+    public static void RevertPendingPreviews()
+    {
+        OnRevertPreviewRequested?.Invoke();
+        AvatarCustomizationCart.Clear();
+    }
+
     private void SaveSkins()
     {
+        if (!AvatarCustomizationCart.HasPending)
+        {
+            OnSavedBtnClicked?.Invoke();
+            return;
+        }
+
+        int totalCost = AvatarCustomizationCart.GetTotalLockedCost();
+        if (totalCost <= 0)
+        {
+            CommitPendingPreviews();
+            return;
+        }
+
+        ShowCheckoutPopup(totalCost);
+    }
+
+    private void ShowPendingDetails()
+    {
+        if (!AvatarCustomizationCart.HasPending)
+        {
+            RefreshPendingDetails();
+            return;
+        }
+
+        ShowCheckoutPopup(AvatarCustomizationCart.GetTotalLockedCost());
+    }
+
+    private void RefreshPendingDetails()
+    {
+        bool hasPending = AvatarCustomizationCart.HasPending;
+
+        if (pendingButtonRoot != null)
+            pendingButtonRoot.SetActive(hasPending);
+        else if (pendingButton != null)
+            pendingButton.gameObject.SetActive(hasPending);
+
+        if (!hasPending)
+        {
+            StopPendingButtonAnimation();
+            if (pendingDetailsText != null)
+                pendingDetailsText.text = "";
+            return;
+        }
+
+        int totalCost = AvatarCustomizationCart.GetTotalLockedCost();
+        if (pendingDetailsText != null)
+            pendingDetailsText.text = $"{LanguageManager.Instance.GetText(526)}: {totalCost}";
+        SetPendingButtonAnimation(totalCost > 0);
+    }
+
+    private void SetPendingButtonAnimation(bool active)
+    {
+        Transform target = pendingButtonRoot != null
+            ? pendingButtonRoot.transform
+            : pendingButton != null ? pendingButton.transform : null;
+
+        if (target == null)
+            return;
+
+        if (!active)
+        {
+            StopPendingButtonAnimation();
+            return;
+        }
+
+        if (_pendingButtonTween != null && _pendingButtonTween.IsActive())
+            return;
+
+        target.localScale = Vector3.one;
+        _pendingButtonTween = target
+            .DOScale(1.08f, 0.45f)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+
+    private void StopPendingButtonAnimation()
+    {
+        _pendingButtonTween?.Kill(false);
+        _pendingButtonTween = null;
+
+        Transform target = pendingButtonRoot != null
+            ? pendingButtonRoot.transform
+            : pendingButton != null ? pendingButton.transform : null;
+
+        if (target != null)
+            target.localScale = Vector3.one;
+    }
+
+    private void ShowCheckoutPopup(int totalCost)
+    {
+        int titleId = 522;
+        int messageId = totalCost > 0 ? 523 : 524;
+        int okTextId = totalCost > 0 ? 525 : 39;
+        int cancelTextId = 2;
+
+        if (UIOverlayRoot.I == null)
+        {
+            TryPayAndCommit(totalCost);
+            return;
+        }
+
+        string title = LanguageManager.Instance.GetText(titleId);
+
+        string message = totalCost > 0
+            ? LanguageManager.Instance.GetText(messageId, totalCost)
+            : LanguageManager.Instance.GetText(messageId);
+
+        string okText = LanguageManager.Instance.GetText(okTextId);
+        string cancelText = LanguageManager.Instance.GetText(cancelTextId);
+
+        UIOverlayRoot.I.Confirm(
+            title,
+            message,
+            okText,
+            cancelText,
+            onOk: () => TryPayAndCommit(totalCost),
+            onCancel: DiscardPendingPreviews
+        );
+    }
+    private void TryPayAndCommit(int totalCost)
+    {
+        if (totalCost > 0)
+        {
+            CurrencyManager currency = CurrencyManager.Instance;
+            if (currency == null || !currency.SpendCoin(totalCost, true))
+            {
+                HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
+                MoneyNotEnough();
+                return;
+            }
+        }
+
+        GetSetCoins();
+        CommitPendingPreviews();
+    }
+
+    private void CommitPendingPreviews()
+    {
+        AvatarCustomizationCart.UnlockPendingItems();
         OnSavedBtnClicked?.Invoke();
+        AvatarCustomizationCart.Clear();
+        GetSetCoins();
+        RefreshPendingDetails();
+        HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
+    }
+
+    private void DiscardPendingPreviews()
+    {
+        RevertPendingPreviews();
     }
     private void RemovStartPage()
     {
@@ -422,7 +675,8 @@ public class AvatarCustomUIManager : MonoBehaviour
     #region Right Popup Detials
     private void MoneyNotEnough()
     {
-        rightPopup.ShowRightPopup("Coin is not enough", coinImage.sprite);
+        string message = LanguageManager.Instance.GetText(527);
+        rightPopup.ShowRightPopup(message, coinImage.sprite);
     }
     #endregion
 }

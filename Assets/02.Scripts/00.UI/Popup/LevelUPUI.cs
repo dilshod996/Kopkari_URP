@@ -17,10 +17,14 @@ public class LevelUPUI : MonoBehaviour
     {
         levelUpText.text = "Level Up";
 
-        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
-        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
+        if (DataManager.Instance == null)
+            return;
+
+        int currentLevel = DataManager.Instance.LevelAmount;
+        int pendingCount = DataManager.Instance.LevelUpPending;
 
         int popupLevel = currentLevel - pendingCount + 1;
+
         if (popupLevel < 1)
             popupLevel = 1;
 

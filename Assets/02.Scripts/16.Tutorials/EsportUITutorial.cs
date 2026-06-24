@@ -53,6 +53,8 @@ public class EsportUITutorial : MonoBehaviour
     public RectTransform tooltipPanel;    // tooltip root
     public TMP_Text titleText;
     public TMP_Text descText;
+    [SerializeField] private float tooltipCanvasMargin = 24f;
+    [SerializeField] private float tooltipTargetGap = 36f;
 
     [Header("Buttons")]
     public Button btnNext;
@@ -120,22 +122,23 @@ public class EsportUITutorial : MonoBehaviour
 
     public void Next()
     {
-        
-        //if (!_running) return;
+        if (!_running) return;
 
-        //_index++;
-        //if (_index >= steps.Count)
-        //{
-        //    Finish();
-        //    return;
-        //}
+        _index++;
+        if (_index >= steps.Count)
+        {
+            Finish();
+            return;
+        }
 
-        //ShowStepInternal(steps[_index]);
+        ShowStepInternal(steps[_index]);
     }
 
     public void Finish()
     {
         _running = false;
+        UnhookTargetClick(null);
+        SetPassThrough(false);
         KillTweens();
 
         // hide with small fade
@@ -354,8 +357,159 @@ public class EsportUITutorial : MonoBehaviour
     }
     void PlaceTooltip(RectTransform target, Vector2 offset)
     {
-        tooltipPanel.anchoredPosition = offset;
+        if (!tooltipPanel || !target || !canvasRect) return;
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tooltipPanel);
+
+        Camera cam = null; // Screen Space Overlay bo'lsa null
+        Vector3[] corners = new Vector3[4];
+        target.GetWorldCorners(corners);
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            RectTransformUtility.WorldToScreenPoint(cam, corners[0]),
+            cam,
+            out Vector2 targetMin);
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            RectTransformUtility.WorldToScreenPoint(cam, corners[2]),
+            cam,
+            out Vector2 targetMax);
+
+        tooltipPanel.anchorMin = new Vector2(0.5f, 0.5f);
+        tooltipPanel.anchorMax = new Vector2(0.5f, 0.5f);
+        tooltipPanel.pivot = new Vector2(0.5f, 0.5f);
         tooltipPanel.localScale = Vector3.one;
+
+        Vector2 tooltipSize = tooltipPanel.rect.size;
+        if (tooltipSize.x <= 1f || tooltipSize.y <= 1f)
+            tooltipSize = tooltipPanel.sizeDelta;
+
+        Vector2 tooltipHalf = tooltipSize * 0.5f;
+        Rect canvasBounds = canvasRect.rect;
+        Vector2 targetCenter = (targetMin + targetMax) * 0.5f;
+
+        float minX = canvasBounds.xMin + tooltipHalf.x + tooltipCanvasMargin;
+        float maxX = canvasBounds.xMax - tooltipHalf.x - tooltipCanvasMargin;
+        float minY = canvasBounds.yMin + tooltipHalf.y + tooltipCanvasMargin;
+        float maxY = canvasBounds.yMax - tooltipHalf.y - tooltipCanvasMargin;
+
+        Vector2 desired = PickTooltipPosition(
+            targetMin,
+            targetMax,
+            targetCenter,
+            tooltipHalf,
+            offset,
+            minX,
+            maxX,
+            minY,
+            maxY);
+
+        tooltipPanel.anchoredPosition = desired;
+    }
+
+    Vector2 PickTooltipPosition(
+        Vector2 targetMin,
+        Vector2 targetMax,
+        Vector2 targetCenter,
+        Vector2 tooltipHalf,
+        Vector2 offset,
+        float minX,
+        float maxX,
+        float minY,
+        float maxY)
+    {
+        Vector2[] candidates = BuildTooltipCandidates(targetMin, targetMax, targetCenter, offset, minX, maxX, minY, maxY, tooltipHalf);
+
+        float bestScore = float.MaxValue;
+        Vector2 best = candidates[0];
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Vector2 candidate = ClampTooltipPosition(candidates[i], minX, maxX, minY, maxY);
+            float overlapPenalty = TooltipOverlapsTarget(candidate, tooltipHalf, targetMin, targetMax) ? 100000f : 0f;
+            float offsetPenalty = Vector2.Distance(candidate, targetCenter + offset);
+            float edgePenalty = GetEdgePenalty(candidate, minX, maxX, minY, maxY);
+            float score = overlapPenalty + offsetPenalty + edgePenalty;
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        return best;
+    }
+
+    Vector2[] BuildTooltipCandidates(
+        Vector2 targetMin,
+        Vector2 targetMax,
+        Vector2 targetCenter,
+        Vector2 offset,
+        float minX,
+        float maxX,
+        float minY,
+        float maxY,
+        Vector2 tooltipHalf)
+    {
+        float gap = Mathf.Max(tooltipTargetGap, 8f);
+        float sideY = Mathf.Clamp(targetCenter.y + offset.y * 0.35f, minY, maxY);
+        float verticalX = Mathf.Clamp(targetCenter.x + offset.x * 0.35f, minX, maxX);
+
+        Vector2 right = new Vector2(targetMax.x + tooltipHalf.x + gap, sideY);
+        Vector2 left = new Vector2(targetMin.x - tooltipHalf.x - gap, sideY);
+        Vector2 above = new Vector2(verticalX, targetMax.y + tooltipHalf.y + gap);
+        Vector2 below = new Vector2(verticalX, targetMin.y - tooltipHalf.y - gap);
+        Vector2 preferred = targetCenter + offset;
+
+        if (Mathf.Abs(offset.x) >= Mathf.Abs(offset.y))
+        {
+            return offset.x >= 0f
+                ? new[] { right, above, below, left, preferred }
+                : new[] { left, above, below, right, preferred };
+        }
+
+        return offset.y >= 0f
+            ? new[] { above, right, left, below, preferred }
+            : new[] { below, right, left, above, preferred };
+    }
+
+    Vector2 ClampTooltipPosition(Vector2 position, float minX, float maxX, float minY, float maxY)
+    {
+        if (minX > maxX)
+            position.x = (minX + maxX) * 0.5f;
+        else
+            position.x = Mathf.Clamp(position.x, minX, maxX);
+
+        if (minY > maxY)
+            position.y = (minY + maxY) * 0.5f;
+        else
+            position.y = Mathf.Clamp(position.y, minY, maxY);
+
+        return position;
+    }
+
+    bool TooltipOverlapsTarget(Vector2 tooltipCenter, Vector2 tooltipHalf, Vector2 targetMin, Vector2 targetMax)
+    {
+        float minX = tooltipCenter.x - tooltipHalf.x - tooltipTargetGap;
+        float maxX = tooltipCenter.x + tooltipHalf.x + tooltipTargetGap;
+        float minY = tooltipCenter.y - tooltipHalf.y - tooltipTargetGap;
+        float maxY = tooltipCenter.y + tooltipHalf.y + tooltipTargetGap;
+
+        return minX < targetMax.x &&
+               maxX > targetMin.x &&
+               minY < targetMax.y &&
+               maxY > targetMin.y;
+    }
+
+    float GetEdgePenalty(Vector2 position, float minX, float maxX, float minY, float maxY)
+    {
+        float xPenalty = Mathf.Min(Mathf.Abs(position.x - minX), Mathf.Abs(maxX - position.x));
+        float yPenalty = Mathf.Min(Mathf.Abs(position.y - minY), Mathf.Abs(maxY - position.y));
+        return -Mathf.Min(xPenalty, yPenalty) * 0.1f;
     }
 
     void StartPulse()

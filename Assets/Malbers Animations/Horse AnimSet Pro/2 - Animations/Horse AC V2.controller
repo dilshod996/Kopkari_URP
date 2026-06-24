@@ -725,9 +725,9 @@ AnimatorStateMachine:
   - {fileID: -5998278257904521088}
   m_EntryTransitions: []
   m_StateMachineTransitions:
-  - first: {fileID: 1078442952344333518}
-    second: []
   - first: {fileID: -1423600258132758039}
+    second: []
+  - first: {fileID: 1078442952344333518}
     second: []
   - first: {fileID: 90548163043076979}
     second: []
@@ -1757,7 +1757,7 @@ AnimatorController:
     m_Controller: {fileID: 9100000}
   - m_Name: UpDown
     m_Type: 1
-    m_DefaultFloat: 0
+    m_DefaultFloat: 1
     m_DefaultInt: 0
     m_DefaultBool: 0
     m_Controller: {fileID: 9100000}
@@ -6189,9 +6189,9 @@ AnimatorStateMachine:
   - first: {fileID: 1107469501483250876}
     second:
     - {fileID: -1085240756628014901}
-  - first: {fileID: 1107070459965775536}
-    second: []
   - first: {fileID: 1107231746298051510}
+    second: []
+  - first: {fileID: 1107070459965775536}
     second: []
   - first: {fileID: 1107235611564023184}
     second: []

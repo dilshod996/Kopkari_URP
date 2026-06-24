@@ -119,6 +119,8 @@ public class KopkariMainUI : MonoBehaviour
     private bool isPressing;
     private bool isDamaged;
     private bool canSprint = true;
+    private bool isPointerHeld;
+    private bool autoSprintBoostActive;
 
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
@@ -148,6 +150,7 @@ public class KopkariMainUI : MonoBehaviour
 
         BoostersContainer.OnSprintEffectStart += ShowSprintEffectNoForce;
         BoostersContainer.OnSprintEffectEnd += HideSprintEffectNoForce;
+        BoostersContainer.OnAutoSprintBoostStart += StopManualSprintForAutoBoost;
 
         BoostersContainer.OnWalkZoneAdded += UpdateWalkZoneText;
         BoostersContainer.OnWalkZoneRemoved += UpdateWalkZoneText;
@@ -182,6 +185,7 @@ public class KopkariMainUI : MonoBehaviour
 
         BoostersContainer.OnSprintEffectStart -= ShowSprintEffectNoForce;
         BoostersContainer.OnSprintEffectEnd -= HideSprintEffectNoForce;
+        BoostersContainer.OnAutoSprintBoostStart -= StopManualSprintForAutoBoost;
 
         BoostersContainer.OnWalkZoneAdded -= UpdateWalkZoneText;
         BoostersContainer.OnWalkZoneRemoved -= UpdateWalkZoneText;
@@ -203,6 +207,8 @@ public class KopkariMainUI : MonoBehaviour
         KopkariManager.OnGoatPicked -= ShowMeters;
         pushButton.onClick.RemoveListener(PushEffectStart);
         pauseButton.onClick.RemoveListener(PauseMenu);
+        isPointerHeld = false;
+        autoSprintBoostActive = false;
     }
     #endregion
 
@@ -210,29 +216,30 @@ public class KopkariMainUI : MonoBehaviour
     public void UpdateDefendText(int count)
     {
         defendCountText.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.Defense, count);
+        SaveItem(Constants.PlayerItems.Defense, count);
         SetDefendState(count > 0);
     }
+
     public void UpdateWalkZoneText(int count)
     {
         walkZoneCountText.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.SlowDown, count);
+        SaveItem(Constants.PlayerItems.SlowDown, count);
         SetWalkZoneState(count > 0);
     }
+
     public void UpdateHitText(int count)
     {
         hitCountText.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.Whip, count);
+        SaveItem(Constants.PlayerItems.Whip, count);
         SetHitState(count > 0);
     }
 
     public void UpdateWebCount(int count)
     {
         webSnareCounter.text = count.ToString();
-        SaveToPrefs(Constants.PlayerItems.WebSnare, count);
+        SaveItem(Constants.PlayerItems.WebSnare, count);
         SetWebState(count > 0);
     }
-
     #endregion
 
     #region Button State Updates
@@ -247,6 +254,7 @@ public class KopkariMainUI : MonoBehaviour
         // ✅ debuff bo‘lsa ham bosilmasin
         bool interactable =
             canSprint &&
+            !autoSprintBoostActive &&
             !isDamaged &&
             !isPressing &&
             sliderFull &&
@@ -264,17 +272,13 @@ public class KopkariMainUI : MonoBehaviour
     public void SetWebState(bool state) => shootWebBtn.interactable = state;
     #endregion
 
-    #region Data (PlayerPrefs)
+    #region Data (Inventory)
     public void GetData()
     {
-        int defCount = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
-        int slowCount = PlayerPrefs.GetInt(Constants.PlayerItems.SlowDown);
-        int webCount = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
-
-        if (webCount == 0) webCount = 4;
-        if (slowCount < 1) slowCount = 5;
-
-        int whipCount = PlayerPrefs.GetInt(Constants.PlayerItems.Whip);
+        int defCount = GetItemAmount(Constants.PlayerItems.Defense);
+        int slowCount = GetItemAmount(Constants.PlayerItems.SlowDown);
+        int webCount = GetItemAmount(Constants.PlayerItems.WebSnare);
+        int whipCount = GetItemAmount(Constants.PlayerItems.Whip);
 
         InitializeData(defCount, slowCount, whipCount, webCount);
     }
@@ -287,9 +291,23 @@ public class KopkariMainUI : MonoBehaviour
         UpdateWebCount(webCount);
     }
 
-    private void SaveToPrefs(string prefsName, int value)
+    private int GetItemAmount(string itemKey)
     {
-        PlayerPrefs.SetInt(prefsName, value);
+        if (DataManager.Instance != null)
+            return DataManager.Instance.GetItemAmount(itemKey);
+
+        return PlayerPrefs.GetInt(itemKey, 0);
+    }
+
+    private void SaveItem(string itemKey, int value)
+    {
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.SetItemAmountFromGame(itemKey, value, false);
+            return;
+        }
+
+        PlayerPrefs.SetInt(itemKey, value);
         PlayerPrefs.Save();
     }
     #endregion
@@ -379,18 +397,34 @@ public class KopkariMainUI : MonoBehaviour
 
     private void HandlePointerDown()
     {
-        // ✅ EventTrigger interactable=false bo‘lsa ham callback chaqirishi mumkin
-        if (sprintBtn != null && !sprintBtn.interactable) return;
-        Debug.Log("Pressed");
-        if (isDamaged) return;
-        if (isPressing) return;
-        if (sprintSlider.value <= 0.0001f) return;
+        isPointerHeld = true;
 
+        // ✅ EventTrigger interactable=false bo‘lsa ham callback chaqirishi mumkin
+        if (sprintBtn != null && !sprintBtn.interactable)
+        {
+            HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
+            return;
+        }
+
+        Debug.Log("Pressed");
+        if (isDamaged || isPressing || sprintSlider.value <= 0.0001f)
+        {
+            HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
+            return;
+        }
+
+        StartSprintDrain(stopRefillRoutine: true);
+    }
+
+    private void StartSprintDrain(bool stopRefillRoutine)
+    {
         isPressing = true;
         OnSprintStart?.Invoke();
         sprintImg?.gameObject.SetActive(true);
 
-        StopIfRunning(ref refillRoutine);
+        if (stopRefillRoutine)
+            StopIfRunning(ref refillRoutine);
+
         StopIfRunning(ref drainRoutine);
 
         drainRoutine = StartCoroutine(DrainCoroutine());
@@ -401,6 +435,8 @@ public class KopkariMainUI : MonoBehaviour
 
     private void HandlePointerUp()
     {
+        isPointerHeld = false;
+
         // Agar hozir pressing bo‘lsa — har doim release qilamiz
         if (isPressing)
         {
@@ -427,6 +463,7 @@ public class KopkariMainUI : MonoBehaviour
             if (sprintSlider != null && sprintSlider.value <= 0.0001f)
             {
                 sprintSlider.value = 0f;
+                HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
 
                 // ✅ tugadi: release + refill boshlansin (bosilganda qaytmasin)
                 ForceReleaseSprint(startRefill: true);
@@ -479,7 +516,12 @@ public class KopkariMainUI : MonoBehaviour
 
         // ✅ to‘lgandan keyin (debuff yo‘q bo‘lsa) sprint qaytadi
         if (!isDamaged)
+        {
             SetSprintState(true);
+
+            if (isPointerHeld && CanSprintNow() && sprintBtn != null && sprintBtn.interactable)
+                StartSprintDrain(stopRefillRoutine: false);
+        }
 
         refillRoutine = null;
     }
@@ -588,8 +630,15 @@ public class KopkariMainUI : MonoBehaviour
 
     public void OnWebSnoreButtonDown(BaseEventData data)
     {
-        int countSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare);
-        if (countSnare > 0) countSnare--;
+        bool success = false;
+
+        if (DataManager.Instance != null)
+            success = DataManager.Instance.SpendItem(Constants.PlayerItems.WebSnare, 1, false);
+
+        int countSnare = GetItemAmount(Constants.PlayerItems.WebSnare);
+
+        if (!success)
+            countSnare = 0;
 
         UpdateWebCount(countSnare);
         OnWebSnareStart?.Invoke();
@@ -766,9 +815,29 @@ public class KopkariMainUI : MonoBehaviour
 
     private void HideSprintEffectNoForce()
     {
+        autoSprintBoostActive = false;
+
         if (sprintImg != null) sprintImg.gameObject.SetActive(false);
         SetSprintState(true);
     }
+
+    private void StopManualSprintForAutoBoost()
+    {
+        autoSprintBoostActive = true;
+
+        if (isPressing)
+            isPressing = false;
+
+        StopIfRunning(ref drainRoutine);
+
+        if (sprintSlider != null && sprintSlider.value < 1f && refillRoutine == null)
+            refillRoutine = StartCoroutine(RefillDelayedCoroutine());
+
+        if (sprintImg != null) sprintImg.gameObject.SetActive(true);
+
+        SetSprintState(false);
+    }
+
     private void OnObstacleDamageHandler(bool isDamaged)
     {
         // slow visual (xohlasang)

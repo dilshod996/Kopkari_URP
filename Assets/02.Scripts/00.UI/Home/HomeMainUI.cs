@@ -24,6 +24,21 @@ public class HomeMainUI : MonoBehaviour
     public HomeEnvironment environment;
     [Header("MainUI Parent Object")]
     [SerializeField] private GameObject mainUIPanel;
+    [SerializeField] private GameObject uiMainBtns;
+
+    [Header("Home Panel Camera")]
+    [SerializeField] private Transform homePanelCameraTransform;
+    [SerializeField] private float homePanelCameraTweenDuration = 0.7f;
+    [SerializeField] private Ease homePanelCameraEase = Ease.InOutSine;
+
+    private static readonly Vector3 SuppliesCameraPosition = new Vector3(-239.8f, -0.3f, -158.42f);
+    private static readonly Quaternion SuppliesCameraRotation = Quaternion.Euler(4.7f, 115f, -0.53f);
+    private static readonly Vector3 FoodCameraPosition = new Vector3(-241.86f, -0.25f, -158.3f);
+    private static readonly Quaternion FoodCameraRotation = Quaternion.Euler(4.7f, 161f, 0f);
+    private Sequence homePanelCameraTween;
+    private Vector3 homePanelCameraOriginalPosition;
+    private Quaternion homePanelCameraOriginalRotation;
+    private bool homePanelCameraOriginalStored;
 
     [Header("Touch bo‘lmasa necha sekunddan keyin yashirish")]
     [SerializeField] private float idleTime = 5f;
@@ -116,6 +131,7 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private ProgressBar horseCooling;
     [SerializeField] private TMP_Text powerText, staminaText, coolingText;
     private float foolPercentage=100f;
+    private Coroutine horseStatsRefreshRoutine;
 
     #endregion
 
@@ -193,13 +209,20 @@ public class HomeMainUI : MonoBehaviour
         //}
         RiderStatistcs();
         HorseStatistcs();
+        horseStatsRefreshRoutine = StartCoroutine(RefreshHorseStatsFromCatalog());
         if(LanguageManager.Instance != null) UITransilations();
         //PlayerResourse.OnNyufiyUpdated += UpdateNyufiy;
-        FoodInfo.OnNyufiyUpdate += UpdateOnlyNyufiy;
+        if (CurrencyManager.Instance != null)
+        {
+            CurrencyManager.Instance.OnNyufiyChanged += UpdateOnlyNyufiy;
+            CurrencyManager.Instance.OnCoinChanged += UpdateOnlyCoin;
+        }
         PlayerResourse.OnResourseUpdated += UpdatePlayerResource;
         FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
+        FoodShowerPopup.OnFoodGivenWithStats += ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged += FoodPanelState;
         LobbyManager.OnNameChanged += LobbyName;
+        DataManager.OnPlayerDataLoaded += HandlePlayerDataLoaded;
         //StartingInfo();
         playBtn.onClick.AddListener(OpenGameMainPanel);
         marketBtn.onClick.AddListener(OpenMarketPage);
@@ -209,7 +232,7 @@ public class HomeMainUI : MonoBehaviour
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
         NameTutorial();
-        //CheckTutorialRewardOnReturn();
+        CheckTutorialRewardOnReturn();
     }
     private void OnDisable()
     {
@@ -222,10 +245,21 @@ public class HomeMainUI : MonoBehaviour
 
         CancelInvoke(nameof(CheckIdle));
         PlayerResourse.OnResourseUpdated -= UpdatePlayerResource;
-        FoodInfo.OnNyufiyUpdate -= UpdateOnlyNyufiy;
+        if (horseStatsRefreshRoutine != null)
+        {
+            StopCoroutine(horseStatsRefreshRoutine);
+            horseStatsRefreshRoutine = null;
+        }
+        if (CurrencyManager.Instance != null)
+        {
+            CurrencyManager.Instance.OnNyufiyChanged -= UpdateOnlyNyufiy;
+            CurrencyManager.Instance.OnCoinChanged -= UpdateOnlyCoin;
+        }
         FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
+        FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
         LobbyManager.OnNameChanged -= LobbyName;
+        DataManager.OnPlayerDataLoaded -= HandlePlayerDataLoaded;
         playBtn.onClick.RemoveAllListeners();
         nyufiyButton.onClick.RemoveAllListeners();
         korakButton.onClick.RemoveAllListeners();
@@ -279,11 +313,124 @@ public class HomeMainUI : MonoBehaviour
     }
     public void ShowSuppliesPanel()
     {
-        ShowUI(suppliesPanel);
+        MoveHomePanelCameraIn(GetHomePanelCameraPosition(SuppliesCameraPosition), SuppliesCameraRotation, () => ShowUI(suppliesPanel));
     }
     public void HideSuppliesPanel()
     {
         HideUI(suppliesPanel);
+    }
+
+    private void MoveHomePanelCameraIn(Vector3 targetPosition, Quaternion targetRotation, Action onComplete = null)
+    {
+        if (!ShouldUseHomePanelCamera())
+        {
+            onComplete?.Invoke();
+            return;
+        }
+
+        if (uiMainBtns != null)
+        {
+            uiMainBtns.SetActive(false);
+        }
+
+        Transform camTransform = GetHomePanelCameraTransform();
+        if (camTransform == null)
+        {
+            if (uiMainBtns != null)
+            {
+                uiMainBtns.SetActive(true);
+            }
+
+            onComplete?.Invoke();
+            return;
+        }
+
+        if (!homePanelCameraOriginalStored)
+        {
+            homePanelCameraOriginalPosition = camTransform.position;
+            homePanelCameraOriginalRotation = camTransform.rotation;
+            homePanelCameraOriginalStored = true;
+        }
+
+        TweenHomePanelCamera(camTransform, targetPosition, targetRotation, onComplete);
+    }
+
+    private void MoveHomePanelCameraBack()
+    {
+        if (!ShouldUseHomePanelCamera())
+        {
+            return;
+        }
+
+        Transform camTransform = GetHomePanelCameraTransform();
+        if (camTransform == null || !homePanelCameraOriginalStored)
+        {
+            if (uiMainBtns != null)
+            {
+                uiMainBtns.SetActive(true);
+            }
+            return;
+        }
+
+        TweenHomePanelCamera(camTransform, homePanelCameraOriginalPosition, homePanelCameraOriginalRotation, () =>
+        {
+            homePanelCameraOriginalStored = false;
+
+            if (uiMainBtns != null)
+            {
+                uiMainBtns.SetActive(true);
+            }
+        });
+    }
+
+    private Transform GetHomePanelCameraTransform()
+    {
+        if (homePanelCameraTransform != null)
+        {
+            return homePanelCameraTransform;
+        }
+
+        Camera mainCamera = Camera.main;
+        return mainCamera != null ? mainCamera.transform : null;
+    }
+
+    private Vector3 GetHomePanelCameraPosition(Vector3 basePosition)
+    {
+        Vector3 position = basePosition;
+        string currentEnvironment = PlayerPrefs.GetString(
+            Constants.HomeEnivronments.SelectedEnvironment,
+            Constants.MapNames.Zarafshan);
+
+        position.y = currentEnvironment == Constants.MapNames.Zarafshan ? 0.1f : -0.3f;
+        return position;
+    }
+
+    private bool ShouldUseHomePanelCamera()
+    {
+        string homeSceneName = SceneLoadManager.SceneType.Home.ToString();
+
+        if (gameObject.scene.name == homeSceneName)
+        {
+            return true;
+        }
+
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == homeSceneName)
+        {
+            return true;
+        }
+
+        return SceneLoadManager.Instance != null
+            && SceneLoadManager.Instance.CurrentSceneType == SceneLoadManager.SceneType.Home;
+    }
+
+    private void TweenHomePanelCamera(Transform camTransform, Vector3 targetPosition, Quaternion targetRotation, Action onComplete = null)
+    {
+        homePanelCameraTween?.Kill();
+
+        homePanelCameraTween = DOTween.Sequence();
+        homePanelCameraTween.Join(camTransform.DOMove(targetPosition, homePanelCameraTweenDuration).SetEase(homePanelCameraEase));
+        homePanelCameraTween.Join(camTransform.DORotateQuaternion(targetRotation, homePanelCameraTweenDuration).SetEase(homePanelCameraEase));
+        homePanelCameraTween.OnComplete(() => onComplete?.Invoke());
     }
     #endregion
 
@@ -294,20 +441,20 @@ public class HomeMainUI : MonoBehaviour
         {
             playerName.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         }
-        defenseAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.Defense, 3)}";
-        slowDownAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.SlowDown, 3)}";
-        webAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.WebSnare, 3)}";
-        whipAmountText.text = $"X{GetOrInitInt(Constants.PlayerItems.Whip, 0)}";
+        defenseAmountText.text = $"X{GetInt(Constants.PlayerItems.Defense)}";
+        slowDownAmountText.text = $"X{GetInt(Constants.PlayerItems.SlowDown)}";
+        webAmountText.text = $"X{GetInt(Constants.PlayerItems.WebSnare)}";
+        whipAmountText.text = $"X{GetInt(Constants.PlayerItems.Whip)}";
 
 
         // Coins – default 0
-        int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 3000);
+        int nyufiyAmount = CurrencyManager.Instance != null ? CurrencyManager.Instance.Nyufiy : PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
         //if (nyufiyAmount < 1000)
         //{
         //    nyufiyAmount = 4000;
         //    PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         //}
-        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 100);
+        int coinAmount = CurrencyManager.Instance != null ? CurrencyManager.Instance.Coin : PlayerPrefs.GetInt(Constants.Coins.Coin, 0);
 
         // Formatlash xohishingga qarab
         nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
@@ -319,14 +466,18 @@ public class HomeMainUI : MonoBehaviour
     }
     public void UpdateNyufiy()
     {
-        int nyufiyAmount = GetOrInitInt(Constants.Coins.Nyufiy, 0);
+        int nyufiyAmount = CurrencyManager.Instance != null ? CurrencyManager.Instance.Nyufiy : PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
         nyufiyText.text = nyufiyAmount > 0 ? $"{nyufiyAmount:N0}" : "0";
-        int coinAmount = GetOrInitInt(Constants.Coins.Coin, 0);
+        int coinAmount = CurrencyManager.Instance != null ? CurrencyManager.Instance.Coin : PlayerPrefs.GetInt(Constants.Coins.Coin, 0);
         coinText.text = coinAmount > 0 ? $"{coinAmount:N0}" : "0";
     }
     private void UpdateOnlyNyufiy(int amount)
     {
         nyufiyText.text = amount > 0 ? $"{amount:N0}" : "0";
+    }
+    private void UpdateOnlyCoin(int amount)
+    {
+        coinText.text = amount > 0 ? $"{amount:N0}" : "0";
     }
     private void HorseStatistcs()
     {
@@ -339,16 +490,36 @@ public class HomeMainUI : MonoBehaviour
         // Team name (doim default bo'lsa ham bo'ladi)
         EnsureString(Constants.Player.TeamName, "Kaja Riders");
 
-        // Horse stats – hammasi bitta pattern
-        horsePower.currentPercent = GetOrInitFloat(Constants.HorseCondition.Power, foolPercentage);
-        horseStamina.currentPercent = GetOrInitFloat(Constants.HorseCondition.Stamina, foolPercentage);
-        horseCooling.currentPercent = GetOrInitFloat(Constants.HorseCondition.Cooling, foolPercentage);
+        ApplyHorseStats(HorseConditionStatsService.GetCachedMaxOrDefault());
+    }
+
+    private IEnumerator RefreshHorseStatsFromCatalog()
+    {
+        var task = HorseConditionStatsService.GetActiveMaxAsync();
+        while (!task.IsCompleted)
+            yield return null;
+
+        if (task.Exception != null)
+        {
+            Debug.LogWarning($"Horse max stat refresh failed: {task.Exception.GetBaseException().Message}");
+            yield break;
+        }
+
+        ApplyHorseStats(task.Result);
+        horseStatsRefreshRoutine = null;
+    }
+
+    private void ApplyHorseStats(HorseConditionStats max)
+    {
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
+
+        horsePower.currentPercent = current.Power;
+        horseStamina.currentPercent = current.Stamina;
+        horseCooling.currentPercent = current.Cooling;
 
         horsePower.UpdateUI();
         horseStamina.UpdateUI();
         horseCooling.UpdateUI();
-
-
     }
 
     // Local helper: float qiymatni o'qiydi, bo'lmasa default yozib qaytaradi
@@ -360,25 +531,12 @@ public class HomeMainUI : MonoBehaviour
         PlayerPrefs.SetFloat(key, defaultValue);
         return defaultValue;
     }
-    int GetOrInitInt(string key, int defaultValue)
-    {
-        if (PlayerPrefs.HasKey(key))
-        {
-            return PlayerPrefs.GetInt(key);
-        }
-            
-
-        PlayerPrefs.SetInt(key, defaultValue);
-        return defaultValue;
-    }
     int GetInt(string key)
     {
-        if (PlayerPrefs.HasKey(key))
-        {
-            return PlayerPrefs.GetInt(key);
-        }
+        if (DataManager.Instance != null)
+            return DataManager.Instance.GetItemAmount(key);
 
-        return 0;
+        return PlayerPrefs.GetInt(key, 0);
     }
     // Local helper: string qiymatni yo'qligida default qo'yib ketadi
     void EnsureString(string key, string defaultValue)
@@ -398,7 +556,7 @@ public class HomeMainUI : MonoBehaviour
     }
     public void SHowFoodPanel()
     {
-        ShowUI(foodPanel);
+        MoveHomePanelCameraIn(GetHomePanelCameraPosition(FoodCameraPosition), FoodCameraRotation, () => ShowUI(foodPanel));
     }
     public void HideFoodPanel()
     {
@@ -406,25 +564,15 @@ public class HomeMainUI : MonoBehaviour
     }
     private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
     {
-        // 1) PlayerPrefs dagi qiymatlarni olamiz
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power, foolPercentage);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling, foolPercentage);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina, foolPercentage);
-
-        // 2) Bufflarni qo‘shamiz
-        currentPower = Mathf.Clamp(currentPower + powerPercent, 0f, 100f);
-        currentCooling = Mathf.Clamp(currentCooling + coolingPercent, 0f, 100f);
-        currentStamina = Mathf.Clamp(currentStamina + staminaPercent, 0f, 100f);
-
-        // 3) Yangi qiymatlarni saqlaymiz
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
+        HorseConditionStats current = HorseConditionStatsService.AddFood(
+            powerPercent,
+            coolingPercent,
+            staminaPercent);
 
         // 4) UI barlarni yangilaymiz
-        horsePower.currentPercent = currentPower;
-        horseCooling.currentPercent = currentCooling;
-        horseStamina.currentPercent = currentStamina;
+        horsePower.currentPercent = current.Power;
+        horseCooling.currentPercent = current.Cooling;
+        horseStamina.currentPercent = current.Stamina;
 
         horsePower.UpdateUI();
         horseCooling.UpdateUI();
@@ -523,6 +671,8 @@ public class HomeMainUI : MonoBehaviour
     {
         if (!page) return;
 
+        bool shouldRestoreHomePanelCamera = page == suppliesPanel || page == foodPanel;
+
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
@@ -546,6 +696,10 @@ public class HomeMainUI : MonoBehaviour
         seq.OnComplete(() =>
         {
             page.SetActive(false);
+            if (shouldRestoreHomePanelCamera)
+            {
+                MoveHomePanelCameraBack();
+            }
             onComplete?.Invoke();
         });
 
@@ -752,34 +906,28 @@ public class HomeMainUI : MonoBehaviour
             return;
         }
 
-        // Hozirgi statlar
-        float power = PlayerPrefs.GetFloat(Constants.HorseCondition.Power, foolPercentage);
-        float cooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling, foolPercentage);
-        float stamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina, foolPercentage);
+        HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
 
-        // Har bir minut bo‘yicha regen
-        float powerPerMin = foolPercentage / PowerRegenMinutes;
-        float coolingPerMin = foolPercentage / CoolingRegenMinutes;
-        float staminaPerMin = foolPercentage / StaminaRegenMinutes;
+        float powerPerMin = max.Power / PowerRegenMinutes;
+        float coolingPerMin = max.Cooling / CoolingRegenMinutes;
+        float staminaPerMin = max.Stamina / StaminaRegenMinutes;
 
         Debug.Log("Offline adding resources: " + $"{powerPerMin} {coolingPerMin} {staminaPerMin}");
 
-        power += powerPerMin * elapsedMinutes;
-        cooling += coolingPerMin * elapsedMinutes;
-        stamina += staminaPerMin * elapsedMinutes;
+        HorseConditionStats updated = HorseConditionStatsService.ApplyOfflineRegen(
+            current,
+            elapsedMinutes,
+            PowerRegenMinutes,
+            CoolingRegenMinutes,
+            StaminaRegenMinutes);
 
-        power = Mathf.Clamp(power, 0f, foolPercentage);
-        cooling = Mathf.Clamp(cooling, 0f, foolPercentage);
-        stamina = Mathf.Clamp(stamina, 0f, foolPercentage);
-
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, power);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, cooling);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, stamina);
+        HorseConditionStatsService.SaveCurrent(updated, saveNow: false);
 
         PlayerPrefs.SetString(Constants.Timer.LastUpdateTime, DateTimeOffset.UtcNow.ToString("O"));
         PlayerPrefs.Save();
 
-        Debug.Log($"Regen applied. New stats: P={power}, C={cooling}, S={stamina}");
+        Debug.Log($"Regen applied. New stats: P={updated.Power}, C={updated.Cooling}, S={updated.Stamina}");
     }
 
     #endregion
@@ -852,6 +1000,7 @@ public class HomeMainUI : MonoBehaviour
             tutorialPanels.SetActive(false);
             tutorial.Finish();
             PlayerPrefs.SetInt(Constants.Tutorial.Settings, 1);
+            HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
         }
         HideUI(settingsPanel, () =>
         {
@@ -953,6 +1102,20 @@ public class HomeMainUI : MonoBehaviour
         }
 
     }
+    private void HandlePlayerDataLoaded()
+    {
+        if (!PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
+        {
+            NameTutorial();
+            return;
+        }
+
+        if (tutorialPanels != null && tutorialPanels.activeSelf)
+            tutorialPanels.SetActive(false);
+
+        tutorial?.Finish();
+        TryOpenDailyRewardIfAvailable();
+    }
     private void CheckTutorialRewardOnReturn()
     {
         bool tutorialPlayed = PlayerPrefs.GetInt(Constants.Tutorial.TutorialPlay, 0) == 1;
@@ -1004,6 +1167,7 @@ public class HomeMainUI : MonoBehaviour
             tutorialPanels.SetActive(false);
             tutorial.Finish();
             PlayerPrefs.SetInt(Constants.Tutorial.Name, 1);
+            HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
         }
         CloseUserDetailsPanel();
     }
@@ -1024,14 +1188,25 @@ public class HomeMainUI : MonoBehaviour
             return;
         PlayerPrefs.SetInt(Constants.Tutorial.OptionalTutorial, 1);
 
+        string title = GetLocalizedText(491, "Tutorial");
+        string description = $"{GetLocalizedText(492, "Would you like to play the tutorial?")}\n\nFirst ride gives 4000 Nyufiy + 100 XP.";
+        string okText = GetLocalizedText(1, "Yes");
+        string cancelText = GetLocalizedText(2, "No");
+
         UIOverlayRoot.I.Confirm(
-        titleId: 491,          
-        descId: 492,           
-        okTextId: 1,         
-        cancelTextId: 2,     
+        title: title,
+        desc: description,
+        okText: okText,
+        cancelText: cancelText,
         onOk: MoveTutorialRoom,
         onCancel: null 
     );
+    }
+    private string GetLocalizedText(int id, string fallback)
+    {
+        return LanguageManager.Instance != null
+            ? LanguageManager.Instance.GetText(id)
+            : fallback;
     }
     public void MoveTutorialRoom()
     {
@@ -1127,17 +1302,15 @@ public class HomeMainUI : MonoBehaviour
 
     public void OnLevelUpPopupClosed()
     {
-        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
-
-        if (pendingCount <= 0)
+        if (DataManager.Instance == null)
             return;
 
-        pendingCount--;
+        if (DataManager.Instance.LevelUpPending <= 0)
+            return;
 
-        PlayerPrefs.SetInt(Constants.Level.LevelUpPending, pendingCount);
-        PlayerPrefs.Save();
+        DataManager.Instance.ConsumeLevelUpPending();
 
-        if (pendingCount > 0)
+        if (DataManager.Instance.LevelUpPending > 0)
             StartCoroutine(ShowNextLevelUpPopup());
     }
 

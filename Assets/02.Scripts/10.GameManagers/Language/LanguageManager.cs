@@ -108,6 +108,23 @@ public class LanguageManager : MonoBehaviour
             _ => entry.english
         };
     }
+    public string GetText(int id, params object[] args)
+    {
+        string text = GetText(id);
+
+        if (string.IsNullOrEmpty(text))
+            return "";
+
+        try
+        {
+            return string.Format(text, args);
+        }
+        catch (FormatException e)
+        {
+            Debug.LogWarning($"Localization format error. ID: {id}, Text: {text}, Error: {e.Message}");
+            return text;
+        }
+    }
 
     public void SetLanguage(string lang)
     {

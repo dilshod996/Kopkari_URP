@@ -27,11 +27,13 @@ public class PlayerSkinLoader : MonoBehaviour
     private void OnEnable()
     {
         AvatarCustomUIManager.OnSavedBtnClicked += CommitPending;  // static event
+        AvatarCustomUIManager.OnRevertPreviewRequested += RevertPending;
     }
 
     private void OnDisable()
     {
         AvatarCustomUIManager.OnSavedBtnClicked -= CommitPending;
+        AvatarCustomUIManager.OnRevertPreviewRequested -= RevertPending;
     }
     private void BuildSlotMap()
     {
@@ -67,39 +69,25 @@ public class PlayerSkinLoader : MonoBehaviour
         foreach (var kv in _slots)
         {
             string slotId = kv.Key;
-            string prefKey = $"Sel_{_playerId}_{slotId}";
-
-            string optionId = PlayerPrefs.GetString(prefKey, "");
+            string optionId = AvatarCustomPrefs.GetSelection(_playerId, slotId);
             if (string.IsNullOrEmpty(optionId))
                 optionId = PlayerCatalogProvider.Instance.GetDefaultOptionId(_playerId, slotId);
 
             if (!string.IsNullOrEmpty(optionId))
-                await ApplyOne(slotId, optionId);
+                await ApplyVisual(slotId, optionId);
         }
     }
 
     public async Task ApplyOne(string slotId, string optionId)
     {
-        if (!_slots.TryGetValue(slotId, out var smr))
-            return;
+        await ApplyVisual(slotId, optionId);
 
-        var entry = await PlayerCatalogProvider.Instance.FindAsync(_playerId, slotId, optionId);
-        if (entry == null) return;
-
-        await ApplyEntry(smr, entry);
-
-        PlayerPrefs.SetString($"Sel_{_playerId}_{slotId}", optionId);
+        AvatarCustomPrefs.SetSelection(_playerId, slotId, optionId);
         PlayerPrefs.Save();
     }
     public async Task PreviewOne(string slotId, string optionId)
     {
-        if (!_slots.TryGetValue(slotId, out var smr))
-            return;
-
-        var entry = await PlayerCatalogProvider.Instance.FindAsync(_playerId, slotId, optionId);
-        if (entry == null) return;
-
-        await ApplyEntry(smr, entry);
+        await ApplyVisual(slotId, optionId);
 
         // ✅ faqat pendingga yozamiz (prefsga emas)
         _pending[slotId] = optionId;
@@ -113,11 +101,43 @@ public class PlayerSkinLoader : MonoBehaviour
             string slotId = kv.Key;
             string optionId = kv.Value;
 
-            PlayerPrefs.SetString($"Sel_{_playerId}_{slotId}", optionId);
+            AvatarCustomPrefs.SetSelection(_playerId, slotId, optionId);
+            CustomizationManager.Instance?.SyncSelection(_playerId, slotId, optionId);
         }
 
         PlayerPrefs.Save();
         _pending.Clear();
+    }
+
+    private async void RevertPending()
+    {
+        if (_pending.Count == 0) return;
+
+        List<string> slots = new List<string>(_pending.Keys);
+        _pending.Clear();
+
+        foreach (string slotId in slots)
+        {
+            string optionId = AvatarCustomPrefs.GetSelection(_playerId, slotId);
+            if (string.IsNullOrEmpty(optionId))
+                optionId = PlayerCatalogProvider.Instance.GetDefaultOptionId(_playerId, slotId);
+
+            if (!string.IsNullOrEmpty(optionId))
+                await ApplyVisual(slotId, optionId);
+
+            OptionItemUI.OnSelectionChanged?.Invoke(_playerId, slotId);
+        }
+    }
+
+    private async Task ApplyVisual(string slotId, string optionId)
+    {
+        if (!_slots.TryGetValue(slotId, out var smr))
+            return;
+
+        var entry = await PlayerCatalogProvider.Instance.FindAsync(_playerId, slotId, optionId);
+        if (entry == null) return;
+
+        await ApplyEntry(smr, entry);
     }
 
     private async Task ApplyEntry(SkinnedMeshRenderer smr, CatalogEntry entry)
@@ -155,7 +175,7 @@ public class PlayerSkinLoader : MonoBehaviour
             return pendingId;
 
         // 2) bo'lmasa prefs
-        return PlayerPrefs.GetString($"Sel_{_playerId}_{slotId}", "");
+        return AvatarCustomPrefs.GetSelection(_playerId, slotId);
     }
 
 }

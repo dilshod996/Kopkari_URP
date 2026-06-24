@@ -1,0 +1,880 @@
+Reloading assemblies for play mode.
+Reloading assemblies after forced synchronous recompile.
+[Licensing::Client] Successfully resolved entitlements
+Begin MonoManager ReloadAssembly
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+- Loaded All Assemblies, in  0.839 seconds
+Refreshing native plugins compatible for Editor in 20.46 ms, found 11 plugins.
+Native extension for WindowsStandalone target not found
+Native extension for Android target not found
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-Nomad Rivals
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  6.014 seconds
+Domain Reload Profiling: 6858ms
+	BeginReloadAssembly (634ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (54ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (1ms)
+		CreateAndSetChildDomain (432ms)
+	RebuildCommonClasses (21ms)
+	RebuildNativeTypeToScriptingClass (7ms)
+	initialDomainReloadingComplete (42ms)
+	LoadAllAssembliesAndSetupDomain (141ms)
+		LoadAssemblies (182ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (30ms)
+			TypeCache.Refresh (5ms)
+				TypeCache.ScanAssembly (0ms)
+			ScanForSourceGeneratedMonoScriptInfo (0ms)
+			ResolveRequiredComponents (24ms)
+	FinalizeReload (6014ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (2882ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (15ms)
+			SetLoadedEditorAssemblies (4ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (301ms)
+			ProcessInitializeOnLoadAttributes (2040ms)
+			ProcessInitializeOnLoadMethodAttributes (519ms)
+			AfterProcessingInitializeOnLoad (3ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (1ms)
+		AwakeInstancesAfterBackupRestoration (2424ms)
+Asset Pipeline Refresh (id=89d85b87bc293334aac6c7d548741712): Total: 7.587 seconds - Initiated by StopAssetImportingV2(ForceSynchronousImport | ForceDomainReload)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=557 ms
+		Asset DB Callback time: managed=55 ms, native=1 ms
+		Scripting: domain reloads=1, domain reload time=6972 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=15363, non-scripts=32313
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokeBeforeRefreshCallbacks: 1.567ms
+	ApplyChangesToAssetFolders: 0.282ms
+	Scan: 1.239ms
+	OnSourceAssetsModified: 0.001ms
+	GetAllGuidsForCategorization: 5.932ms
+	CategorizeAssets: 279.448ms
+	ImportOutOfDateAssets: 6114.096ms (6092.837ms without children)
+		CompileScripts: 0.020ms
+		CollectScriptTypesHashes: 0.119ms
+		ReloadNativeAssets: 0.956ms
+		UnloadImportedAssets: 1.693ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 12.236ms
+		InitializingProgressBar: 0.000ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 6.234ms
+	PostProcessAllAssets: 71.316ms
+	GatherAllCurrentPrimaryArtifactRevisions: 3.985ms
+	UnloadStreamsBegin: 0.846ms
+	PersistCurrentRevisions: 1.486ms
+	UnloadStreamsEnd: 0.706ms
+	GenerateScriptTypeHashes: 14.705ms
+	Untracked: 1105.909ms
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+DontDestroyOnLoad only works for root GameObjects or components on root GameObjects.
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+SceneLoadManager:Awake () (at Assets/02.Scripts/Singletons/SceneLoadManager.cs:56)
+
+[Assets/02.Scripts/Singletons/SceneLoadManager.cs line 56]
+
+
+Aborting batchmode due to fatal error:
+Callback registration failed. Increase kMaxCallback.
+
+
+Asset Pipeline Refresh (id=5cce49959872d3141ab6e4cbe80bdd63): Total: 0.017 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+Asset Pipeline Refresh (id=5ec75dba7663f8142ad7ff4a422e7de9): Total: 0.017 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+Loaded scene 'Temp/__Backupscenes/0.backup'
+	Deserialize:            7.490 ms
+	Integration:            966.987 ms
+	Integration of assets:  0.005 ms
+	Thread Wait Time:       0.010 ms
+	Total Operation Time:   974.491 ms
+Placeholder .ctor
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+GoogleMobileAds.Unity.MobileAdsClient:.ctor ()
+GoogleMobileAds.GoogleMobileAdsClientFactory:MobileAdsInstance ()
+GoogleMobileAds.Api.MobileAds:GetMobileAdsClient ()
+GoogleMobileAds.Api.MobileAds:.ctor ()
+GoogleMobileAds.Api.MobileAds:get_Instance ()
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 80)
+
+AdMob initialized
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AdsManager:<Start>b__26_0 (GoogleMobileAds.Api.InitializationStatus) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:82)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0/<Initialize>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0:<>m__0 (GoogleMobileAds.Common.IInitializationStatusClient)
+GoogleMobileAds.Unity.MobileAdsClient:Initialize (System.Action`1<GoogleMobileAds.Common.IInitializationStatusClient>)
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 82)
+
+Interstitial loaded
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AdsManager:<LoadInterstitial>b__29_0 (GoogleMobileAds.Api.InterstitialAd,GoogleMobileAds.Api.LoadAdError) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:135)
+GoogleMobileAds.Api.InterstitialAd/<Load>c__AnonStorey0/<Load>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.InterstitialAd/<Load>c__AnonStorey0:<>m__0 (object,System.EventArgs)
+GoogleMobileAds.Unity.InterstitialClient:LoadAd (string,GoogleMobileAds.Api.AdRequest)
+GoogleMobileAds.Api.InterstitialAd:Load (string,GoogleMobileAds.Api.AdRequest,System.Action`2<GoogleMobileAds.Api.InterstitialAd, GoogleMobileAds.Api.LoadAdError>)
+AdsManager:LoadInterstitial () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:124)
+AdsManager:<Start>b__26_0 (GoogleMobileAds.Api.InitializationStatus) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:84)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0/<Initialize>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0:<>m__0 (GoogleMobileAds.Common.IInitializationStatusClient)
+GoogleMobileAds.Unity.MobileAdsClient:Initialize (System.Action`1<GoogleMobileAds.Common.IInitializationStatusClient>)
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 135)
+
+Rewarded loaded
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AdsManager:<LoadRewarded>b__33_0 (GoogleMobileAds.Api.RewardedAd,GoogleMobileAds.Api.LoadAdError) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:202)
+GoogleMobileAds.Api.RewardedAd/<Load>c__AnonStorey0:<>m__2 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.RewardedAd/<Load>c__AnonStorey0:<>m__0 (object,System.EventArgs)
+GoogleMobileAds.Unity.RewardingAdBaseClient:LoadAd (string,GoogleMobileAds.Api.AdRequest)
+GoogleMobileAds.Api.RewardedAd:Load (string,GoogleMobileAds.Api.AdRequest,System.Action`2<GoogleMobileAds.Api.RewardedAd, GoogleMobileAds.Api.LoadAdError>)
+AdsManager:LoadRewarded () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:191)
+AdsManager:<Start>b__26_0 (GoogleMobileAds.Api.InitializationStatus) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:85)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0/<Initialize>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0:<>m__0 (GoogleMobileAds.Common.IInitializationStatusClient)
+GoogleMobileAds.Unity.MobileAdsClient:Initialize (System.Action`1<GoogleMobileAds.Common.IInitializationStatusClient>)
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 202)
+
+Firebase Analytics initialized
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FirebaseManager:<InitializeFirebase>b__25_0 (System.Threading.Tasks.Task`1<Firebase.DependencyStatus>) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:48)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.DependencyStatus>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs Line: 48)
+
+Firebase user signed in: RpPnXIcsK6PUh8lKjePxNrLiIir2
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FirebaseManager:CompleteSignIn (Firebase.Auth.FirebaseUser,string) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:84)
+FirebaseManager:SignInAnonymous () (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:64)
+FirebaseManager:<InitializeFirebase>b__25_0 (System.Threading.Tasks.Task`1<Firebase.DependencyStatus>) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:51)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.DependencyStatus>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs Line: 84)
+
+Using cached translation file.
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+LanguageManager/<InitializeAsync>d__20:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:49)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+LanguageManager/<GetRemoteVersion>d__21:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:71)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs Line: 49)
+
+System Language: English
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Kopkari.IntroManager/<Start>d__22:MoveNext () (at Assets/02.Scripts/10.GameManagers/IntroManager.cs:81)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<System.Threading.Tasks.VoidTaskResult>:TrySetResult (System.Threading.Tasks.VoidTaskResult)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<System.Threading.Tasks.VoidTaskResult>:SetResult (System.Threading.Tasks.VoidTaskResult)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<System.Threading.Tasks.VoidTaskResult>:SetResult (System.Threading.Tasks.Task`1<System.Threading.Tasks.VoidTaskResult>)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder:SetResult ()
+LanguageManager/<InitializeAsync>d__20:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:53)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+LanguageManager/<GetRemoteVersion>d__21:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:71)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/IntroManager.cs Line: 81)
+
+Addressables initialized safely
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AddressablesService/<InitInternalAsync>d__26:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:78)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/Singletons/AddressablesService.cs Line: 78)
+
+[Licensing::Client] Successfully resolved entitlement details
+TcpMessagingSession - receive error
+[OnDemand] Worker 39: WorkerState(Connected), ImporterState(Preparing) session transport - while handling artifactKey Guid(00000000000000000000000000000000) Importer(-2,00000000000000000000000000000000) - path  - see Logs/AssetImportWorker39.log
+? Using cached Global Catalog (JSON)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+PlayerCatalogProvider/<EnsureCatalogAsync>d__26:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:142)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+PlayerCatalogProvider/<GetRemoteVersion>d__34:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:287)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs Line: 142)
+
+The referenced script (Unknown) on this Behaviour is missing!
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEditor.Build.Content.ContentBuildInterface:GetPlayerObjectIdentifiersInAsset (UnityEditor.GUID,UnityEditor.BuildTarget)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator/<>c__DisplayClass23_0:<GatherEntryLocations>b__0 (UnityEditor.AddressableAssets.Settings.AddressableAssetEntry) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:226)
+UnityEditor.AddressableAssets.Settings.AddressableAssetEntry:GatherAllAssets (System.Collections.Generic.List`1<UnityEditor.AddressableAssets.Settings.AddressableAssetEntry>,bool,bool,bool,System.Func`2<UnityEditor.AddressableAssets.Settings.AddressableAssetEntry, bool>) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Settings/AddressableAssetEntry.cs:545)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator:GatherEntryLocations (UnityEditor.AddressableAssets.Settings.AddressableAssetEntry,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>,UnityEditor.AddressableAssets.Settings.AddressableAssetTree) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:212)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator:Locate (object,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>&) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:287)
+UnityEngine.AddressableAssets.AddressablesImpl:GetResourceLocations (object,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>&) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/AddressablesImpl.cs:279)
+UnityEngine.AddressableAssets.AddressablesImpl:GetDownloadSizeAsync (System.Collections.IEnumerable) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/AddressablesImpl.cs:945)
+UnityEngine.AddressableAssets.Addressables:GetDownloadSizeAsync (System.Collections.IEnumerable) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/Addressables.cs:1577)
+AddressablesService/<PreloadDependenciesAsync>d__28:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:118)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<bool>:Start<AddressablesService/<PreloadDependenciesAsync>d__28> (AddressablesService/<PreloadDependenciesAsync>d__28&)
+AddressablesService:PreloadDependenciesAsync (System.Collections.Generic.IList`1<string>,System.Action`1<single>,single)
+PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:238)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder:Start<PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30> (PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30&)
+PlayerCatalogProvider:PreloadSelectedAssetsAsync (string)
+PlayerCatalogProvider/<InitializeAsync>d__25:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:102)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<CatalogData>:TrySetResult (CatalogData)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<CatalogData>:SetResult (CatalogData)
+PlayerCatalogProvider/<EnsureCatalogAsync>d__26:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:162)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+PlayerCatalogProvider/<GetRemoteVersion>d__34:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:287)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs line 226]
+
+The referenced script (Unknown) on this Behaviour is missing!
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEditor.Build.Content.ContentBuildInterface:GetPlayerObjectIdentifiersInAsset (UnityEditor.GUID,UnityEditor.BuildTarget)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator/<>c__DisplayClass23_0:<GatherEntryLocations>b__0 (UnityEditor.AddressableAssets.Settings.AddressableAssetEntry) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:226)
+UnityEditor.AddressableAssets.Settings.AddressableAssetEntry:GatherAllAssets (System.Collections.Generic.List`1<UnityEditor.AddressableAssets.Settings.AddressableAssetEntry>,bool,bool,bool,System.Func`2<UnityEditor.AddressableAssets.Settings.AddressableAssetEntry, bool>) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Settings/AddressableAssetEntry.cs:545)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator:GatherEntryLocations (UnityEditor.AddressableAssets.Settings.AddressableAssetEntry,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>,UnityEditor.AddressableAssets.Settings.AddressableAssetTree) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:212)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator:Locate (object,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>&) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:287)
+UnityEngine.AddressableAssets.AddressablesImpl:GetResourceLocations (object,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>&) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/AddressablesImpl.cs:279)
+UnityEngine.AddressableAssets.AddressablesImpl:GetDownloadSizeAsync (System.Collections.IEnumerable) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/AddressablesImpl.cs:945)
+UnityEngine.AddressableAssets.Addressables:GetDownloadSizeAsync (System.Collections.IEnumerable) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/Addressables.cs:1577)
+AddressablesService/<PreloadDependenciesAsync>d__28:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:118)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<bool>:Start<AddressablesService/<PreloadDependenciesAsync>d__28> (AddressablesService/<PreloadDependenciesAsync>d__28&)
+AddressablesService:PreloadDependenciesAsync (System.Collections.Generic.IList`1<string>,System.Action`1<single>,single)
+PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:238)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder:Start<PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30> (PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30&)
+PlayerCatalogProvider:PreloadSelectedAssetsAsync (string)
+PlayerCatalogProvider/<InitializeAsync>d__25:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:102)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<CatalogData>:TrySetResult (CatalogData)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<CatalogData>:SetResult (CatalogData)
+PlayerCatalogProvider/<EnsureCatalogAsync>d__26:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:162)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+PlayerCatalogProvider/<GetRemoteVersion>d__34:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:287)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs line 226]
+
+The referenced script (Unknown) on this Behaviour is missing!
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEditor.Build.Content.ContentBuildInterface:GetPlayerObjectIdentifiersInAsset (UnityEditor.GUID,UnityEditor.BuildTarget)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator/<>c__DisplayClass23_0:<GatherEntryLocations>b__0 (UnityEditor.AddressableAssets.Settings.AddressableAssetEntry) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:226)
+UnityEditor.AddressableAssets.Settings.AddressableAssetEntry:GatherAllAssets (System.Collections.Generic.List`1<UnityEditor.AddressableAssets.Settings.AddressableAssetEntry>,bool,bool,bool,System.Func`2<UnityEditor.AddressableAssets.Settings.AddressableAssetEntry, bool>) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Settings/AddressableAssetEntry.cs:545)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator:GatherEntryLocations (UnityEditor.AddressableAssets.Settings.AddressableAssetEntry,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>,UnityEditor.AddressableAssets.Settings.AddressableAssetTree) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:212)
+UnityEditor.AddressableAssets.Settings.AddressableAssetSettingsLocator:Locate (object,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>&) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs:287)
+UnityEngine.AddressableAssets.AddressablesImpl:GetResourceLocations (object,System.Type,System.Collections.Generic.IList`1<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation>&) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/AddressablesImpl.cs:279)
+UnityEngine.AddressableAssets.AddressablesImpl:GetDownloadSizeAsync (System.Collections.IEnumerable) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/AddressablesImpl.cs:945)
+UnityEngine.AddressableAssets.Addressables:GetDownloadSizeAsync (System.Collections.IEnumerable) (at ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/Addressables.cs:1577)
+AddressablesService/<PreloadDependenciesAsync>d__28:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:118)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<bool>:Start<AddressablesService/<PreloadDependenciesAsync>d__28> (AddressablesService/<PreloadDependenciesAsync>d__28&)
+AddressablesService:PreloadDependenciesAsync (System.Collections.Generic.IList`1<string>,System.Action`1<single>,single)
+PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:238)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder:Start<PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30> (PlayerCatalogProvider/<PreloadSelectedAssetsAsync>d__30&)
+PlayerCatalogProvider:PreloadSelectedAssetsAsync (string)
+PlayerCatalogProvider/<InitializeAsync>d__25:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:102)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<CatalogData>:TrySetResult (CatalogData)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<CatalogData>:SetResult (CatalogData)
+PlayerCatalogProvider/<EnsureCatalogAsync>d__26:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:162)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+PlayerCatalogProvider/<GetRemoteVersion>d__34:MoveNext () (at Assets/02.Scripts/14.AvatarCustom/PlayerCatalogProvider.cs:287)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[./Library/PackageCache/com.unity.addressables@1.21.21/Editor/Build/AddressableAssetSettingsLocator.cs line 226]
+
+Player data already exists: RpPnXIcsK6PUh8lKjePxNrLiIir2
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+DataManager/<>c__DisplayClass8_0:<CreatePlayerDataIfNeeded>b__0 (System.Threading.Tasks.Task`1<Firebase.Firestore.DocumentSnapshot>) (at Assets/02.Scripts/Singletons/DataManager.cs:56)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.Firestore.DocumentSnapshot>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/Singletons/DataManager.cs Line: 56)
+
+Player data loaded from Firestore: Level 1, XP 0, Nyufiy 3000, Coin 15
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+DataManager:LoadPlayerDataFromSnapshot (Firebase.Firestore.DocumentSnapshot) (at Assets/02.Scripts/Singletons/DataManager.cs:355)
+DataManager/<>c__DisplayClass8_0:<CreatePlayerDataIfNeeded>b__0 (System.Threading.Tasks.Task`1<Firebase.Firestore.DocumentSnapshot>) (at Assets/02.Scripts/Singletons/DataManager.cs:57)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.Firestore.DocumentSnapshot>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/Singletons/DataManager.cs Line: 355)
+
+¢º? Video played: IntroVideo
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Kopkari.IntroManager/<GetAddressableData>d__28:MoveNext () (at Assets/02.Scripts/10.GameManagers/IntroManager.cs:167)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.Video.VideoClip>:TrySetResult (UnityEngine.Video.VideoClip)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.Video.VideoClip>:SetResult (UnityEngine.Video.VideoClip)
+AddressablesService/<LoadAssetAsync>d__31`1<UnityEngine.Video.VideoClip>:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:245)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/IntroManager.cs Line: 167)
+
+Color primaries 0 is unknown or unsupported by WindowsMediaFoundation. Falling back to default may result in color shift. C:/Users/user/Documents/GitHub/Kopkari_URP/Assets/04.UI/Video Textures/Intro_016Intro_Video_Scene.mp4
+?? Audio played: IntroSound
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Kopkari.IntroManager/<GetAddressableData>d__28:MoveNext () (at Assets/02.Scripts/10.GameManagers/IntroManager.cs:174)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.AudioClip>:TrySetResult (UnityEngine.AudioClip)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.AudioClip>:SetResult (UnityEngine.AudioClip)
+AddressablesService/<LoadAssetAsync>d__31`1<UnityEngine.AudioClip>:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:245)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/IntroManager.cs Line: 174)
+
+Unloading 1347 Unused Serialized files (Serialized files now loaded: 0)
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+UnloadTime: 21.733400 ms
+Regen Started
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+HomeMainUI:ApplyOfflineRegen () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:724)
+HomeMainUI:OnEnable () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:179)
+
+(Filename: Assets/02.Scripts/00.UI/Home/HomeMainUI.cs Line: 724)
+
+Raw stored time: 2026-06-19T12:35:26.6095195+00:00
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+HomeMainUI:ApplyOfflineRegen () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:734)
+HomeMainUI:OnEnable () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:179)
+
+(Filename: Assets/02.Scripts/00.UI/Home/HomeMainUI.cs Line: 734)
+
+LastTime: 2026-06-19T12:35:26.6095195+00:00, Now: 2026-06-19T17:19:28.2089640+00:00, elapsedMinutes: 284.0267
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+HomeMainUI:ApplyOfflineRegen () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:746)
+HomeMainUI:OnEnable () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:179)
+
+(Filename: Assets/02.Scripts/00.UI/Home/HomeMainUI.cs Line: 746)
+
+Offline adding resources: 0.4166667 0.3333333 0.5555556
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+HomeMainUI:ApplyOfflineRegen () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:764)
+HomeMainUI:OnEnable () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:179)
+
+(Filename: Assets/02.Scripts/00.UI/Home/HomeMainUI.cs Line: 764)
+
+Regen applied. New stats: P=100, C=100, S=100
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+HomeMainUI:ApplyOfflineRegen () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:781)
+HomeMainUI:OnEnable () (at Assets/02.Scripts/00.UI/Home/HomeMainUI.cs:179)
+
+(Filename: Assets/02.Scripts/00.UI/Home/HomeMainUI.cs Line: 781)
+
+Loaded scene 'Assets/02.Scenes/Home.unity'
+	Deserialize:            2305.338 ms
+	Integration:            507.468 ms
+	Integration of assets:  334.371 ms
+	Thread Wait Time:       1113.300 ms
+	Total Operation Time:   4260.477 ms
+Unloading 2468 unused Assets / (20.8 MB). Loaded Objects now: 31216.
+Memory consumption went from 1.21 GB to 1.19 GB.
+Total: 24.147100 ms (FindLiveObjects: 4.283600 ms CreateObjectMapping: 1.349600 ms MarkObjects: 14.263900 ms  DeleteObjects: 4.249300 ms)
+
+Asset 'Mount v2': Transition 'Idle 02 -> Exit' in state 'Idle 02' doesn't have an Exit Time or any condition, transition will be ignored
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[Assets/02.Scripts/10.GameManagers/LobbyManager.cs line 121]
+
+Asset 'Mount v2': Transition 'Idle04 -> Exit' in state 'Idle04' doesn't have an Exit Time or any condition, transition will be ignored
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[Assets/02.Scripts/10.GameManagers/LobbyManager.cs line 121]
+
+Asset 'Mount v2': Transition 'Idle05 -> Exit' in state 'Idle05' doesn't have an Exit Time or any condition, transition will be ignored
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[Assets/02.Scripts/10.GameManagers/LobbyManager.cs line 121]
+
+Asset 'Mount v2': Transition 'Idle Strafe -> Exit' in state 'Idle Strafe' doesn't have an Exit Time or any condition, transition will be ignored
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[Assets/02.Scripts/10.GameManagers/LobbyManager.cs line 121]
+
+Asset 'Mount v2': Transition 'Exit' in state 'Idle' doesn't have an Exit Time or any condition, transition will be ignored
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[Assets/02.Scripts/10.GameManagers/LobbyManager.cs line 121]
+
+Asset 'Mount v2': Transition 'Idle 03 -> Exit' in state 'Idle 03' doesn't have an Exit Time or any condition, transition will be ignored
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+[Assets/02.Scripts/10.GameManagers/LobbyManager.cs line 121]
+
+There's no stored Mount or the Stored Mount GameObject has no Mount component
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MalbersAnimations.HAP.MRider:Start_Mounted () (at Assets/Malbers Animations/Common/Scripts/Riding System/Rider/MRider.cs:604)
+MalbersAnimations.HAP.MRider:OnEnable () (at Assets/Malbers Animations/Common/Scripts/Riding System/Rider/MRider.cs:381)
+UnityEngine.Object:Internal_InstantiateSingleWithParent (UnityEngine.Object,UnityEngine.Transform,UnityEngine.Vector3,UnityEngine.Quaternion)
+UnityEngine.Object:Instantiate (UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+UnityEngine.Object:Instantiate<UnityEngine.GameObject> (UnityEngine.GameObject,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)
+LobbyManager/<Start>d__40:MoveNext () (at Assets/02.Scripts/10.GameManagers/LobbyManager.cs:121)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<UnityEngine.GameObject>:TrySetResult (UnityEngine.GameObject)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<UnityEngine.GameObject>:SetResult (UnityEngine.GameObject)
+AddressablesService/<InstantiateAsync>d__34:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:303)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/Malbers Animations/Common/Scripts/Riding System/Rider/MRider.cs Line: 604)
+
+<B>[GlobalHorse(Clone)] ¡æ Set: <color=yellow>[Stance - Default - 0]</color></B>
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+MalbersAnimations.Controller.MAnimal:SetAdvancedStance (MalbersAnimations.StanceID) (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalVariables.cs:392)
+MalbersAnimations.Controller.MAnimal:set_Stance (MalbersAnimations.StanceID) (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalVariables.cs:352)
+MalbersAnimations.Controller.MAnimal:Stance_Set (MalbersAnimations.StanceID) (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalCallBacks.cs:184)
+MalbersAnimations.Controller.MAnimal:ResetController () (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalLogic.cs:346)
+MalbersAnimations.Controller.MAnimal:<OnEnable>b__270_0 () (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalLogic.cs:482)
+MalbersAnimations.MalbersAnimationsExtensions/<DelayedAction>d__53:MoveNext () (at Assets/Malbers Animations/Common/Scripts/Core/MalbersAnimationExtensions.cs:599)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalVariables.cs Line: 392)
+
+<B>[GlobalHorse(Clone)]</B> ¡æ <color=yellow>Strafe: <B>[False]</B></color>
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+MalbersAnimations.Controller.MAnimal:Debuging (string,string) (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalCallBacks.cs:99)
+MalbersAnimations.Controller.MAnimal:StrafeLogic () (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalVariables.cs:1308)
+MalbersAnimations.Controller.MAnimal:ResetController () (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalLogic.cs:394)
+MalbersAnimations.Controller.MAnimal:<OnEnable>b__270_0 () (at Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalLogic.cs:482)
+MalbersAnimations.MalbersAnimationsExtensions/<DelayedAction>d__53:MoveNext () (at Assets/Malbers Animations/Common/Scripts/Core/MalbersAnimationExtensions.cs:599)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/Malbers Animations/Common/Scripts/Animal Controller/MAnimalCallBacks.cs Line: 99)
+
+

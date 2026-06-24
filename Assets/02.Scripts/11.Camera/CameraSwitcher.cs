@@ -2,6 +2,7 @@
 using Cinemachine;
 using MalbersAnimations;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.UI;
 
 public class CameraSwitcher : MonoBehaviour
@@ -19,11 +20,19 @@ public class CameraSwitcher : MonoBehaviour
     [SerializeField] private Sprite eagleSprite;
     [SerializeField] private Sprite mainMapSprite;
     [SerializeField] private Button miniMapButton;
+    [SerializeField] private RaceWorldMiniMapUI[] miniMapUIs;
+
+    private readonly List<RaceWorldMiniMapUI> cachedMiniMapUIs = new List<RaceWorldMiniMapUI>();
+
     void Start()
     {
         //cam1.Priority = 20;
         //cam2.Priority = 15;
-        miniMapButton.onClick.AddListener(SwitchCamera);
+        if (miniMapButton != null)
+            miniMapButton.onClick.AddListener(SwitchCamera);
+
+        CacheMiniMapUIs();
+        SetMiniMapUpdatesActive(isCam1Active);
     }
 
     public void SwitchCamera()
@@ -39,11 +48,12 @@ public class CameraSwitcher : MonoBehaviour
             }
             cam1.Priority = 10;
             cam2.Priority = 5;
-            mobileCanvas.transform.localScale = Vector3.one;
-            mainUICanvas.transform.localScale = Vector3.one;
+            if (mobileCanvas != null) mobileCanvas.transform.localScale = Vector3.one;
+            if (mainUICanvas != null) mainUICanvas.transform.localScale = Vector3.one;
+            SetMiniMapUpdatesActive(true);
             Debug.Log("Back first cam");
             
-            miniMapButton.image.sprite = eagleSprite;
+            if (miniMapButton != null) miniMapButton.image.sprite = eagleSprite;
             backFirstCam = true;
         }
         else
@@ -57,9 +67,10 @@ public class CameraSwitcher : MonoBehaviour
 
             cam1.Priority = 5;
             cam2.Priority = 10;
-            mobileCanvas.transform.localScale = Vector3.zero;
-            mainUICanvas.transform.localScale = Vector3.zero;
-            miniMapButton.image.sprite = mainMapSprite;
+            if (mobileCanvas != null) mobileCanvas.transform.localScale = Vector3.zero;
+            if (mainUICanvas != null) mainUICanvas.transform.localScale = Vector3.zero;
+            SetMiniMapUpdatesActive(false);
+            if (miniMapButton != null) miniMapButton.image.sprite = mainMapSprite;
         }
     }
     private IEnumerator RestoreCam1PivotAfterFrame(ThirdPersonFollowTarget cam1Script)
@@ -69,6 +80,46 @@ public class CameraSwitcher : MonoBehaviour
         cam1Script.lerpPosition.Value = 0f; // Endi ThirdPersonFollowTarget yozmaydi
         cam1Script.CamPivot.position = cam1SavedPos;
         cam1Script.CamPivot.rotation = cam1SavedRot;
+    }
+
+    private void CacheMiniMapUIs()
+    {
+        cachedMiniMapUIs.Clear();
+
+        AddMiniMapUIs(miniMapUIs);
+
+        if (mainUICanvas != null)
+            AddMiniMapUIs(mainUICanvas.GetComponentsInChildren<RaceWorldMiniMapUI>(true));
+
+        if (mobileCanvas != null)
+            AddMiniMapUIs(mobileCanvas.GetComponentsInChildren<RaceWorldMiniMapUI>(true));
+    }
+
+    private void AddMiniMapUIs(RaceWorldMiniMapUI[] miniMaps)
+    {
+        if (miniMaps == null) return;
+
+        for (int i = 0; i < miniMaps.Length; i++)
+        {
+            RaceWorldMiniMapUI miniMap = miniMaps[i];
+            if (miniMap == null || cachedMiniMapUIs.Contains(miniMap)) continue;
+
+            cachedMiniMapUIs.Add(miniMap);
+        }
+    }
+
+    private void SetMiniMapUpdatesActive(bool active)
+    {
+        if (cachedMiniMapUIs.Count == 0)
+            CacheMiniMapUIs();
+
+        for (int i = 0; i < cachedMiniMapUIs.Count; i++)
+        {
+            RaceWorldMiniMapUI miniMap = cachedMiniMapUIs[i];
+            if (miniMap == null) continue;
+
+            miniMap.enabled = active;
+        }
     }
 
 }

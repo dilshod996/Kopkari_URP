@@ -27,7 +27,7 @@ public class SceneLoadManager : MonoBehaviour
         PastDargom,
         FirstRacing,
         TrainingRacing,
-        SecondRacing,
+        SecondRacing, //Zarafshan
         EgyptRacing,
         Kansas
     }
@@ -60,6 +60,45 @@ public class SceneLoadManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+
+    private void OnEnable()
+    {
+        SceneManager.activeSceneChanged += HandleActiveSceneChanged;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        SyncCurrentSceneType(SceneManager.GetActiveScene());
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.activeSceneChanged -= HandleActiveSceneChanged;
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+    }
+
+    private void HandleActiveSceneChanged(Scene oldScene, Scene newScene)
+    {
+        SyncCurrentSceneType(newScene);
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        SyncCurrentSceneType(scene);
+    }
+
+    private void SyncCurrentSceneType(Scene scene)
+    {
+        if (!scene.IsValid() || string.IsNullOrEmpty(scene.name))
+            return;
+
+        if (!Enum.TryParse(scene.name, out SceneType sceneType))
+            return;
+
+        if (CurrentSceneType == sceneType)
+            return;
+
+        PreviousSceneType = CurrentSceneType;
+        CurrentSceneType = sceneType;
+    }
+
     public void LoadSmartScene(SceneType scene, List<string> preloadKeys)
     {
         PreviousSceneType = CurrentSceneType;

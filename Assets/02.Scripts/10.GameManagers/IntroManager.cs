@@ -411,43 +411,6 @@ namespace Kopkari
         private List<string> GetPreloadMaterialAddresses()
         {
             List<string> preload = new List<string>();
-
-            //PlayerPrefs dan material addresslarini olish
-            //string helmet = PlayerPrefs.GetString(Constants.Player.PlayerHelmetKey);
-            //string head = PlayerPrefs.GetString(Constants.Player.PlayerHeadKey);
-            //string faceHair = PlayerPrefs.GetString(Constants.Player.PlayerFaceHairKey);
-            //string hand = PlayerPrefs.GetString(Constants.Player.PlayerHand);
-            //string upper = PlayerPrefs.GetString(Constants.Player.PlayerUpperBodyKey);
-            //string lower = PlayerPrefs.GetString(Constants.Player.PlayerLowerBodyKey);
-
-
-            //PlayerPrefs dan ot material addresslarini olish
-
-            //string horseBody = PlayerPrefs.GetString(Constants.Horse.HorseBodyKey);
-            //string horseEyes = PlayerPrefs.GetString(Constants.Horse.HorseEyesKey);
-            //string horseMane = PlayerPrefs.GetString(Constants.Horse.HorseManeKey);
-            //string horseTail = PlayerPrefs.GetString(Constants.Horse.HorseTailKey);
-            //string horseReins = PlayerPrefs.GetString(Constants.Horse.HorseReinsKey);
-            //string horseSaddle = PlayerPrefs.GetString(Constants.Horse.HorseSaddleKey);
-            //string horseReinsHead = PlayerPrefs.GetString(Constants.Horse.HorseReinsHeadKey);
-
-            //preload.Add(head);
-            //preload.Add(hand);
-            //preload.Add(faceHair);
-            //preload.Add(upper);
-            //preload.Add(lower);
-            //preload.Add(helmet);
-            //preload.Add(horseBody);
-            //preload.Add(horseEyes);
-            //preload.Add(horseMane);
-            //preload.Add(horseTail);
-            //preload.Add(horseReins);
-            //preload.Add(horseSaddle);
-            //preload.Add(horseReinsHead);
-            // Boshqa material addresslarini qo‘shish
-
-            // Yana kerak bo‘lsa boshqa obyektlar
-            //preload.Add(Constants.Environment.Utov);
             string selectedEnv = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment );// default
                                                                                                         // 1️⃣ Default map
             if (string.IsNullOrEmpty(selectedEnv))
@@ -458,7 +421,24 @@ namespace Kopkari
                     selectedEnv
                 );
             }
-
+            switch(selectedEnv)
+            {
+                case Constants.MapNames.Zarafshan:
+                    preload.Add(Constants.SkyBoxes.ZarafshanSkybox);
+                    break;
+                case Constants.MapNames.Registan:
+                    preload.Add(Constants.SkyBoxes.RegistanSkybox);
+                    break;
+                case Constants.MapNames.Egypt:
+                    preload.Add(Constants.SkyBoxes.EgyptSkybox);
+                    break;
+                case Constants.MapNames.Kansas:
+                    preload.Add(Constants.SkyBoxes.KansasSkybox);
+                    break;
+                default:
+                    Debug.LogWarning("Unknown environment: " + selectedEnv);
+                    break;
+            }
 
             preload.Add(selectedEnv);
 

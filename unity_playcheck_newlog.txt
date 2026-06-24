@@ -1,0 +1,1431 @@
+Reloading assemblies for play mode.
+Reloading assemblies after forced synchronous recompile.
+[Licensing::Client] Successfully resolved entitlements
+[Licensing::Client] Successfully resolved entitlements
+Begin MonoManager ReloadAssembly
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+- Loaded All Assemblies, in  1.042 seconds
+Refreshing native plugins compatible for Editor in 21.06 ms, found 11 plugins.
+Native extension for WindowsStandalone target not found
+Native extension for Android target not found
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-Nomad Rivals
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  6.056 seconds
+Domain Reload Profiling: 7104ms
+	BeginReloadAssembly (656ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (38ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (2ms)
+		CreateAndSetChildDomain (473ms)
+	RebuildCommonClasses (21ms)
+	RebuildNativeTypeToScriptingClass (7ms)
+	initialDomainReloadingComplete (36ms)
+	LoadAllAssembliesAndSetupDomain (328ms)
+		LoadAssemblies (349ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (33ms)
+			TypeCache.Refresh (7ms)
+				TypeCache.ScanAssembly (0ms)
+			ScanForSourceGeneratedMonoScriptInfo (0ms)
+			ResolveRequiredComponents (25ms)
+	FinalizeReload (6056ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (2846ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (16ms)
+			SetLoadedEditorAssemblies (4ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (289ms)
+			ProcessInitializeOnLoadAttributes (2013ms)
+			ProcessInitializeOnLoadMethodAttributes (520ms)
+			AfterProcessingInitializeOnLoad (4ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (1ms)
+		AwakeInstancesAfterBackupRestoration (2430ms)
+[ScriptCompilation] Requested script compilation because: Assetdatabase observed changes in script compilation related files
+AssetDatabase: script compilation time: 0.000622s
+Start importing Assets/02.Scripts/Singletons/AddressablesService.cs using Guid(4dad2d02f9dc9974db349f20404035e3) Importer(-1,00000000000000000000000000000000) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: 'd8469a45bd33415677f8a2beeac6b8dc') in 0.080113 seconds
+Refreshing native plugins compatible for Editor in 19.34 ms, found 11 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3d730afc54ef41a438319176c0eb96f5): Total: 8.457 seconds - Initiated by StopAssetImportingV2(ForceSynchronousImport | ForceDomainReload)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=1 ms, native=810 ms
+		Asset DB Callback time: managed=351 ms, native=46 ms
+		Scripting: domain reloads=1, domain reload time=7246 ms, compile time=1 ms, other=0 ms
+		Project Asset Count: scripts=15363, non-scripts=32313
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokeBeforeRefreshCallbacks: 1.749ms
+	ApplyChangesToAssetFolders: 0.433ms
+	Scan: 1.944ms
+	OnSourceAssetsModified: 0.614ms
+	GetAllGuidsForCategorization: 7.892ms
+	CategorizeAssets: 346.401ms
+	ImportOutOfDateAssets: 6275.194ms (6153.110ms without children)
+		ImportManagerImport: 86.359ms (5.223ms without children)
+			ImportInProcess: 81.132ms
+			UpdateCategorizedAssets: 0.004ms
+		CompileScripts: 0.666ms
+		CollectScriptTypesHashes: 0.125ms
+		ReloadNativeAssets: 1.131ms
+		UnloadImportedAssets: 2.470ms
+		ReloadImportedAssets: 0.412ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 18.483ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 12.434ms
+	PostProcessAllAssets: 549.324ms
+	Hotreload: 42.557ms
+	GatherAllCurrentPrimaryArtifactRevisions: 5.101ms
+	UnloadStreamsBegin: 1.308ms
+	PersistCurrentRevisions: 3.235ms
+	UnloadStreamsEnd: 1.264ms
+	GenerateScriptTypeHashes: 14.323ms
+	Untracked: 1220.360ms
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+DontDestroyOnLoad only works for root GameObjects or components on root GameObjects.
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+SceneLoadManager:Awake () (at Assets/02.Scripts/Singletons/SceneLoadManager.cs:56)
+
+[Assets/02.Scripts/Singletons/SceneLoadManager.cs line 56]
+
+Asset Pipeline Refresh (id=26b0186986b3a184db054ecf953d52b5): Total: 0.017 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+Asset Pipeline Refresh (id=62d95376ab6bad44d9bbdc7cd9e925ae): Total: 0.017 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+Loaded scene 'Temp/__Backupscenes/0.backup'
+	Deserialize:            18.477 ms
+	Integration:            865.674 ms
+	Integration of assets:  0.008 ms
+	Thread Wait Time:       0.002 ms
+	Total Operation Time:   884.161 ms
+Placeholder .ctor
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+GoogleMobileAds.Unity.MobileAdsClient:.ctor ()
+GoogleMobileAds.GoogleMobileAdsClientFactory:MobileAdsInstance ()
+GoogleMobileAds.Api.MobileAds:GetMobileAdsClient ()
+GoogleMobileAds.Api.MobileAds:.ctor ()
+GoogleMobileAds.Api.MobileAds:get_Instance ()
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 80)
+
+AdMob initialized
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AdsManager:<Start>b__26_0 (GoogleMobileAds.Api.InitializationStatus) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:82)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0/<Initialize>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0:<>m__0 (GoogleMobileAds.Common.IInitializationStatusClient)
+GoogleMobileAds.Unity.MobileAdsClient:Initialize (System.Action`1<GoogleMobileAds.Common.IInitializationStatusClient>)
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 82)
+
+Interstitial loaded
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AdsManager:<LoadInterstitial>b__29_0 (GoogleMobileAds.Api.InterstitialAd,GoogleMobileAds.Api.LoadAdError) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:135)
+GoogleMobileAds.Api.InterstitialAd/<Load>c__AnonStorey0/<Load>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.InterstitialAd/<Load>c__AnonStorey0:<>m__0 (object,System.EventArgs)
+GoogleMobileAds.Unity.InterstitialClient:LoadAd (string,GoogleMobileAds.Api.AdRequest)
+GoogleMobileAds.Api.InterstitialAd:Load (string,GoogleMobileAds.Api.AdRequest,System.Action`2<GoogleMobileAds.Api.InterstitialAd, GoogleMobileAds.Api.LoadAdError>)
+AdsManager:LoadInterstitial () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:124)
+AdsManager:<Start>b__26_0 (GoogleMobileAds.Api.InitializationStatus) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:84)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0/<Initialize>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0:<>m__0 (GoogleMobileAds.Common.IInitializationStatusClient)
+GoogleMobileAds.Unity.MobileAdsClient:Initialize (System.Action`1<GoogleMobileAds.Common.IInitializationStatusClient>)
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 135)
+
+Rewarded loaded
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AdsManager:<LoadRewarded>b__33_0 (GoogleMobileAds.Api.RewardedAd,GoogleMobileAds.Api.LoadAdError) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:202)
+GoogleMobileAds.Api.RewardedAd/<Load>c__AnonStorey0:<>m__2 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.RewardedAd/<Load>c__AnonStorey0:<>m__0 (object,System.EventArgs)
+GoogleMobileAds.Unity.RewardingAdBaseClient:LoadAd (string,GoogleMobileAds.Api.AdRequest)
+GoogleMobileAds.Api.RewardedAd:Load (string,GoogleMobileAds.Api.AdRequest,System.Action`2<GoogleMobileAds.Api.RewardedAd, GoogleMobileAds.Api.LoadAdError>)
+AdsManager:LoadRewarded () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:191)
+AdsManager:<Start>b__26_0 (GoogleMobileAds.Api.InitializationStatus) (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:85)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0/<Initialize>c__AnonStorey1:<>m__0 ()
+GoogleMobileAds.Api.MobileAds:RaiseAction (System.Action)
+GoogleMobileAds.Api.MobileAds/<Initialize>c__AnonStorey0:<>m__0 (GoogleMobileAds.Common.IInitializationStatusClient)
+GoogleMobileAds.Unity.MobileAdsClient:Initialize (System.Action`1<GoogleMobileAds.Common.IInitializationStatusClient>)
+GoogleMobileAds.Api.MobileAds:Initialize (System.Action`1<GoogleMobileAds.Api.InitializationStatus>)
+AdsManager:Start () (at Assets/02.Scripts/17.GoogleAds/AdsManager.cs:80)
+
+(Filename: Assets/02.Scripts/17.GoogleAds/AdsManager.cs Line: 202)
+
+WARNING: Database URL not set in the Firebase config.
+Database URL not set in the Firebase config.
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Firebase.Platform.FirebaseLogger:LogMessage (Firebase.Platform.PlatformLogLevel,string)
+Firebase.LogUtil:LogMessage (Firebase.LogLevel,string)
+Firebase.LogUtil:LogMessageFromCallback (Firebase.LogLevel,string)
+Firebase.FirebaseApp:CreateInternal ()
+Firebase.FirebaseApp/<>c:<Create>b__15_0 ()
+Firebase.FirebaseApp:CreateAndTrack (Firebase.FirebaseApp/CreateDelegate,Firebase.FirebaseApp)
+Firebase.FirebaseApp:Create ()
+Firebase.FirebaseApp:get_DefaultInstance ()
+Firebase.Auth.FirebaseAuth:get_DefaultInstance ()
+FirebaseManager:<InitializeFirebase>b__25_0 (System.Threading.Tasks.Task`1<Firebase.DependencyStatus>) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:44)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.DependencyStatus>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs Line: 44)
+
+Firebase Analytics initialized
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FirebaseManager:<InitializeFirebase>b__25_0 (System.Threading.Tasks.Task`1<Firebase.DependencyStatus>) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:48)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.DependencyStatus>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs Line: 48)
+
+Firebase user signed in: RpPnXIcsK6PUh8lKjePxNrLiIir2
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FirebaseManager:CompleteSignIn (Firebase.Auth.FirebaseUser,string) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:84)
+FirebaseManager:SignInAnonymous () (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:64)
+FirebaseManager:<InitializeFirebase>b__25_0 (System.Threading.Tasks.Task`1<Firebase.DependencyStatus>) (at Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs:51)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.DependencyStatus>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/17.GoogleAds/FirebaseManager.cs Line: 84)
+
+Using cached translation file.
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+LanguageManager/<InitializeAsync>d__20:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:49)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+LanguageManager/<GetRemoteVersion>d__21:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:71)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs Line: 49)
+
+System Language: English
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Kopkari.IntroManager/<Start>d__22:MoveNext () (at Assets/02.Scripts/10.GameManagers/IntroManager.cs:81)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<System.Threading.Tasks.VoidTaskResult>:TrySetResult (System.Threading.Tasks.VoidTaskResult)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<System.Threading.Tasks.VoidTaskResult>:SetResult (System.Threading.Tasks.VoidTaskResult)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<System.Threading.Tasks.VoidTaskResult>:SetResult (System.Threading.Tasks.Task`1<System.Threading.Tasks.VoidTaskResult>)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder:SetResult ()
+LanguageManager/<InitializeAsync>d__20:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:53)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<string>:TrySetResult (string)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<string>:SetResult (string)
+LanguageManager/<GetRemoteVersion>d__21:MoveNext () (at Assets/02.Scripts/10.GameManagers/Language/LanguageManager.cs:71)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Runtime.CompilerServices.YieldAwaitable/YieldAwaiter:RunAction (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/IntroManager.cs Line: 81)
+
+Exception: Attempting to use an invalid operation handle
+  at UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[TObject].get_InternalOp () [0x00026] in .\Library\PackageCache\com.unity.addressables@1.21.21\Runtime\ResourceManager\AsyncOperations\AsyncOperationHandle.cs:214 
+  at UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[TObject].get_Status () [0x00000] in .\Library\PackageCache\com.unity.addressables@1.21.21\Runtime\ResourceManager\AsyncOperations\AsyncOperationHandle.cs:286 
+  at AddressablesService.InitInternalAsync () [0x00088] in C:\Users\user\Documents\GitHub\Kopkari_URP\Assets\02.Scripts\Singletons\AddressablesService.cs:80 
+UnityEngine.DebugLogHandler:Internal_LogException(Exception, Object)
+UnityEngine.DebugLogHandler:LogException(Exception, Object)
+UnityEngine.Logger:LogException(Exception, Object)
+UnityEngine.Debug:LogException(Exception)
+AddressablesService:ReportAddressablesError(String, Exception) (at Assets\02.Scripts\Singletons\AddressablesService.cs:450)
+<InitInternalAsync>d__26:MoveNext() (at Assets\02.Scripts\Singletons\AddressablesService.cs:98)
+System.Runtime.CompilerServices.MoveNextRunner:InvokeMoveNext(Object)
+System.Threading.ExecutionContext:RunInternal(ExecutionContext, ContextCallback, Object, Boolean)
+System.Threading.ExecutionContext:Run(ExecutionContext, ContextCallback, Object, Boolean)
+System.Runtime.CompilerServices.MoveNextRunner:Run()
+System.Threading.Tasks.<>c:<.cctor>b__7_0(Object)
+UnityEngine.WorkRequest:Invoke()
+UnityEngine.UnitySynchronizationContext:Exec()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks()
+
+(Filename: ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/ResourceManager/AsyncOperations/AsyncOperationHandle.cs Line: 214)
+
+Addressables initialization failed.
+Attempting to use an invalid operation handle
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogError (object)
+AddressablesService:ReportAddressablesError (string,System.Exception) (at Assets/02.Scripts/Singletons/AddressablesService.cs:452)
+AddressablesService/<InitInternalAsync>d__26:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:98)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/Singletons/AddressablesService.cs Line: 452)
+
+? Preload failed (no internet or download error).
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Kopkari.IntroManager/<GetAddressableData>d__28:MoveNext () (at Assets/02.Scripts/10.GameManagers/IntroManager.cs:157)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task`1<bool>:TrySetResult (bool)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<bool>:SetResult (bool)
+AddressablesService/<PreloadDependenciesAsync>d__28:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:193)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.AwaitTaskContinuation:InvokeAction (object)
+System.Threading.Tasks.AwaitTaskContinuation:RunCallback (System.Threading.ContextCallback,object,System.Threading.Tasks.Task&)
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation:Run (System.Threading.Tasks.Task,bool)
+System.Threading.Tasks.Task:FinishContinuations ()
+System.Threading.Tasks.Task:FinishStageThree ()
+System.Threading.Tasks.Task:FinishStageTwo ()
+System.Threading.Tasks.Task:Finish (bool)
+System.Threading.Tasks.Task:TrySetException (object)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<System.Threading.Tasks.VoidTaskResult>:SetException (System.Exception)
+System.Runtime.CompilerServices.AsyncTaskMethodBuilder:SetException (System.Exception)
+AddressablesService/<InitInternalAsync>d__26:MoveNext () (at Assets/02.Scripts/Singletons/AddressablesService.cs:100)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:InvokeMoveNext (object)
+System.Threading.ExecutionContext:RunInternal (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Threading.ExecutionContext:Run (System.Threading.ExecutionContext,System.Threading.ContextCallback,object,bool)
+System.Runtime.CompilerServices.AsyncMethodBuilderCore/MoveNextRunner:Run ()
+System.Threading.Tasks.SynchronizationContextAwaitTaskContinuation/<>c:<.cctor>b__7_0 (object)
+UnityEngine.UnitySynchronizationContext/WorkRequest:Invoke ()
+UnityEngine.UnitySynchronizationContext:Exec ()
+UnityEngine.UnitySynchronizationContext:ExecuteTasks ()
+
+(Filename: Assets/02.Scripts/10.GameManagers/IntroManager.cs Line: 157)
+
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc - - 200 - application/grpc 0.0868ms
+Starting: C:\Program Files\Unity\Hub\Editor\2022.3.36f1\Editor\Data\bee_backend.exe --dont-print-to-structured-log --ipc --defer-dag-verification --dagfile="Library/Bee/1300b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: C:/Users/user/Documents/GitHub/Kopkari_URP
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/ConfigurePostProcessors application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/ConfigurePostProcessors'
+info: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Current configuration matches the requested one, skipping
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/ConfigurePostProcessors'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/ConfigurePostProcessors application/grpc - - 200 - application/grpc 0.2981ms
+[Licensing::Client] Successfully resolved entitlement details
+Exception: Attempting to use an invalid operation handle
+  at UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[TObject].get_InternalOp () [0x00026] in .\Library\PackageCache\com.unity.addressables@1.21.21\Runtime\ResourceManager\AsyncOperations\AsyncOperationHandle.cs:214 
+  at UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[TObject].get_Status () [0x00000] in .\Library\PackageCache\com.unity.addressables@1.21.21\Runtime\ResourceManager\AsyncOperations\AsyncOperationHandle.cs:286 
+  at AddressablesService.InitInternalAsync () [0x00122] in C:\Users\user\Documents\GitHub\Kopkari_URP\Assets\02.Scripts\Singletons\AddressablesService.cs:100 
+  at PlayerCatalogProvider.InitializeAsync (System.Boolean preloadActivePlayerSelectedAssets) [0x00034] in C:\Users\user\Documents\GitHub\Kopkari_URP\Assets\02.Scripts\14.AvatarCustom\PlayerCatalogProvider.cs:90 
+  at PlayerCatalogProvider.Start () [0x0003c] in C:\Users\user\Documents\GitHub\Kopkari_URP\Assets\02.Scripts\14.AvatarCustom\PlayerCatalogProvider.cs:65 
+  at System.Runtime.CompilerServices.AsyncMethodBuilderCore+<>c.<ThrowAsync>b__7_0 (System.Object state) [0x00000] in <51fded79cd284d4d911c5949aff4cb21>:0 
+  at UnityEngine.UnitySynchronizationContext+WorkRequest.Invoke () [0x00002] in <f1e29a71158e46cdb750140a667aea01>:0 
+  at UnityEngine.UnitySynchronizationContext.Exec () [0x0005d] in <f1e29a71158e46cdb750140a667aea01>:0 
+  at UnityEngine.UnitySynchronizationContext.ExecuteTasks () [0x00014] in <f1e29a71158e46cdb750140a667aea01>:0 
+
+(Filename: ./Library/PackageCache/com.unity.addressables@1.21.21/Runtime/ResourceManager/AsyncOperations/AsyncOperationHandle.cs Line: 214)
+
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      Processing assembly Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp.dll, with 130 defines and 335 references
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Unity.Jobs.CodeGen.JobsILPostProcessor
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc - - 200 - application/grpc 397.5374ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      Processing assembly Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp-Editor.dll, with 128 defines and 368 references
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Unity.Jobs.CodeGen.JobsILPostProcessor
+info: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc - - 200 - application/grpc 110.8197ms
+Player data already exists: RpPnXIcsK6PUh8lKjePxNrLiIir2
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+DataManager/<>c__DisplayClass8_0:<CreatePlayerDataIfNeeded>b__0 (System.Threading.Tasks.Task`1<Firebase.Firestore.DocumentSnapshot>) (at Assets/02.Scripts/Singletons/DataManager.cs:56)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.Firestore.DocumentSnapshot>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/Singletons/DataManager.cs Line: 56)
+
+ExitCode: 0 Duration: 2s342ms
+[1020/1365  0s] ILPP-Configuration Library/ilpp-configuration.nevergeneratedoutput
+[1357/1365  1s] Csc Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp.dll (+2 others)
+Assets\02.Scripts\10.GameManagers\JomboyManager.cs(8,33): warning CS0108: 'JomboyManager.Instance' hides inherited member 'BaseManager.Instance'. Use the new keyword if hiding was intended.
+
+Assets\02.Scripts\10.GameManagers\JomboyManager.cs(9,18): warning CS0114: 'JomboyManager.Awake()' hides inherited member 'BaseManager.Awake()'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+
+Assets\02.Scripts\10.GameManagers\PracticeRoomManager.cs(14,18): warning CS0114: 'PracticeRoomManager.Awake()' hides inherited member 'BaseManager.Awake()'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+
+Assets\02.Scripts\10.GameManagers\PracticeRoomManager.cs(21,10): warning CS0114: 'PracticeRoomManager.Start()' hides inherited member 'BaseManager.Start()'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+
+Assets\GabrielAguiarProductions\Scripts\ParticleSystemController\SaveParticleSystemScript.cs(91,24): warning CS0618: 'PrefabStage.prefabAssetPath' is obsolete: 'prefabAssetPath has been deprecated. Use assetPath instead.'
+
+Assets\GabrielAguiarProductions\Scripts\ParticleSystemController\SaveParticleSystemScript.cs(105,89): warning CS0618: 'PrefabStage.prefabAssetPath' is obsolete: 'prefabAssetPath has been deprecated. Use assetPath instead.'
+
+Assets\02.Scripts\02.CustomEvents\BoostersContainer.cs(36,37): warning CS0067: The event 'BoostersContainer.OnWebSnareRemoved' is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(66,36): warning CS0414: The field 'HomeMainUI.scaleMax' is assigned but its value is never used
+
+Assets\02.Scripts\05.Horse\HorseMine.cs(28,36): warning CS0414: The field 'HorseMine.maxSpeedDuration' is assigned but its value is never used
+
+Assets\02.Scripts\08.ThirdParty\MobileJoystickX.cs(100,23): warning CS0414: The field 'MobileJoystickX._velAddX' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Popup\RewardPopup.cs(31,36): warning CS0414: The field 'RewardPopup.autoCloseDelay' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\PrizeAndMissions\MyPrize.cs(13,37): warning CS0414: The field 'MyPrize.prizeName' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Buttons\UIButtonActions.cs(48,36): warning CS0414: The field 'UIButtonActions.slowLife' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(43,44): warning CS0414: The field 'HomeMainUI.ease' is assigned but its value is never used
+
+Assets\02.Scripts\12.Kopkari\UI\KopkariMainUI.cs(89,36): warning CS0414: The field 'KopkariMainUI.punchScaleM' is assigned but its value is never used
+
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(17,34): warning CS0414: The field 'AIRacingRider.maxHits' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(47,36): warning CS0414: The field 'HomeMainUI.scaleTime' is assigned but its value is never used
+
+Assets\02.Scripts\11.Camera\CameraManager.cs(21,18): warning CS0414: The field 'CameraManager.isMoving' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Popup\UISpeechBuble.cs(15,36): warning CS0414: The field 'UISpeechBuble.endX' is assigned but its value is never used
+
+Assets\02.Scripts\12.Kopkari\UI\KopkariMainUI.cs(92,35): warning CS0414: The field 'KopkariMainUI.useFade' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(42,36): warning CS0414: The field 'HomeMainUI.moveTime' is assigned but its value is never used
+
+Assets\02.Scripts\12.Kopkari\UI\KopkariMainUI.cs(90,36): warning CS0414: The field 'KopkariMainUI.scaleTime' is assigned but its value is never used
+
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(23,18): warning CS0414: The field 'AIRacingRider.isPenalized' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(46,36): warning CS0414: The field 'HomeMainUI.punchScaleM' is assigned but its value is never used
+
+Assets\02.Scripts\16.Tutorials\EsportUITutorial.cs(76,10): warning CS0414: The field 'EsportUITutorial._running' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(39,35): warning CS0414: The field 'HomeMainUI.playOnStart' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\Map and Play Details\MapCard.cs(41,19): warning CS0414: The field 'MapCard.currentAlpha' is assigned but its value is never used
+
+Assets\02.Scripts\09.Racing Scripts\SpecialReachTriggerPoint.cs(16,35): warning CS0414: The field 'SpecialReachTriggerPoint.disableAI' is assigned but its value is never used
+
+Assets\02.Scripts\05.Horse\HorseMine.cs(20,34): warning CS0414: The field 'HorseMine.maxHits' is assigned but its value is never used
+
+Assets\02.Scripts\10.GameManagers\AIGameRoom.cs(111,18): warning CS0414: The field 'AIGameRoom.isWaterDropped' is assigned but its value is never used
+
+Assets\02.Scripts\10.GameManagers\AIGameRoom.cs(73,34): warning CS0414: The field 'AIGameRoom.PrizeCount' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\PrizeAndMissions\MyPrize.cs(14,34): warning CS0414: The field 'MyPrize.prizeAmount' is assigned but its value is never used
+
+Assets\02.Scripts\05.Horse\HorseMine.cs(27,35): warning CS0414: The field 'HorseMine.maxSpeed' is assigned but its value is never used
+
+Assets\02.Scripts\12.Kopkari\Triggers\GoatDistanceUI.cs(22,36): warning CS0414: The field 'GoatDistanceUI.hideWhenVeryClose' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\PrizeAndMissions\AIGiftBox.cs(14,34): warning CS0414: The field 'AIGiftBox.giftId' is assigned but its value is never used
+
+Assets\02.Scripts\16.Tutorials\RacingTutorials.cs(76,18): warning CS0414: The field 'RacingTutorials.allowReplayTutorialThisRun' is assigned but its value is never used
+
+Assets\02.Scripts\08.ThirdParty\MobileJoystickX.cs(86,44): warning CS0414: The field 'MobileJoystickX.turnButtonSmoothing' is assigned but its value is never used
+
+Assets\02.Scripts\InGameScripts\LobbyAvatarController.cs(17,28): warning CS0414: The field 'LobbyAvatarController.moveSpeed' is assigned but its value is never used
+
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(18,36): warning CS0414: The field 'AIRacingRider.penaltyDuration' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(65,36): warning CS0414: The field 'HomeMainUI.scaleMin' is assigned but its value is never used
+
+Assets\02.Scripts\13.NPC\NPCGetLamb_CodeAI.cs(39,18): warning CS0414: The field 'NPCGetLamb_CodeAI.allCheckpointsDone' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\PrizeAndMissions\Mission.cs(19,34): warning CS0414: The field 'Mission.missionId' is assigned but its value is never used
+
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(22,17): warning CS0414: The field 'AIRacingRider.hitCount' is assigned but its value is never used
+
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(64,36): warning CS0414: The field 'HomeMainUI.durationHorseResouceBg' is assigned but its value is never used
+
+Assets\02.Scripts\05.Horse\HorseMine.cs(21,36): warning CS0414: The field 'HorseMine.penaltyDuration' is assigned but its value is never used
+[1358/1365  0s] ILPostProcess Library/Bee/artifacts/1300b0aE.dag/post-processed/Assembly-CSharp.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp.dll, with 130 defines and 335 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[1359/1365  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.pdb
+[1360/1365  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.dll
+[1361/1365  0s] Csc Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(420,4): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(422,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(423,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(424,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(425,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(426,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(431,9): warning CS0618: 'PlayerSettings.HasAspectRatio(AspectRatio)' is obsolete: 'HasAspectRatio is deprecated, Unity supports all aspect ratios.'
+
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_TextureDataGenerator.cs(169,30): warning CS0618: 'TextureImporter.spritePackingTag' is obsolete: 'Support for packing sprites through spritePackingTag has been removed. Please use SpriteAtlas instead.'
+[1362/1365  0s] ILPostProcess Library/Bee/artifacts/1300b0aE.dag/post-processed/Assembly-CSharp-Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp-Editor.dll, with 128 defines and 368 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[1363/1365  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.pdb
+[1364/1365  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.dll
+*** Tundra build success (2.28 seconds), 9 items updated, 1365 evaluatedPlayer data loaded from Firestore: Level 1, XP 0, Nyufiy 3000, Coin 15
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+DataManager:LoadPlayerDataFromSnapshot (Firebase.Firestore.DocumentSnapshot) (at Assets/02.Scripts/Singletons/DataManager.cs:355)
+DataManager/<>c__DisplayClass8_0:<CreatePlayerDataIfNeeded>b__0 (System.Threading.Tasks.Task`1<Firebase.Firestore.DocumentSnapshot>) (at Assets/02.Scripts/Singletons/DataManager.cs:57)
+Firebase.Extensions.TaskExtension/<>c__DisplayClass4_1`1<Firebase.Firestore.DocumentSnapshot>:<ContinueWithOnMainThread>b__1 ()
+Firebase.Dispatcher/<>c__DisplayClass5_0`1<bool>:<RunAsync>b__0 ()
+Firebase.ExceptionAggregator:Wrap (System.Action)
+Firebase.Dispatcher:PollJobs ()
+Firebase.Platform.FirebaseHandler:Update ()
+Firebase.Platform.FirebaseMonoBehaviour:Update ()
+
+(Filename: Assets/02.Scripts/Singletons/DataManager.cs Line: 355)
+
+
+Assets\02.Scripts\10.GameManagers\JomboyManager.cs(8,33): warning CS0108: 'JomboyManager.Instance' hides inherited member 'BaseManager.Instance'. Use the new keyword if hiding was intended.
+Assets\02.Scripts\10.GameManagers\JomboyManager.cs(9,18): warning CS0114: 'JomboyManager.Awake()' hides inherited member 'BaseManager.Awake()'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+Assets\02.Scripts\10.GameManagers\PracticeRoomManager.cs(14,18): warning CS0114: 'PracticeRoomManager.Awake()' hides inherited member 'BaseManager.Awake()'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+Assets\02.Scripts\10.GameManagers\PracticeRoomManager.cs(21,10): warning CS0114: 'PracticeRoomManager.Start()' hides inherited member 'BaseManager.Start()'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+Assets\GabrielAguiarProductions\Scripts\ParticleSystemController\SaveParticleSystemScript.cs(91,24): warning CS0618: 'PrefabStage.prefabAssetPath' is obsolete: 'prefabAssetPath has been deprecated. Use assetPath instead.'
+Assets\GabrielAguiarProductions\Scripts\ParticleSystemController\SaveParticleSystemScript.cs(105,89): warning CS0618: 'PrefabStage.prefabAssetPath' is obsolete: 'prefabAssetPath has been deprecated. Use assetPath instead.'
+Assets\02.Scripts\02.CustomEvents\BoostersContainer.cs(36,37): warning CS0067: The event 'BoostersContainer.OnWebSnareRemoved' is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(66,36): warning CS0414: The field 'HomeMainUI.scaleMax' is assigned but its value is never used
+Assets\02.Scripts\05.Horse\HorseMine.cs(28,36): warning CS0414: The field 'HorseMine.maxSpeedDuration' is assigned but its value is never used
+Assets\02.Scripts\08.ThirdParty\MobileJoystickX.cs(100,23): warning CS0414: The field 'MobileJoystickX._velAddX' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Popup\RewardPopup.cs(31,36): warning CS0414: The field 'RewardPopup.autoCloseDelay' is assigned but its value is never used
+Assets\02.Scripts\00.UI\PrizeAndMissions\MyPrize.cs(13,37): warning CS0414: The field 'MyPrize.prizeName' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Buttons\UIButtonActions.cs(48,36): warning CS0414: The field 'UIButtonActions.slowLife' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(43,44): warning CS0414: The field 'HomeMainUI.ease' is assigned but its value is never used
+Assets\02.Scripts\12.Kopkari\UI\KopkariMainUI.cs(89,36): warning CS0414: The field 'KopkariMainUI.punchScaleM' is assigned but its value is never used
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(17,34): warning CS0414: The field 'AIRacingRider.maxHits' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(47,36): warning CS0414: The field 'HomeMainUI.scaleTime' is assigned but its value is never used
+Assets\02.Scripts\11.Camera\CameraManager.cs(21,18): warning CS0414: The field 'CameraManager.isMoving' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Popup\UISpeechBuble.cs(15,36): warning CS0414: The field 'UISpeechBuble.endX' is assigned but its value is never used
+Assets\02.Scripts\12.Kopkari\UI\KopkariMainUI.cs(92,35): warning CS0414: The field 'KopkariMainUI.useFade' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(42,36): warning CS0414: The field 'HomeMainUI.moveTime' is assigned but its value is never used
+Assets\02.Scripts\12.Kopkari\UI\KopkariMainUI.cs(90,36): warning CS0414: The field 'KopkariMainUI.scaleTime' is assigned but its value is never used
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(23,18): warning CS0414: The field 'AIRacingRider.isPenalized' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(46,36): warning CS0414: The field 'HomeMainUI.punchScaleM' is assigned but its value is never used
+Assets\02.Scripts\16.Tutorials\EsportUITutorial.cs(76,10): warning CS0414: The field 'EsportUITutorial._running' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(39,35): warning CS0414: The field 'HomeMainUI.playOnStart' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\Map and Play Details\MapCard.cs(41,19): warning CS0414: The field 'MapCard.currentAlpha' is assigned but its value is never used
+Assets\02.Scripts\09.Racing Scripts\SpecialReachTriggerPoint.cs(16,35): warning CS0414: The field 'SpecialReachTriggerPoint.disableAI' is assigned but its value is never used
+Assets\02.Scripts\05.Horse\HorseMine.cs(20,34): warning CS0414: The field 'HorseMine.maxHits' is assigned but its value is never used
+Assets\02.Scripts\10.GameManagers\AIGameRoom.cs(111,18): warning CS0414: The field 'AIGameRoom.isWaterDropped' is assigned but its value is never used
+Assets\02.Scripts\10.GameManagers\AIGameRoom.cs(73,34): warning CS0414: The field 'AIGameRoom.PrizeCount' is assigned but its value is never used
+Assets\02.Scripts\00.UI\PrizeAndMissions\MyPrize.cs(14,34): warning CS0414: The field 'MyPrize.prizeAmount' is assigned but its value is never used
+Assets\02.Scripts\05.Horse\HorseMine.cs(27,35): warning CS0414: The field 'HorseMine.maxSpeed' is assigned but its value is never used
+Assets\02.Scripts\12.Kopkari\Triggers\GoatDistanceUI.cs(22,36): warning CS0414: The field 'GoatDistanceUI.hideWhenVeryClose' is assigned but its value is never used
+Assets\02.Scripts\00.UI\PrizeAndMissions\AIGiftBox.cs(14,34): warning CS0414: The field 'AIGiftBox.giftId' is assigned but its value is never used
+Assets\02.Scripts\16.Tutorials\RacingTutorials.cs(76,18): warning CS0414: The field 'RacingTutorials.allowReplayTutorialThisRun' is assigned but its value is never used
+Assets\02.Scripts\08.ThirdParty\MobileJoystickX.cs(86,44): warning CS0414: The field 'MobileJoystickX.turnButtonSmoothing' is assigned but its value is never used
+Assets\02.Scripts\InGameScripts\LobbyAvatarController.cs(17,28): warning CS0414: The field 'LobbyAvatarController.moveSpeed' is assigned but its value is never used
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(18,36): warning CS0414: The field 'AIRacingRider.penaltyDuration' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(65,36): warning CS0414: The field 'HomeMainUI.scaleMin' is assigned but its value is never used
+Assets\02.Scripts\13.NPC\NPCGetLamb_CodeAI.cs(39,18): warning CS0414: The field 'NPCGetLamb_CodeAI.allCheckpointsDone' is assigned but its value is never used
+Assets\02.Scripts\00.UI\PrizeAndMissions\Mission.cs(19,34): warning CS0414: The field 'Mission.missionId' is assigned but its value is never used
+Assets\02.Scripts\09.Racing Scripts\AI Riders\AIRacingRider.cs(22,17): warning CS0414: The field 'AIRacingRider.hitCount' is assigned but its value is never used
+Assets\02.Scripts\00.UI\Home\HomeMainUI.cs(64,36): warning CS0414: The field 'HomeMainUI.durationHorseResouceBg' is assigned but its value is never used
+Assets\02.Scripts\05.Horse\HorseMine.cs(21,36): warning CS0414: The field 'HorseMine.penaltyDuration' is assigned but its value is never used
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(420,4): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(422,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(423,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(424,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(425,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(426,5): warning CS0618: 'AspectRatio' is obsolete: 'AspectRatio enum has been deprecated and its functionality has been removed from Unity.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(431,9): warning CS0618: 'PlayerSettings.HasAspectRatio(AspectRatio)' is obsolete: 'HasAspectRatio is deprecated, Unity supports all aspect ratios.'
+Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_TextureDataGenerator.cs(169,30): warning CS0618: 'TextureImporter.spritePackingTag' is obsolete: 'Support for packing sprites through spritePackingTag has been removed. Please use SpriteAtlas instead.'
+Reloading assemblies after finishing script compilation.
+Reloading assemblies after forced synchronous recompile.
+Total cache size 268433416
+Total cache size after purge 268433416
+Begin MonoManager ReloadAssembly
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+Symbol file LoadedFromMemory is not a mono symbol file
+- Loaded All Assemblies, in  1.643 seconds
+Refreshing native plugins compatible for Editor in 22.23 ms, found 11 plugins.
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+Native extension for WindowsStandalone target not found
+Native extension for Android target not found
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-Nomad Rivals
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  6.534 seconds
+Domain Reload Profiling: 8182ms
+	BeginReloadAssembly (1385ms)
+		ExecutionOrderSort (1ms)
+		DisableScriptedObjects (133ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (1ms)
+		CreateAndSetChildDomain (654ms)
+	RebuildCommonClasses (25ms)
+	RebuildNativeTypeToScriptingClass (8ms)
+	initialDomainReloadingComplete (38ms)
+	LoadAllAssembliesAndSetupDomain (192ms)
+		LoadAssemblies (163ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (84ms)
+			TypeCache.Refresh (23ms)
+				TypeCache.ScanAssembly (12ms)
+			ScanForSourceGeneratedMonoScriptInfo (36ms)
+			ResolveRequiredComponents (24ms)
+	FinalizeReload (6534ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (2657ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (18ms)
+			SetLoadedEditorAssemblies (3ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (369ms)
+			ProcessInitializeOnLoadAttributes (1935ms)
+			ProcessInitializeOnLoadMethodAttributes (328ms)
+			AfterProcessingInitializeOnLoad (4ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (1ms)
+		AwakeInstancesAfterBackupRestoration (2551ms)
+Asset Pipeline Refresh (id=37fbeea354d5f4040a6e594f1879ab9b): Total: 9.094 seconds - Initiated by StopAssetImportingV2(ForceSynchronousImport | ForceDomainReload)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=747 ms
+		Asset DB Callback time: managed=60 ms, native=2 ms
+		Scripting: domain reloads=1, domain reload time=8285 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=15363, non-scripts=32313
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokeBeforeRefreshCallbacks: 2.074ms
+	ApplyChangesToAssetFolders: 0.319ms
+	Scan: 0.001ms
+	OnSourceAssetsModified: 0.001ms
+	GetAllGuidsForCategorization: 3.813ms
+	CategorizeAssets: 215.921ms
+	ImportOutOfDateAssets: 6601.216ms (6579.738ms without children)
+		CompileScripts: 0.022ms
+		CollectScriptTypesHashes: 0.272ms
+		ReloadNativeAssets: 1.276ms
+		UnloadImportedAssets: 1.065ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 12.579ms
+		InitializingProgressBar: 0.000ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 6.262ms
+	PostProcessAllAssets: 75.383ms
+	GatherAllCurrentPrimaryArtifactRevisions: 3.640ms
+	UnloadStreamsBegin: 0.870ms
+	PersistCurrentRevisions: 1.786ms
+	UnloadStreamsEnd: 0.674ms
+	GenerateScriptTypeHashes: 12.940ms
+	Untracked: 2188.710ms
+
+Aborting batchmode due to fatal error:
+Callback registration failed. Increase kMaxCallback.
+
+
+TcpMessagingSession - receive error
+[OnDemand] Worker 38: WorkerState(Connected), ImporterState(Preparing) session transport - while handling artifactKey Guid(00000000000000000000000000000000) Importer(-2,00000000000000000000000000000000) - path  - see Logs/AssetImportWorker38.log
+

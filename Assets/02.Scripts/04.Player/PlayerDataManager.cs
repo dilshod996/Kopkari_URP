@@ -188,9 +188,16 @@ public class PlayerDataManager : MonoBehaviour
         // 6) Endi UI
         OnShowFinalPage?.Invoke();
     }
-    private void DismountPlayer()
+    private void DismountPlayer(int playerRank)
     {
-        PlayFinishCinematic(true);
+        bool isTopThree = playerRank >= 1 && playerRank <= 3;
+        if (isTopThree)
+        {
+            PlayFinishCinematic(true);
+            return;
+        }
+
+        OnShowFinalPage?.Invoke();
         //StartCoroutine(DismountStructure());
     }
     private IEnumerator DismountStructure()

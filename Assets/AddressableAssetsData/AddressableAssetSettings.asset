@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 3f7e4bd2404c9b84eb12bcaefb51e1eb
   m_currentHash:
     serializedVersion: 2
-    Hash: 59382835b33f89e66c2501819e9b5141
+    Hash: 3fbbbcb51492bf475f8b36070f911de9
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 1
   m_BundleLocalCatalog: 0
@@ -58,6 +58,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 664776fcc3b899447836a8f0ef152c0a, type: 2}
   - {fileID: 11400000, guid: a817085b3f079d1409d715476f75d9f0, type: 2}
   - {fileID: 11400000, guid: 319ef4548ff7f6045af63e1ef106944a, type: 2}
+  - {fileID: 11400000, guid: dbc354687e557b8468b6536dae13b9b3, type: 2}
   m_BuildSettings:
     m_CompileScriptsInVirtualMode: 0
     m_CleanupStreamingAssetsAfterBuilds: 1
@@ -122,6 +123,7 @@ MonoBehaviour:
     - HorseMaterials
     - Textures
     - CustomUI
+    - SkyBox
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: c7a25b5789f8cf249a336f52b3505585, type: 2}

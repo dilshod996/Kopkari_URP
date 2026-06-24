@@ -47,11 +47,13 @@ public class HorseSkinLoader : MonoBehaviour
     private void OnEnable()
     {
         AvatarCustomUIManager.OnSavedBtnClicked += CommitPending;
+        AvatarCustomUIManager.OnRevertPreviewRequested += RevertPending;
     }
 
     private void OnDisable()
     {
         AvatarCustomUIManager.OnSavedBtnClicked -= CommitPending;
+        AvatarCustomUIManager.OnRevertPreviewRequested -= RevertPending;
     }
 
     public void SetHorseId(string horseId)
@@ -68,7 +70,7 @@ public class HorseSkinLoader : MonoBehaviour
         if (_pending.TryGetValue(slotId, out var p) && !string.IsNullOrEmpty(p))
             return p;
 
-        return PlayerPrefs.GetString($"Sel_{_horseId}_{slotId}", "");
+        return AvatarCustomPrefs.GetSelection(_horseId, slotId);
     }
 
     /// <summary>
@@ -142,6 +144,94 @@ public class HorseSkinLoader : MonoBehaviour
         slotId = Normalize(slotId);
         if (string.IsNullOrEmpty(optionId)) return;
 
+        await ApplyVisual(slotId, optionId);
+
+        _pending[slotId] = optionId;
+    }
+
+    /// <summary>
+    /// ✅ Scene ochilganda saved holatni qo'llash (Body/Mane/Saddle)
+    /// </summary>
+    public async Task ApplyAllFromPrefs()
+    {
+        await AddressablesService.Instance.EnsureInitializedAsync();
+
+        await ApplyFromSavedOrDefault(SlotBody);
+        await ApplyFromSavedOrDefault(SlotMane);
+        await ApplyFromSavedOrDefault(SlotSaddle);
+
+        _pending.Clear();
+    }
+
+    private async Task ApplyFromSavedOrDefault(string slotId)
+    {
+        string optionId = AvatarCustomPrefs.GetSelection(_horseId, slotId);
+        if (string.IsNullOrEmpty(optionId))
+            optionId = PlayerCatalogProvider.Instance.GetDefaultOptionId(_horseId, slotId);
+
+        if (string.IsNullOrEmpty(optionId)) return;
+
+        await PreviewOne(slotId, optionId);
+    }
+
+    // ✅ Save bosilganda commit (faqat o'zgargan slotlar)
+    private async void CommitPending()
+    {
+        if (_pending.Count == 0) return;
+
+        string pendingBodyOptionId = null;
+
+        foreach (var kv in _pending)
+        {
+            string slotId = kv.Key;      // Body/Mane/Saddle
+            string optionId = kv.Value;
+
+            AvatarCustomPrefs.SetSelection(_horseId, slotId, optionId);
+            CustomizationManager.Instance?.SyncSelection(_horseId, slotId, optionId);
+
+            if (slotId.Equals(SlotBody, StringComparison.OrdinalIgnoreCase))
+                pendingBodyOptionId = optionId;
+        }
+
+        PlayerPrefs.Save();
+        _pending.Clear();
+
+        if (!string.IsNullOrEmpty(pendingBodyOptionId))
+            await HorseConditionStatsService.SyncSelectedBodyMaxAsync(_horseId, pendingBodyOptionId);
+    }
+
+    // ----------------- helpers -----------------
+
+    private static string Normalize(string s) => (s ?? "").Trim();
+
+    private async void RevertPending()
+    {
+        if (_pending.Count == 0) return;
+
+        List<string> slots = new List<string>(_pending.Keys);
+        _pending.Clear();
+
+        foreach (string slotId in slots)
+        {
+            string optionId = AvatarCustomPrefs.GetSelection(_horseId, slotId);
+            if (string.IsNullOrEmpty(optionId))
+                optionId = PlayerCatalogProvider.Instance.GetDefaultOptionId(_horseId, slotId);
+
+            if (!string.IsNullOrEmpty(optionId))
+                await ApplyVisual(slotId, optionId);
+
+            OptionItemUI.OnSelectionChanged?.Invoke(_horseId, slotId);
+
+            if (IsManeTailSlot(slotId))
+            {
+                OptionItemUI.OnSelectionChanged?.Invoke(_horseId, "Mane");
+                OptionItemUI.OnSelectionChanged?.Invoke(_horseId, "Tail");
+            }
+        }
+    }
+
+    private async Task ApplyVisual(string slotId, string optionId)
+    {
         var entry = await PlayerCatalogProvider.Instance.FindAsync(_horseId, slotId, optionId);
         if (entry == null) return;
 
@@ -188,55 +278,13 @@ public class HorseSkinLoader : MonoBehaviour
                 if (headReinsSMR != null) await ApplyMaterial(headReinsSMR, entry.MaterialKey);
             }
         }
-
-        _pending[slotId] = optionId;
     }
 
-    /// <summary>
-    /// ✅ Scene ochilganda saved holatni qo'llash (Body/Mane/Saddle)
-    /// </summary>
-    public async Task ApplyAllFromPrefs()
+    private static bool IsManeTailSlot(string slotId)
     {
-        await AddressablesService.Instance.EnsureInitializedAsync();
-
-        await ApplyFromSavedOrDefault(SlotBody);
-        await ApplyFromSavedOrDefault(SlotMane);
-        await ApplyFromSavedOrDefault(SlotSaddle);
-
-        _pending.Clear();
+        return slotId.Equals(SlotMane, StringComparison.OrdinalIgnoreCase) ||
+               slotId.Equals("Tail", StringComparison.OrdinalIgnoreCase);
     }
-
-    private async Task ApplyFromSavedOrDefault(string slotId)
-    {
-        string optionId = PlayerPrefs.GetString($"Sel_{_horseId}_{slotId}", "");
-        if (string.IsNullOrEmpty(optionId))
-            optionId = PlayerCatalogProvider.Instance.GetDefaultOptionId(_horseId, slotId);
-
-        if (string.IsNullOrEmpty(optionId)) return;
-
-        await PreviewOne(slotId, optionId);
-    }
-
-    // ✅ Save bosilganda commit (faqat o'zgargan slotlar)
-    private void CommitPending()
-    {
-        if (_pending.Count == 0) return;
-
-        foreach (var kv in _pending)
-        {
-            string slotId = kv.Key;      // Body/Mane/Saddle
-            string optionId = kv.Value;
-
-            PlayerPrefs.SetString($"Sel_{_horseId}_{slotId}", optionId);
-        }
-
-        PlayerPrefs.Save();
-        _pending.Clear();
-    }
-
-    // ----------------- helpers -----------------
-
-    private static string Normalize(string s) => (s ?? "").Trim();
 
     private async Task ApplyMaterial(Renderer r, string materialKey)
     {

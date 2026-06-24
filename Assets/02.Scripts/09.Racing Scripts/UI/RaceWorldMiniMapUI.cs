@@ -9,6 +9,10 @@ public class RaceWorldMiniMapUI : MonoBehaviour
         public Transform aiRider;
         public RectTransform aiIcon;
         public bool rotateIcon;
+
+        [System.NonSerialized] public Vector2 targetPosition;
+        [System.NonSerialized] public float targetAngle;
+        [System.NonSerialized] public bool targetInitialized;
     }
 
     [Header("World References")]
@@ -34,7 +38,29 @@ public class RaceWorldMiniMapUI : MonoBehaviour
     [Header("Player Icon")]
     [SerializeField] private bool rotatePlayerIcon = true;
 
+    [Header("Performance")]
+    [SerializeField, Min(0.05f)] private float updateInterval = 0.6f;
+    [SerializeField, Min(0f)] private float positionPixelThreshold = 1f;
+    [SerializeField, Min(0f)] private float rotationDegreeThreshold = 3f;
+
+    [Header("Smoothing")]
+    [SerializeField] private bool smoothIconMovement = true;
+    [SerializeField, Min(1f)] private float positionSmoothSpeed = 4f;
+    [SerializeField, Min(1f)] private float rotationSmoothSpeed = 6f;
+
     private bool initialized;
+    private float nextUpdateTime;
+    private Vector2 playerTargetPosition;
+    private float playerTargetAngle;
+    private bool playerTargetInitialized;
+    private float mapMinX;
+    private float mapMinZ;
+    private float invMapWidth;
+    private float invMapDepth;
+    private float rectXMin;
+    private float rectYMin;
+    private float rectWidth;
+    private float rectHeight;
 
     private void Start()
     {
@@ -45,8 +71,18 @@ public class RaceWorldMiniMapUI : MonoBehaviour
     {
         if (!initialized) return;
 
-        UpdatePlayerIcon();
-        UpdateAiRiderIcons();
+        if (Time.unscaledTime >= nextUpdateTime)
+        {
+            nextUpdateTime = Time.unscaledTime + updateInterval;
+            UpdatePlayerIcon();
+            UpdateAiRiderIcons();
+        }
+
+        if (smoothIconMovement)
+        {
+            SmoothPlayerIcon();
+            SmoothAiRiderIcons();
+        }
     }
 
     public void Initialize()
@@ -70,9 +106,12 @@ public class RaceWorldMiniMapUI : MonoBehaviour
             return;
         }
 
+        if (!CacheMapData()) return;
+
         PlaceStaticIcons();
 
         initialized = true;
+        nextUpdateTime = Time.unscaledTime + updateInterval;
         UpdatePlayerIcon();
         UpdateAiRiderIcons();
     }
@@ -80,11 +119,17 @@ public class RaceWorldMiniMapUI : MonoBehaviour
     private void UpdatePlayerIcon()
     {
         Vector2 uiPosition = WorldToMiniMapPosition(player.position);
-        playerIcon.anchoredPosition = uiPosition;
+        playerTargetPosition = uiPosition;
+
+        if (!smoothIconMovement || !playerTargetInitialized)
+        {
+            SetAnchoredPositionIfChanged(playerIcon, uiPosition);
+            playerTargetInitialized = true;
+        }
 
         if (rotatePlayerIcon)
         {
-            RotatePlayerIcon();
+            UpdatePlayerIconTargetRotation();
         }
     }
 
@@ -98,11 +143,17 @@ public class RaceWorldMiniMapUI : MonoBehaviour
             if (riderIcon.aiRider == null || riderIcon.aiIcon == null) continue;
 
             Vector2 uiPosition = WorldToMiniMapPosition(riderIcon.aiRider.position);
-            riderIcon.aiIcon.anchoredPosition = uiPosition;
+            riderIcon.targetPosition = uiPosition;
+
+            if (!smoothIconMovement || !riderIcon.targetInitialized)
+            {
+                SetAnchoredPositionIfChanged(riderIcon.aiIcon, uiPosition);
+                riderIcon.targetInitialized = true;
+            }
 
             if (riderIcon.rotateIcon)
             {
-                RotateAiIcon(riderIcon.aiRider, riderIcon.aiIcon);
+                UpdateAiIconTargetRotation(riderIcon);
             }
         }
     }
@@ -127,42 +178,140 @@ public class RaceWorldMiniMapUI : MonoBehaviour
 
     private Vector2 WorldToMiniMapPosition(Vector3 worldPosition)
     {
-        float minX = mapBottomLeft.position.x;
-        float maxX = mapTopRight.position.x;
+        float normalizedX = Mathf.Clamp01((worldPosition.x - mapMinX) * invMapWidth);
+        float normalizedY = Mathf.Clamp01((worldPosition.z - mapMinZ) * invMapDepth);
 
-        float minZ = mapBottomLeft.position.z;
-        float maxZ = mapTopRight.position.z;
-
-        float normalizedX = Mathf.InverseLerp(minX, maxX, worldPosition.x);
-        float normalizedY = Mathf.InverseLerp(minZ, maxZ, worldPosition.z);
-
-        normalizedX = Mathf.Clamp01(normalizedX);
-        normalizedY = Mathf.Clamp01(normalizedY);
-
-        Rect rect = miniMapRect.rect;
-
-        float uiX = Mathf.Lerp(rect.xMin, rect.xMax, normalizedX);
-        float uiY = Mathf.Lerp(rect.yMin, rect.yMax, normalizedY);
+        float uiX = rectXMin + rectWidth * normalizedX;
+        float uiY = rectYMin + rectHeight * normalizedY;
 
         return new Vector2(uiX, uiY);
     }
 
-    private void RotatePlayerIcon()
+    private void UpdatePlayerIconTargetRotation()
     {
         Vector3 forward = player.forward;
 
         float angle = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
 
         // Agar arrow icon tepaga qaragan bo'lsa shu to'g'ri ishlaydi.
-        playerIcon.localEulerAngles = new Vector3(0f, 0f, -angle);
+        playerTargetAngle = -angle;
+
+        if (!smoothIconMovement)
+            SetRotationIfChanged(playerIcon, playerTargetAngle);
     }
 
-    private void RotateAiIcon(Transform aiRider, RectTransform aiIcon)
+    private void UpdateAiIconTargetRotation(AiRiderMiniMapIcon riderIcon)
     {
-        Vector3 forward = aiRider.forward;
+        Vector3 forward = riderIcon.aiRider.forward;
 
         float angle = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
 
-        aiIcon.localEulerAngles = new Vector3(0f, 0f, -angle);
+        riderIcon.targetAngle = -angle;
+
+        if (!smoothIconMovement)
+            SetRotationIfChanged(riderIcon.aiIcon, riderIcon.targetAngle);
+    }
+
+    private bool CacheMapData()
+    {
+        float mapWidth = mapTopRight.position.x - mapBottomLeft.position.x;
+        float mapDepth = mapTopRight.position.z - mapBottomLeft.position.z;
+
+        if (Mathf.Approximately(mapWidth, 0f) || Mathf.Approximately(mapDepth, 0f))
+        {
+            Debug.Log("RaceWorldMiniMapUI: Map bounds size is zero.");
+            return false;
+        }
+
+        mapMinX = mapBottomLeft.position.x;
+        mapMinZ = mapBottomLeft.position.z;
+        invMapWidth = 1f / mapWidth;
+        invMapDepth = 1f / mapDepth;
+
+        Rect rect = miniMapRect.rect;
+        rectXMin = rect.xMin;
+        rectYMin = rect.yMin;
+        rectWidth = rect.width;
+        rectHeight = rect.height;
+
+        return true;
+    }
+
+    private void SetAnchoredPositionIfChanged(RectTransform icon, Vector2 position)
+    {
+        if ((icon.anchoredPosition - position).sqrMagnitude < positionPixelThreshold * positionPixelThreshold)
+            return;
+
+        icon.anchoredPosition = position;
+    }
+
+    private void SetRotationIfChanged(RectTransform icon, float zAngle)
+    {
+        float currentZ = icon.localEulerAngles.z;
+        if (Mathf.Abs(Mathf.DeltaAngle(currentZ, zAngle)) < rotationDegreeThreshold)
+            return;
+
+        icon.localEulerAngles = new Vector3(0f, 0f, zAngle);
+    }
+
+    private void SmoothPlayerIcon()
+    {
+        if (!playerTargetInitialized) return;
+
+        float positionT = 1f - Mathf.Exp(-positionSmoothSpeed * Time.unscaledDeltaTime);
+        Vector2 position = Vector2.Lerp(playerIcon.anchoredPosition, playerTargetPosition, positionT);
+        SetSmoothedAnchoredPosition(playerIcon, position, playerTargetPosition);
+
+        if (!rotatePlayerIcon) return;
+
+        float rotationT = 1f - Mathf.Exp(-rotationSmoothSpeed * Time.unscaledDeltaTime);
+        float angle = Mathf.LerpAngle(playerIcon.localEulerAngles.z, playerTargetAngle, rotationT);
+        SetSmoothedRotation(playerIcon, angle, playerTargetAngle);
+    }
+
+    private void SmoothAiRiderIcons()
+    {
+        float positionT = 1f - Mathf.Exp(-positionSmoothSpeed * Time.unscaledDeltaTime);
+        float rotationT = 1f - Mathf.Exp(-rotationSmoothSpeed * Time.unscaledDeltaTime);
+
+        for (int i = 0; i < aiRiderIcons.Count; i++)
+        {
+            AiRiderMiniMapIcon riderIcon = aiRiderIcons[i];
+
+            if (riderIcon == null || !riderIcon.targetInitialized) continue;
+            if (riderIcon.aiIcon == null) continue;
+
+            Vector2 position = Vector2.Lerp(riderIcon.aiIcon.anchoredPosition, riderIcon.targetPosition, positionT);
+            SetSmoothedAnchoredPosition(riderIcon.aiIcon, position, riderIcon.targetPosition);
+
+            if (!riderIcon.rotateIcon) continue;
+
+            float angle = Mathf.LerpAngle(riderIcon.aiIcon.localEulerAngles.z, riderIcon.targetAngle, rotationT);
+            SetSmoothedRotation(riderIcon.aiIcon, angle, riderIcon.targetAngle);
+        }
+    }
+
+    private void SetSmoothedAnchoredPosition(RectTransform icon, Vector2 position, Vector2 targetPosition)
+    {
+        if ((icon.anchoredPosition - targetPosition).sqrMagnitude < 0.01f)
+            return;
+
+        icon.anchoredPosition = position;
+    }
+
+    private void SetSmoothedRotation(RectTransform icon, float zAngle, float targetAngle)
+    {
+        if (Mathf.Abs(Mathf.DeltaAngle(icon.localEulerAngles.z, targetAngle)) < 0.1f)
+            return;
+
+        icon.localEulerAngles = new Vector3(0f, 0f, zAngle);
+    }
+
+    private void OnRectTransformDimensionsChange()
+    {
+        if (!initialized || miniMapRect == null) return;
+        if (!CacheMapData()) return;
+
+        PlaceStaticIcons();
     }
 }

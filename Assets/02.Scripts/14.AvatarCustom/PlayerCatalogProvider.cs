@@ -200,8 +200,7 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
         {
             if (string.IsNullOrWhiteSpace(slotId)) continue;
 
-            string prefKey = $"Sel_{playerId}_{slotId}";
-            string optionId = PlayerPrefs.GetString(prefKey, "");
+            string optionId = AvatarCustomPrefs.GetSelection(playerId, slotId);
 
             if (string.IsNullOrEmpty(optionId))
                 optionId = catalog.GetDefaultOptionId(playerId, slotId);

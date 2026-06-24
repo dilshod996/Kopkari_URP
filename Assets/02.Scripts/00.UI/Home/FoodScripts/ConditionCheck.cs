@@ -42,11 +42,10 @@ public class ConditionCheck : MonoBehaviour
     }
     private void GetResources()
     {
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
 
-        UpdateSliders(horsePowerMain, horseCoolingMain, horseStaminaMain);
+        UpdateSliders(current.Power, current.Cooling, current.Stamina);
     }
     private void UpdateSliders(float powerValue, float coolingValue, float staminValue)
     {

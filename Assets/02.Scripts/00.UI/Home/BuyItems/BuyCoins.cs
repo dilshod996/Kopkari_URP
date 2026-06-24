@@ -10,6 +10,7 @@ public class BuyCoins : MonoBehaviour
     [SerializeField] private Button coinButton;
     [SerializeField] private Button nyufiyButton;
     [SerializeField] private Button closeButton;
+    [SerializeField] private Button watchAddBtton;
 
     [SerializeField] private TMP_Text coinTitle;
     [SerializeField] private TMP_Text coinTitle2;
@@ -22,6 +23,8 @@ public class BuyCoins : MonoBehaviour
     [SerializeField] private GameObject moneyNotEnoughSection;
     [SerializeField] private float animDuration = 3f;
 
+    [SerializeField] private int watchAddAmount = 300;
+
     private Tween pulseTween;
     private void OnEnable()
     {
@@ -33,7 +36,8 @@ public class BuyCoins : MonoBehaviour
         CoinCard.OnMoneyNotEnough += MoneyNotEnoughText;
         if(moneyNotEnoughSection.activeSelf)
             moneyNotEnoughSection.SetActive(false);
-        
+        watchAddBtton.onClick.AddListener(WatchAddForNyufiy);
+
     }
     private void OnDisable()
     {
@@ -42,6 +46,43 @@ public class BuyCoins : MonoBehaviour
         closeButton.onClick.RemoveListener(ClosePage);
         HomeMainUI.Instance.OnCoinsButtonPressed -= EnablePages;
         CoinCard.OnMoneyNotEnough -= MoneyNotEnoughText;
+    }
+    private void WatchAddForNyufiy()
+    {
+        // Bu yerda reklama ko‘rish logikasini qo‘shing
+        // Agar reklama muvaffaqiyatli ko‘rilsa, foydalanuvchiga watchAddAmount miqdorida Nyufiy bering
+        Debug.Log($"User watched an ad and received {watchAddAmount} Nyufiy.");
+        // Masalan:
+        // UserInventory.Instance.AddNyufiy(watchAddAmount);
+        GameAnalyticsEvents.RewardedAdClicked(
+           placement: "coin_shop",
+           rewardType: "nyufiy",
+           rewardAmount: watchAddAmount
+       );
+
+        if (AdsManager.Instance == null)
+        {
+            GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+            return;
+        }
+
+        AdsManager.Instance.ShowRewarded(() =>
+        {
+            CurrencyManager.Instance.AddNyufiy(watchAddAmount, true);
+
+            GameAnalyticsEvents.RewardedAdCompleted(
+                placement: "coin_shop",
+                rewardType: "nyufiy",
+                rewardAmount: watchAddAmount
+            );
+
+            GameAnalyticsEvents.CoinRewardClaimed(
+                source: "rewarded_ad_coin_shop",
+                amount: watchAddAmount
+            );
+
+        },
+        () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
     }
 
     private void OpenCoinSection()

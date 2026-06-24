@@ -4,6 +4,7 @@ public static class Constants
 {
     public static class Player
     {
+        public const string UID = "uid";
         public const string Userid = "userId";
         public const string UsernameKey = "username";
         public const string TeamName = "teamName";
@@ -140,10 +141,18 @@ public static class Constants
         public const string Japan = "japanmap";
         public const string PastDargom = "pastmap";
         public const string Chiroqchi = "chiroqmap";
+        public const string Kansas = "kansasmap";
     }
     public static class HomeEnivronments
     {
         public const string SelectedEnvironment = "selectedEnv";
+    }
+    public static class SkyBoxes
+    {
+        public const string ZarafshanSkybox = "ZarafshanSkybox";
+        public const string RegistanSkybox = "RegistanSkybox";
+        public const string EgyptSkybox = "EgyptSkybox";
+        public const string KansasSkybox = "KansasSkybox";
     }
     public static class ZarafshanMapLayers 
     {
@@ -196,8 +205,8 @@ public static class Constants
     }
     public static class Level
     {
-        public const string LevelAmount = "PlayerProgress_Level";
-        public const string XP = "PlayerProgress_XP";
+        public const string LevelAmount = "Level";
+        public const string XP = "XP";
         public const string LevelUpPending = "PlayerProgress_PendingLevelUpPopup";
     }
     public static class RoomEnterCosts
@@ -206,5 +215,15 @@ public static class Constants
         public const int EgyptCost = 500;
         public const int Kansas = 750;
         public const int RegistanSquare = 850;
+    }
+    public static class RacingData
+    {
+        public const string TotalRaces = "total_races";
+        public const string TotalWins = "total_wins";
+    }
+    public static class Others 
+    {
+        public const string CreatedAt = "createdAt";
+        public const string UpdatedAt = "updatedAt";
     }
 }

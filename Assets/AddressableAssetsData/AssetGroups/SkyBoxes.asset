@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: SkyBoxes
+  m_EditorClassIdentifier: 
+  m_GroupName: SkyBoxes
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 7970c930a78805549a89df3ace0441e7
+  m_SerializeEntries:
+  - m_GUID: 7e86961b1f898a541914fc6ddbbb0a8d
+    m_Address: ZarafshanSkybox
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SkyBox
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ff785f8cbac070740b8ca5147b24ecc7
+    m_Address: EgyptSkybox
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SkyBox
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5896895507e0b5c4885f9d45da257599
+    m_Address: KansasSkybox
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 9e4dc24b1217cb84c82b9fa001043321, type: 2}
+    - {fileID: 11400000, guid: 1e5f63d7424468c4d89022500891306a, type: 2}

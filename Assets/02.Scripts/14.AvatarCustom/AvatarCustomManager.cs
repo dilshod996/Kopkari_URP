@@ -300,6 +300,7 @@ public class AvatarCustomManager : MonoBehaviour
     }
     private void YesAction()
     {
+        AvatarCustomUIManager.RevertPendingPreviews();
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191), instant: false, true);
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
     }

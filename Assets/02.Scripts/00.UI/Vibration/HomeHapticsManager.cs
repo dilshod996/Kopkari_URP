@@ -5,7 +5,12 @@ public enum HomeHapticId
 {
     LowCondition,
     NotEnoughMoney,
-    Success
+    Success,
+    Selection,
+    ItemPickup,
+    BoosterUse,
+    PlayerHit,
+    RaceFinish
 }
 
 public class HomeHapticsManager : MonoBehaviour
@@ -63,6 +68,26 @@ public class HomeHapticsManager : MonoBehaviour
 
             case HomeHapticId.Success:
                 PlaySource(successSource, successLevel, successTone);
+                break;
+
+            case HomeHapticId.Selection:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.Selection);
+                break;
+
+            case HomeHapticId.ItemPickup:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.LightImpact);
+                break;
+
+            case HomeHapticId.BoosterUse:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.MediumImpact);
+                break;
+
+            case HomeHapticId.PlayerHit:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.HeavyImpact);
+                break;
+
+            case HomeHapticId.RaceFinish:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.Success);
                 break;
         }
     }

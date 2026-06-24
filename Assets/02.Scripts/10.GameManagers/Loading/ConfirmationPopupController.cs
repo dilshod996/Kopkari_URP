@@ -88,6 +88,27 @@ public class ConfirmationPopupController : MonoBehaviour
         ShowInternal(options);
     }
 
+    public void Show(string title, string desc, string okLabel, string cancelLabel,
+        Action onOk, Action onCancel, Options options = null)
+    {
+        options ??= DefaultOptions;
+
+        _onOk = onOk;
+        _onCancel = onCancel;
+        _onDone = null;
+
+        okRoot.SetActive(true);
+        cancelRoot.SetActive(true);
+        doneRoot.SetActive(false);
+
+        titleText.text = title;
+        descText.text = desc;
+        okText.text = okLabel;
+        cancelText.text = cancelLabel;
+
+        ShowInternal(options);
+    }
+
     public void Show(int titleId, int descId, int doneTextId,
         Action onDone, Options options = null)
     {

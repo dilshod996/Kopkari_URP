@@ -9,7 +9,7 @@ public class EnvironmentCardUI : MonoBehaviour
     {
         Utov,
         Egypt,
-        Texas
+        Kansas
     }
     public HomeEnvironment Environment;
     [SerializeField] private string mapKey;        // "zarafmap", "regismap" ...
@@ -28,6 +28,7 @@ public class EnvironmentCardUI : MonoBehaviour
     public static event Action<string> OnEnvironmentNameChanged;
     private void OnEnable()
     {
+        DataManager.OnMapUnlocked += HandleMapUnlocked;
         RefreshUI();
         if (lockButton != null)
             lockButton.onClick.AddListener(OnLockClicked);
@@ -38,6 +39,7 @@ public class EnvironmentCardUI : MonoBehaviour
 
     private void OnDisable()
     {
+        DataManager.OnMapUnlocked -= HandleMapUnlocked;
         if (lockButton != null)
             lockButton.onClick.RemoveListener(OnLockClicked);
 
@@ -47,8 +49,7 @@ public class EnvironmentCardUI : MonoBehaviour
 
     private void RefreshUI()
     {
-        int open = PlayerPrefs.GetInt(mapKey, 0); // 1=open, 0=locked
-        bool isOpen = open == 1;
+        bool isOpen = IsMapOpen();
 
         // 🔒 Lock
         if (lockImage != null)
@@ -84,7 +85,7 @@ public class EnvironmentCardUI : MonoBehaviour
     {
         if(currentEnv.Equals(mapKey))
             { return; }
-        if (PlayerPrefs.GetInt(mapKey, 0) == 0)
+        if (!IsMapOpen())
             return;
 
         PlayerPrefs.SetString(Constants.HomeEnivronments.SelectedEnvironment, mapKey);
@@ -93,6 +94,21 @@ public class EnvironmentCardUI : MonoBehaviour
         OnEnvironmentNameChanged?.Invoke(mapKey);
         PlayerPrefs.Save();
         environmentChangeUI.Hide();
+    }
+
+    private bool IsMapOpen()
+    {
+        if (DataManager.Instance != null)
+            return DataManager.Instance.IsMapUnlocked(mapKey);
+
+        int defaultValue = mapKey == Constants.MapNames.RacingTraining || mapKey == Constants.MapNames.Zarafshan ? 1 : 0;
+        return PlayerPrefs.GetInt(mapKey, defaultValue) == 1;
+    }
+
+    private void HandleMapUnlocked(string unlockedMapKey)
+    {
+        if (unlockedMapKey == mapKey)
+            RefreshUI();
     }
 
 }

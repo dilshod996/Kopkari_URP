@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "268794389552",
+    "project_id": "nomadrivals",
+    "storage_bucket": "nomadrivals.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:268794389552:android:e106e3e88635085462b9f5",
+        "android_client_info": {
+          "package_name": "com.kajagames.nomadrivals"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC78grHs_TsJlizapCKgNObdDs6FCHuR3Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

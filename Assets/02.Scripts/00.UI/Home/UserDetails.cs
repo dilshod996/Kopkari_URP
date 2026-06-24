@@ -64,11 +64,16 @@ public class UserDetails : MonoBehaviour
 
         if (!string.IsNullOrEmpty(newUsername))
         {
+            int selectedCountry = countryDropdown.selectedItemIndex;
+
             PlayerPrefs.SetString(Constants.Player.UsernameKey, newUsername);
             Debug.Log("Yangi username saqlandi: " + newUsername);
             playerName.text = newUsername;
-            PlayerPrefs.SetInt(Constants.Player.CountryName, countryDropdown.selectedItemIndex);
+            PlayerPrefs.SetInt(Constants.Player.CountryName, selectedCountry);
             PlayerPrefs.Save();
+
+            DataManager.Instance?.SavePlayerProfile(newUsername, selectedCountry, true);
+
             HomeMainUI.Instance.UpdatePlayerName(newUsername);
             //gameObject.SetActive(false);
             HomeMainUI.Instance.FinishNameTutorial();
@@ -153,21 +158,19 @@ public class UserDetails : MonoBehaviour
 
     private void RefreshLevelUI()
     {
-        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
-        int currentXp = PlayerPrefs.GetInt(Constants.Level.XP, 0);
+        if (DataManager.Instance == null)
+            return;
+
+        int currentLevel = DataManager.Instance.LevelAmount;
+        int currentXp = DataManager.Instance.XP;
 
         if (levelCountText != null)
             levelCountText.text = currentLevel.ToString();
 
         if (levelProgress != null)
         {
-            // Agar ProgressBar 0-100 qiymat olsa
             levelProgress.currentPercent = currentXp;
             levelProgress.UpdateUI();
-
-            // Agar max value ham kerak bo‘lsa:
-            // levelProgress.SetMax(100);
-            // levelProgress.SetValue(currentXp);
         }
     }
 }

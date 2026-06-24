@@ -82,13 +82,28 @@ public class LobbyManager : MonoBehaviour
     [SerializeField] GPUInstancerPro.TerrainModule.GPUIDetailManager detailManager;
     [SerializeField] private GPUIPrefabManager prefabManager;
     public static event Action<string> OnNameChanged;
-
+    [Header("Lighting")]
+    [SerializeField] private Light directionalLight;
     [SerializeField] private StylizedWeatherController weatherController;
 
     private async void Start()
     {
-        SceneLoadManager.Instance.SetAssetInstantiationFinished(false);
+        SceneLoadManager.Instance?.SetAssetInstantiationFinished(false);
+
         _currentEnvAddress = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
+        if (string.IsNullOrEmpty(_currentEnvAddress))
+        {
+            _currentEnvAddress = Constants.MapNames.Zarafshan;
+            PlayerPrefs.SetString(Constants.HomeEnivronments.SelectedEnvironment, _currentEnvAddress);
+        }
+
+        if (AddressablesService.Instance == null)
+        {
+            Debug.LogError("LobbyManager: AddressablesService is missing. Home environment cannot be loaded.");
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
+            return;
+        }
+
         _currentEnvInstance = await AddressablesService.Instance.InstantiateAsync(
             _currentEnvAddress,
             Vector3.zero,
@@ -96,6 +111,17 @@ public class LobbyManager : MonoBehaviour
             environmentRoot
         );
 
+        if (_currentEnvInstance == null)
+        {
+            Debug.LogWarning($"LobbyManager: Failed to load home environment '{_currentEnvAddress}'.");
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
+            return;
+        }
+        // 2) Skybox material load + apply
+        await ApplySkyboxByEnvironment(_currentEnvAddress);
+
+        // 3) Directional light color/intensity/rotation apply
+        ApplyLightByEnvironment(_currentEnvAddress);
         // 2️⃣ Player spawn
         playerInstance = Instantiate(
             playerPrefab,
@@ -122,7 +148,7 @@ public class LobbyManager : MonoBehaviour
         RegisterEnvPrefabs(_currentEnvInstance.transform);
 
         // 4️⃣ Scene ready
-        SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
+        SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
 
         //HomeMainUI.Instance.RemoveInitialImage();
         HorseAnimGet();
@@ -155,6 +181,88 @@ public class LobbyManager : MonoBehaviour
         FoodShowerPopup.OnFoodEat -= PlayEat;
 
     }
+
+    #region Lobby Environment and Skybox
+    private async Task ApplySkyboxByEnvironment(string selectedEnv)
+    {
+        string skyboxAddress = GetSkyboxAddress(selectedEnv);
+
+        if (string.IsNullOrEmpty(skyboxAddress))
+        {
+            Debug.LogWarning("Skybox address not found for env: " + selectedEnv);
+            return;
+        }
+
+        Material skyboxMaterial =
+            await AddressablesService.Instance.LoadAssetAsync<Material>(skyboxAddress);
+
+        if (skyboxMaterial == null)
+        {
+            Debug.LogWarning("Skybox material failed to load: " + skyboxAddress);
+            return;
+        }
+
+        RenderSettings.skybox = skyboxMaterial;
+
+        // Skybox / reflection / ambient update
+        DynamicGI.UpdateEnvironment();
+    }
+
+    private string GetSkyboxAddress(string selectedEnv)
+    {
+        switch (selectedEnv)
+        {
+            case Constants.MapNames.Zarafshan:
+                return Constants.SkyBoxes.ZarafshanSkybox;
+
+            case Constants.MapNames.Registan:
+                return Constants.SkyBoxes.RegistanSkybox;
+
+            case Constants.MapNames.Egypt:
+                return Constants.SkyBoxes.EgyptSkybox;
+
+            case Constants.MapNames.Kansas:
+                return Constants.SkyBoxes.KansasSkybox;
+
+            default:
+                Debug.LogWarning("Unknown environment skybox: " + selectedEnv);
+                return Constants.SkyBoxes.ZarafshanSkybox;
+        }
+    }
+    private void ApplyLightByEnvironment(string selectedEnv)
+    {
+        if (directionalLight == null) return;
+
+        switch (selectedEnv)
+        {
+            case Constants.MapNames.Zarafshan:
+                directionalLight.color = new Color32(215, 230, 219, 255); // #D7E6DB
+                directionalLight.intensity = 1.1f;
+                directionalLight.transform.rotation = Quaternion.Euler(66f, 97f, 0f);
+                break;
+
+            case Constants.MapNames.Registan:
+                directionalLight.color = new Color(1f, 0.86f, 0.65f);
+                directionalLight.intensity = 1.25f;
+                directionalLight.transform.rotation = Quaternion.Euler(42f, -35f, 0f);
+                break;
+
+            case Constants.MapNames.Egypt:
+                directionalLight.color = new Color32(254, 180, 32, 255); // #FEB420
+                directionalLight.intensity = 3.5f;
+                directionalLight.transform.rotation = Quaternion.Euler(132f, -78.5f, 0f); 
+                break;
+
+            case Constants.MapNames.Kansas:
+                directionalLight.color = new Color(0.9f, 0.95f, 1f);
+                directionalLight.intensity = 1.05f;
+                directionalLight.transform.rotation = Quaternion.Euler(50f, -40f, 0f);
+                break;
+        }
+
+        RenderSettings.sun = directionalLight;
+    }
+    #endregion
 
     #region Popup va Infolar
 
@@ -198,9 +306,11 @@ public class LobbyManager : MonoBehaviour
     }
     public void BaxmalRacing()
     {
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float currentPower = current.Power;
+        float currentCooling = current.Cooling;
+        float currentStamina = current.Stamina;
         
 
         if (currentPower < Constants.HorseConditionNum.Power || currentCooling < Constants.HorseConditionNum.Cool || currentStamina < Constants.HorseConditionNum.Stamina)
@@ -217,9 +327,11 @@ public class LobbyManager : MonoBehaviour
     }
     public void EgyptRacing()
     {
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float currentPower = current.Power;
+        float currentCooling = current.Cooling;
+        float currentStamina = current.Stamina;
 
         if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
         {
@@ -234,9 +346,11 @@ public class LobbyManager : MonoBehaviour
     }
     public void TexasRacing()
     {
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float currentPower = current.Power;
+        float currentCooling = current.Cooling;
+        float currentStamina = current.Stamina;
 
         if (currentPower < 20 || currentCooling < 10 || currentStamina < 30)
         {
@@ -530,6 +644,9 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
+        await ApplySkyboxByEnvironment(envAddress);
+        ApplyLightByEnvironment(envAddress);
+
         StartCoroutine(EnableManagersNextFrame());
 
         Teleport(playerInstance.transform, playerSpawnPos);
@@ -662,7 +779,7 @@ public class LobbyManager : MonoBehaviour
         }
         else if (mapname == Constants.MapNames.Egypt)
         {
-            weatherController.ChangeWeather("Dust Storm");
+            weatherController.ChangeWeather("Dust");
         }
     }
     public void ChangeWeather(string mapname)
@@ -673,7 +790,7 @@ public class LobbyManager : MonoBehaviour
         }
         else if (mapname == Constants.MapNames.Egypt)
         {
-            weatherController.ChangeWeather("Dust Storm");
+            weatherController.ChangeWeather("Dust");
         }
     }
     #endregion

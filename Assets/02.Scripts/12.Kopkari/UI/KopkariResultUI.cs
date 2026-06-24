@@ -64,7 +64,7 @@ public class KopkariResultUI : MonoBehaviour
     [SerializeField] private Button gameFoodBtn;
     [SerializeField] private TMP_Text gameFoodBtnText;
     [SerializeField] private TMP_Text notenoughResource;
-
+    private bool rewardGiven;
 
     private void OnEnable()
     {
@@ -133,14 +133,14 @@ public class KopkariResultUI : MonoBehaviour
 
         if (playersParent == null || resultInfoPrefab == null)
         {
-            Debug.LogWarning("[KopkariResultUI] playersParent or prefab is missing.");
+            Debug.Log("[KopkariResultUI] playersParent or prefab is missing.");
             return;
         }
 
         var mgr = KopkariResultsManager.Instance;
         if (mgr == null)
         {
-            Debug.LogWarning("[KopkariResultUI] KopkariResultsManager.Instance is null.");
+            Debug.Log("[KopkariResultUI] KopkariResultsManager.Instance is null.");
             return;
         }
 
@@ -209,31 +209,11 @@ public class KopkariResultUI : MonoBehaviour
             _ => Random.Range(7, 11)    // 4-6
         };
     }
-    private void AddLevelPoint(int earnedXp)
-    {
-        if (earnedXp <= 0)
-            return;
-
-        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
-        int currentXp = PlayerPrefs.GetInt(Constants.Level.XP, 0); // sliderdagi xp
-        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
-
-        currentXp += earnedXp;
-
-        while (currentXp >= 100)
-        {
-            currentXp -= 100;
-            currentLevel++;
-            pendingCount++;
-        }
-
-        PlayerPrefs.SetInt(Constants.Level.LevelAmount, currentLevel);
-        PlayerPrefs.SetInt(Constants.Level.XP, currentXp);
-        PlayerPrefs.SetInt(Constants.Level.LevelUpPending, pendingCount);
-        PlayerPrefs.Save();
-    }
     private void ApplyPlayerRankRewards()
     {
+        if (rewardGiven)
+            return;
+        rewardGiven = true;
         var mgr = KopkariResultsManager.Instance;
         if (mgr == null) return;
 
@@ -247,20 +227,20 @@ public class KopkariResultUI : MonoBehaviour
 
         if (playerIndex < 0)
         {
-            Debug.LogWarning("[Rewards] Player not found in leaderboard!");
+            Debug.Log("[Rewards] Player not found in leaderboard!");
             return;
         }
         var playerStats = leaderboard[playerIndex];
         Debug.Log($"Player Stats name: {playerStats.playerName}");
         //Record Timing
         if (playerStats == null) return;
-        float recordAmount = GetFloatPrefs(Constants.Record.Registon);
+        float recordAmount = DataManager.Instance != null ? DataManager.Instance.GetBestRecord(Constants.MapNames.Registan) : 0f;
         if (recordAmount == 0 || recordAmount > playerStats.totalCatchTime)
         {
             //record
             recordText.text = LanguageManager.Instance?.GetText(315);
             recordAmount = playerStats.totalCatchTime;
-            PlayerPrefs.SetFloat(Constants.Record.Registon, recordAmount);
+            DataManager.Instance.SaveBestRecord(Constants.MapNames.Registan, recordAmount);
         }
         else
         {
@@ -277,8 +257,8 @@ public class KopkariResultUI : MonoBehaviour
         int nyufiyReward = GetNyufiyByRank(rank);
         int coinReward = GetCoinByRank(rank);
         int xpAmount = GetRandomXpByRank(rank);
-        AddLevelPoint(xpAmount);
-        if(xpAddAmountText != null)
+        DataManager.Instance.AddLevelPoint(xpAmount, true);
+        if (xpAddAmountText != null)
         {
             xpAddAmountText.text = xpAmount.ToString();
         }
@@ -286,13 +266,14 @@ public class KopkariResultUI : MonoBehaviour
         // UI ga chiqarish
         if (nyufiyEarningAmount) nyufiyEarningAmount.text = nyufiyReward.ToString();
         if(coinEarningAmount) coinEarningAmount.text = coinReward.ToString();
-        int getLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
-        levelText.text = $"{LanguageManager.Instance.GetText(319)} {getLevel}/20";
+        levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
         bonusAmountText.text = $"+{bonusAmount.ToString()}";
         nyufiyReward = nyufiyReward+bonusAmount;
 
         UpdatCoins(nyufiyReward, coinReward);
         Debug.Log($"[Rewards] Player rank={rank}, NyufiyReward={nyufiyReward}, Coin={coinReward}");
+        bool isWinner = rank == 1;
+        DataManager.Instance.SaveRaceResult(Constants.MapNames.Registan, isWinner, (int)overAllTime);
     }
     
     private void FillPlayerStats()
@@ -304,13 +285,13 @@ public class KopkariResultUI : MonoBehaviour
         var playerStats = leaderboard.Find(s => s != null && s.isPlayer);
 
         if (playerStats == null) return;
-        float recordAmount = GetFloatPrefs(Constants.Record.Registon);
+        float recordAmount = DataManager.Instance != null ? DataManager.Instance.GetBestRecord(Constants.MapNames.Registan) : 0f;
         if(recordAmount == 0 || recordAmount> playerStats.totalCatchTime)
         {
             //record
             recordText.text = LanguageManager.Instance?.GetText(315);
             recordAmount = playerStats.totalCatchTime;
-            PlayerPrefs.SetFloat(Constants.Record.Registon, recordAmount);
+            DataManager.Instance.SaveBestRecord(Constants.MapNames.Registan, recordAmount);
         }
         else
         {
@@ -338,12 +319,11 @@ public class KopkariResultUI : MonoBehaviour
 
     private void UpdatCoins(int nyufiyAmount, int coinAmount)
     {
-        int nyufiy = GetIntPrefs(Constants.Coins.Nyufiy);
-        int coin = GetIntPrefs(Constants.Coins.Coin);
-        nyufiy = nyufiy + nyufiyAmount;
-        coin = coin + coinAmount;
-        nyufiyAmountText.text = $"{nyufiy:N0}";
-        coinAmountText.text = $"{coin:N0}";
+        CurrencyManager.Instance.AddNyufiy(nyufiyAmount,true);
+        CurrencyManager.Instance.AddCoin(coinAmount, true);
+
+        nyufiyAmountText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
+        coinAmountText.text = $"{CurrencyManager.Instance.Coin:N0}";
 
        // $"{allCoin:N0}";
     }
@@ -411,9 +391,11 @@ public class KopkariResultUI : MonoBehaviour
     private void HorseStats()
     {
         // --- Load ---
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float horsePowerMain = current.Power;
+        float horseCoolingMain = current.Cooling;
+        float horseStaminaMain = current.Stamina;
 
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
@@ -439,37 +421,22 @@ public class KopkariResultUI : MonoBehaviour
         coolingProgress.UpdateUI();
         staminaProgress.currentPercent = rStamina;
         staminaProgress.UpdateUI();
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, rPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, rStamina);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, rCooling);
-
-        PlayerPrefs.Save();
+        HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
 
         Debug.Log($"Horse Stats Updated → Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
     }
 
     private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
     {
-        // 1) PlayerPrefs dagi qiymatlarni olamiz
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-
-        // 2) Bufflarni qo‘shamiz
-        currentPower = Mathf.Clamp(currentPower + powerPercent, 0f, 100f);
-        currentCooling = Mathf.Clamp(currentCooling + coolingPercent, 0f, 100f);
-        currentStamina = Mathf.Clamp(currentStamina + staminaPercent, 0f, 100f);
-
-        // 3) Yangi qiymatlarni saqlaymiz
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
-        PlayerPrefs.Save();
+        HorseConditionStats current = HorseConditionStatsService.AddFood(
+            powerPercent,
+            coolingPercent,
+            staminaPercent);
 
         // 4) UI barlarni yangilaymiz
-        powerProgress.currentPercent = currentPower;
-        coolingProgress.currentPercent = currentCooling;
-        staminaProgress.currentPercent = currentStamina;
+        powerProgress.currentPercent = current.Power;
+        coolingProgress.currentPercent = current.Cooling;
+        staminaProgress.currentPercent = current.Stamina;
 
         powerProgress.UpdateUI();
         coolingProgress.UpdateUI();
@@ -489,9 +456,11 @@ public class KopkariResultUI : MonoBehaviour
     }
     private void CheckResources()
     {
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float horsePowerMain = current.Power;
+        float horseCoolingMain = current.Cooling;
+        float horseStaminaMain = current.Stamina;
 
         if (horsePowerMain < 30f || horseCoolingMain < 30f || horseStaminaMain < 30f)
         {

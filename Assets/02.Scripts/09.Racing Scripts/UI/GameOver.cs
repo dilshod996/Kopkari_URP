@@ -134,9 +134,8 @@ public class GameOver : MonoBehaviour
 
             case SceneLoadManager.SceneType.EgyptRacing:
                 return Constants.RoomEnterCosts.EgyptCost;
-
-            //case SceneLoadManager.SceneType.TexasRacing:
-            //    return 2;
+            case SceneLoadManager.SceneType.Kansas:
+                return Constants.RoomEnterCosts.Kansas;
 
             default:
                 return 0;
@@ -144,10 +143,36 @@ public class GameOver : MonoBehaviour
     }
     private void OnMoneyNotEnough()
     {
-        //Watch ads Hozircha shunday qoldi
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        nyufiyAmount += CheckRoomCost();
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
+        GameAnalyticsEvents.RewardedAdClicked(
+           placement: "coin_shop",
+           rewardType: "nyufiy",
+           rewardAmount: CheckRoomCost()
+       );
+
+        if (AdsManager.Instance == null)
+        {
+            GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+            return;
+        }
+
+        AdsManager.Instance.ShowRewarded(() =>
+        {
+            CurrencyManager.Instance.AddNyufiy(CheckRoomCost(), true);
+
+
+            GameAnalyticsEvents.RewardedAdCompleted(
+                placement: "coin_shop",
+                rewardType: "nyufiy",
+                rewardAmount: CheckRoomCost()
+            );
+
+            GameAnalyticsEvents.CoinRewardClaimed(
+                source: "rewarded_ad_coin_shop",
+                amount: CheckRoomCost()
+            );
+
+        },
+        () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
     }
     private void BackHome()
     {
@@ -177,21 +202,19 @@ public class GameOver : MonoBehaviour
     }
     public void PlayAgainAction()
     {
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        if (nyufiyAmount < CheckRoomCost())
-        {
-            // pul yetmayapti
-            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
-            return;
-        }
-        nyufiyAmount -= CheckRoomCost();
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
             UIOverlayRoot.I.Done(431, 432, 433, ResourceNotEnoughPopup, null);
             return;  // Racing davom etmaydi
         }
-        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        bool success = CurrencyManager.Instance != null && CurrencyManager.Instance.SpendNyufiy(CheckRoomCost(), true);
+        if (!success)
+        {
+            // pul yetmayapti
+            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
+            return;
+        }
+        int defenseCheck = DataManager.Instance != null ? DataManager.Instance.GetItemAmount(Constants.PlayerItems.Defense) : 0;
         if (defenseCheck < 1)
         {
             UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
@@ -236,9 +259,11 @@ public class GameOver : MonoBehaviour
     private void HorseStats()
     {
         // --- Load ---
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float horsePowerMain = current.Power;
+        float horseCoolingMain = current.Cooling;
+        float horseStaminaMain = current.Stamina;
         Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime} over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
@@ -261,11 +286,7 @@ public class GameOver : MonoBehaviour
         lastStamina = rStamina;
         // Progress Bar Updatelar
      
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, rPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, rStamina);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, rCooling);
-
-        PlayerPrefs.Save();
+        HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
 
         Debug.Log($"Horse Stats Updated ¡æ Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
     }

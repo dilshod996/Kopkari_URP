@@ -12,9 +12,6 @@ public class SpecialReachTriggerPoint : MonoBehaviour
     [Header("Rules")]
     [SerializeField] private float graceSeconds = 10f;
 
-    [Header("AI Elimination")]
-    [SerializeField] private bool disableAI = true; // true => SetActive(false), false => Destroy
-
     [Header("Debug")]
     [SerializeField] private bool logDebug = false;
 
@@ -50,6 +47,11 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         var agent = other.GetComponentInParent<RacingAgent>();
         if (agent == null) return;
 
+        var controller = RacingController.Instance;
+        if (controller == null) return;
+
+        controller.RegisterAgent(agent);
+
         // Bir agent bir marta hisoblanadi
         if (!_passed.Add(agent)) return;
 
@@ -57,7 +59,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
             Debug.Log($"[SpecialReach] Passed: {agent.displayName} (player={agent.isPlayer})");
 
         // Birinchi o'tgan agent => timer start
-        if (!_timerStarted && !RacingController.Instance.IsRaceOver)
+        if (!_timerStarted && !controller.IsRaceOver)
         {
             _timerStarted = true;
             _routine = StartCoroutine(GraceCountdown());
@@ -99,7 +101,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         }
 
         // ⛔ Time tugadi – endi kimlar o‘tmaganini tekshiramiz
-        var agents = controller.AllAgents;
+        var agents = new List<RacingAgent>(controller.AllAgents);
         if (agents == null || agents.Count == 0)
         {
             UIButtonActions.Instance.HideSpecialTrigger();
@@ -134,7 +136,12 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         RacingLeaderboard.Instance?.Unregister(agent);
         RacingController.Instance?.RemoveAgent(agent);
         agent.DisableNavmesh();
-        agent.gameObject.SetActive(false);
+
+        var aiRider = agent.GetComponentInParent<AIRacingRider>();
+        if (aiRider != null)
+            aiRider.gameObject.SetActive(false);
+        else
+            agent.gameObject.SetActive(false);
 
         UIButtonActions.Instance.EliminitedRider(agent.displayName, agent.flagIcon,false);
     }

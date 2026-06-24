@@ -40,7 +40,7 @@ public class DailyRewardUI : MonoBehaviour
     public event Action OnMonthlyRewardReady;
     private RewardType todayType = RewardType.None;
     private int todayAmount = 0;
-    private FoodInfo.HorseFood todayFood = FoodInfo.HorseFood.None;
+    private CurrencyRewardType todayCurrency = CurrencyRewardType.None;
     private PlayerResourse.Resources todayResource = PlayerResourse.Resources.None;
     private int todayLanguageId = 0;
     private Sprite todayIcon = null;
@@ -248,20 +248,15 @@ public class DailyRewardUI : MonoBehaviour
 
         switch (type)
         {
-            case RewardType.HorseFood:
+            case RewardType.Currency:
                 {
-                    var food = (FoodInfo.HorseFood)enumValue;
-                    Debug.Log($"[DailyReward] GIVE FOOD => {food} x{amount}");
-                    // TODO: real add
-                    // FoodInventory.Add(food, amount);
+                    GiveCurrencyReward((CurrencyRewardType)enumValue, amount);
                     break;
                 }
             case RewardType.PlayerSupplies:
                 {
                     var res = (PlayerResourse.Resources)enumValue;
-                    Debug.Log($"[DailyReward] GIVE RESOURCE => {res} x{amount}");
-                    // TODO: real add
-                    // PlayerResourse.Add(res, amount);
+                    GiveSupplyReward(res, amount);
                     break;
                 }
         }
@@ -331,7 +326,7 @@ public class DailyRewardUI : MonoBehaviour
     private void OnTodayRewardPrepared(
      RewardType type,
      int amount,
-     FoodInfo.HorseFood food,
+     CurrencyRewardType currency,
      PlayerResourse.Resources resource,
      int languageId,
      Sprite icon,
@@ -339,7 +334,7 @@ public class DailyRewardUI : MonoBehaviour
     {
         todayType = type;
         todayAmount = amount;
-        todayFood = food;
+        todayCurrency = currency;
         todayResource = resource;
         todayLanguageId = languageId;
         todayIcon = icon;
@@ -369,37 +364,15 @@ public class DailyRewardUI : MonoBehaviour
     {
         switch (todayType)
         {
-            case RewardType.HorseFood:
+            case RewardType.Currency:
                 {
-                    if (todayFood == FoodInfo.HorseFood.None)
-                        return;
-
-                    string prefKey = GetHorseFoodPrefKey(todayFood);
-
-                    int oldAmount = PlayerPrefs.GetInt(prefKey, 0);
-                    int newAmount = oldAmount + todayAmount;
-                    
-                    PlayerPrefs.SetInt(prefKey, newAmount);
-                    PlayerPrefs.Save();
-                    HomeMainUI.Instance.UpdatePlayerResources(prefKey, newAmount);
-                    //Debug.Log($"[DailyReward] Saved HorseFood {todayFood}: {oldAmount} + {todayAmount} = {newAmount}");
+                    GiveCurrencyReward(todayCurrency, todayAmount);
                     break;
                 }
 
             case RewardType.PlayerSupplies:
                 {
-                    if (todayResource == PlayerResourse.Resources.None)
-                        return;
-
-                    string prefKey = GetPlayerResourcePrefKey(todayResource);
-
-                    int oldAmount = PlayerPrefs.GetInt(prefKey, 0);
-                    int newAmount = oldAmount + todayAmount;
-
-                    PlayerPrefs.SetInt(prefKey, newAmount);
-                    PlayerPrefs.Save();
-
-                   // Debug.Log($"[DailyReward] Saved Resource {todayResource}: {oldAmount} + {todayAmount} = {newAmount}");
+                    GiveSupplyReward(todayResource, todayAmount);
                     break;
                 }
 
@@ -409,24 +382,37 @@ public class DailyRewardUI : MonoBehaviour
         }
     }
 
-    private string GetHorseFoodPrefKey(FoodInfo.HorseFood food)
+    private void GiveCurrencyReward(CurrencyRewardType currency, int amount)
     {
-        switch (food)
+        if (amount <= 0 || CurrencyManager.Instance == null)
+            return;
+
+        switch (currency)
         {
-            case FoodInfo.HorseFood.Wheat:
-                return Constants.HorseFoods.Wheat;
-            case FoodInfo.HorseFood.Barley:
-                return Constants.HorseFoods.Barley;
-            case FoodInfo.HorseFood.Apple:
-                return Constants.HorseFoods.Apple;
-            case FoodInfo.HorseFood.Water:
-                return Constants.HorseFoods.Water;
-            case FoodInfo.HorseFood.StaminWater:
-                return Constants.HorseFoods.StaminWater;
-            default:
-                return string.Empty;
+            case CurrencyRewardType.Nyufiy:
+                CurrencyManager.Instance.AddNyufiy(amount, true);
+                break;
+            case CurrencyRewardType.Coin:
+                CurrencyManager.Instance.AddCoin(amount, true);
+                break;
         }
     }
+
+    private void GiveSupplyReward(PlayerResourse.Resources resource, int amount)
+    {
+        if (resource == PlayerResourse.Resources.None || amount <= 0 || DataManager.Instance == null)
+            return;
+
+        string prefKey = GetPlayerResourcePrefKey(resource);
+        if (string.IsNullOrEmpty(prefKey))
+            return;
+
+        DataManager.Instance.AddItem(prefKey, amount, true);
+
+        int newAmount = DataManager.Instance.GetItemAmount(prefKey);
+        HomeMainUI.Instance?.UpdatePlayerResources(prefKey, newAmount);
+    }
+
     private string GetPlayerResourcePrefKey(PlayerResourse.Resources res)
     {
         switch (res)

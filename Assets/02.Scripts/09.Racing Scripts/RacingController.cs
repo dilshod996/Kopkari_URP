@@ -99,7 +99,7 @@ public class RacingController : MonoBehaviour
     public static Action<float> OnOverallBoostTime;
     public static Action<float> OnOverallPenaltyTime;
 
-    public static Action OnRacingFinished;
+    public static Action<int> OnRacingFinished;
     public static Action OnRacingStarted;
 
     [SerializeField] private GameObject winningPanelBG;
@@ -168,6 +168,7 @@ public class RacingController : MonoBehaviour
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
 
         LoadingPanel(2f);
+        await ApplySkyboxByMapType();
         ChangeWeather();
     }
     private void OnEnable()
@@ -217,8 +218,13 @@ public class RacingController : MonoBehaviour
         _accumulated = 0f;
         _runStartTime = Time.time;
         _isPaused = false;
+        GameAnalytics();
     }
-
+    private void GameAnalytics()
+    {
+        string mapName = mapType.ToString();
+        GameAnalyticsEvents.RaceStarted(mapName, "racing");
+    }
     public void FinishRace()
     {
         if (!HasStarted || HasFinished) return;
@@ -484,7 +490,7 @@ public class RacingController : MonoBehaviour
             yield break;
         }
         PlayFinalSound();
-        OnRacingFinished?.Invoke();
+        OnRacingFinished?.Invoke(playerRank);
 
         MoveCameraToEndFinalPose();
 
@@ -908,24 +914,55 @@ public class RacingController : MonoBehaviour
     }
     #endregion
 
+    #region Skybox
+    private async Task ApplySkyboxByMapType()
+    {
+        string skyboxAddress = GetSkyboxAddress(mapType);
+
+        if (string.IsNullOrEmpty(skyboxAddress))
+            return;
+
+        if (AddressablesService.Instance == null)
+        {
+            Debug.LogWarning("RacingController: AddressablesService is missing. Skybox cannot be loaded.");
+            return;
+        }
+
+        Material skyboxMaterial = await AddressablesService.Instance.LoadAssetAsync<Material>(skyboxAddress);
+
+        if (skyboxMaterial == null)
+        {
+            Debug.LogWarning("RacingController: Skybox material failed to load: " + skyboxAddress);
+            return;
+        }
+
+        RenderSettings.skybox = skyboxMaterial;
+        DynamicGI.UpdateEnvironment();
+    }
+
+    private string GetSkyboxAddress(RacingType racingType)
+    {
+        switch (racingType)
+        {
+            case RacingType.Zarafshan:
+                return Constants.SkyBoxes.ZarafshanSkybox;
+
+            case RacingType.Egypt:
+                return Constants.SkyBoxes.EgyptSkybox;
+
+            case RacingType.Kansas:
+                return Constants.SkyBoxes.KansasSkybox;
+
+            default:
+                return null;
+        }
+    }
+    #endregion
+
     #region Horse Power/Cooling/Stamina
     private void AddFoods(float powerPercent, float coolingPercent, float staminaPercent)
     {
-        float foolPercentage = 100f;
-        // 1) PlayerPrefs dagi qiymatlarni olamiz
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power, foolPercentage);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling, foolPercentage);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina, foolPercentage);
-
-        // 2) Bufflarni qo‘shamiz
-        currentPower = Mathf.Clamp(currentPower + powerPercent, 0f, 100f);
-        currentCooling = Mathf.Clamp(currentCooling + coolingPercent, 0f, 100f);
-        currentStamina = Mathf.Clamp(currentStamina + staminaPercent, 0f, 100f);
-
-        // 3) Yangi qiymatlarni saqlaymiz
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
+        HorseConditionStatsService.AddFood(powerPercent, coolingPercent, staminaPercent);
     }
     #endregion
 
@@ -938,7 +975,7 @@ public class RacingController : MonoBehaviour
         }
         else if(mapType == RacingType.Egypt)
         {
-            weatherController.ChangeWeather("Dust Storm");
+            weatherController.ChangeWeather("Dust");
         }
     }
     #endregion

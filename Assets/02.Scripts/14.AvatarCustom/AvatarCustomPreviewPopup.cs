@@ -74,16 +74,15 @@ public class AvatarCustomPreviewPopup : MonoBehaviour
         }
     }
 
-    public void Show(CatalogEntry entry, string playerId, string slotId, Sprite imageSprite, Func<Task<bool>> onApply)
+    public void Show(CatalogEntry entry, string playerId, string slotId, Sprite imageSprite, Func<Task<bool>> onApply, bool previewOnly = false)
     {
         _onApply = onApply;
         bool isHorseBody =
             entry.AvatarId.StartsWith("horse", StringComparison.OrdinalIgnoreCase) &&
             entry.SlotId.Equals("Body", StringComparison.OrdinalIgnoreCase);
         bool unlocked = entry.IsDefault ||
-                PlayerPrefs.GetInt($"Unlock_{playerId}_{slotId}_{entry.OptionId}", 0) == 1;
-        bool isSelected =
-             PlayerPrefs.GetString($"Sel_{playerId}_{slotId}", "") == entry.OptionId;
+                AvatarCustomPrefs.IsUnlocked(playerId, slotId, entry.OptionId);
+        bool isSelected = AvatarCustomPrefs.IsSelected(playerId, slotId, entry.OptionId);
 
         if (!unlocked)
             applyBtnText.text = $"{LanguageManager.Instance.GetText(424)}: {entry.Price}";

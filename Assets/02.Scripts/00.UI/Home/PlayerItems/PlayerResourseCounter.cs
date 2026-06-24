@@ -39,7 +39,10 @@ public class PlayerResourseCounter : MonoBehaviour
         itemName = GetItemKey(resources);
         if (string.IsNullOrEmpty(itemName))
             return;
-        itemAmount = PlayerPrefs.GetInt(itemName, 0);
+        if (DataManager.Instance == null)
+            return;
+
+        itemAmount = DataManager.Instance.GetItemAmount(itemName);
         countText.text = $"X{itemAmount}";
     }
     private string GetItemKey(PlayerResourse.Resources resource)

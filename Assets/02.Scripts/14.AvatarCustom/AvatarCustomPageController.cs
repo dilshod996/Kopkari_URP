@@ -96,7 +96,7 @@ public class AvatarCustomPageController : MonoBehaviour
 
         string slotId = isHorsePage
             ? horseSkinType.ToString()   // "Body" / "Mane" / "Tail" / "Saddle"
-            : GetPlayerSlotId();         // "Hair" / "Facehair" / "Upper" / "Lower"
+            : GetPlayerSlotId();         // "Hair" / "FaceHair" / "Upper" / "Lower"
 
         var options = await PlayerCatalogProvider.Instance.GetOptionsAsync(avatarId, slotId);
 
@@ -155,7 +155,7 @@ public class AvatarCustomPageController : MonoBehaviour
         return skinType switch
         {
             AvatarCustomTypes.PlayerSkins.Hair => "Hair",
-            AvatarCustomTypes.PlayerSkins.FaceHair => "Facehair",
+            AvatarCustomTypes.PlayerSkins.FaceHair => "FaceHair",
             AvatarCustomTypes.PlayerSkins.Upper => "Upper",
             AvatarCustomTypes.PlayerSkins.Lower => "Lower",
             _ => "Hair"

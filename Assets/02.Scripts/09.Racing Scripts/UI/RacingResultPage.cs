@@ -75,7 +75,18 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private GameObject foodPanel;
     [SerializeField] private Button foodPanelEnablerBtn;
     [SerializeField] private TMP_Text foodResourcesBtnText;
+    private bool rewardGiven;
 
+    private int GetAdsAmountByScene(SceneLoadManager.SceneType sceneType)
+    {
+        return sceneType switch
+        {
+            SceneLoadManager.SceneType.SecondRacing => 400, // 18-22
+            SceneLoadManager.SceneType.EgyptRacing => 500, // 12-16
+            SceneLoadManager.SceneType.Kansas => 600,  // 8-12
+            _ => 350    // 4-6
+        };
+    }
     private void OnEnable()
     {
         if(replayButton != null)
@@ -90,11 +101,13 @@ public class RacingResultPage : MonoBehaviour
         ShowResults();
         foodPanelEnablerBtn.onClick.AddListener(OpenFoodPanelPopup);
         Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
+        adWatchBtn.onClick.AddListener(PlusMoneyReward);
     }
     private void OnDisable()
     {
         replayButton.onClick.RemoveAllListeners();
         backToHome.onClick.RemoveAllListeners();
+        adWatchBtn.onClick.RemoveAllListeners();
         Clear();
         Booster.OnWalkZoneDamagedTime -= GetWalkZoneOverAllTime;
     }
@@ -155,8 +168,9 @@ public class RacingResultPage : MonoBehaviour
 
             rt.anchoredPosition = new Vector2(x, y);
 
-            if (e.isPlayer)
+            if (e.isPlayer && !rewardGiven)
             {
+                rewardGiven = true;
                 var prize = GetRacePrizeByMapAndRank(e.Ranking);
 
                 int taqaPrize = prize.taqaPrize;
@@ -166,42 +180,35 @@ public class RacingResultPage : MonoBehaviour
                 {
                     xpAmountText.text = levelUpPoint.ToString();
                 }
-                AddLevelPoint(levelUpPoint);
+                DataManager.Instance.AddLevelPoint(levelUpPoint, true);
                 OnGetRiderRank?.Invoke(e.Ranking);
-                int getLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
-                levelText.text = $"{LanguageManager.Instance.GetText(319)} {getLevel}/20";
+                levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
+
                 nyufiyAmountText.text = $"+{nyufiyPrize:N0}";
                 coinAmountText.text = $"+{taqaPrize:N0}";
 
-                int allNyufiy = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-                int allCoin = PlayerPrefs.GetInt(Constants.Coins.Coin);
-                allNyufiy += nyufiyPrize;
-                allCoin += taqaPrize;
-                allNyufiyText.text = $"{allNyufiy:N0}";
-                allCoinText.text = $"{allCoin:N0}";
-                PlayerPrefs.SetInt(Constants.Coins.Nyufiy, allNyufiy);
-                PlayerPrefs.SetInt(Constants.Coins.Coin, allCoin);
+                CurrencyManager.Instance.AddNyufiy(nyufiyPrize, false);
+                CurrencyManager.Instance.AddCoin(taqaPrize, true);
+
+                allNyufiyText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
+                allCoinText.text = $"{CurrencyManager.Instance.Coin:N0}";
 
                 // Record tekshirish va yangilash bu faqat hozir Zarafshan uchun ishlaydi, boshqa xaritalar uchun kerak bo‘lsa shartni kengaytirish kerak
-                float savedTime = 0;
-                if (sceneType == SceneLoadManager.SceneType.SecondRacing)
-                {
-                    savedTime = PlayerPrefs.GetFloat(Constants.Record.Zarafshan);
-                }
-                else if (sceneType == SceneLoadManager.SceneType.EgyptRacing)
-                {
-                    savedTime = PlayerPrefs.GetFloat(Constants.Record.Egypt);
-                }
-                else if (sceneType == SceneLoadManager.SceneType.Kansas)
-                {
-                    savedTime = PlayerPrefs.GetFloat(Constants.Record.Kansas);
-                }
 
+                string recordKey = Constants.MapNames.Zarafshan;
+
+                if (sceneType == SceneLoadManager.SceneType.EgyptRacing)
+                    recordKey = Constants.MapNames.Egypt;
+                else if (sceneType == SceneLoadManager.SceneType.Kansas)
+                    recordKey = Constants.MapNames.Kansas;
+
+                float savedTime = DataManager.Instance != null ? DataManager.Instance.GetBestRecord(recordKey) : 0f;
                 if (savedTime == 0 || savedTime > e.LastSplitTime)
                 {
                     recordText.text = LanguageManager.Instance?.GetText(315);
                     savedTime = e.LastSplitTime;
-                    PlayerPrefs.SetFloat(Constants.Record.Zarafshan, savedTime);
+
+                    DataManager.Instance?.SaveBestRecord(recordKey, savedTime);
                 }
                 else
                 {
@@ -211,11 +218,40 @@ public class RacingResultPage : MonoBehaviour
                 timeText.text = $"{e.LastSplitTime:0.00}s";
                 currentRecordTime.text = $"{savedTime:0.00}s";
                 overAllTime = e.LastSplitTime;
+                GameAnalyticsEvents.RaceFinished(sceneType.ToString(), "racing", e.Ranking, nyufiyPrize);
+                Debug.Log($"Ranking: {e.Ranking}");
+                bool isWin = e.Ranking == 1;
+                if (DataManager.Instance != null)
+                {
+                    DataManager.Instance.SaveRaceResult(GetMapKey(sceneType), isWin, (int)e.LastSplitTime);
+                }
                 //Debug.Log($"Split time {e.LastSplitTime}");
             }
         }
 
-        Debug.Log("player list done");
+    }
+    private string GetMapKey(SceneLoadManager.SceneType sceneType)
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.TrainingRacing:
+                return Constants.MapNames.RacingTraining;
+
+            case SceneLoadManager.SceneType.SecondRacing:
+                return Constants.MapNames.Zarafshan;
+
+            case SceneLoadManager.SceneType.EgyptRacing:
+                return Constants.MapNames.Egypt;
+
+            case SceneLoadManager.SceneType.Kansas:
+                return Constants.MapNames.Kansas;
+
+            case SceneLoadManager.SceneType.PastDargom:
+                return Constants.MapNames.PastDargom;
+
+            default:
+                return Constants.MapNames.Zarafshan;
+        }
     }
     private (int taqaPrize, int nyufiyPrize, int levelUpPoint) GetRacePrizeByMapAndRank(int ranking)
     {
@@ -284,38 +320,17 @@ public class RacingResultPage : MonoBehaviour
             _ => UnityEngine.Random.Range(4, 7)    // 4-6
         };
     }
-    private void AddLevelPoint(int earnedXp)
-    {
-        if (earnedXp <= 0)
-            return;
-
-        int currentLevel = PlayerPrefs.GetInt(Constants.Level.LevelAmount, 1);
-        int currentXp = PlayerPrefs.GetInt(Constants.Level.XP, 0); // sliderdagi xp
-        int pendingCount = PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0);
-
-        currentXp += earnedXp;
-
-        while (currentXp >= 100)
-        {
-            currentXp -= 100;
-            currentLevel++;
-            pendingCount++;
-        }
-
-        PlayerPrefs.SetInt(Constants.Level.LevelAmount, currentLevel);
-        PlayerPrefs.SetInt(Constants.Level.XP, currentXp);
-        PlayerPrefs.SetInt(Constants.Level.LevelUpPending, pendingCount);
-        PlayerPrefs.Save();
-    }
     #endregion
 
     #region Horse Details
     private void HorseStats()
     {
         // --- Load ---
-        float horsePowerMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float horseCoolingMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float horseStaminaMain = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        float horsePowerMain = current.Power;
+        float horseCoolingMain = current.Cooling;
+        float horseStaminaMain = current.Stamina;
         Debug.Log($"Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}  over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
@@ -343,11 +358,7 @@ public class RacingResultPage : MonoBehaviour
         coolingProgress.UpdateUI();
         staminaProgress.currentPercent = lastStamina;
         staminaProgress.UpdateUI();
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, rPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, rStamina);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, rCooling);
-
-        PlayerPrefs.Save();
+        HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
 
         Debug.Log($"Horse Stats Updated → Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
     }
@@ -370,26 +381,15 @@ public class RacingResultPage : MonoBehaviour
     }
     private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
     {
-        // 1) PlayerPrefs dagi qiymatlarni olamiz
-        float currentPower = PlayerPrefs.GetFloat(Constants.HorseCondition.Power);
-        float currentCooling = PlayerPrefs.GetFloat(Constants.HorseCondition.Cooling);
-        float currentStamina = PlayerPrefs.GetFloat(Constants.HorseCondition.Stamina);
-
-        // 2) Bufflarni qo‘shamiz
-        currentPower = Mathf.Clamp(currentPower + powerPercent, 0f, 100f);
-        currentCooling = Mathf.Clamp(currentCooling + coolingPercent, 0f, 100f);
-        currentStamina = Mathf.Clamp(currentStamina + staminaPercent, 0f, 100f);
-
-        // 3) Yangi qiymatlarni saqlaymiz
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Power, currentPower);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Cooling, currentCooling);
-        PlayerPrefs.SetFloat(Constants.HorseCondition.Stamina, currentStamina);
-        PlayerPrefs.Save();
+        HorseConditionStats current = HorseConditionStatsService.AddFood(
+            powerPercent,
+            coolingPercent,
+            staminaPercent);
 
         // 4) UI barlarni yangilaymiz
-        powerProgress.currentPercent = currentPower;
-        coolingProgress.currentPercent = currentCooling;
-        staminaProgress.currentPercent = currentStamina;
+        powerProgress.currentPercent = current.Power;
+        coolingProgress.currentPercent = current.Cooling;
+        staminaProgress.currentPercent = current.Stamina;
 
         powerProgress.UpdateUI();
         coolingProgress.UpdateUI();
@@ -411,12 +411,7 @@ public class RacingResultPage : MonoBehaviour
         coolingText.text = LanguageManager.Instance.GetText(327);
         levelText.text = LanguageManager.Instance.GetText(319);
         racingStatsTitleText.text = LanguageManager.Instance.GetText(331);
-    }
-
-    private void UpdateNyufiy()
-    {
-        int allNyufiy = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        allNyufiyText.text = allNyufiy > 0 ? $"{allNyufiy:N0}" : "0";
+        adsMoneyText.text = GetAdsAmountByScene(sceneType).ToString();
     }
     public void Clear()
     {
@@ -437,15 +432,6 @@ public class RacingResultPage : MonoBehaviour
 
     public void Replay()
     {
-        int nyufiyAmount = PlayerPrefs.GetInt(Constants.Coins.Nyufiy);
-        if(nyufiyAmount < CheckRoomCost())
-        {
-            // pul yetmayapti
-            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnough);
-            return;
-        }
-        nyufiyAmount -= CheckRoomCost();
-        PlayerPrefs.SetInt(Constants.Coins.Nyufiy, nyufiyAmount);
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
             SHowResourcesNotEnough();
@@ -453,7 +439,14 @@ public class RacingResultPage : MonoBehaviour
          
             return;  // Racing davom etmaydi
         }
-        int defenseCheck = PlayerPrefs.GetInt(Constants.PlayerItems.Defense);
+        bool success = CurrencyManager.Instance != null && CurrencyManager.Instance.SpendNyufiy(CheckRoomCost(), true);
+        if(!success)
+        {
+            // pul yetmayapti
+            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnoughPlayAgain);
+            return;
+        }
+        int defenseCheck = DataManager.Instance != null ? DataManager.Instance.GetItemAmount(Constants.PlayerItems.Defense) : 0;
         if (defenseCheck < 1)
         {
             UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
@@ -464,9 +457,47 @@ public class RacingResultPage : MonoBehaviour
         }
 
     }
-    private void OnMoneyNotEnough()
+    private void PlusMoneyReward()
     {
-        //Watch ads
+        int amount = GetAdsAmountByScene(sceneType);
+        OnMoneyNotEnough(amount);
+    }
+    private void OnMoneyNotEnoughPlayAgain()
+    {
+        OnMoneyNotEnough(CheckRoomCost());
+    }
+    private void OnMoneyNotEnough(int amount)
+    {
+        GameAnalyticsEvents.RewardedAdClicked(
+          placement: "coin_shop",
+          rewardType: "nyufiy",
+          rewardAmount: amount
+      );
+
+        if (AdsManager.Instance == null)
+        {
+            GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+            return;
+        }
+
+        AdsManager.Instance.ShowRewarded(() =>
+        {
+            CurrencyManager.Instance.AddNyufiy(amount, true);
+
+
+            GameAnalyticsEvents.RewardedAdCompleted(
+                placement: "coin_shop",
+                rewardType: "nyufiy",
+                rewardAmount: amount
+            );
+
+            GameAnalyticsEvents.CoinRewardClaimed(
+                source: "rewarded_ad_coin_shop",
+                amount: amount
+            );
+
+        },
+        () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
     }
     public void PlayAgain()
     {
