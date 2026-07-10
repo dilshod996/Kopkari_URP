@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,25 +15,55 @@ public class PremiumItem : MonoBehaviour
     private bool isAnimating = false;
     public float flipTime = 0.2f;
     private Button cardBtn;
+    private Coroutine flipCoroutine;
 
 
-    private void Start()
+    private void Awake()
     {
         cardBtn = GetComponent<Button>();
-        cardBtn.onClick.AddListener(OnCardClick);
     }
+
+    private void OnEnable()
+    {
+        ResetCard();
+
+        if (cardBtn != null)
+            cardBtn.onClick.AddListener(OnCardClick);
+    }
+
+    private void OnDisable()
+    {
+        if (cardBtn != null)
+            cardBtn.onClick.RemoveListener(OnCardClick);
+
+        if (flipCoroutine != null)
+        {
+            StopCoroutine(flipCoroutine);
+            flipCoroutine = null;
+        }
+
+        LeanTween.cancel(gameObject);
+        isAnimating = false;
+    }
+
     public void Setup(PremiumData premiumData)
     {
-        description.text = LanguageManager.Instance.GetText(premiumData.descriptionId);
-        iconImage.sprite = premiumData.icon;
-        infoText.text = LanguageManager.Instance.GetText(premiumData.infoId);
+        if (premiumData == null) return;
+
+        var language = LanguageManager.Instance;
+        if (description != null && language != null)
+            description.text = language.GetText(premiumData.descriptionId);
+        if (iconImage != null)
+            iconImage.sprite = premiumData.icon;
+        if (infoText != null && language != null)
+            infoText.text = language.GetText(premiumData.infoId);
     }
 
     #region Flip Animation
     public void OnCardClick()
     {
         if (isAnimating) return;
-        StartCoroutine(FlipCard());
+        flipCoroutine = StartCoroutine(FlipCard());
     }
 
     private IEnumerator FlipCard()
@@ -46,8 +75,10 @@ public class PremiumItem : MonoBehaviour
         yield return new WaitForSeconds(flipTime);
 
         // Step 2: Toggle sides
-        frontSide.SetActive(isFlipped);
-        backSide.SetActive(!isFlipped);
+        if (frontSide != null)
+            frontSide.SetActive(isFlipped);
+        if (backSide != null)
+            backSide.SetActive(!isFlipped);
         isFlipped = !isFlipped;
 
         // Step 3: Scale back to 1 (visible)
@@ -55,6 +86,20 @@ public class PremiumItem : MonoBehaviour
         yield return new WaitForSeconds(flipTime);
 
         isAnimating = false;
+        flipCoroutine = null;
+    }
+
+    private void ResetCard()
+    {
+        LeanTween.cancel(gameObject);
+        transform.localScale = Vector3.one;
+        isFlipped = false;
+        isAnimating = false;
+
+        if (frontSide != null)
+            frontSide.SetActive(true);
+        if (backSide != null)
+            backSide.SetActive(false);
     }
     #endregion
 }

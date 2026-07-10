@@ -183,8 +183,9 @@ public class GameFood : MonoBehaviour
         else
         {
             Clear();
-            PlayAgainText();
+            //PlayAgainText();
             SetData();
+            UIOverlayRoot.I.ShowMovementPanelForScene(sceneType);
             SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
         }
     }

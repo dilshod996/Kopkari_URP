@@ -55,9 +55,14 @@ public class GameOver : MonoBehaviour
         }
         GetOverallPenaltyTimeAndBoost();
         HorseStats();
-        backLobby.onClick.AddListener(BackHome);
-        playAgain.onClick.AddListener(PlayAgainAction);
-        support.onClick.AddListener(OpenSuppliesPage);
+        if (backLobby != null)
+            backLobby.onClick.AddListener(BackHome);
+
+        if (playAgain != null)
+            playAgain.onClick.AddListener(PlayAgainAction);
+
+        if (support != null)
+            support.onClick.AddListener(OpenSuppliesPage);
         UITransilations();
 
         Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
@@ -65,9 +70,14 @@ public class GameOver : MonoBehaviour
 
     private void OnDisable()
     {
-        playAgain.onClick.RemoveAllListeners();
-        backLobby.onClick.RemoveAllListeners();
-        support.onClick.RemoveAllListeners();
+        if (playAgain != null)
+            playAgain.onClick.RemoveListener(PlayAgainAction);
+
+        if (backLobby != null)
+            backLobby.onClick.RemoveListener(BackHome);
+
+        if (support != null)
+            support.onClick.RemoveListener(OpenSuppliesPage);
         Booster.OnWalkZoneDamagedTime -= GetWalkZoneOverAllTime;
     }
 
@@ -115,7 +125,7 @@ public class GameOver : MonoBehaviour
     #region Tactic Items and Supplies
     private void OpenTacticItemsPanel()
     {
-        UIButtonActions.Instance.OpenItemsPanel();
+        UIButtonActions.Instance?.OpenItemsPanel();
     }
     private void OpenSuppliesPage()
     {
@@ -186,18 +196,7 @@ public class GameOver : MonoBehaviour
     }
     public void PlayAgain()
     {
-        switch (sceneType)
-        {
-            case SceneLoadManager.SceneType.SecondRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(500));
-                break;
-            case SceneLoadManager.SceneType.EgyptRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(499));
-                break;
-            case SceneLoadManager.SceneType.Kansas:            
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(519));
-                break;
-        }
+        UIOverlayRoot.I.ShowMovementPanelForScene(sceneType);
         SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
     }
     public void PlayAgainAction()
@@ -267,7 +266,7 @@ public class GameOver : MonoBehaviour
         Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime} over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
         float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
-        float nonPenaltyTime = overAllTime - (overAllPenaltyTime+overAllWalkZoneTime);     // penalty bo¡®lmagan vaqt
+        float nonPenaltyTime = overAllTime - (overAllPenaltyTime+overAllWalkZoneTime);     // Non-penalty time.
 
         float newPower = horsePowerMain - (overAllBoostTime * 0.4f + basicTime * 0.2f);
         float newStamina = horseStaminaMain - (overAllTime * 0.3f);
@@ -288,7 +287,7 @@ public class GameOver : MonoBehaviour
      
         HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
 
-        Debug.Log($"Horse Stats Updated ¡æ Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
+        Debug.Log($"Horse Stats Updated -> Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
     }
     #endregion
 

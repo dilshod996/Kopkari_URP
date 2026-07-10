@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,6 +12,7 @@ public class EnvironmentCardUI : MonoBehaviour
         Egypt,
         Kansas
     }
+
     public HomeEnvironment Environment;
     [SerializeField] private string mapKey;        // "zarafmap", "regismap" ...
 
@@ -24,12 +26,15 @@ public class EnvironmentCardUI : MonoBehaviour
 
     private string currentEnv;
     [SerializeField] private LobbyManager lobbyManager;
+    private static readonly Dictionary<string, MapCard> MapCardCache = new();
 
     public static event Action<string> OnEnvironmentNameChanged;
+
     private void OnEnable()
     {
         DataManager.OnMapUnlocked += HandleMapUnlocked;
         RefreshUI();
+
         if (lockButton != null)
             lockButton.onClick.AddListener(OnLockClicked);
 
@@ -40,6 +45,7 @@ public class EnvironmentCardUI : MonoBehaviour
     private void OnDisable()
     {
         DataManager.OnMapUnlocked -= HandleMapUnlocked;
+
         if (lockButton != null)
             lockButton.onClick.RemoveListener(OnLockClicked);
 
@@ -51,40 +57,57 @@ public class EnvironmentCardUI : MonoBehaviour
     {
         bool isOpen = IsMapOpen();
 
-        // 🔒 Lock
         if (lockImage != null)
             lockImage.SetActive(!isOpen);
 
         if (setButton != null)
             setButton.interactable = isOpen;
 
-        // ✅ Checkmark
         if (!isOpen)
         {
             if (checkmark != null)
                 checkmark.SetActive(false);
 
-            return; // 🔥 shu joy MUHIM
+            return;
         }
 
-        // faqat OPEN bo‘lsa tekshiriladi
         currentEnv = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment, "");
-        bool isSelected = currentEnv== mapKey;
+        bool isSelected = currentEnv == mapKey;
+
         if (checkmark != null)
             checkmark.SetActive(isSelected);
     }
 
     private void OnLockClicked()
     {
-        Debug.Log("Detias show");
-        //if (EnvironmentDetailsPopup.Instance != null)
-        //    EnvironmentDetailsPopup.Instance.Show(mapKey);
+        if (!TryGetMapDetailsData(out MapCard.MapDetailsData data))
+        {
+            Debug.LogWarning($"Environment details are missing for map key: {mapKey}", this);
+            return;
+        }
+
+        MapShowPopup popup = FindObjectOfType<MapShowPopup>(true);
+        if (popup == null)
+        {
+            Debug.LogWarning("MapShowPopup is missing in the scene.", this);
+            return;
+        }
+
+        SoundManager.Instance?.PlayUI(UISoundType.PopupOpen);
+
+        if (HomeMainUI.Instance != null)
+            HomeMainUI.Instance.ShowUI(popup);
+        else
+            popup.gameObject.SetActive(true);
+
+        popup.SetMapData(data);
     }
 
     private void OnSetClicked()
     {
-        if(currentEnv.Equals(mapKey))
-            { return; }
+        if (string.Equals(currentEnv, mapKey, StringComparison.Ordinal))
+            return;
+
         if (!IsMapOpen())
             return;
 
@@ -105,10 +128,37 @@ public class EnvironmentCardUI : MonoBehaviour
         return PlayerPrefs.GetInt(mapKey, defaultValue) == 1;
     }
 
+    private bool TryGetMapDetailsData(out MapCard.MapDetailsData data)
+    {
+        data = default(MapCard.MapDetailsData);
+
+        if (string.IsNullOrWhiteSpace(mapKey))
+            return false;
+
+        if (MapCardCache.TryGetValue(mapKey, out MapCard cachedCard) &&
+            cachedCard != null &&
+            cachedCard.TryGetDetailsData(out data))
+        {
+            return true;
+        }
+
+        MapCard[] cards = FindObjectsOfType<MapCard>(true);
+        for (int i = 0; i < cards.Length; i++)
+        {
+            MapCard card = cards[i];
+            if (card == null || card.MapKey != mapKey)
+                continue;
+
+            MapCardCache[mapKey] = card;
+            return card.TryGetDetailsData(out data);
+        }
+
+        return false;
+    }
+
     private void HandleMapUnlocked(string unlockedMapKey)
     {
         if (unlockedMapKey == mapKey)
             RefreshUI();
     }
-
 }

@@ -16,15 +16,29 @@ public enum RacingControllerType
 
 public class RacingControllerSelecterUI : MonoBehaviour
 {
-    private const string ControllerPrefsKey = "Racing_Controller_Type";
+    public const string ControllerPrefsKey = "Racing_Controller_Type";
 
     [Header("Texts")]
     [SerializeField] private TMP_Text titleText;
-    [SerializeField] private TMP_Text hardText;
-    [SerializeField] private TMP_Text easyText;
-    [SerializeField] private TMP_Text reinsText;
-    [SerializeField] private TMP_Text buttonsText;
-    [SerializeField] private TMP_Text tiltText;
+    [SerializeField] private TMP_Text infoText;
+
+    [Header("Reins Text")]
+    [SerializeField] private TMP_Text reinsTopTitle;
+    [SerializeField] private TMP_Text reinsControllerText;
+    [SerializeField] private TMP_Text reinsInfoText;
+    [SerializeField] private TMP_Text reinSelectText;
+
+    [Header("Button Text")]
+    [SerializeField] private TMP_Text buttonsTopTitle;
+    [SerializeField] private TMP_Text buttonsControllerText;
+    [SerializeField] private TMP_Text buttonsInfoText;
+    [SerializeField] private TMP_Text buttonsSelectText;
+
+    [Header("Tilt")]
+    [SerializeField] private TMP_Text tiltTopTitle;
+    [SerializeField] private TMP_Text tiltControllerText;
+    [SerializeField] private TMP_Text tiltInfoText;
+    [SerializeField] private TMP_Text tiltSelectText;
 
 
     [Header("Buttons")]
@@ -32,18 +46,29 @@ public class RacingControllerSelecterUI : MonoBehaviour
     [SerializeField] private Button buttonsButton;
     [SerializeField] private Button tiltButton;
 
-    [Header("Tilt Runtime Option")]
-    [SerializeField] private bool createTiltOptionIfMissing = true;
-    [SerializeField] private string tiltFallbackText = "Tilt";
+    [Header("Icons")]
+    [SerializeField] private RectTransform reinsIcon;
+    [SerializeField] private RectTransform buttonsIcon;
+    [SerializeField] private RectTransform tiltIcon;
+
+    [Header("Icon Pulse")]
+    [SerializeField] private float pulseScale = 1.08f;
+    [SerializeField] private float pulseDuration = 0.55f;
+    [SerializeField] private float pulseDelayStep = 0.15f;
 
     public RacingControllerType selectedController;
 
-    [SerializeField] private StartPowerBar powerBar;
+    [SerializeField] private LaunchTimingMeterUI launchTimingMeterPrefab;
 
     public static event Action<RacingControllerType> OnControllerSelected;
+    private Vector3 reinsIconStartScale;
+    private Vector3 buttonsIconStartScale;
+    private Vector3 tiltIconStartScale;
+    private bool iconScalesCached;
+
     private void Awake()
     {
-        EnsureTiltOption();
+        CacheIconScales();
 
         if (reinsButton != null)
             reinsButton.onClick.AddListener(SelectReins);
@@ -57,9 +82,18 @@ public class RacingControllerSelecterUI : MonoBehaviour
     private void OnEnable()
     {
         UITexts();
+        StartIconPulse();
     }
+
+    private void OnDisable()
+    {
+        StopIconPulse();
+    }
+
     private void OnDestroy()
     {
+        StopIconPulse();
+
         if (reinsButton != null)
             reinsButton.onClick.RemoveListener(SelectReins);
 
@@ -81,121 +115,150 @@ public class RacingControllerSelecterUI : MonoBehaviour
     public void SelectReins()
     {
         SelectController(RacingControllerType.Reins);
-        this.gameObject.SetActive(false);
-        powerBar.gameObject.SetActive(true);
+        OpenLaunchMeter();
     }
 
     public void SelectButtons()
     {
         SelectController(RacingControllerType.Buttons);
-        this.gameObject.SetActive(false);
-        powerBar.gameObject.SetActive(true);
+        OpenLaunchMeter();
     }
 
     public void SelectTilt()
     {
         SelectController(RacingControllerType.Tilt);
-        this.gameObject.SetActive(false);
-        powerBar.gameObject.SetActive(true);
+        OpenLaunchMeter();
     }
 
-    private void EnsureTiltOption()
+
+
+
+
+
+
+
+    public static bool HasSavedControllerSelection()
     {
-        if (!createTiltOptionIfMissing || tiltButton != null || buttonsButton == null)
-            return;
+        if (!PlayerPrefs.HasKey(ControllerPrefsKey))
+            return false;
 
-        Button clonedButton = Instantiate(buttonsButton, buttonsButton.transform.parent);
-        clonedButton.name = "TiltChooseBtn";
-        clonedButton.onClick = new Button.ButtonClickedEvent();
-        tiltButton = clonedButton;
+        int savedValue = PlayerPrefs.GetInt(ControllerPrefsKey);
+        return Enum.IsDefined(typeof(RacingControllerType), savedValue);
+    }
 
-        TMP_Text[] buttonTexts = clonedButton.GetComponentsInChildren<TMP_Text>(true);
-        for (int i = 0; i < buttonTexts.Length; i++)
+    public static RacingControllerType GetSavedControllerOrDefault(RacingControllerType fallback = RacingControllerType.Buttons)
+    {
+        if (!HasSavedControllerSelection())
+            return fallback;
+
+        return (RacingControllerType)PlayerPrefs.GetInt(ControllerPrefsKey);
+    }
+
+    public void ApplySavedControllerSelection()
+    {
+        selectedController = GetSavedControllerOrDefault();
+        OnControllerSelected?.Invoke(selectedController);
+    }
+
+    public void ShowLaunchMeter()
+    {
+        OpenLaunchMeter();
+    }
+
+    private void OpenLaunchMeter()
+    {
+        
+        gameObject.SetActive(false);
+
+        if (launchTimingMeterPrefab != null)
         {
-            buttonTexts[i].text = tiltFallbackText;
+            launchTimingMeterPrefab.gameObject.SetActive(true);
+            launchTimingMeterPrefab.StartLaunchMeter();
         }
-
-        if (buttonsText != null)
-        {
-            TMP_Text clonedText = Instantiate(buttonsText, buttonsText.transform.parent);
-            clonedText.name = "TiltText";
-            clonedText.text = tiltFallbackText;
-            tiltText = clonedText;
-        }
-
-        ArrangeThreeControllerOptions();
+           
+        else
+            Debug.LogError($"{nameof(RacingControllerSelecterUI)} is missing a LaunchTimingMeterUI reference.", this);
     }
 
-    private void ArrangeThreeControllerOptions()
+    private Transform GetLaunchMeterParent()
     {
-        SetCenteredOption(reinsButton, -310f);
-        SetCenteredOption(tiltButton, 0f);
-        SetCenteredOption(buttonsButton, 310f);
-
-        SetCenteredText(reinsText, -310f);
-        SetCenteredText(tiltText, 0f);
-        SetCenteredText(buttonsText, 310f);
-
-        HideVsLabel();
+        return transform.parent != null ? transform.parent : transform;
     }
 
-    private void SetCenteredOption(Button button, float x)
+
+
+    private void CacheIconScales()
     {
-        if (button == null)
+        if (iconScalesCached)
             return;
 
-        RectTransform rect = button.GetComponent<RectTransform>();
-        if (rect == null)
-            return;
-
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(x, -20f);
+        reinsIconStartScale = reinsIcon != null ? reinsIcon.localScale : Vector3.one;
+        buttonsIconStartScale = buttonsIcon != null ? buttonsIcon.localScale : Vector3.one;
+        tiltIconStartScale = tiltIcon != null ? tiltIcon.localScale : Vector3.one;
+        iconScalesCached = true;
     }
 
-    private void SetCenteredText(TMP_Text text, float x)
+    private void StartIconPulse()
     {
-        if (text == null)
-            return;
-
-        RectTransform rect = text.rectTransform;
-        rect.anchorMin = new Vector2(0.5f, 0f);
-        rect.anchorMax = new Vector2(0.5f, 0f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(x, 50f);
+        CacheIconScales();
+        StartIconPulse(reinsIcon, reinsIconStartScale, 0f);
+        StartIconPulse(buttonsIcon, buttonsIconStartScale, pulseDelayStep);
+        StartIconPulse(tiltIcon, tiltIconStartScale, pulseDelayStep * 2f);
     }
 
-    private void HideVsLabel()
+    private void StartIconPulse(RectTransform icon, Vector3 startScale, float delay)
     {
-        TMP_Text[] texts = GetComponentsInChildren<TMP_Text>(true);
-        for (int i = 0; i < texts.Length; i++)
-        {
-            if (texts[i].text == "VS")
-            {
-                texts[i].gameObject.SetActive(false);
-                return;
-            }
-        }
+        if (icon == null)
+            return;
+
+        LeanTween.cancel(icon.gameObject);
+        icon.localScale = startScale;
+        LeanTween.scale(icon.gameObject, startScale * pulseScale, pulseDuration)
+            .setDelay(delay)
+            .setEaseInOutSine()
+            .setLoopPingPong();
+    }
+
+    private void StopIconPulse()
+    {
+        CacheIconScales();
+        StopIconPulse(reinsIcon, reinsIconStartScale);
+        StopIconPulse(buttonsIcon, buttonsIconStartScale);
+        StopIconPulse(tiltIcon, tiltIconStartScale);
+    }
+
+    private void StopIconPulse(RectTransform icon, Vector3 startScale)
+    {
+        if (icon == null)
+            return;
+
+        LeanTween.cancel(icon.gameObject);
+        icon.localScale = startScale;
     }
 
     private void UITexts()
     {
         var lang = LanguageManager.Instance;
-        if(lang == null)
-        {
-            if (tiltText != null)
-                tiltText.text = tiltFallbackText;
-
+        if (lang == null)
             return;
-        }
         titleText.text = lang.GetText(517);
-        hardText.text = lang.GetText(513);
-        easyText.text = lang.GetText(514);
-        reinsText.text = lang.GetText(515);
-        buttonsText.text = lang.GetText(516);
-        if (tiltText != null)
-            tiltText.text = tiltFallbackText;
+        infoText.text = lang.GetText(541);
+
+        reinsTopTitle.text = lang.GetText(536);
+        reinsControllerText.text = lang.GetText(515);
+        reinsInfoText.text = lang.GetText(538);
+
+        reinSelectText.text = lang.GetText(68);
+        buttonsSelectText.text = lang.GetText(68);
+        tiltSelectText.text = lang.GetText(68);
+
+        buttonsTopTitle.text = lang.GetText(514);
+        buttonsControllerText.text = lang.GetText(516);
+        buttonsInfoText.text = lang.GetText(539);
+
+        tiltTopTitle.text = lang.GetText(537);
+        tiltControllerText.text = lang.GetText(535);
+        tiltInfoText.text = lang.GetText(540);
     }
 
 }

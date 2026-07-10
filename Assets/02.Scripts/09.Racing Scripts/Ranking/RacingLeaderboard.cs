@@ -1,6 +1,7 @@
 ﻿// RacingLeaderboard.cs (incremental ranking)
 using MalbersAnimations.Controller;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,6 +14,18 @@ public class RacingLeaderboard : MonoBehaviour
     [SerializeField] private UIRankingView itemPrefab;
     [SerializeField] private List<RaceCheckpoint> checkpoints = new();
     public int CheckpointCount => checkpoints.Count; // <-- shu orqali hisoblanadi
+
+    [Header("Reveal Animation")]
+    [SerializeField] private CanvasGroup panelGroup;
+    [SerializeField] private RectTransform panelRoot;
+    [SerializeField] private float showDuration = 0.35f;
+    [SerializeField] private float hideDuration = 0.2f;
+    [SerializeField] private float visibleSeconds = 4f;
+    [SerializeField] private float hiddenOffsetY = 40f;
+    [SerializeField] private float showStartScale = 0.96f;
+    [SerializeField] private Ease showEase = Ease.OutBack;
+    [SerializeField] private Ease hideEase = Ease.InCubic;
+
     // Unikal agentlar
     private readonly List<RacingAgent> standings = new();                      // tartiblangan ro‘yxat
     private readonly HashSet<RacingAgent> agentSet = new();                    // dublikatga yo‘l qo‘ymaydi
@@ -20,8 +33,12 @@ public class RacingLeaderboard : MonoBehaviour
     public bool RaceStarted { get; private set; }
     public float RaceStartTime { get; private set; }
     public bool RaceFinished { get; private set; }
-    private static readonly Color playerTextColor = new Color32(44, 44, 44, 255);
-    private static readonly Color playerBgColor = new Color32(255, 255, 255, 255);
+    private static readonly Color playerTextColor = new Color32(35, 246, 4, 255);
+    private static readonly Color playerBgColor = new Color32(255, 251, 0, 255);
+    private static readonly Color eliminatedTextColor = new Color32(123, 123, 123, 255);
+    private static readonly Color eliminatedBgColor = new Color32(255, 20, 0, 255);
+    private Vector2 shownAnchoredPosition;
+    private Sequence revealSequence;
     private void Awake()
     {
         if (Instance == null)
@@ -29,15 +46,39 @@ public class RacingLeaderboard : MonoBehaviour
             Instance = this;
         }
         else
+        {
             Destroy(gameObject);
+            return;
+        }
+
+        if (panelGroup == null)
+            panelGroup = GetComponent<CanvasGroup>();
+
+        if (panelRoot == null)
+            panelRoot = transform as RectTransform;
+
+        if (panelRoot != null)
+            shownAnchoredPosition = panelRoot.anchoredPosition;
+
+        HideImmediate();
+    }
+
+    private void OnDestroy()
+    {
+        revealSequence?.Kill();
+
+        if (Instance == this)
+            Instance = null;
     }
 
     public void Register(RacingAgent agent)
     {
         if (agent == null || agentSet.Contains(agent)) return;
+        if (contentParent == null || itemPrefab == null) return;
 
         agentSet.Add(agent);
         standings.Add(agent);
+        agent.Ranking = standings.Count;
 
         if (RaceStarted && !agent.HasStarted)
             agent.BeginRace(RaceStartTime);
@@ -62,6 +103,166 @@ public class RacingLeaderboard : MonoBehaviour
         for (int i = 0; i < standings.Count; i++)
             UpdateRow(standings[i], i + 1);
     }
+
+    public void ApplyOrderAndShow(IReadOnlyList<RacingAgent> orderedAgents, bool autoHide = true)
+    {
+        ApplyOrderAndShow(orderedAgents, null, autoHide);
+    }
+
+    public void ApplyOrderAndShow(IReadOnlyList<RacingAgent> orderedAgents, IReadOnlyList<RacingAgent> eliminatedAgents, bool autoHide = true)
+    {
+        if (orderedAgents == null || orderedAgents.Count == 0) return;
+
+        HashSet<RacingAgent> eliminatedSet = new();
+        if (eliminatedAgents != null)
+        {
+            for (int i = 0; i < eliminatedAgents.Count; i++)
+            {
+                RacingAgent agent = eliminatedAgents[i];
+                if (agent != null)
+                    eliminatedSet.Add(agent);
+            }
+        }
+
+        HashSet<RacingAgent> visibleSet = new();
+        List<RacingAgent> visibleOrder = new(orderedAgents.Count + eliminatedSet.Count);
+
+        for (int i = 0; i < orderedAgents.Count; i++)
+        {
+            RacingAgent agent = orderedAgents[i];
+            if (agent == null || !visibleSet.Add(agent)) continue;
+
+            Register(agent);
+            visibleOrder.Add(agent);
+        }
+
+        for (int i = 0; i < standings.Count; i++)
+        {
+            RacingAgent agent = standings[i];
+            if (agent == null || eliminatedSet.Contains(agent) || !agent.gameObject.activeInHierarchy || !visibleSet.Add(agent)) continue;
+
+            visibleOrder.Add(agent);
+        }
+
+        if (eliminatedAgents != null)
+        {
+            for (int i = 0; i < eliminatedAgents.Count; i++)
+            {
+                RacingAgent agent = eliminatedAgents[i];
+                if (agent == null || !visibleSet.Add(agent)) continue;
+
+                Register(agent);
+                visibleOrder.Add(agent);
+            }
+        }
+
+        if (visibleOrder.Count == 0) return;
+
+        standings.Clear();
+        standings.AddRange(visibleOrder);
+
+        for (int i = 0; i < standings.Count; i++)
+        {
+            RacingAgent agent = standings[i];
+            if (agent == null) continue;
+
+            agent.Ranking = i + 1;
+            bool isEliminated = eliminatedSet.Contains(agent);
+
+            if (rows.TryGetValue(agent, out UIRankingView row) && row != null)
+                row.transform.SetSiblingIndex(i);
+
+            UpdateRow(agent, i + 1, isEliminated);
+        }
+
+        if (contentParent != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent);
+
+        ShowAnimated(autoHide);
+    }
+
+    public void ShowAnimated(bool autoHide = true)
+    {
+        if (panelGroup == null)
+            panelGroup = GetComponent<CanvasGroup>();
+
+        if (panelRoot == null)
+            panelRoot = transform as RectTransform;
+
+        revealSequence?.Kill();
+        gameObject.SetActive(true);
+
+        if (panelGroup == null || panelRoot == null)
+            return;
+
+        panelGroup.interactable = false;
+        panelGroup.blocksRaycasts = false;
+        panelGroup.alpha = 0f;
+
+        panelRoot.anchoredPosition = shownAnchoredPosition + Vector2.down * hiddenOffsetY;
+        panelRoot.localScale = Vector3.one * showStartScale;
+
+        revealSequence = DOTween.Sequence()
+            .Join(panelGroup.DOFade(1f, showDuration))
+            .Join(panelRoot.DOAnchorPos(shownAnchoredPosition, showDuration).SetEase(showEase))
+            .Join(panelRoot.DOScale(1f, showDuration).SetEase(showEase))
+            .AppendCallback(() =>
+            {
+                panelGroup.interactable = true;
+                panelGroup.blocksRaycasts = true;
+            });
+
+        if (autoHide)
+        {
+            revealSequence
+                .AppendInterval(visibleSeconds)
+                .AppendCallback(HideAnimated);
+        }
+    }
+
+    public void HideAnimated()
+    {
+        if (panelGroup == null || panelRoot == null)
+        {
+            HideImmediate();
+            return;
+        }
+
+        revealSequence?.Kill();
+
+        panelGroup.interactable = false;
+        panelGroup.blocksRaycasts = false;
+
+        revealSequence = DOTween.Sequence()
+            .Join(panelGroup.DOFade(0f, hideDuration))
+            .Join(panelRoot.DOAnchorPos(shownAnchoredPosition + Vector2.down * hiddenOffsetY, hideDuration).SetEase(hideEase))
+            .Join(panelRoot.DOScale(showStartScale, hideDuration).SetEase(hideEase));
+    }
+
+    public void HideImmediate()
+    {
+        revealSequence?.Kill();
+
+        if (panelGroup == null)
+            panelGroup = GetComponent<CanvasGroup>();
+
+        if (panelRoot == null)
+            panelRoot = transform as RectTransform;
+
+        if (panelGroup != null)
+        {
+            panelGroup.alpha = 0f;
+            panelGroup.interactable = false;
+            panelGroup.blocksRaycasts = false;
+        }
+
+        if (panelRoot != null)
+        {
+            panelRoot.anchoredPosition = shownAnchoredPosition + Vector2.down * hiddenOffsetY;
+            panelRoot.localScale = Vector3.one * showStartScale;
+        }
+    }
+
     // Global start — bitta vaqtda hamma agentga
     public void StartRace()
     {
@@ -96,42 +297,26 @@ public class RacingLeaderboard : MonoBehaviour
             i--;
         }
 
+        if (i == oldIndex)
+        {
+            agent.Ranking = oldIndex + 1;
+            UpdateRow(agent, oldIndex + 1);
+            return;
+        }
+
         int from = Mathf.Min(i, oldIndex);
         int to = Mathf.Max(i, oldIndex);
 
-        var oldY = new Dictionary<RacingAgent, float>();
-        for (int k = from; k <= to; k++)
-        {
-            var ag = standings[k];
-            var rt = rows[ag].transform as RectTransform; // ROOT
-            oldY[ag] = rt.anchoredPosition.y;
-        }
         for (int k = from; k <= to; k++)
         {
             var ag = standings[k];
             ag.Ranking = k + 1;
-            rows[ag].transform.SetSiblingIndex(k);
-        }
 
-        // ✅ 3) layoutni majburan hisoblatamiz
-        LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent);
-
-        // ✅ 4) endi delta bo'yicha anim + text update
-        for (int k = from; k <= to; k++)
-        {
-            var ag = standings[k];
-            var row = rows[ag];
-            if (row == null) continue;
-
-            var rt = row.transform as RectTransform; // ROOT (layout joyi)
-            float newY = rt.anchoredPosition.y;
-
-            float yDelta = oldY[ag] - newY; // offset: eski joy - yangi joy
-
-            int deltaRank = (oldIndex + 1) - (k + 1);
-
-            UpdateRow(ag, k + 1);
-            row.AnimateRankDelta(yDelta, deltaRank);
+            if (rows.TryGetValue(ag, out var row) && row != null)
+            {
+                row.transform.SetSiblingIndex(k);
+                UpdateRow(ag, k + 1);
+            }
         }
     }
 
@@ -142,11 +327,18 @@ public class RacingLeaderboard : MonoBehaviour
         if (A.CheckpointIndex != B.CheckpointIndex) return A.CheckpointIndex > B.CheckpointIndex;
         return A.ElapsedTime < B.ElapsedTime; // eng tez — oldinda
     }
-    private void UpdateRow(RacingAgent a, int rank)
+    private void UpdateRow(RacingAgent a, int rank, bool eliminated = false)
     {
         if (!rows.TryGetValue(a, out var row) || row == null) return;
         int cpShow = Mathf.Max(0, a.CheckpointIndex);
-        row.SetData( $"{rank}.", $"{a.displayName}", $"{a.countryName}", a.flagIcon);/*$"CP {cpShow} • Passed {a.Passed}"*/
+        string rankText = eliminated ? "X" : $"{rank}.";
+        row.SetData(rankText, $"{a.displayName}", $"{a.countryName}", a.flagIcon);/*$"CP {cpShow} • Passed {a.Passed}"*/
+        if (eliminated)
+        {
+            row.SetColor(eliminatedTextColor, eliminatedBgColor);
+            return;
+        }
+
         if (a.isPlayer) // yoki o‘zingda qanday belgilang bo‘lsa
         {
             row.SetColor(playerTextColor, playerBgColor);
@@ -236,8 +428,8 @@ public class RacingLeaderboard : MonoBehaviour
         {
             var a = standings[i];
 
-            // a null bo'lsa (destroy) yoki inactive bo'lsa (SetActive(false))
-            if (a == null || !a.gameObject.activeInHierarchy)
+            // Destroy bo'lgan agentlarni olib tashlaymiz. Inactive eliminated agentlar final resultda DNF bo'lib ko'rinishi kerak.
+            if (a == null)
             {
                 toRemove ??= new List<RacingAgent>(8);
                 toRemove.Add(a);

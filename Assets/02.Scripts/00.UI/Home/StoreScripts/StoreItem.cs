@@ -1,8 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class StoreItem : MonoBehaviour
@@ -15,25 +12,36 @@ public class StoreItem : MonoBehaviour
     [SerializeField] private Button viewBtn;
 
     public ProductContainer productContainer;
-    void Start()
+    private void OnEnable()
     {
-        viewBtn.onClick.AddListener(() => OpenProductPanel());
+        if (viewBtn != null)
+            viewBtn.onClick.AddListener(OpenProductPanel);
 
+        UITransilitions();
+    }
+
+    private void OnDisable()
+    {
+        if (viewBtn != null)
+            viewBtn.onClick.RemoveListener(OpenProductPanel);
     }
 
     private void OpenProductPanel()
     {
+        if (productContainer == null) return;
+
         productContainer.gameObject.SetActive(true);
         productContainer.OpenStore(categoryType);
-    }
-    private void OnEnable()
-    {
-        UITransilitions();
     }
     
     private void UITransilitions()
     {
-        titleText.text = LanguageManager.Instance.GetText(titleId);
-        btnText.text = LanguageManager.Instance.GetText(190);
+        var language = LanguageManager.Instance;
+        if (language == null) return;
+
+        if (titleText != null)
+            titleText.text = language.GetText(titleId);
+        if (btnText != null)
+            btnText.text = language.GetText(190);
     }
 }

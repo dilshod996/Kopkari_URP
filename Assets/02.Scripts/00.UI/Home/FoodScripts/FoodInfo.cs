@@ -1,7 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,19 +9,19 @@ public class FoodInfo : MonoBehaviour
     [SerializeField] private TMP_Text nameFood;
     [SerializeField] private Image imageofFood;
 
-    [SerializeField] private int nameFoodId=-1;
     [Header("UI Settings")]
     [SerializeField] private Button buyBtn;
+    [SerializeField] private Button infoBtn;
     [SerializeField] private TMP_Text foodCostText;
+    [SerializeField] private ResourceInfoDetailsPopup detailsPopup;
 
     [SerializeField] private int foodCost;
-    [Header("Useful Food Animation")]
-    [SerializeField] private float usefulScale = 1.04f;
-    [SerializeField] private float usefulScaleDuration = 0.55f;
+    [SerializeField] private Color itemColor = Color.white;
 
     public static event Action<float, float, float> OnFoodAddToHorse;
     public static event Action OnMoneyNotEnough;
     private static event Action OnFoodButtonsRefreshRequested;
+
     public enum HorseFood
     {
         None,
@@ -32,66 +29,161 @@ public class FoodInfo : MonoBehaviour
         Barley,
         Apple,
         Water,
-        StaminWater
+        StaminWater,
+        Hay,
+        Oats,
+        Carrot
     }
+
     [SerializeField] private HorseFood food;
-    private Tween usefulTween;
-    private Vector3 originalScale;
+
+    public readonly struct FoodDetails
+    {
+        public readonly HorseFood FoodType;
+        public readonly string Name;
+        public readonly Sprite Icon;
+        public readonly int Cost;
+        public readonly float Power;
+        public readonly float Cooling;
+        public readonly float Stamina;
+
+        public FoodDetails(
+            HorseFood foodType,
+            string name,
+            Sprite icon,
+            int cost,
+            float power,
+            float cooling,
+            float stamina)
+        {
+            FoodType = foodType;
+            Name = name;
+            Icon = icon;
+            Cost = cost;
+            Power = power;
+            Cooling = cooling;
+            Stamina = stamina;
+        }
+    }
 
     private void OnEnable()
     {
-        originalScale = transform.localScale;
         TextTransilations();
         RefreshButtonState();
         OnFoodButtonsRefreshRequested += RefreshButtonState;
-        buyBtn.onClick.AddListener(BuyFood);
+        buyBtn?.onClick.AddListener(OpenFoodDetails);
+        infoBtn?.onClick.AddListener(OpenFoodDetails);
     }
+
     private void OnDisable()
     {
         OnFoodButtonsRefreshRequested -= RefreshButtonState;
-        StopUsefulAnimation();
-        buyBtn.onClick.RemoveAllListeners();
+        buyBtn?.onClick.RemoveListener(OpenFoodDetails);
+        infoBtn?.onClick.RemoveListener(OpenFoodDetails);
     }
-
 
     private void TextTransilations()
     {
-        if (nameFoodId != -1)
-            nameFood.text = LanguageManager.Instance.GetText(nameFoodId);
-        if(foodCostText != null)
+        if (nameFood != null)
+            nameFood.text = GetFoodName();
+
+        if (foodCostText != null)
             foodCostText.text = foodCost > 0 ? $"{foodCost:N0}" : "0";
     }
 
-    private void BuyFood()
+    private void OpenFoodDetails()
     {
-        if (!CanImproveHorse())
+        FoodDetails details = BuildFoodDetails();
+        bool canImprove = CanImproveHorse(details);
+        ResourceInfoDetailsPopup popup = detailsPopup != null ? detailsPopup : ResourceInfoDetailsPopup.Instance;
+
+        if (popup == null)
         {
-            RefreshButtonState();
+            if (canImprove)
+                TryBuyFood(details, null);
+            else
+                Debug.Log("Your horse is full and you are ready to race.");
+
             return;
         }
 
-        StopUsefulAnimation();
-        bool success = CurrencyManager.Instance.SpendNyufiy(foodCost, true);
+        popup.Show(BuildPopupDetails(details), canImprove, () => TryBuyFood(details, popup));
+        SoundManager.Instance?.PlayUI(UISoundType.PopupOpen);
+    }
+
+    private void TryBuyFood(FoodDetails details, ResourceInfoDetailsPopup popup)
+    {
+        if (!CanImproveHorse(details))
+        {
+            popup?.Show(BuildPopupDetails(details), false, () => { });
+            return;
+        }
+
+        bool success = details.Cost <= 0 ||
+                       (CurrencyManager.Instance != null && CurrencyManager.Instance.SpendNyufiy(details.Cost, true));
 
         if (!success)
         {
             OnMoneyNotEnough?.Invoke();
+            popup?.ShowNotEnoughNyufiy();
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
-            SoundManager.Instance.PlayUI(UISoundType.Error);
+            SoundManager.Instance?.PlayUI(UISoundType.Error);
             return;
         }
 
-        BuyFeedHorse(food);
+        AddSupplies(details.Power, details.Cooling, details.Stamina);
+        HomeMainUI.Instance?.ShowRightPopup(GetSuccessMessage(details), details.Icon);
+        popup?.Close();
         OnFoodButtonsRefreshRequested?.Invoke();
         HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
-        SoundManager.Instance.PlayUI(UISoundType.Success);
+        SoundManager.Instance?.PlayUI(UISoundType.Success);
     }
-    private void BuyFeedHorse(HorseFood foodType)
+
+    private ResourceInfoDetailsPopup.ResourceDetails BuildPopupDetails(FoodDetails details)
+    {
+        return ResourceInfoDetailsPopup.ResourceDetails.Horse(
+            details.Name,
+            details.Icon,
+            details.Cost,
+            itemColor,
+            FormatBuff(details.Stamina),
+            FormatBuff(details.Cooling),
+            FormatBuff(details.Power));
+    }
+
+    private string FormatBuff(float amount)
+    {
+        return amount > 0f ? $"+{amount:0.#}%" : "+0%";
+    }
+
+    private FoodDetails BuildFoodDetails()
+    {
+        GetFoodBuffs(food, out float power, out float cooling, out float stamina);
+
+        return new FoodDetails(
+            food,
+            GetFoodName(),
+            imageofFood != null ? imageofFood.sprite : null,
+            foodCost,
+            power,
+            cooling,
+            stamina);
+    }
+
+    private string GetFoodName()
+    {
+        int languageId = GetFoodNameLanguageId(food);
+        if (languageId != -1)
+            return GetLocalizedText(languageId, food.ToString());
+
+        return food.ToString();
+    }
+
+    private string GetSuccessMessage(FoodDetails details)
     {
         int langId = -1;
-        GetFoodBuffs(foodType, out float power, out float cooling, out float stamina);
 
-        switch (foodType)
+        switch (details.FoodType)
         {
             case HorseFood.Water:
                 langId = 204;
@@ -109,37 +201,37 @@ public class FoodInfo : MonoBehaviour
                 langId = 208;
                 break;
         }
-        AddSupplies(power, cooling, stamina);
-        HomeMainUI.Instance?.ShowRightPopup(LanguageManager.Instance.GetText(langId), imageofFood.sprite);
-    }
-    private void AddSupplies(float powerAddAmount, float coolingAddAmount, float staminaAddAmount)
-    {
-        OnFoodAddToHorse?.Invoke(powerAddAmount, coolingAddAmount, staminaAddAmount);
+
+        if (langId == -1)
+            langId = GetFoodNameLanguageId(details.FoodType);
+
+        return langId != -1
+            ? GetLocalizedText(langId, $"{details.Name} added")
+            : $"{details.Name} added";
     }
 
     private void RefreshButtonState()
     {
-        bool canImprove = CanImproveHorse();
-
         if (buyBtn != null)
-            buyBtn.interactable = canImprove;
+            buyBtn.interactable = true;
 
-        if (canImprove)
-            StartUsefulAnimation();
-        else
-            StopUsefulAnimation();
+        if (infoBtn != null)
+            infoBtn.interactable = true;
     }
 
-    private bool CanImproveHorse()
+    private bool CanImproveHorse(FoodDetails details)
     {
-        GetFoodBuffs(food, out float power, out float cooling, out float stamina);
-
         HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
         HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
 
-        return CanIncrease(power, current.Power, max.Power) ||
-               CanIncrease(cooling, current.Cooling, max.Cooling) ||
-               CanIncrease(stamina, current.Stamina, max.Stamina);
+        return CanIncrease(details.Power, current.Power, max.Power) ||
+               CanIncrease(details.Cooling, current.Cooling, max.Cooling) ||
+               CanIncrease(details.Stamina, current.Stamina, max.Stamina);
+    }
+
+    private void AddSupplies(float powerAddAmount, float coolingAddAmount, float staminaAddAmount)
+    {
+        OnFoodAddToHorse?.Invoke(powerAddAmount, coolingAddAmount, staminaAddAmount);
     }
 
     private static bool CanIncrease(float amount, float current, float max)
@@ -174,30 +266,50 @@ public class FoodInfo : MonoBehaviour
                 cooling = 6f;
                 stamina = 13f;
                 break;
+            case HorseFood.Hay:
+                cooling = 2f;
+                stamina = 6f;
+                break;
+            case HorseFood.Oats:
+                power = 5f;
+                stamina = 7f;
+                break;
+            case HorseFood.Carrot:
+                power = 3f;
+                cooling = 3f;
+                stamina = 3f;
+                break;
         }
     }
 
-    private void StartUsefulAnimation()
+    private static int GetFoodNameLanguageId(HorseFood foodType)
     {
-        if (usefulTween != null && usefulTween.IsActive())
-            return;
-
-        transform.localScale = originalScale;
-        usefulTween = transform
-            .DOScale(originalScale * usefulScale, usefulScaleDuration)
-            .SetEase(Ease.InOutSine)
-            .SetLoops(-1, LoopType.Yoyo)
-            .SetUpdate(true);
-    }
-
-    private void StopUsefulAnimation()
-    {
-        if (usefulTween != null)
+        switch (foodType)
         {
-            usefulTween.Kill();
-            usefulTween = null;
+            case HorseFood.Wheat:
+                return 108;
+            case HorseFood.Barley:
+                return 109;
+            case HorseFood.Apple:
+                return 110;
+            case HorseFood.Water:
+                return 111;
+            case HorseFood.StaminWater:
+                return 112;
+            case HorseFood.Hay:
+            case HorseFood.Oats:
+            case HorseFood.Carrot:
+            default:
+                return -1;
         }
+    }
 
-        transform.localScale = originalScale;
+    private string GetLocalizedText(int id, string fallback)
+    {
+        if (id == -1 || LanguageManager.Instance == null)
+            return fallback;
+
+        string localized = LanguageManager.Instance.GetText(id);
+        return string.IsNullOrEmpty(localized) ? fallback : localized;
     }
 }

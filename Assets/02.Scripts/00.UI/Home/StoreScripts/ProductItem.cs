@@ -11,23 +11,41 @@ public class ProductItem : MonoBehaviour
     public Button buyButton;
     private ModalWindowManager modalWindowManager;
 
-    private void Start()
+    private void OnEnable()
     {
-        buyButton.onClick.AddListener(ButButtonEvent);
+        if (buyButton != null)
+            buyButton.onClick.AddListener(BuyButtonEvent);
     }
+
+    private void OnDisable()
+    {
+        if (buyButton != null)
+            buyButton.onClick.RemoveListener(BuyButtonEvent);
+    }
+
     public void Setup(ProductData data, ModalWindowManager modalWindow)
     {
+        if (data == null) return;
+
         modalWindowManager = modalWindow;
-        nameText.text = LanguageManager.Instance.GetText(data.nameId);
-        costText.text = data.cost.ToString();
-        image.sprite = data.productImage;
+        var language = LanguageManager.Instance;
+
+        if (nameText != null && language != null)
+            nameText.text = language.GetText(data.nameId);
+        if (costText != null)
+            costText.text = data.cost.ToString();
+        if (image != null)
+            image.sprite = data.productImage;
     }
-    private void ButButtonEvent()
+    private void BuyButtonEvent()
     {
         if (modalWindowManager != null) 
         {
-            modalWindowManager.UpdateUICustomWithButtons(LanguageManager.Instance.GetText(40), LanguageManager.Instance.GetText(41),
-                LanguageManager.Instance.GetText(1), LanguageManager.Instance.GetText(2));
+            var language = LanguageManager.Instance;
+            if (language == null) return;
+
+            modalWindowManager.UpdateUICustomWithButtons(language.GetText(40), language.GetText(41),
+                language.GetText(1), language.GetText(2));
         }
         else
         {

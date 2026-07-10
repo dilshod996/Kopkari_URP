@@ -12,10 +12,12 @@ public class BuyCoins : MonoBehaviour
     [SerializeField] private Button closeButton;
     [SerializeField] private Button watchAddBtton;
 
+    [Header("Selected State")]
+    [SerializeField] private GameObject coinSelectedObject;
+    [SerializeField] private GameObject nyufiySelectedObject;
+
     [SerializeField] private TMP_Text coinTitle;
-    [SerializeField] private TMP_Text coinTitle2;
     [SerializeField] private TMP_Text nyufiyTitle;
-    [SerializeField] private TMP_Text nyufiyTitle2;
     [SerializeField] private TMP_Text moneyNotEnoughText;
 
     [SerializeField] private GameObject coinSection;
@@ -29,23 +31,36 @@ public class BuyCoins : MonoBehaviour
     private void OnEnable()
     {
         UITrasilations();
-        coinButton.onClick.AddListener(OpenCoinSection);
-        nyufiyButton.onClick.AddListener(OpenNyufiySection);
-        closeButton.onClick.AddListener(ClosePage);
-        HomeMainUI.Instance.OnCoinsButtonPressed += EnablePages;
+        if (coinButton != null)
+            coinButton.onClick.AddListener(OpenCoinSection);
+        if (nyufiyButton != null)
+            nyufiyButton.onClick.AddListener(OpenNyufiySection);
+        if (closeButton != null)
+            closeButton.onClick.AddListener(ClosePage);
+        if (HomeMainUI.Instance != null)
+            HomeMainUI.Instance.OnCoinsButtonPressed += EnablePages;
         CoinCard.OnMoneyNotEnough += MoneyNotEnoughText;
-        if(moneyNotEnoughSection.activeSelf)
+        if(moneyNotEnoughSection != null && moneyNotEnoughSection.activeSelf)
             moneyNotEnoughSection.SetActive(false);
-        watchAddBtton.onClick.AddListener(WatchAddForNyufiy);
+        if (watchAddBtton != null)
+            watchAddBtton.onClick.AddListener(WatchAddForNyufiy);
 
     }
     private void OnDisable()
     {
-        coinButton.onClick.RemoveListener(OpenCoinSection);
-        nyufiyButton.onClick.RemoveListener(OpenNyufiySection);
-        closeButton.onClick.RemoveListener(ClosePage);
-        HomeMainUI.Instance.OnCoinsButtonPressed -= EnablePages;
+        if (coinButton != null)
+            coinButton.onClick.RemoveListener(OpenCoinSection);
+        if (nyufiyButton != null)
+            nyufiyButton.onClick.RemoveListener(OpenNyufiySection);
+        if (closeButton != null)
+            closeButton.onClick.RemoveListener(ClosePage);
+        if (watchAddBtton != null)
+            watchAddBtton.onClick.RemoveListener(WatchAddForNyufiy);
+        if (HomeMainUI.Instance != null)
+            HomeMainUI.Instance.OnCoinsButtonPressed -= EnablePages;
         CoinCard.OnMoneyNotEnough -= MoneyNotEnoughText;
+        DOTween.Kill(this);
+        pulseTween?.Kill();
     }
     private void WatchAddForNyufiy()
     {
@@ -68,6 +83,12 @@ public class BuyCoins : MonoBehaviour
 
         AdsManager.Instance.ShowRewarded(() =>
         {
+            if (CurrencyManager.Instance == null)
+            {
+                GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+                return;
+            }
+
             CurrencyManager.Instance.AddNyufiy(watchAddAmount, true);
 
             GameAnalyticsEvents.RewardedAdCompleted(
@@ -85,76 +106,78 @@ public class BuyCoins : MonoBehaviour
         () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
     }
 
-    private void OpenCoinSection()
+    public void OpenCoinSection()
     {
-        //HomeMainUI.Instance.ShowUI(coinSection);
-        coinSection.SetActive(true);
-        if (nyufiySection.activeSelf)
-            nyufiySection.SetActive(false);
-        CloseMoneyNotEnough();
+        ShowSection(true);
     }
-    private void OpenNyufiySection()
+    public void OpenNyufiySection()
     {
-        nyufiySection.SetActive(true);
-
-        if (coinSection.activeSelf)
-            coinSection.SetActive(false);
-        CloseMoneyNotEnough();
+        ShowSection(false);
     }
 
     private void EnablePages(bool enabled)
     {
-        if(enabled)
-        {
-            EnableCoinSection();
-        }
-        else
-        {
-            EnableNyufiySection();
-        }
+        ShowSection(enabled);
+    }
+
+    public void ShowCoinCards()
+    {
+        ShowSection(true);
+    }
+
+    public void ShowNyufiyCards()
+    {
+        ShowSection(false);
+    }
+
+    private void ShowSection(bool showCoinCards)
+    {
+        if (coinSection != null)
+            coinSection.SetActive(showCoinCards);
+        if (nyufiySection != null)
+            nyufiySection.SetActive(!showCoinCards);
+
+        if (coinSelectedObject != null)
+            coinSelectedObject.SetActive(showCoinCards);
+        if (nyufiySelectedObject != null)
+            nyufiySelectedObject.SetActive(!showCoinCards);
+
         CloseMoneyNotEnough();
-    }
-    private void EnableCoinSection()
-    {
-        if (nyufiySection.activeSelf)
-        {
-            nyufiySection.SetActive(false);
-        }
-        coinSection.SetActive(true);
-        
-    }
-    private void EnableNyufiySection()
-    {
-        if (coinSection.activeSelf)
-        {
-            coinSection.SetActive(false);
-        }
-        nyufiySection.SetActive(true);
     }
     private void UITrasilations()
     {
         if (LanguageManager.Instance != null)
         {
-            coinTitle.text = LanguageManager.Instance.GetText(390);
-            coinTitle2.text = LanguageManager.Instance.GetText(390);
-            nyufiyTitle.text = LanguageManager.Instance.GetText(389);
-            nyufiyTitle2.text = LanguageManager.Instance.GetText(389);
-            moneyNotEnoughText.text = LanguageManager.Instance.GetText(333);
+            if (coinTitle != null) coinTitle.text = LanguageManager.Instance.GetText(390);
+            if (nyufiyTitle != null) nyufiyTitle.text = LanguageManager.Instance.GetText(389);
+            if (moneyNotEnoughText != null) moneyNotEnoughText.text = LanguageManager.Instance.GetText(333);
             //closeText.text = LanguageManager.Instance.GetText(362);
         }
     }
     private void ClosePage()
     {
-        HomeMainUI.Instance.HideUI(this);
+        if (HomeMainUI.Instance != null)
+            HomeMainUI.Instance.HideUI(this);
+        else
+            gameObject.SetActive(false);
     }
     private void MoneyNotEnoughText()
     {
+        if (moneyNotEnoughSection == null)
+            return;
+
         moneyNotEnoughSection.SetActive(true);
 
         RectTransform rt = moneyNotEnoughSection.GetComponent<RectTransform>();
         CanvasGroup cg = moneyNotEnoughSection.GetComponent<CanvasGroup>();
 
-        // Old tweensni to‘xtatish
+        if (rt == null || cg == null)
+        {
+            Debug.LogWarning("Money not enough section needs RectTransform and CanvasGroup components.");
+            return;
+        }
+
+        DOTween.Kill(this);
         rt.DOKill();
         cg.DOKill();
         pulseTween?.Kill();
@@ -182,6 +205,11 @@ public class BuyCoins : MonoBehaviour
     }
     public void CloseMoneyNotEnough()
     {
+        if (moneyNotEnoughSection == null)
+            return;
+
+        DOTween.Kill(this);
+
         // Agar o‘chib bo‘lsa — hech narsa qilmaymiz
         if (!moneyNotEnoughSection.activeSelf) return;
 
@@ -189,8 +217,8 @@ public class BuyCoins : MonoBehaviour
         CanvasGroup cg = moneyNotEnoughSection.GetComponent<CanvasGroup>();
 
         // HAMMA animlarni darhol to‘xtatamiz
-        rt.DOKill();
-        cg.DOKill();
+        if (rt != null) rt.DOKill();
+        if (cg != null) cg.DOKill();
         pulseTween?.Kill();
 
         // Reset (optional, lekin toza holat uchun)

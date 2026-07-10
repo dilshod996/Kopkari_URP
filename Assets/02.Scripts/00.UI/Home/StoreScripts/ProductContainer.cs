@@ -22,49 +22,59 @@ public class ProductContainer : MonoBehaviour
     public List<ProductData> mysteryBoxList;
 
     public ModalWindowManager modalWindowManager;
+    private readonly List<ProductItem> productItems = new List<ProductItem>();
 
-    private void Start()
+    private void OnEnable()
     {
-        closeButton.onClick.AddListener(() => gameObject.SetActive(false));
+        if (closeButton != null)
+            closeButton.onClick.AddListener(Close);
     }
+
+    private void OnDisable()
+    {
+        if (closeButton != null)
+            closeButton.onClick.RemoveListener(Close);
+    }
+
     public void OpenStore(CategoryType category)
     {
-        ClearContent();
+        HideItems();
 
+        var language = LanguageManager.Instance;
         List<ProductData> selectedList;
         switch(category)
         {
             case CategoryType.Rider:
                 selectedList = riderList;
-                titleText.text = LanguageManager.Instance.GetText(226);
+                SetTitle(language, 226);
                 break;
             case CategoryType.Clothes:
                 selectedList = clothesList;
-                titleText.text = LanguageManager.Instance.GetText(230);
+                SetTitle(language, 230);
                 break;
             case CategoryType.Helmets:
                 selectedList = helmetsList;
-                titleText.text = LanguageManager.Instance.GetText(228);
+                SetTitle(language, 228);
                 break;
             case CategoryType.Horse:
                 selectedList = horseList;
-                titleText.text = LanguageManager.Instance.GetText(227);
+                SetTitle(language, 227);
                 break;
             case CategoryType.Saddles:
                 selectedList = saddlesList;
-                titleText.text = LanguageManager.Instance.GetText(229);
+                SetTitle(language, 229);
                 break;
             case CategoryType.Armors:
                 selectedList = armorsList;
-                titleText.text = LanguageManager.Instance.GetText(231);
+                SetTitle(language, 231);
                 break;
             case CategoryType.Food:
                 selectedList = foodList;
-                titleText.text = LanguageManager.Instance.GetText(232);
+                SetTitle(language, 232);
                 break;
             case CategoryType.MysteryBox:
                 selectedList = mysteryBoxList;
-                titleText.text = LanguageManager.Instance.GetText(233);
+                SetTitle(language, 233);
                 break;
             default:
                 selectedList = null;
@@ -73,18 +83,57 @@ public class ProductContainer : MonoBehaviour
 
         if (selectedList == null) return;
 
-        foreach (var data in selectedList)
+        for (int i = 0; i < selectedList.Count; i++)
         {
-            GameObject item = Instantiate(productPrefab, contentParent);
-            item.GetComponent<ProductItem>().Setup(data, modalWindowManager);
+            var data = selectedList[i];
+            if (data == null) continue;
+
+            ProductItem item = GetOrCreateItem(i);
+            if (item == null) continue;
+
+            item.gameObject.SetActive(true);
+            item.Setup(data, modalWindowManager);
         }
     }
 
-    private void ClearContent()
+    private ProductItem GetOrCreateItem(int index)
     {
-        foreach (Transform child in contentParent)
+        if (index < productItems.Count)
+            return productItems[index];
+
+        if (productPrefab == null || contentParent == null)
+            return null;
+
+        GameObject itemObject = Instantiate(productPrefab, contentParent);
+        ProductItem item = itemObject.GetComponent<ProductItem>();
+        if (item == null)
         {
-            Destroy(child.gameObject);
+            Debug.LogWarning("Product prefab is missing ProductItem component.", productPrefab);
+            itemObject.SetActive(false);
+            return null;
         }
+
+        productItems.Add(item);
+        return item;
+    }
+
+    private void HideItems()
+    {
+        foreach (var item in productItems)
+        {
+            if (item != null)
+                item.gameObject.SetActive(false);
+        }
+    }
+
+    private void SetTitle(LanguageManager language, int id)
+    {
+        if (titleText != null && language != null)
+            titleText.text = language.GetText(id);
+    }
+
+    private void Close()
+    {
+        gameObject.SetActive(false);
     }
 }

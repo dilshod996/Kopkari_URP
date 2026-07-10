@@ -16,6 +16,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
     [SerializeField] private bool logDebug = false;
 
     private readonly HashSet<RacingAgent> _passed = new HashSet<RacingAgent>();
+    private readonly List<RacingAgent> _passedOrder = new List<RacingAgent>();
     private bool _timerStarted;
     private Coroutine _routine;
 
@@ -31,6 +32,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
     private void OnEnable()
     {
         _passed.Clear();
+        _passedOrder.Clear();
         _timerStarted = false;
 
         if (_routine != null)
@@ -54,6 +56,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
 
         // Bir agent bir marta hisoblanadi
         if (!_passed.Add(agent)) return;
+        _passedOrder.Add(agent);
 
         if (logDebug)
             Debug.Log($"[SpecialReach] Passed: {agent.displayName} (player={agent.isPlayer})");
@@ -108,6 +111,8 @@ public class SpecialReachTriggerPoint : MonoBehaviour
             yield break;
         }
 
+        List<RacingAgent> failedAgents = new List<RacingAgent>();
+
         for (int i = 0; i < agents.Count; i++)
         {
             var a = agents[i];
@@ -123,11 +128,15 @@ public class SpecialReachTriggerPoint : MonoBehaviour
             else
             {
                 if (logDebug) Debug.Log($"[SpecialReach] AI failed => eliminated: {a.displayName}");
+                failedAgents.Add(a);
                 EliminateAI(a);
             }
         }
 
         UIButtonActions.Instance.HideSpecialTrigger();
+
+        if (HasPlayerPassed() && !controller.IsRaceOver)
+            RacingLeaderboard.Instance?.ApplyOrderAndShow(_passedOrder, failedAgents);
     }
 
 

@@ -142,6 +142,7 @@ public static class Constants
         public const string PastDargom = "pastmap";
         public const string Chiroqchi = "chiroqmap";
         public const string Kansas = "kansasmap";
+        public const string sibirmap = "sibirmap";
     }
     public static class HomeEnivronments
     {

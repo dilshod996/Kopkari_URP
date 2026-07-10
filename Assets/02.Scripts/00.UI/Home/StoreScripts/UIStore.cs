@@ -1,17 +1,15 @@
-﻿using DG.Tweening;
-using System.Collections;
-using System.Collections.Generic;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
-using static System.Net.Mime.MediaTypeNames;
 
 public class UIStore : MonoBehaviour
 {
     public enum MarketPages
     {
         Currencies,
-        Boosters,
+        PlayerItems,
         Maps,
         Skins
     }
@@ -20,16 +18,22 @@ public class UIStore : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text backBtnText;
     [SerializeField] private TMP_Text currencyText;
-    [SerializeField] private TMP_Text boosterText;
+    [FormerlySerializedAs("boosterText")]
+    [SerializeField] private TMP_Text playerItemsText;
     [SerializeField] private TMP_Text mapText;
     [SerializeField] private TMP_Text skinText;
 
     [Header("Buttons")]
     [SerializeField] private Button currencyBtn;
-    [SerializeField] private Button boosterBtn;
+    [FormerlySerializedAs("boosterBtn")]
+    [SerializeField] private Button playerItemsBtn;
     [SerializeField] private Button mapBtn;
     [SerializeField] private Button skinBtn;
     [SerializeField] private Button backButton;
+
+    [Header("Tab Text Colors")]
+    [SerializeField] private Color selectedTabTextColor = new Color32(0x00, 0xDC, 0xFF, 0xFF);
+    [SerializeField] private Color unselectedTabTextColor = new Color32(0xEE, 0xD3, 0x66, 0xFF);
 
     [Header("Clicked Objects")]
     [SerializeField] private GameObject[] clickedObjs;
@@ -59,12 +63,12 @@ public class UIStore : MonoBehaviour
     private bool _isAnimating;
     private void OnEnable()
     {
-        backButton.onClick.AddListener(BackAction);
+        AddButtonListener(backButton, BackAction);
 
-        currencyBtn.onClick.AddListener(() => SelectPage(MarketPages.Currencies));
-        boosterBtn.onClick.AddListener(() => SelectPage(MarketPages.Boosters));
-        mapBtn.onClick.AddListener(() => SelectPage(MarketPages.Maps));
-        skinBtn.onClick.AddListener(() => SelectPage(MarketPages.Skins));
+        AddButtonListener(currencyBtn, SelectCurrencies);
+        AddButtonListener(playerItemsBtn, SelectPlayerItems);
+        AddButtonListener(mapBtn, SelectMaps);
+        AddButtonListener(skinBtn, SelectSkins);
 
         UITextTranslations();
 
@@ -75,68 +79,98 @@ public class UIStore : MonoBehaviour
 
     private void OnDisable()
     {
-        backButton.onClick.RemoveAllListeners();
-        currencyBtn.onClick.RemoveAllListeners();
-        boosterBtn.onClick.RemoveAllListeners();
-        mapBtn.onClick.RemoveAllListeners();
-        skinBtn.onClick.RemoveAllListeners();
+        RemoveButtonListener(backButton, BackAction);
+        RemoveButtonListener(currencyBtn, SelectCurrencies);
+        RemoveButtonListener(playerItemsBtn, SelectPlayerItems);
+        RemoveButtonListener(mapBtn, SelectMaps);
+        RemoveButtonListener(skinBtn, SelectSkins);
         DisableNomadicPacks();
+        KillPackTweens();
+        _isAnimating = false;
     }
 
     private void SelectPage(MarketPages page)
     {
         int idx = (int)page;
-        if (_currentIndexPage == idx) return; // qayta bosilsa bekor
 
         _currentIndexPage = idx;
 
-        for (int i = 0; i < clickedObjs.Length; i++)
+        int count = Mathf.Max(clickedObjs != null ? clickedObjs.Length : 0, pages != null ? pages.Length : 0);
+        for (int i = 0; i < count; i++)
         {
             bool on = (i == idx);
 
-            var c = clickedObjs[i];
-            if (c != null && c.activeSelf != on) c.SetActive(on);
-
-            var p = pages[i];
-            if (p != null && p.activeSelf != on) p.SetActive(on);
+            SetActiveIfNeeded(GetItem(clickedObjs, i), on);
+            SetActiveIfNeeded(GetItem(pages, i), on);
         }
+
+        RefreshTabTextColors(idx);
+    }
+
+    private void SelectCurrencies()
+    {
+        SelectPage(MarketPages.Currencies);
+    }
+
+    private void SelectPlayerItems()
+    {
+        SelectPage(MarketPages.PlayerItems);
+    }
+
+    private void SelectMaps()
+    {
+        SelectPage(MarketPages.Maps);
+    }
+
+    private void SelectSkins()
+    {
+        SelectPage(MarketPages.Skins);
     }
 
     private void UITextTranslations()
     {
         var language = LanguageManager.Instance;
         if (language == null) return;
-        backBtnText.text = language.GetText(362);
-        titleText.text = language.GetText(25);
-        currencyText.text = language.GetText(412);
-        boosterText.text = language.GetText(413);
-        mapText.text = language.GetText(414);
-        skinText.text = language.GetText(415);
+        SetText(backBtnText, language.GetText(362));
+        SetText(titleText, language.GetText(25));
+        SetText(currencyText, language.GetText(412));
+        SetText(playerItemsText, language.GetText(386));
+        SetText(mapText, language.GetText(414));
+        SetText(skinText, language.GetText(415));
+    }
+
+    private void RefreshTabTextColors(int selectedIndex)
+    {
+        SetTextColor(currencyText, selectedIndex == (int)MarketPages.Currencies);
+        SetTextColor(playerItemsText, selectedIndex == (int)MarketPages.PlayerItems);
+        SetTextColor(mapText, selectedIndex == (int)MarketPages.Maps);
+        SetTextColor(skinText, selectedIndex == (int)MarketPages.Skins);
     }
 
     private void BackAction()
     {
-        HomeMainUI.Instance.HideUI(this);
+        if (HomeMainUI.Instance != null)
+            HomeMainUI.Instance.HideUI(this);
     }
 
     #region Nomadic Packs
     private void InitalsNomadPacks()
     {
-        prevButton.onClick.AddListener(Prev);
-        nextButton.onClick.AddListener(Next);
+        AddButtonListener(prevButton, Prev);
+        AddButtonListener(nextButton, Next);
 
         ShowImmediate(0);
         RefreshButtons(); 
     }
     private void DisableNomadicPacks()
     {
-        prevButton.onClick.RemoveListener(Prev);
-        nextButton.onClick.RemoveListener(Next);
+        RemoveButtonListener(prevButton, Prev);
+        RemoveButtonListener(nextButton, Next);
     }
     private void Next()
     {
         if (_isAnimating) return;
-        if (_currentIndex >= packs.Length - 1) return;
+        if (packs == null || _currentIndex >= packs.Length - 1) return;
 
         AnimateTo(_currentIndex + 1, dir: +1);
     }
@@ -144,6 +178,7 @@ public class UIStore : MonoBehaviour
     private void Prev()
     {
         if (_isAnimating) return;
+        if (packs == null) return;
         if (_currentIndex <= 0) return;
 
         AnimateTo(_currentIndex - 1, dir: -1);
@@ -151,10 +186,13 @@ public class UIStore : MonoBehaviour
 
     private void AnimateTo(int newIndex, int dir)
     {
+        if (packs == null || newIndex < 0 || newIndex >= packs.Length) return;
+        if (_currentIndex < 0 || _currentIndex >= packs.Length) return;
+        if (packs[_currentIndex] == null || packs[newIndex] == null) return;
+
         _isAnimating = true;
         SetButtons(false);
 
-        // 🔴 eski packni darhol o‘chiramiz
         packs[_currentIndex].DOKill();
         packs[_currentIndex].gameObject.SetActive(false);
 
@@ -179,8 +217,17 @@ public class UIStore : MonoBehaviour
 
     private void ShowImmediate(int index)
     {
+        if (packs == null || packs.Length == 0)
+        {
+            _currentIndex = 0;
+            return;
+        }
+
+        index = Mathf.Clamp(index, 0, packs.Length - 1);
         for (int i = 0; i < packs.Length; i++)
         {
+            if (packs[i] == null) continue;
+
             bool on = (i == index);
             packs[i].gameObject.SetActive(on);
 
@@ -196,15 +243,67 @@ public class UIStore : MonoBehaviour
 
     private void RefreshButtons()
     {
-        prevButton.interactable = _currentIndex > 0;
-        nextButton.interactable = _currentIndex < packs.Length - 1;
+        bool hasPacks = packs != null && packs.Length > 0;
+        if (prevButton != null)
+            prevButton.interactable = hasPacks && _currentIndex > 0;
+        if (nextButton != null)
+            nextButton.interactable = hasPacks && _currentIndex < packs.Length - 1;
     }
 
     private void SetButtons(bool value)
     {
-        prevButton.interactable = value && _currentIndex > 0;
-        nextButton.interactable = value && _currentIndex < packs.Length - 1;
+        bool hasPacks = packs != null && packs.Length > 0;
+        if (prevButton != null)
+            prevButton.interactable = value && hasPacks && _currentIndex > 0;
+        if (nextButton != null)
+            nextButton.interactable = value && hasPacks && _currentIndex < packs.Length - 1;
+    }
+
+    private void KillPackTweens()
+    {
+        if (packs == null) return;
+
+        foreach (var pack in packs)
+        {
+            if (pack != null)
+                pack.DOKill();
+        }
     }
     #endregion
+
+    private static GameObject GetItem(GameObject[] items, int index)
+    {
+        return items != null && index >= 0 && index < items.Length ? items[index] : null;
+    }
+
+    private static void SetActiveIfNeeded(GameObject obj, bool value)
+    {
+        if (obj != null && obj.activeSelf != value)
+            obj.SetActive(value);
+    }
+
+    private static void SetText(TMP_Text text, string value)
+    {
+        if (text != null)
+            text.text = value;
+    }
+
+    private void SetTextColor(TMP_Text text, bool selected)
+    {
+        if (text != null)
+            text.color = selected ? selectedTabTextColor : unselectedTabTextColor;
+    }
+
+    private static void AddButtonListener(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button != null)
+            button.onClick.AddListener(action);
+    }
+
+    private static void RemoveButtonListener(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button != null)
+            button.onClick.RemoveListener(action);
+    }
 }
 

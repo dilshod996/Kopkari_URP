@@ -34,9 +34,15 @@ namespace Kopkari
         [SerializeField] AudioClip introMusic;
         [SerializeField] TMP_Text gameName;
         [SerializeField] private Button startButton;
-        //[SerializeField] private Button skipButton;
+        [SerializeField] private Button skipButton;
         //Intro scene addressable addresses
         private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
+        private List<string> homePreloadAddresses;
+        private Task<bool> homePreloadTask;
+        private bool introContentLoading;
+        private bool introContentReady;
+        private bool lobbyLoadStarted;
+        private Coroutine homePreloadReadyRoutine;
 
         [Header("User Details")]
         // private const string UsernameKey = "username";
@@ -68,24 +74,46 @@ namespace Kopkari
             {
                 SceneLoadManager.Instance.CurrentSceneType = SceneLoadManager.SceneType.Intro;
             }
-            await LanguageManager.Instance.InitializeAsync();
-            notificationManager.onConfirm.AddListener(() =>
+            if (LanguageManager.Instance != null)
             {
-                RetryInitWithPopup();
-            });
-            videoPlayer.loopPointReached += OnVideoFinished;
-            GetAddressableData();
+                await LanguageManager.Instance.InitializeAsync();
+            }
+
+            if (notificationManager != null)
+            {
+                notificationManager.onConfirm.AddListener(() =>
+                {
+                    RetryIntroContentLoad();
+                });
+            }
+
+            if (videoPlayer != null)
+                videoPlayer.loopPointReached += OnVideoFinished;
+
             //PlayerPrefs.DeleteAll();
 
             //PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
             SetInitialLanguage();
-            startButton.onClick.AddListener(() =>
+            if (startButton != null)
             {
-                LoadLobbyScene();
-            });
+                startButton.onClick.AddListener(() =>
+                {
+                    LoadLobbyScene();
+                });
+            }
+            if (skipButton != null && skipButton != startButton)
+            {
+                skipButton.onClick.AddListener(() =>
+                {
+                    LoadLobbyScene();
+                });
+            }
+            SetSkipAvailable(false);
 
             InitializePlayerPrefs();
+            homePreloadAddresses = GetPreloadMaterialAddresses();
+            GetAddressableData();
 
         }
         private void OnDestroy()
@@ -141,74 +169,83 @@ namespace Kopkari
         }
         public async void GetAddressableData()
         {
+            if (introContentLoading || introContentReady)
+                return;
+
+            if (AddressablesService.Instance == null)
+            {
+                ShowIntroRetryPopup();
+                return;
+            }
+
+            introContentLoading = true;
+
             // 1) Preload/download + progress
             bool ok = await AddressablesService.Instance.PreloadDependenciesAsync(
                 myAddresses,
                 p =>
                 {
-                    progressBar.currentPercent = p * 100f;
-                    progressBar.UpdateUI();
+                    if (progressBar != null)
+                    {
+                        progressBar.currentPercent = p * 100f;
+                        progressBar.UpdateUI();
+                    }
                 },
                 fakeDurationIfCached: 2f
             );
+            introContentLoading = false;
+
+            if (lobbyLoadStarted || this == null)
+                return;
 
             if (!ok)
             {
                 Debug.LogWarning("❌ Preload failed (no internet or download error).");
+                ShowIntroRetryPopup();
                 return;
             }
 
             // 2) Keylar bo‘yicha assetlarni load qilib ishlatamiz
             var video = await AddressablesService.Instance.LoadAssetAsync<VideoClip>(Constants.VideoClips.IntroVideo);
+            if (lobbyLoadStarted || this == null)
+                return;
+
             if (video != null)
             {
-                videoPlayer.clip = video;
-                videoPlayer.Play();
+                if (videoPlayer != null)
+                {
+                    videoPlayer.clip = video;
+                    videoPlayer.Play();
+                    StartHomePreloadDuringVideo();
+                }
+                if (startingPage != null && startingPage.activeSelf)
+                    startingPage.SetActive(false);
+
+                introContentReady = true;
                 Debug.Log($"▶️ Video played: {Constants.VideoClips.IntroVideo}");
 
             }
+            else
+            {
+                ShowIntroRetryPopup();
+                return;
+            }
+
             var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.IntroSound);
+            if (lobbyLoadStarted || this == null)
+                return;
+
             if (audio != null)
             {
                 SoundEffect(audio);
                 Debug.Log($"🔊 Audio played: {Constants.RoomSound.IntroSound}");
 
-                if (startingPage.activeSelf)
-                    startingPage.SetActive(false);
-
             }
 
         }
-        public async void GetIntroVideo()
+        public void GetIntroVideo()
         {
-            bool ok = await AddressablesService.Instance.PreloadDependenciesAsync(
-                "IntroVideo",
-                p =>
-                {
-                    progressBar.currentPercent = p * 100f;
-                    progressBar.UpdateUI();
-                },
-                fakeDurationIfCached: 3f
-            );
-
-            if (!ok)
-            {
-                Debug.LogWarning("❌ IntroVideo preload failed.");
-                return;
-            }
-
-            var clip = await AddressablesService.Instance.LoadAssetAsync<VideoClip>("IntroVideo");
-            if (clip == null)
-            {
-                Debug.LogWarning("❌ IntroVideo failed to load.");
-                return;
-            }
-           // var audioClip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>("IntroSound");
-            videoPlayer.clip = clip;
-            videoPlayer.Play();
-
-            if (startingPage.activeSelf)
-                startingPage.SetActive(false);
+            RetryIntroContentLoad();
         }
         //public async void GetAddressableData()
         //{
@@ -282,7 +319,7 @@ namespace Kopkari
         #region Notification Popup
         public void RetryInitWithPopup()
         {
-            StartCoroutine(EnsureInitRoutine());
+            RetryIntroContentLoad();
         }
 
         IEnumerator EnsureInitRoutine()
@@ -301,14 +338,126 @@ namespace Kopkari
             else
             {
                 Debug.Log("✅ Addressables re-initialized from confirm!");
-                GetIntroVideo();
+                RetryIntroContentLoad();
                 // Optional: asset loading yoki sahifani qayta yuklash
             }
         }
 
         public void ShowPopup()
         {
-            notificationManager.UpdateUICustom("Internetda xatolik", "Internet mavjud emas. Iltimos internetni yoqilganiga ishonch hosil qiling");
+            ShowIntroRetryPopup();
+        }
+
+        private void RetryIntroContentLoad()
+        {
+            if (lobbyLoadStarted)
+                return;
+
+            introContentReady = false;
+            GetAddressableData();
+        }
+
+        private void ShowIntroRetryPopup()
+        {
+            if (UIOverlayRoot.I != null)
+            {
+                UIOverlayRoot.I.Confirm(
+                    "Download failed",
+                    "Could not download required intro content. Please check your internet connection and try again.",
+                    "Retry",
+                    "Close",
+                    RetryIntroContentLoad,
+                    null
+                );
+                return;
+            }
+
+            if (notificationManager != null)
+            {
+                notificationManager.UpdateUICustom(
+                    "Internetda xatolik",
+                    "Internet mavjud emas. Iltimos internetni yoqilganiga ishonch hosil qiling"
+                );
+            }
+        }
+
+        private void StartHomePreloadDuringVideo()
+        {
+            if (AddressablesService.Instance == null)
+                return;
+
+            if (homePreloadTask != null && !homePreloadTask.IsCompleted)
+                return;
+
+            if (IsSuccessful(homePreloadTask))
+                return;
+
+            homePreloadAddresses ??= GetPreloadMaterialAddresses();
+            homePreloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+                homePreloadAddresses,
+                p =>
+                {
+                    if (SceneLoadManager.Instance != null)
+                        SceneLoadManager.Instance.loadingTime = p * 100f;
+                },
+                fakeDurationIfCached: 0f
+            );
+
+            if (homePreloadReadyRoutine != null)
+                StopCoroutine(homePreloadReadyRoutine);
+
+            homePreloadReadyRoutine = StartCoroutine(ShowSkipWhenHomePreloadReady());
+        }
+
+        private Task<bool> GetReusableHomePreloadTask()
+        {
+            if (homePreloadTask == null)
+                return null;
+
+            if (!homePreloadTask.IsCompleted)
+                return homePreloadTask;
+
+            return IsSuccessful(homePreloadTask) ? homePreloadTask : null;
+        }
+
+        private bool IsSuccessful(Task<bool> task)
+        {
+            return task != null
+                && task.IsCompleted
+                && !task.IsCanceled
+                && !task.IsFaulted
+                && task.Result;
+        }
+
+        private IEnumerator ShowSkipWhenHomePreloadReady()
+        {
+            while (homePreloadTask != null && !homePreloadTask.IsCompleted)
+                yield return null;
+
+            homePreloadReadyRoutine = null;
+
+            if (!lobbyLoadStarted && IsSuccessful(homePreloadTask))
+                SetSkipAvailable(true);
+        }
+
+        private void SetSkipAvailable(bool available)
+        {
+            Button activeSkipButton = skipButton != null ? skipButton : startButton;
+
+            if (startButton != null)
+            {
+                startButton.interactable = available && activeSkipButton == startButton;
+                startButton.gameObject.SetActive(available && activeSkipButton == startButton);
+            }
+
+            if (skipButton != null)
+            {
+                skipButton.interactable = available;
+                skipButton.gameObject.SetActive(available);
+            }
+
+            if (moveLobbyPage != null && activeSkipButton != null && activeSkipButton.transform.IsChildOf(moveLobbyPage.transform))
+                moveLobbyPage.SetActive(available);
         }
 
         #endregion
@@ -317,8 +466,28 @@ namespace Kopkari
 
         public void LoadLobbyScene()
         {
-            List<string> preloadAddresses = GetPreloadMaterialAddresses();
-            SceneLoadManager.Instance.LoadHomeFromIntro(SceneLoadManager.SceneType.Home, preloadAddresses);
+            if (lobbyLoadStarted)
+                return;
+
+            lobbyLoadStarted = true;
+            SetSkipAvailable(false);
+
+            if (videoPlayer != null)
+            {
+                videoPlayer.loopPointReached -= OnVideoFinished;
+                videoPlayer.Stop();
+            }
+
+            homePreloadAddresses ??= GetPreloadMaterialAddresses();
+
+            if (SceneLoadManager.Instance == null)
+                return;
+
+            SceneLoadManager.Instance.LoadHomeFromIntro(
+                SceneLoadManager.SceneType.Home,
+                homePreloadAddresses,
+                GetReusableHomePreloadTask()
+            );
         }
         #endregion
 
@@ -342,8 +511,11 @@ namespace Kopkari
             {
                 SoundManager.Instance.StopRoomSmooth();
             }
-            foreach (var addr in myAddresses)
-                AddressablesService.Instance.ReleaseLoadedAsset(addr);
+            if (AddressablesService.Instance != null)
+            {
+                foreach (var addr in myAddresses)
+                    AddressablesService.Instance.ReleaseLoadedAsset(addr);
+            }
         }
         /// Fade-in → 0 dan 1 ga (ekran qora bo‘ladi)
         /// </summary>

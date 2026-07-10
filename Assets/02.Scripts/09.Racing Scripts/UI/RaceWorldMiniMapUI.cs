@@ -67,6 +67,24 @@ public class RaceWorldMiniMapUI : MonoBehaviour
         Initialize();
     }
 
+    private void OnEnable()
+    {
+        if (!initialized)
+            Initialize();
+    }
+
+    private void OnDisable()
+    {
+        initialized = false;
+        playerTargetInitialized = false;
+
+        for (int i = 0; i < aiRiderIcons.Count; i++)
+        {
+            if (aiRiderIcons[i] != null)
+                aiRiderIcons[i].targetInitialized = false;
+        }
+    }
+
     private void LateUpdate()
     {
         if (!initialized) return;
@@ -87,8 +105,13 @@ public class RaceWorldMiniMapUI : MonoBehaviour
 
     public void Initialize()
     {
+        initialized = false;
+
         if (player == null)
         {
+            if (RacingController.Instance == null || RacingController.Instance.horse == null)
+                return;
+
             player = RacingController.Instance.horse.transform;
             //Debug.Log("RaceWorldMiniMapUI: Player reference yo'q.");
             //return;
@@ -118,6 +141,12 @@ public class RaceWorldMiniMapUI : MonoBehaviour
 
     private void UpdatePlayerIcon()
     {
+        if (player == null || playerIcon == null)
+        {
+            initialized = false;
+            return;
+        }
+
         Vector2 uiPosition = WorldToMiniMapPosition(player.position);
         playerTargetPosition = uiPosition;
 
@@ -214,6 +243,12 @@ public class RaceWorldMiniMapUI : MonoBehaviour
 
     private bool CacheMapData()
     {
+        if (mapBottomLeft == null || mapTopRight == null || miniMapRect == null)
+        {
+            initialized = false;
+            return false;
+        }
+
         float mapWidth = mapTopRight.position.x - mapBottomLeft.position.x;
         float mapDepth = mapTopRight.position.z - mapBottomLeft.position.z;
 
@@ -257,6 +292,11 @@ public class RaceWorldMiniMapUI : MonoBehaviour
     private void SmoothPlayerIcon()
     {
         if (!playerTargetInitialized) return;
+        if (playerIcon == null)
+        {
+            initialized = false;
+            return;
+        }
 
         float positionT = 1f - Mathf.Exp(-positionSmoothSpeed * Time.unscaledDeltaTime);
         Vector2 position = Vector2.Lerp(playerIcon.anchoredPosition, playerTargetPosition, positionT);
@@ -309,7 +349,7 @@ public class RaceWorldMiniMapUI : MonoBehaviour
 
     private void OnRectTransformDimensionsChange()
     {
-        if (!initialized || miniMapRect == null) return;
+        if (!initialized || !isActiveAndEnabled || miniMapRect == null) return;
         if (!CacheMapData()) return;
 
         PlaceStaticIcons();

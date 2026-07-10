@@ -13,6 +13,7 @@ public class KopkariManager : MonoBehaviour
     public MAnimal horseAnimal;
     public MAnimal playerAnim;
     public PlayerDataManager playerDataManager;
+    public ModalWindowManager modalWindowPopup;
 
 
     [Header("Main Time")]
@@ -88,6 +89,8 @@ public class KopkariManager : MonoBehaviour
     [SerializeField] private float frontDistance = 6f;
     [SerializeField] private float backDistance = 3f;
     [SerializeField] private float backOffsetY = 0.4f;
+    [SerializeField] private float startupCameraYaw = -46f;
+    [SerializeField] private float startupCameraPitch = 0f;
     #endregion
 
     #region Horse and Player Data
@@ -103,6 +106,8 @@ public class KopkariManager : MonoBehaviour
     public static Action OnResetTarget;
     public static Action<bool> OnGoatPicked;
     public static Action OnTimeFinished;
+    public static Action OnSceneReady;
+    public static bool IsSceneReady { get; private set; }
     #endregion
 
     [Header("Checkpoints")]
@@ -139,6 +144,8 @@ public class KopkariManager : MonoBehaviour
     public static KopkariManager Instance { get; private set; }
 
     private bool poolsCreated = false;
+    private bool sceneReadySignaled = false;
+    private Coroutine sceneReadyRoutine;
 
     //Horse Statistics
     private float webSnareDamageTime;
@@ -149,8 +156,13 @@ public class KopkariManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
 
+        IsSceneReady = false;
+        sceneReadySignaled = false;
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
+
+        if (modalWindowPopup != null)
+            modalWindowPopup.onConfirm.AddListener(MoveLobby);
     }
 
     private void Start()
@@ -206,7 +218,7 @@ public class KopkariManager : MonoBehaviour
         PlayerDataManager.OnLocalPlayerObject += RegisterLocalRider;
         PlayerDataManager.OnRiderAndHorse += RegisterPlayerAndHorse;
 
-        // ✅ BeginerRoomManager flow
+        // Kopkari scene flow
         KopkariMainUI.OnEverythingReadyStart += StartGame;
         UILookBackButton.OnCameraPressedState += CameraBackState;
         BoostersContainer.OnBoostTime += SetBoostTime;
@@ -228,7 +240,7 @@ public class KopkariManager : MonoBehaviour
         PlayerDataManager.OnLocalPlayerObject -= RegisterLocalRider;
         PlayerDataManager.OnRiderAndHorse -= RegisterPlayerAndHorse;
 
-        // ✅ BeginerRoomManager flow
+        // Kopkari scene flow
         KopkariMainUI.OnEverythingReadyStart -= StartGame;
         UILookBackButton.OnCameraPressedState -= CameraBackState;
         BoostersContainer.OnPenaltyTime -= SetPenaltyTime;
@@ -237,7 +249,11 @@ public class KopkariManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (modalWindowPopup != null)
+            modalWindowPopup.onConfirm.RemoveListener(MoveLobby);
+
         if (Instance == this) Instance = null;
+        IsSceneReady = false;
         SimplePool.ClearAll();
     }
     #region Warm Up
@@ -377,6 +393,50 @@ public class KopkariManager : MonoBehaviour
     {
         horseAnimal = horse;
         playerAnim = player;
+
+        if (sceneReadyRoutine != null)
+            StopCoroutine(sceneReadyRoutine);
+
+        sceneReadyRoutine = StartCoroutine(CompleteSceneReadyWhenCameraSettled());
+    }
+
+    private IEnumerator CompleteSceneReadyWhenCameraSettled()
+    {
+        if (sceneReadySignaled) yield break;
+
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        if (mainCam != null)
+        {
+            if ((mainCam.Target == null || mainCam.Target.Value == null) && horseAnimal != null)
+                mainCam.SetTarget(horseAnimal.transform);
+
+            mainCam.SetLookBackMode(false);
+
+            if (mainCam.Target != null && mainCam.Target.Value != null)
+            {
+                mainCam.TargetTeleport(false);
+                mainCam._cinemachineTargetYaw = startupCameraYaw;
+                mainCam._cinemachineTargetPitch = startupCameraPitch;
+            }
+        }
+
+        for (int i = 0; i < 3; i++)
+            yield return null;
+
+        var brain = mainCam != null ? mainCam.Brain : null;
+        float waitUntil = Time.unscaledTime + 2f;
+
+        while (brain != null && brain.IsBlending && Time.unscaledTime < waitUntil)
+            yield return null;
+
+        yield return new WaitForEndOfFrame();
+
+        sceneReadySignaled = true;
+        IsSceneReady = true;
+        SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
+        OnSceneReady?.Invoke();
     }
 
     public void RegisterStartPoint(Transform point, float time)
@@ -779,9 +839,25 @@ public class KopkariManager : MonoBehaviour
         boostTime = boostTime + time;
     }
     #endregion
-    // ✅ BeginerRoomManager’dagi metodlar
+    // Scene navigation hooks
     public void MoveLobby()
     {
         SceneLoadManager.Instance?.LoadScene(SceneLoadManager.SceneType.Home);
+    }
+
+    public void BackMessage()
+    {
+        if (modalWindowPopup == null) return;
+
+        string title = LanguageManager.Instance != null ? LanguageManager.Instance.GetText(280) : string.Empty;
+        string desc = LanguageManager.Instance != null ? LanguageManager.Instance.GetText(281) : string.Empty;
+        string confirm = LanguageManager.Instance != null ? LanguageManager.Instance.GetText(1) : string.Empty;
+        string cancel = LanguageManager.Instance != null ? LanguageManager.Instance.GetText(2) : string.Empty;
+
+        modalWindowPopup.UpdateUICustomWithButtons(title, desc, confirm, cancel);
+    }
+
+    public void SpeedShaderActive(bool state)
+    {
     }
 }

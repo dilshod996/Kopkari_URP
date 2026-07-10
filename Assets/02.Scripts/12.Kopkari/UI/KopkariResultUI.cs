@@ -181,9 +181,9 @@ public class KopkariResultUI : MonoBehaviour
     {
         switch (rank1Based)
         {
-            case 1: return 2300;
-            case 2: return 1700;
-            case 3: return 1300;
+            case 1: return 3400;
+            case 2: return 2600;
+            case 3: return 1800;
             case 4: return 1000;
             case 5: return 800;
             default: return 200;
@@ -193,9 +193,9 @@ public class KopkariResultUI : MonoBehaviour
     {
         switch (rank1Based)
         {
-            case 1: return 4;
-            case 2: return 2;
-            case 3: return 1;
+            case 1: return 7;
+            case 2: return 5;
+            case 3: return 3;
             default: return 0;
         }
     }

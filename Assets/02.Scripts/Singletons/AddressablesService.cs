@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -15,6 +14,7 @@ public sealed class AddressablesService : MonoBehaviour
 
     // Asset handle cache (LoadAssetAsync uchun)
     private readonly Dictionary<string, AsyncOperationHandle> _assetHandles = new();
+    private readonly Dictionary<string, object> _assetListCache = new();
 
     // Instance handle cache (InstantiateAsync uchun) - key: instanceId
     private readonly Dictionary<int, AsyncOperationHandle<GameObject>> _instanceHandles = new();
@@ -234,12 +234,52 @@ public sealed class AddressablesService : MonoBehaviour
         }
     }
 
+    public async Task<IList<T>> LoadAssetsAsync<T>(string addressOrLabel) where T : UnityEngine.Object
+    {
+        try
+        {
+            await EnsureInitializedAsync();
+
+            if (_assetHandles.TryGetValue(addressOrLabel, out var cachedHandle) && cachedHandle.IsValid())
+            {
+                if (_assetListCache.TryGetValue(addressOrLabel, out object cachedList))
+                    return cachedList as IList<T>;
+            }
+
+            var handle = Addressables.LoadAssetsAsync<T>(addressOrLabel, (Action<T>)null);
+            await handle.Task;
+
+            if (!IsSucceeded(handle))
+            {
+                ReportAddressablesError(BuildHandleError($"Failed to load Addressables assets: {addressOrLabel}", handle),
+                    GetOperationException(handle));
+
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+
+                return Array.Empty<T>();
+            }
+
+            _assetHandles[addressOrLabel] = handle;
+            _assetListCache[addressOrLabel] = handle.Result;
+            return handle.Result;
+        }
+        catch (Exception ex)
+        {
+            if (!WasInitializationFailureAlreadyReported())
+                ReportAddressablesError($"Exception while loading Addressables assets: {addressOrLabel}", ex);
+
+            return Array.Empty<T>();
+        }
+    }
+
     public void ReleaseLoadedAsset(string addressOrLabel)
     {
         if (_assetHandles.TryGetValue(addressOrLabel, out var handle) && handle.IsValid())
         {
             Addressables.Release(handle);
             _assetHandles.Remove(addressOrLabel);
+            _assetListCache.Remove(addressOrLabel);
         }
     }
 
@@ -250,6 +290,7 @@ public sealed class AddressablesService : MonoBehaviour
             if (kv.Value.IsValid()) Addressables.Release(kv.Value);
         }
         _assetHandles.Clear();
+        _assetListCache.Clear();
     }
 
     // ----------------------------
@@ -311,9 +352,13 @@ public sealed class AddressablesService : MonoBehaviour
 
     public void ReleaseAllInstances()
     {
-        var ids = _instanceHandles.Keys.ToList();
-        foreach (var id in ids)
+        List<int> ids = new List<int>(_instanceHandles.Count);
+        foreach (int id in _instanceHandles.Keys)
+            ids.Add(id);
+
+        for (int i = 0; i < ids.Count; i++)
         {
+            int id = ids[i];
             var h = _instanceHandles[id];
             if (h.IsValid()) Addressables.ReleaseInstance(h);
         }
@@ -449,6 +494,17 @@ public sealed class AddressablesService : MonoBehaviour
         _lastPopupMessage = popupKey;
         _lastPopupTime = Time.unscaledTime;
 
+        if (LanguageManager.Instance == null || !LanguageManager.Instance.IsReady)
+        {
+            UIOverlayRoot.I.Done(
+                "Download failed",
+                "Could not download required game content. Please check your internet connection and try again.",
+                "OK",
+                null
+            );
+            return;
+        }
+
         UIOverlayRoot.I.Done(popupTitleTextId, popupDescriptionTextId, popupButtonTextId, null);
     }
 
@@ -500,8 +556,22 @@ public sealed class AddressablesService : MonoBehaviour
 
     private static string FormatKeys(IList<string> keys)
     {
-        return keys == null || keys.Count == 0
-            ? "(empty)"
-            : string.Join(", ", keys.Where(key => !string.IsNullOrWhiteSpace(key)));
+        if (keys == null || keys.Count == 0)
+            return "(empty)";
+
+        System.Text.StringBuilder builder = null;
+        for (int i = 0; i < keys.Count; i++)
+        {
+            string key = keys[i];
+            if (string.IsNullOrWhiteSpace(key))
+                continue;
+
+            if (builder == null)
+                builder = new System.Text.StringBuilder(key);
+            else
+                builder.Append(", ").Append(key);
+        }
+
+        return builder == null ? "(empty)" : builder.ToString();
     }
 }

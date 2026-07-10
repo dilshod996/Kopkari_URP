@@ -1,6 +1,7 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using UnityEngine;
 using UnityEngine.UI; // Button uchun
 
@@ -9,7 +10,7 @@ public class RacingPlayers : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private RectTransform contentParent;   // VerticalLayoutGroup
     [SerializeField] private UIPlayerListItem itemPrefab;
-    [SerializeField] private Button startButton;            // Yangi qo‘shilgan Start Button
+    [SerializeField] private Button startButton;
     [SerializeField] private CanvasGroup startButtonGroup;  // Alpha animatsiya uchun
 
     [Header("Options")]
@@ -25,9 +26,10 @@ public class RacingPlayers : MonoBehaviour
 
     private readonly List<UIPlayerListItem> _spawned = new();
     private Coroutine animateRoutine;
+    public static event Action OnStartRequested;
 
     [Header("Page Transition")]
-    [SerializeField] private float fadeOutDuration = 0.6f; // sahifani yo‘qolish tezligi (sekund)
+    [SerializeField] private float fadeOutDuration = 0.6f;
     [SerializeField] private LeanTweenType fadeEaseType = LeanTweenType.easeInOutQuad;
 
     private void Start()
@@ -79,7 +81,10 @@ public class RacingPlayers : MonoBehaviour
         }
         _spawned.Clear();
 
-        // Start buttonni ham yashirish
+        if (startButton != null)
+            startButton.interactable = true;
+
+        // Hide the start button group too.
         if (startButtonGroup)
         {
             LeanTween.cancel(startButtonGroup.gameObject);
@@ -185,7 +190,8 @@ public class RacingPlayers : MonoBehaviour
             })
             .setOnComplete(() =>
             {
-                gameObject.SetActive(false); // sahifani o‘chiradi
+                gameObject.SetActive(false);
+                OnStartRequested?.Invoke();
             });
     }
 

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -36,58 +34,65 @@ public class MarketMainCardUI : MonoBehaviour
     private void OnEnable()
     {
         CardDetails(cardType);
-        buyButton.onClick.AddListener(()=>BuyAction(cardType));
+        if (buyButton != null)
+            buyButton.onClick.AddListener(BuyAction);
     }
     private void OnDisable()
     {
-        buyButton.onClick.RemoveAllListeners();
+        if (buyButton != null)
+            buyButton.onClick.RemoveListener(BuyAction);
     }
     private void CardDetails(MainCardType cardType)
     {
 
         var language = LanguageManager.Instance;
         if (language == null) return;
-        buyText.text = language.GetText(424);
+        SetText(buyText, language.GetText(424));
         switch(cardType)
         {
             case MainCardType.NomadicStarter:
-                title.text = language.GetText(416);
-                bestValueText.text = language.GetText(419); //Best Value
-                firstItemText.text = $"+{firstItemAmount} {language.GetText(390)}"; //coins
-                secondItemText.text = $"+{language.GetText(323)} {secondItemAmount}X"; //walkTrap
-                thirdItemText.text = $"+{language.GetText(108)} {thirdItemAmount}X"; // bugdoy
-                discountAmountText.text = $"-{discountAmount}%";
-                costText.text = $"${buyAmount}";
+                SetText(title, language.GetText(416));
+                SetText(bestValueText, language.GetText(419)); //Best Value
+                SetText(firstItemText, $"+{firstItemAmount} {language.GetText(390)}"); //coins
+                SetText(secondItemText, $"+{language.GetText(323)} {secondItemAmount}X"); //walkTrap
+                SetText(thirdItemText, $"+{language.GetText(108)} {thirdItemAmount}X"); // bugdoy
+                SetText(discountAmountText, $"-{discountAmount}%");
+                SetText(costText, $"${buyAmount}");
                 break;
             case MainCardType.NomadicExplorer:
-                title.text = language.GetText(417);
-                bestValueText.text = language.GetText(421); //Limited
-                firstItemText.text = $"+{firstItemAmount} {language.GetText(390)}"; //coins
-                secondItemText.text = $"+{language.GetText(322)} {secondItemAmount}X"; //Web snare
-                thirdItemText.text = $"+{language.GetText(110)} {thirdItemAmount}X"; // olma
-                discountAmountText.text = $"-{discountAmount}%";
-                costText.text = $"${buyAmount}";
+                SetText(title, language.GetText(417));
+                SetText(bestValueText, language.GetText(421)); //Limited
+                SetText(firstItemText, $"+{firstItemAmount} {language.GetText(390)}"); //coins
+                SetText(secondItemText, $"+{language.GetText(322)} {secondItemAmount}X"); //Web snare
+                SetText(thirdItemText, $"+{language.GetText(110)} {thirdItemAmount}X"); // olma
+                SetText(discountAmountText, $"-{discountAmount}%");
+                SetText(costText, $"${buyAmount}");
                 break;
             case MainCardType.Warrior:
-                title.text = language.GetText(418);
-                bestValueText.text = language.GetText(420); // most popular
-                firstItemText.text = $"+{firstItemAmount} {language.GetText(390)}"; //coins
-                secondItemText.text = $"+{language.GetText(324)} {secondItemAmount}X"; //Defense
-                thirdItemText.text = $"+{language.GetText(109)} {thirdItemAmount}X"; // arpa
-                discountAmountText.text = $"-{discountAmount}%";
-                costText.text = $"${buyAmount}";
+                SetText(title, language.GetText(418));
+                SetText(bestValueText, language.GetText(420)); // most popular
+                SetText(firstItemText, $"+{firstItemAmount} {language.GetText(390)}"); //coins
+                SetText(secondItemText, $"+{language.GetText(324)} {secondItemAmount}X"); //Defense
+                SetText(thirdItemText, $"+{language.GetText(109)} {thirdItemAmount}X"); // arpa
+                SetText(discountAmountText, $"-{discountAmount}%");
+                SetText(costText, $"${buyAmount}");
                 break;
             case MainCardType.Legend:
-                title.text = language.GetText(423);
-                bestValueText.text = language.GetText(422); // Hot Deal
-                firstItemText.text = $"+{firstItemAmount} {language.GetText(390)}"; //coins
-                secondItemText.text = $"+{language.GetText(324)} {secondItemAmount}X"; //Defense
-                thirdItemText.text = $"+{language.GetText(112)} {thirdItemAmount}X"; // stamin Water
-                discountAmountText.text = $"-{discountAmount}%";
-                costText.text = $"${buyAmount}";
+                SetText(title, language.GetText(423));
+                SetText(bestValueText, language.GetText(422)); // Hot Deal
+                SetText(firstItemText, $"+{firstItemAmount} {language.GetText(390)}"); //coins
+                SetText(secondItemText, $"+{language.GetText(324)} {secondItemAmount}X"); //Defense
+                SetText(thirdItemText, $"+{language.GetText(112)} {thirdItemAmount}X"); // stamin Water
+                SetText(discountAmountText, $"-{discountAmount}%");
+                SetText(costText, $"${buyAmount}");
                 break;
         }
     }
+    private void BuyAction()
+    {
+        BuyAction(cardType);
+    }
+
     private void BuyAction(MainCardType type)
     {
         switch(type)
@@ -97,5 +102,10 @@ public class MarketMainCardUI : MonoBehaviour
         }
     }
 
+    private static void SetText(TMP_Text text, string value)
+    {
+        if (text != null)
+            text.text = value;
+    }
     
 }

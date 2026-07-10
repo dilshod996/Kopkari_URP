@@ -1,12 +1,11 @@
-using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class DragScript : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
 {
-    public RectTransform panel;       // Panelni o¡®zi
-    public bool isForOpening = true;  // Bu tugma ochishmi yoki yopish uchunmi?
-    public bool isOpen = false; // Panel ochilganligini tekshirish uchun
+    public RectTransform panel;
+    public bool isForOpening = true;
+    public bool isOpen = false;
     public DragScriptXPos otherPanel;
 
     private Vector2 dragStartPos;
@@ -17,8 +16,14 @@ public class DragScript : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDr
 
     private void OnEnable()
     {
-        ClosePanel(); // Panelni boshlanishida yopish
+        ClosePanel();
     }
+
+    private void OnDisable()
+    {
+        CancelPanelTween();
+    }
+
     public void OnBeginDrag(PointerEventData eventData)
     {
         dragStartPos = eventData.position;
@@ -26,7 +31,6 @@ public class DragScript : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDr
 
     public void OnDrag(PointerEventData eventData)
     {
-        // optional: jonli harakat
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -43,7 +47,7 @@ public class DragScript : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDr
         }
     }
 
-    public void OnClickClose() // close tugma bosilganda
+    public void OnClickClose()
     {
         ClosePanel();
     }
@@ -52,14 +56,27 @@ public class DragScript : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDr
     {
         if (otherPanel != null && otherPanel.IsOpen())
             otherPanel.ClosePanel();
+        if (panel == null) return;
+
+        CancelPanelTween();
         panel.LeanMoveY(openY, duration);
-        isOpen = true; // Panel ochilganligini belgilash
+        isOpen = true;
     }
-    
+
     public void ClosePanel()
     {
+        if (panel == null) return;
+
+        CancelPanelTween();
         panel.LeanMoveY(closedY, duration);
-        isOpen = false; // Panel yopilganligini belgilash
+        isOpen = false;
     }
+
     public bool IsOpen() => isOpen;
+
+    private void CancelPanelTween()
+    {
+        if (panel != null)
+            LeanTween.cancel(panel.gameObject);
+    }
 }

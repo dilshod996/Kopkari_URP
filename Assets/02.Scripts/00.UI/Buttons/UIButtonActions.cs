@@ -4,6 +4,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class UIButtonActions : MonoBehaviour
@@ -28,7 +29,8 @@ public class UIButtonActions : MonoBehaviour
     [SerializeField] private Button shootWebBtn;
     [SerializeField] private Button chainContainerBtn;
     [SerializeField] private Button pauseButton;
-    [SerializeField] private Slider cameraSwitchSlider;
+    [FormerlySerializedAs("cameraSwitchSlider")]
+    [SerializeField] private Button cameraSwitchButton;
     //[SerializeField] private GameObject reinController;
     //[SerializeField] private GameObject buttonController;
     #endregion
@@ -68,6 +70,7 @@ public class UIButtonActions : MonoBehaviour
     [Header("Pages")]
     [SerializeField] private GameObject resultPage;
     [SerializeField] private GameObject foodPanel;
+    [SerializeField] private GameObject inGameSettingsPanel;
     [SerializeField] private UIPauseGame pauseMenu;
     [SerializeField] private PlayerItems itemsPanel;
     [SerializeField] private Image blinkOverlay;      // UI Image
@@ -114,6 +117,11 @@ public class UIButtonActions : MonoBehaviour
     private float totalWebSnareTime = 0f;
     #endregion
 
+    #region Runtime - Defend State
+    private bool isDefendActive;
+    private BoostersContainer boundBoosters;
+    #endregion
+
     //#region Speed State UI
     //[Header("Speed Icon & Text Details")]
     //[SerializeField] private Image speedStateImage;
@@ -140,6 +148,7 @@ public class UIButtonActions : MonoBehaviour
 
     public bool isFinished = false;
     private bool _pausedByApp;
+    private bool isFirstPersonCameraActive;
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
     {
@@ -177,8 +186,12 @@ public class UIButtonActions : MonoBehaviour
 
         // ✅ UI start holatini to‘g‘ri qo‘yib olamiz
         SetSprintState(true);
-        pauseButton.onClick.AddListener(PauseMenu);
-        cameraSwitchSlider.onValueChanged.AddListener(OnSliderChanged);
+        if (pauseButton != null)
+            pauseButton.onClick.AddListener(PauseMenu);
+
+        SyncCameraToggleState();
+        if (cameraSwitchButton != null)
+            cameraSwitchButton.onClick.AddListener(ToggleCameraView);
     }
 
     private void OnDisable()
@@ -219,7 +232,13 @@ public class UIButtonActions : MonoBehaviour
         isPointerHeld = false;
         autoSprintBoostActive = false;
         totalHoldTime = 0f;
-        pauseButton.onClick.RemoveListener(PauseMenu);
+        totalWebSnareTime = 0f;
+        _pausedByApp = false;
+        if (pauseButton != null)
+            pauseButton.onClick.RemoveListener(PauseMenu);
+
+        if (cameraSwitchButton != null)
+            cameraSwitchButton.onClick.RemoveListener(ToggleCameraView);
     }
     private void OnApplicationPause(bool pause)
     {
@@ -245,10 +264,17 @@ public class UIButtonActions : MonoBehaviour
 
     private void PauseBySystem()
     {
+        var racingController = RacingController.Instance;
+        if (racingController == null)
+            return;
+
+        if (!CanOpenSystemPauseMenu(racingController))
+            return;
+
         if (_pausedByApp) return; // ✅ double-calldan saqlaydi
         _pausedByApp = true;
-        var racingController = RacingController.Instance;
-        if(racingController.mapType != RacingController.RacingType.Training)
+
+        if(racingController.mapType != RacingController.RacingType.Training && pauseMenu != null)
         {
             pauseMenu.gameObject.SetActive(true);
         }
@@ -258,14 +284,21 @@ public class UIButtonActions : MonoBehaviour
         // ixtiyoriy: agar audio/vfx ham to‘xtasin desa
         // Time.timeScale = 0f;  // (agar sen game’ni to‘liq muzlatmoqchi bo‘lsang)
     }
+
+    public void NotifyRaceResumedFromPause()
+    {
+        _pausedByApp = false;
+    }
     #endregion
 
     #region Text Updates
     public void UpdateDefendText(int count)
     {
-        defendCountText.text = count.ToString();
+        if (defendCountText != null)
+            defendCountText.text = count.ToString();
+
         SaveItem(Constants.PlayerItems.Defense, count);
-        SetDefendState(count > 0);
+        RefreshDefendButtonState(count);
     }
 
     public void UpdateWalkZoneText(int count)
@@ -328,17 +361,41 @@ public class UIButtonActions : MonoBehaviour
     }
 
     public void SetJumpState(bool state) => jumpBtn.interactable = state;
-    public void SetDefendState(bool state) => defendBtn.interactable = state;
-    public void SetDefendStateTime(bool state)
+    public void SetDefendState(bool state)
     {
         if (!state)
         {
-            defendBtn.interactable = false;
+            if (defendBtn != null)
+                defendBtn.interactable = false;
+
             return;
         }
 
-        int defendCount = GetItemAmount(Constants.PlayerItems.Defense);
-        defendBtn.interactable = defendCount > 0;
+        RefreshDefendButtonState();
+    }
+
+    public void SetDefendStateTime(bool state)
+    {
+        isDefendActive = state ? false : IsBoundDefendRunning();
+        RefreshDefendButtonState();
+    }
+
+    private void RefreshDefendButtonState(int? defendCountOverride = null)
+    {
+        if (defendBtn == null) return;
+
+        int defendCount = defendCountOverride ?? GetItemAmount(Constants.PlayerItems.Defense);
+        bool defendRunning = isDefendActive || IsBoundDefendRunning();
+
+        defendBtn.interactable = !defendRunning && defendCount > 0;
+    }
+
+    private bool IsBoundDefendRunning()
+    {
+        if (boundBoosters == null) return false;
+
+        bool defendObjectVisible = boundBoosters.defendQobiq != null && boundBoosters.defendQobiq.activeSelf;
+        return boundBoosters.isDefend || defendObjectVisible;
     }
     public void SetWalkZoneState(bool state) => walkZoneBtn.interactable = state;
     public void SetHitState(bool state) => hitBtn.interactable = state;
@@ -346,8 +403,17 @@ public class UIButtonActions : MonoBehaviour
     #endregion
 
     #region UI Pages (Show/Hide)
-    public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
-    public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
+    public void ShowUI(MonoBehaviour ui)
+    {
+        if (ui == null) return;
+        ShowUI(ui.gameObject);
+    }
+
+    public void HideUI(MonoBehaviour ui)
+    {
+        if (ui == null) return;
+        HideUI(ui.gameObject);
+    }
 
     public void ShowUI(GameObject page, Action onComplete = null)
     {
@@ -670,6 +736,9 @@ public class UIButtonActions : MonoBehaviour
     #region Bind Player BoostersContainer
     public void Bind(BoostersContainer boosters)
     {
+        if (boosters != null && !boosters.isNpc)
+            boundBoosters = boosters;
+
         if (walkZoneBtn)
         {
            // walkZoneBtn.onClick.RemoveAllListeners();
@@ -687,6 +756,8 @@ public class UIButtonActions : MonoBehaviour
             {
                 if (boosters != null && !boosters.isNpc)
                 {
+                    isDefendActive = true;
+                    RefreshDefendButtonState();
                     boosters.DefendPlayer();
                     //SetSpeedState(HorseSpeedState.Run);
                 }
@@ -777,6 +848,12 @@ public class UIButtonActions : MonoBehaviour
     {
         ShowUI(foodPanel);
     }
+
+    public void OpenInGameSettingsPanel()
+    {
+        ShowUI(inGameSettingsPanel);
+    }
+
     public void ShowResultPage()
     {
         ShowUI(resultPage);
@@ -894,10 +971,22 @@ public class UIButtonActions : MonoBehaviour
     #region Other Button Actions
     private void PauseMenu()
     {
-        RacingController.Instance.PauseRaceTime();
+        var racingController = RacingController.Instance;
+        if (racingController == null || (!racingController.HasStarted && racingController.mapType != RacingController.RacingType.Training) || racingController.HasFinished)
+            return;
+
+        racingController.PauseRaceTime();
         ShowUI(pauseMenu);
     }
     #endregion
+
+    private bool CanOpenSystemPauseMenu(RacingController racingController)
+    {
+        return racingController != null
+            && racingController.HasStarted
+            && !racingController.HasFinished
+            && racingController.mapType != RacingController.RacingType.Training;
+    }
 
     #region Blink Image Effect
     public IEnumerator FadeBlink(float from, float to, float duration)
@@ -976,37 +1065,49 @@ public class UIButtonActions : MonoBehaviour
     #region EndRacing
     public float GetTotalHoldTime()
     {
-        float autoBoostTime = RacingController.Instance.GetBoostTime();
+        float autoBoostTime = RacingController.Instance != null ? RacingController.Instance.GetBoostTime() : 0f;
         Debug.Log("[AUTO BOOST]" + autoBoostTime);
-        totalHoldTime += autoBoostTime;
-        return totalHoldTime;
+        return totalHoldTime + autoBoostTime;
     }
     public float GetTotalWebSnareTime()
     {
-        float get = RacingController.Instance.GetPenaltyTime();
-        totalWebSnareTime += get;
-        return totalWebSnareTime;
+        float get = RacingController.Instance != null ? RacingController.Instance.GetPenaltyTime() : 0f;
+        return totalWebSnareTime + get;
     }
     public void EndRace()
     {
         Debug.Log("[GAME FINISHED]" + isFinished);
         ForceReleaseSprintForRaceEnd();
         isFinished = true;
+        _pausedByApp = false;
     }
     #endregion
 
     #region Camera Switcher
-    private void OnSliderChanged(float value)
+    private void SyncCameraToggleState()
+    {
+        isFirstPersonCameraActive = RacingController.Instance != null &&
+                                    RacingController.Instance.cameraTypes == RacingController.CameraTypes.First;
+    }
+
+    private void ToggleCameraView()
     {
         if (isFinished)
             return;
-        if (value >= 0.5f)
+        if (RacingController.Instance == null)
+            return;
+
+        SyncCameraToggleState();
+
+        if (isFirstPersonCameraActive)
         {
-            RacingController.Instance.FirstPersonEnable();
+            RacingController.Instance.FirstPersonDisable();
+            isFirstPersonCameraActive = false;
         }
         else
         {
-            RacingController.Instance.FirstPersonDisable();
+            RacingController.Instance.FirstPersonEnable();
+            isFirstPersonCameraActive = true;
         }
     }
     #endregion

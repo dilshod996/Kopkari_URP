@@ -1,5 +1,4 @@
 using Michsky.UI.ModernUIPack;
-using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -21,74 +20,126 @@ public class PremiumShower : MonoBehaviour
 
     [Header("Buttons")]
     [SerializeField] private Button closeButton;
+    private readonly List<PremiumItem> premiumItems = new List<PremiumItem>();
 
-   private void Start()
+    private void OnEnable()
     {
-        closeButton.onClick.AddListener(() => gameObject.SetActive(false));
+        if (closeButton != null)
+            closeButton.onClick.AddListener(Close);
+    }
+
+    private void OnDisable()
+    {
+        if (closeButton != null)
+            closeButton.onClick.RemoveListener(Close);
     }
 
     public void OpenStore(PremiumCategoryType premium)
     {
-        ClearContent();
+        HideItems();
 
+        var language = LanguageManager.Instance;
         List<PremiumData> selectedList;
         switch (premium)
         {
             case PremiumCategoryType.Bronze:
                 selectedList = bronzeData;
-                titleText.color = new Color32(206, 137, 70, 255);
-                costText.color = new Color32(206, 137, 70, 255);
-                titleText.text = LanguageManager.Instance.GetText(185);
-                costText.text ="65,000 " +  LanguageManager.Instance.GetText(58); 
+                SetTextColor(new Color32(206, 137, 70, 255));
+                SetPremiumText(language, 185, "65,000");
                 break;
             case PremiumCategoryType.Silver:
                 selectedList = silverData;
-                titleText.color = new Color32(192, 192, 192, 255);
-                costText.color = new Color32(192, 192, 192, 255);
-                titleText.text = LanguageManager.Instance.GetText(186);
-                costText.text = "85,000 " + LanguageManager.Instance.GetText(58);
+                SetTextColor(new Color32(192, 192, 192, 255));
+                SetPremiumText(language, 186, "85,000");
                 break;
             case PremiumCategoryType.Gold:
                 selectedList = goldData;
-                titleText.color = new Color32(225, 164, 56, 255);
-                costText.color = new Color32(225, 164, 56, 255);
-                titleText.text = LanguageManager.Instance.GetText(187);
-                costText.text = "99,000 " + LanguageManager.Instance.GetText(58);
+                SetTextColor(new Color32(225, 164, 56, 255));
+                SetPremiumText(language, 187, "99,000");
                 break;
             case PremiumCategoryType.Diamond:
                 selectedList = diamondData;
-                titleText.color = new Color32(185, 242, 192, 255);
-                costText.color = new Color32(185, 242, 192, 255);
-                titleText.text = LanguageManager.Instance.GetText(188);
-                costText.text = "129,000 " + LanguageManager.Instance.GetText(58);
+                SetTextColor(new Color32(185, 242, 192, 255));
+                SetPremiumText(language, 188, "129,000");
                 break;
             case PremiumCategoryType.Premium:
                 selectedList = premiumData;
-                titleText.color = new Color32(67, 238, 0, 255);
-                costText.color = new Color32(67, 238, 0, 255);
-                titleText.text = LanguageManager.Instance.GetText(189);
-                costText.text = "199,000 " + LanguageManager.Instance.GetText(58);
+                SetTextColor(new Color32(67, 238, 0, 255));
+                SetPremiumText(language, 189, "199,000");
                 break;
             default:
                 selectedList = null;
-                titleText.text = "";
+                if (titleText != null)
+                    titleText.text = "";
                 break;
         }
 
 
         if (selectedList == null) return;
 
-        foreach (var data in selectedList)
+        for (int i = 0; i < selectedList.Count; i++)
         {
-            GameObject item = Instantiate(premiumPrefab, contentParent);
-            item.GetComponent<PremiumItem>().Setup(data);
+            var data = selectedList[i];
+            if (data == null) continue;
+
+            PremiumItem item = GetOrCreateItem(i);
+            if (item == null) continue;
+
+            item.gameObject.SetActive(true);
+            item.Setup(data);
         }
     }
-    private void ClearContent()
+
+    private PremiumItem GetOrCreateItem(int index)
     {
-        foreach (Transform child in contentParent)
+        if (index < premiumItems.Count)
+            return premiumItems[index];
+
+        if (premiumPrefab == null || contentParent == null)
+            return null;
+
+        GameObject itemObject = Instantiate(premiumPrefab, contentParent);
+        PremiumItem item = itemObject.GetComponent<PremiumItem>();
+        if (item == null)
         {
-            Destroy(child.gameObject);
+            Debug.LogWarning("Premium prefab is missing PremiumItem component.", premiumPrefab);
+            itemObject.SetActive(false);
+            return null;
         }
+
+        premiumItems.Add(item);
+        return item;
+    }
+
+    private void HideItems()
+    {
+        foreach (var item in premiumItems)
+        {
+            if (item != null)
+                item.gameObject.SetActive(false);
+        }
+    }
+
+    private void SetPremiumText(LanguageManager language, int titleId, string cost)
+    {
+        if (language == null) return;
+
+        if (titleText != null)
+            titleText.text = language.GetText(titleId);
+        if (costText != null)
+            costText.text = cost + " " + language.GetText(58);
+    }
+
+    private void SetTextColor(Color color)
+    {
+        if (titleText != null)
+            titleText.color = color;
+        if (costText != null)
+            costText.color = color;
+    }
+
+    private void Close()
+    {
+        gameObject.SetActive(false);
     }
 }

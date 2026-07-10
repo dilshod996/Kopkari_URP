@@ -99,6 +99,8 @@ public class WebSnareProjectile : MonoBehaviour
         else
         {
             Debug.Log($"BoostersContainer NOT FOUND. Hit={other.name} root={other.transform.root.name}");
+            Invoke(nameof(ReturnToPool), hitDisableDelay);
+            return;
         }
 
         // VFX

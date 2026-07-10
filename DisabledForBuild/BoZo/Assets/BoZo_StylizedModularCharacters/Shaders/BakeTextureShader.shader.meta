@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: daec76b4172d32f40a0617454ce8e8a4
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 323550
+  packageName: 'BoZo: Modular Anime Characters - Base Pack'
+  packageVersion: 1.7.4
+  assetPath: Assets/BoZo_ModularAnimeCharacters/Shaders/BakeTextureShader.shader
+  uploadId: 853356

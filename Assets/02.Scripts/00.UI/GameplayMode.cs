@@ -8,6 +8,7 @@ public class GameplayMode : MonoBehaviour
 {
     [Header("UI Texts")]
     [SerializeField] private TMP_Text titleText;
+    [SerializeField] private TMP_Text closeText;
     [SerializeField] private TMP_Text kopkariLeagueText;
     [SerializeField] private TMP_Text racingLeagueText;
     [SerializeField] private TMP_Text archeryLeagueText;
@@ -42,6 +43,7 @@ public class GameplayMode : MonoBehaviour
         racingBtnText.text = LanguageManager.Instance.GetText(4);
         archeryBtnText.text = LanguageManager.Instance.GetText(125);
         localTeamBtnText.text = LanguageManager.Instance.GetText(125);
+        closeText.text = LanguageManager.Instance.GetText(362);
     }
     private void OpenLeaguePanel()
     {

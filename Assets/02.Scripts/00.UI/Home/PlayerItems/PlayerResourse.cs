@@ -39,7 +39,7 @@ public class PlayerResourse : MonoBehaviour
     }
     private void OnDisable()
     {
-        buyButton.onClick.RemoveAllListeners();
+        buyButton.onClick.RemoveListener(BuyResource);
     }
     private void UITransilation()
     {
@@ -60,81 +60,46 @@ public class PlayerResourse : MonoBehaviour
 
     private void BuyResource()
     {
-        if(costOfResource == 0)
-        {
-            return;
-        }
+        TryBuyResource(playerResources, costOfResource, iconImage != null ? iconImage.sprite : null, out itemAmount);
+    }
+    public static bool TryBuyResource(Resources resource, int cost, Sprite icon, out int amount)
+    {
+        amount = 0;
 
-        itemName = GetItemKey(playerResources);
-        if (string.IsNullOrEmpty(itemName) || CurrencyManager.Instance == null || DataManager.Instance == null)
+        if (cost <= 0)
+            return false;
+
+        string itemKey = GetItemKey(resource);
+        if (string.IsNullOrEmpty(itemKey) || CurrencyManager.Instance == null || DataManager.Instance == null)
         {
-            Debug.LogWarning($"Cannot buy resource: {playerResources}");
+            Debug.LogWarning($"Cannot buy resource: {resource}");
             SoundManager.Instance?.PlayUI(UISoundType.Error);
-            return;
+            return false;
         }
 
-        bool success = CurrencyManager.Instance.SpendNyufiy(costOfResource, true);
+        bool success = CurrencyManager.Instance.SpendNyufiy(cost, true);
 
         if (!success)
         {
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
-            // money not enough text
             OnMoneyNotEnough?.Invoke();
             SoundManager.Instance?.PlayUI(UISoundType.Error);
-            return;
+            return false;
         }
 
-        BuyResourceSave();
-        ResourceName();
-    }
-    private void ResourceName(int amount = 1)
-    {
-        int textId = -1;
+        DataManager.Instance.AddItem(itemKey, 1, true);
+        amount = DataManager.Instance.GetItemAmount(itemKey);
 
-        switch (playerResources)
-        {
-            case Resources.Defender:
-                textId = 324;
-                break;
-
-            case Resources.WebSnare:
-                textId = 322;
-                break;
-
-            case Resources.WalkZone:
-                textId = 323;
-                break;
-
-            case Resources.Whiplash:
-                textId = 384;
-                break;
-
-            case Resources.HorseDust:
-                textId = 387;
-                break;
-
-            default:
-                Debug.LogWarning($"Unknown resource: {playerResources}");
-                return;
-        }
-
-        string resourceName =
-            $"+{amount} {LanguageManager.Instance.GetText(textId)}";
-
-        HomeMainUI.Instance.ShowRightPopup(resourceName, iconImage.sprite);
-    }
-    private void BuyResourceSave()
-    {
-        DataManager.Instance.AddItem(itemName, 1, true);
-        itemAmount = DataManager.Instance.GetItemAmount(itemName);
-
-        OnResourseBought?.Invoke(playerResources, itemAmount);
-        OnResourseUpdated?.Invoke(itemName);
+        OnResourseBought?.Invoke(resource, amount);
+        OnResourseUpdated?.Invoke(itemKey);
         OnNyufiyUpdated?.Invoke();
 
+        HomeMainUI.Instance?.ShowRightPopup($"+1 {GetResourceName(resource)}", icon);
         HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
         SoundManager.Instance?.PlayUI(UISoundType.Success);
+        return true;
     }
+
     private void GetData()
     {
         itemName = GetItemKey(playerResources);
@@ -146,7 +111,7 @@ public class PlayerResourse : MonoBehaviour
         itemAmount = DataManager.Instance.GetItemAmount(itemName);
         // resourceAmount.text = $"{itemAmount}X";
     }
-    private string GetItemKey(Resources resource)
+    public static string GetItemKey(Resources resource)
     {
         switch (resource)
         {
@@ -162,6 +127,34 @@ public class PlayerResourse : MonoBehaviour
                 return Constants.PlayerItems.Horsedust;
             default:
                 return null;
+        }
+    }
+
+    public static string GetResourceName(Resources resource)
+    {
+        int textId = GetResourceLanguageId(resource);
+        if (textId == -1)
+            return resource.ToString();
+
+        return LanguageManager.Instance != null ? LanguageManager.Instance.GetText(textId) : resource.ToString();
+    }
+
+    public static int GetResourceLanguageId(Resources resource)
+    {
+        switch (resource)
+        {
+            case Resources.Defender:
+                return 324;
+            case Resources.WebSnare:
+                return 322;
+            case Resources.WalkZone:
+                return 323;
+            case Resources.Whiplash:
+                return 384;
+            case Resources.HorseDust:
+                return 387;
+            default:
+                return -1;
         }
     }
 

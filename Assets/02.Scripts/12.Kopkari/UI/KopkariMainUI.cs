@@ -50,7 +50,6 @@ public class KopkariMainUI : MonoBehaviour
     [Header("Hit Count Slider")]
     public Slider hitCountSlider;
 
-    [SerializeField] private GameObject loadingPanel;
     [Header("Pages")]
     [SerializeField] private KopkariResultUI resultPage;
     [SerializeField] private UIPauseGame pauseMenu;
@@ -129,6 +128,7 @@ public class KopkariMainUI : MonoBehaviour
     #endregion
     private Coroutine canvasRoutine;
     private Coroutine moveBottomRoutine;
+    private bool loadingCompleted;
 
     public Sprite tiggerFlag;
     #region Awake/Start/OnEnable/OnDisable
@@ -143,7 +143,10 @@ public class KopkariMainUI : MonoBehaviour
     }
     private void OnEnable()
     {
-        LoadingPanel(3f);
+        KopkariManager.OnSceneReady += CompleteLoadingPanel;
+        if (KopkariManager.IsSceneReady)
+            CompleteLoadingPanel();
+
         KopkariManager.OnGameStartFinishState += CanvasEnable;
         OnBindRequested += Bind;
         Booster.OnSprintFull += HandleSprintFull;
@@ -178,6 +181,8 @@ public class KopkariMainUI : MonoBehaviour
 
     private void OnDisable()
     {
+        KopkariManager.OnSceneReady -= CompleteLoadingPanel;
+
         KopkariManager.OnGameStartFinishState -= CanvasEnable;
         OnBindRequested -= Bind;
 
@@ -610,16 +615,15 @@ public class KopkariMainUI : MonoBehaviour
     #region LoadingPanel
     public void LoadingPanel(float time)
     {
-        StartCoroutine(LoadingPanelDisabler(time));
+        if (KopkariManager.IsSceneReady)
+            CompleteLoadingPanel();
     }
-    private IEnumerator LoadingPanelDisabler(float time)
+
+    private void CompleteLoadingPanel()
     {
-        if (loadingPanel != null && !loadingPanel.activeSelf)
-        {
-            loadingPanel.SetActive(true);
-        }
-        yield return new WaitForSeconds(time);
-        loadingPanel.SetActive(false);
+        if (loadingCompleted) return;
+        loadingCompleted = true;
+
         OnEverythingReadyStart?.Invoke();
         GetData();
     }

@@ -28,12 +28,8 @@ public class LobbyManager : MonoBehaviour
     private string _currentEnvAddress;
     [Header("Tuning")]
     [SerializeField] private float fakeDurationIfCached = 1.2f;
-    [SerializeField] private RectTransform loadingRT;
-    [SerializeField] private float wipeDuration = 1f;
-    [SerializeField] private Ease wipeEase = Ease.OutExpo;
-
-    private Tween loadingTween;
-    private bool isLoadingVisible;
+    [SerializeField] private float environmentOverlayCoverSeconds = 0.3f;
+    [SerializeField] private float environmentOverlayMinSeconds = 2.5f;
 
 
     [Header("Addressable")]
@@ -301,7 +297,7 @@ public class LobbyManager : MonoBehaviour
     }
     public void TrainRacing()
     {
-        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, "Welcome to the Game", instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, "Welcome to the Game", instant: false, trackSceneProgress: true);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.TrainingRacing, preloadAddresses);
     }
     public void BaxmalRacing()
@@ -322,7 +318,7 @@ public class LobbyManager : MonoBehaviour
         }
         // ;
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false, trackSceneProgress: true);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.SecondRacing, preloadRacing);
     }
     public void EgyptRacing()
@@ -341,7 +337,7 @@ public class LobbyManager : MonoBehaviour
             return;  // Racing boshlanmaydi
         }
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false, trackSceneProgress: true);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.EgyptRacing, preloadRacing);
     }
     public void TexasRacing()
@@ -360,7 +356,7 @@ public class LobbyManager : MonoBehaviour
             return;  // Racing boshlanmaydi
         }
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false, trackSceneProgress: true);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.Kansas, preloadRacing);
     }
     #endregion
@@ -619,43 +615,55 @@ public class LobbyManager : MonoBehaviour
 
     public async Task SwitchEnvironmentAsync(string envAddress)
     {
-        await SetLoading(true);
-        ChangeWeather(envAddress);
-        // ✅ 0) Old envni aniq unload qil
-        if (_currentEnvInstance != null)
+        float overlayStartTime = Time.unscaledTime;
+        ShowHomeOverlay();
+
+        try
         {
-            AddressablesService.Instance.ReleaseInstance(_currentEnvInstance);
-            _currentEnvInstance = null;
+            await WaitUnscaledSeconds(environmentOverlayCoverSeconds);
+
+            // ✅ 0) Old envni aniq unload qil
+            if (_currentEnvInstance != null)
+            {
+                AddressablesService.Instance.ReleaseInstance(_currentEnvInstance);
+                _currentEnvInstance = null;
+            }
+
+
+            // ✅ 1) Yangi envni preload+load
+            _currentEnvInstance = await AddressablesService.Instance.LoadEnvironmentAsync(
+                envAddress,
+                environmentRoot,
+                onProgress: null,
+                fakeDurationIfCached: fakeDurationIfCached
+            );
+
+            if (_currentEnvInstance == null)
+            {
+                Debug.LogWarning("❌ Environment instantiate failed.");
+                return;
+            }
+
+            await ApplySkyboxByEnvironment(envAddress);
+            ApplyLightByEnvironment(envAddress);
+
+            StartCoroutine(EnableManagersNextFrame());
+
+            Teleport(playerInstance.transform, playerSpawnPos);
+            Teleport(horseInstance.transform, horseSpawnPos);
+
+            OnNameChanged?.Invoke(envAddress);
+            _currentEnvAddress = envAddress;
+            RegisterEnvPrefabs(_currentEnvInstance.transform);
+            ChangeWeather(envAddress);
+
+            await Task.Yield();
         }
-
-
-        // ✅ 1) Yangi envni preload+load
-        _currentEnvInstance = await AddressablesService.Instance.LoadEnvironmentAsync(
-            envAddress,
-            environmentRoot,
-            onProgress: null,
-            fakeDurationIfCached: fakeDurationIfCached
-        );
-
-        if (_currentEnvInstance == null)
+        finally
         {
-            await SetLoading(false);
-            Debug.LogWarning("❌ Environment instantiate failed.");
-            return;
+            await WaitForMinimumOverlayTime(overlayStartTime);
+            HideHomeOverlay();
         }
-
-        await ApplySkyboxByEnvironment(envAddress);
-        ApplyLightByEnvironment(envAddress);
-
-        StartCoroutine(EnableManagersNextFrame());
-
-        Teleport(playerInstance.transform, playerSpawnPos);
-        Teleport(horseInstance.transform, horseSpawnPos);
-
-        OnNameChanged?.Invoke(envAddress);
-        _currentEnvAddress = envAddress;
-        RegisterEnvPrefabs(_currentEnvInstance.transform);
-        await SetLoading(false);
     }
 
 
@@ -674,41 +682,41 @@ public class LobbyManager : MonoBehaviour
     }
 
 
-    public async Task SetLoading(bool show)
+    private void ShowHomeOverlay()
     {
-        if (isLoadingVisible == show)
+        if (UIOverlayRoot.I == null)
             return;
 
-        isLoadingVisible = show;
+        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, GetHomeOverlayMessage(), instant: false, exclusive: true);
+    }
 
-        loadingTween?.Kill();
+    private void HideHomeOverlay()
+    {
+        UIOverlayRoot.I?.HidePanel(UIPanelType.Home, instant: false);
+    }
 
-        float screenW = Screen.width;
+    private async Task WaitForMinimumOverlayTime(float overlayStartTime)
+    {
+        while (Time.unscaledTime - overlayStartTime < environmentOverlayMinSeconds)
+            await Task.Yield();
+    }
 
-        if (show)
-        {
-            // 🔒 Input block
-            loadingRT.gameObject.SetActive(true);
-            // Start: right side (fast entry)
-            loadingRT.anchoredPosition = new Vector2(screenW, 0f);
+    private async Task WaitUnscaledSeconds(float seconds)
+    {
+        if (seconds <= 0f)
+            return;
 
-            loadingTween = loadingRT
-                .DOAnchorPosX(0f, wipeDuration)
-                .SetEase(wipeEase);
+        float startTime = Time.unscaledTime;
+        while (Time.unscaledTime - startTime < seconds)
+            await Task.Yield();
+    }
 
-            await loadingTween.AsyncWaitForCompletion();
-        }
-        else
-        {
-            // Exit: left side (speed out)
-            loadingTween = loadingRT
-                .DOAnchorPosX(-screenW, wipeDuration * 0.85f)
-                .SetEase(Ease.InExpo);
+    private string GetHomeOverlayMessage()
+    {
+        if (LanguageManager.Instance != null)
+            return LanguageManager.Instance.GetText(192);
 
-            await loadingTween.AsyncWaitForCompletion();
-
-            loadingRT.gameObject.SetActive(false);
-        }
+        return "Home loading...";
     }
 
 
@@ -772,6 +780,9 @@ public class LobbyManager : MonoBehaviour
     #region Wheater Controller
     private void SetWeather()
     {
+        if (weatherController == null)
+            return;
+
         string mapname = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
         if (mapname == Constants.MapNames.Zarafshan)
         {
@@ -784,6 +795,9 @@ public class LobbyManager : MonoBehaviour
     }
     public void ChangeWeather(string mapname)
     {
+        if (weatherController == null)
+            return;
+
         if (mapname == Constants.MapNames.Zarafshan)
         {
             weatherController.ChangeWeather("Lightning");

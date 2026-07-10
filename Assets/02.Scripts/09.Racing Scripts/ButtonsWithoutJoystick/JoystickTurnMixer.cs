@@ -7,8 +7,6 @@ namespace MalbersExtensions
     [AddComponentMenu("Malbers/Input/Mobile Joystick With Turn")]
     public class JoystickTurnMixer : MobileJoystick
     {
-        private const string ControllerPrefsKey = "Racing_Controller_Type";
-
         [Header("Turn Buttons")]
         [SerializeField] private bool turnButtonsEnabled = true;
         [SerializeField] private TurnButton leftButton;
@@ -59,12 +57,12 @@ namespace MalbersExtensions
 
         private void Start()
         {
-            //ApplySavedController();
+            ApplySavedControllerIfSelected();
         }
 
         private void OnEnable()
         {
-            // ApplySavedController();
+            ApplySavedControllerIfSelected();
             RacingControllerSelecterUI.OnControllerSelected += SetControllerType;
             HorseMine.OnObstacleTouchedEvent -= OnObstacleTouched;
             HorseMine.OnObstacleTouchedEvent += OnObstacleTouched;
@@ -153,27 +151,13 @@ namespace MalbersExtensions
 
         public void ApplySavedController()
         {
-            int savedValue = PlayerPrefs.GetInt(
-                ControllerPrefsKey,
-                (int)RacingControllerType.Buttons
-            );
+            SetControllerType(RacingControllerSelecterUI.GetSavedControllerOrDefault());
+        }
 
-            RacingControllerType controllerType;
-
-            switch ((RacingControllerType)savedValue)
-            {
-                case RacingControllerType.Reins:
-                    controllerType = RacingControllerType.Reins;
-                    break;
-                case RacingControllerType.Tilt:
-                    controllerType = RacingControllerType.Tilt;
-                    break;
-                default:
-                    controllerType = RacingControllerType.Buttons;
-                    break;
-            }
-
-            SetControllerType(controllerType);
+        private void ApplySavedControllerIfSelected()
+        {
+            if (RacingControllerSelecterUI.HasSavedControllerSelection())
+                ApplySavedController();
         }
 
         public void SetControllerType(RacingControllerType controllerType)
@@ -181,6 +165,13 @@ namespace MalbersExtensions
             bool useReins = controllerType == RacingControllerType.Reins;
             bool useButtons = controllerType == RacingControllerType.Buttons;
             bool useTilt = controllerType == RacingControllerType.Tilt;
+
+            if (useTilt && Accelerometer.current == null)
+            {
+                Debug.LogWarning($"{nameof(JoystickTurnMixer)}: Tilt controller selected, but no accelerometer is available. Falling back to button controls.", this);
+                useTilt = false;
+                useButtons = true;
+            }
 
             reinsEnabled = useReins;
             turnButtonsEnabled = useButtons;
@@ -207,7 +198,7 @@ namespace MalbersExtensions
 
         public void SelectReinsController()
         {
-            PlayerPrefs.SetInt(ControllerPrefsKey, (int)RacingControllerType.Reins);
+            PlayerPrefs.SetInt(RacingControllerSelecterUI.ControllerPrefsKey, (int)RacingControllerType.Reins);
             PlayerPrefs.Save();
 
             SetControllerType(RacingControllerType.Reins);
@@ -215,7 +206,7 @@ namespace MalbersExtensions
 
         public void SelectButtonsController()
         {
-            PlayerPrefs.SetInt(ControllerPrefsKey, (int)RacingControllerType.Buttons);
+            PlayerPrefs.SetInt(RacingControllerSelecterUI.ControllerPrefsKey, (int)RacingControllerType.Buttons);
             PlayerPrefs.Save();
 
             SetControllerType(RacingControllerType.Buttons);
@@ -223,7 +214,7 @@ namespace MalbersExtensions
 
         public void SelectTiltController()
         {
-            PlayerPrefs.SetInt(ControllerPrefsKey, (int)RacingControllerType.Tilt);
+            PlayerPrefs.SetInt(RacingControllerSelecterUI.ControllerPrefsKey, (int)RacingControllerType.Tilt);
             PlayerPrefs.Save();
 
             SetControllerType(RacingControllerType.Tilt);
@@ -330,6 +321,7 @@ namespace MalbersExtensions
 
         private void OnDisable()
         {
+            RacingControllerSelecterUI.OnControllerSelected -= SetControllerType;
             HorseMine.OnObstacleTouchedEvent -= OnObstacleTouched;
             ResetTurnValue();
         }

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,18 +18,20 @@ public class StoreAIItem : MonoBehaviour
     [Header("UI Settings")]
     [SerializeField] private Button buyButton;
 
-    void Start()
-    {
-        
-    }
     private void OnEnable()
     {
         UITranslitions();
     }
     private void UITranslitions()
     {
-        titleText.text = LanguageManager.Instance.GetText(titleID);
-        excost.text = excostValue.ToString() + " " + LanguageManager.Instance.GetText(58);
-        costText.text = costValue.ToString() + " " + LanguageManager.Instance.GetText(58);
+        var language = LanguageManager.Instance;
+        if (language == null) return;
+
+        if (titleText != null)
+            titleText.text = language.GetText(titleID);
+        if (excost != null)
+            excost.text = excostValue + " " + language.GetText(58);
+        if (costText != null)
+            costText.text = costValue + " " + language.GetText(58);
     }
 }

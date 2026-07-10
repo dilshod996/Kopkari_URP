@@ -49,8 +49,11 @@ public class RacingController : MonoBehaviour
 
     [Header("Sprint UI Effect")]
     [SerializeField] private Image sprintImg;
-    [SerializeField] private GameObject sliderObject;
     [SerializeField] private RacingControllerSelecterUI controllSelector;
+    [SerializeField] private LaunchTimingMeterUI launchTimingMeterPrefab;
+
+    [Header("Race Intro")]
+    [SerializeField] private RaceIntroFlowController raceIntroFlowController;
 
     [Header("Walk Zone Prefab")]
    // public GameObject walkZonePrefab;
@@ -140,6 +143,9 @@ public class RacingController : MonoBehaviour
     #endregion
     private int _fpLayer;
     private Camera _mainCam;
+    private bool startupSetupFinished;
+    private bool playerAndHorseReady;
+    private bool racingLoadingCompleted;
     #region Starting Functions
     private void Awake()
     {
@@ -165,15 +171,15 @@ public class RacingController : MonoBehaviour
         SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
         await ApplyRandomSkinsToAllAI();
         ////GetSetAnimal(HorseMine.Instance.horseAnimal);
-        SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
-
-        LoadingPanel(2f);
         await ApplySkyboxByMapType();
         ChangeWeather();
+
+        startupSetupFinished = true;
+        TryCompleteRacingLoading();
     }
     private void OnEnable()
     {
-        StartPowerBar.OnStartPowerSelected += OnPowerSelected;
+        LaunchTimingMeterUI.OnLaunchFinishedGlobal += OnLaunchMeterFinished;
         PlayerDataManager.OnRiderAndHorse += GetSetAnimal;
         BoostersContainer.OnBoostTime += SetBoostTime;
         BoostersContainer.OnPenaltyTime += SetPenaltyTime;
@@ -192,7 +198,7 @@ public class RacingController : MonoBehaviour
     {
         // poolingdagi barcha aktiv WalkZone obyektlarni qaytaradi
         SimplePool.ClearAll();
-        StartPowerBar.OnStartPowerSelected -= OnPowerSelected;
+        LaunchTimingMeterUI.OnLaunchFinishedGlobal -= OnLaunchMeterFinished;
         PlayerDataManager.OnRiderAndHorse -= GetSetAnimal;
         BoostersContainer.OnBoostTime -= SetBoostTime;
         BoostersContainer.OnPenaltyTime -= SetPenaltyTime;
@@ -249,8 +255,15 @@ public class RacingController : MonoBehaviour
 
 
     #region Start and Stop Racing
+    public void OnStartButtonPressed()
+    {
+        StartRacing();
+    }
+
     public void StartRacing()
     {
+        RaceCheckpoint.ResetRaceState();
+
         if (mapType == RacingType.Training)
         {
             DisableNavmesh();
@@ -260,8 +273,8 @@ public class RacingController : MonoBehaviour
             EnableNavMesh();
             OnRacingStarted?.Invoke();
         }
-        ShowLeaderboardPanel();
-        RacingLeaderboard.Instance.StartRace();
+        leaderboard?.HideImmediate();
+        RacingLeaderboard.Instance?.StartRace();
 
     }
 
@@ -323,6 +336,12 @@ public class RacingController : MonoBehaviour
     }
     private void HideLeaderboardPanel()
     {
+        if (leaderboard != null)
+        {
+            leaderboard.HideAnimated();
+            return;
+        }
+
         if (!leaderboardGroup) return;
 
         leaderboardGroup.interactable = false;
@@ -376,8 +395,13 @@ public class RacingController : MonoBehaviour
     #endregion
 
     #region Horse Manage
-    private void OnPowerSelected(float sliderValue)
+    private void OnLaunchMeterFinished(LaunchTimingMeterUI.LaunchResult result, float boostMultiplier, float boostDuration)
     {
+        float sliderValue = boostMultiplier;
+
+        if (boostDuration > 0f && boostTimeMultiplier > 0f)
+            sliderValue = boostDuration / boostTimeMultiplier;
+
         StartHorseRun(horse, sliderValue);
         StartRacing();
     }
@@ -419,6 +443,7 @@ public class RacingController : MonoBehaviour
 
         // necha sekund boost bo‘lishini hisoblaymiz
         float boostDuration = sliderValue * boostTimeMultiplier;
+        SetBoostTime(boostDuration);
 
         // agar avvalgi coroutine ishlayotgan bo‘lsa – to‘xtatamiz
         if (boostRoutine != null)
@@ -450,6 +475,8 @@ public class RacingController : MonoBehaviour
     {
         horse = horseAnimal;
         riderAnimal = riderAnim;
+        playerAndHorseReady = horse != null && riderAnimal != null;
+        TryCompleteRacingLoading();
     }
 
     public void StopHorseRun()
@@ -886,17 +913,61 @@ public class RacingController : MonoBehaviour
     #region Game Start Slider
     public void LoadingPanel(float time)
     {
-        StartCoroutine(LoadingPanelDisabler(time));
+        TryCompleteRacingLoading();
     }
 
-    private IEnumerator LoadingPanelDisabler(float time)
+    private void TryCompleteRacingLoading()
     {
-        yield return new WaitForSeconds(time);
+        if (racingLoadingCompleted) return;
+        if (!startupSetupFinished || !playerAndHorseReady) return;
+
+        racingLoadingCompleted = true;
+
+        SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
         UIOverlayRoot.I?.HideCurrentPanel();
-        if(controllSelector != null) { controllSelector.gameObject.SetActive(true); }
-        //if (sliderObject != null) sliderObject.SetActive(true);
+        if (raceIntroFlowController != null)
+        {
+            raceIntroFlowController.PlayIntro(ShowPreRaceStartFlow);
+        }
+        else
+        {
+            ShowPreRaceStartFlow();
+        }
+
         Finalsound();
     }
+
+    private void ShowPreRaceStartFlow()
+    {
+        if (controllSelector != null)
+        {
+            if (RacingControllerSelecterUI.HasSavedControllerSelection())
+            {
+                controllSelector.ApplySavedControllerSelection();
+                controllSelector.ShowLaunchMeter();
+            }
+            else
+            {
+                controllSelector.gameObject.SetActive(true);
+            }
+        }
+        else
+        {
+           
+
+            if (launchTimingMeterPrefab != null)
+            {
+                launchTimingMeterPrefab.gameObject.SetActive(true);
+                launchTimingMeterPrefab.StartLaunchMeter();
+            }
+                
+            else
+                Debug.LogError($"{nameof(RacingController)} is missing a LaunchTimingMeterUI reference.", this);
+        }
+    }
+
+
+
     private async void Finalsound()
     {
         await AddressablesService.Instance.PreloadDependenciesAsync("Makarena");

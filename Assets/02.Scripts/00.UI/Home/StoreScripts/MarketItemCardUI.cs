@@ -1,4 +1,3 @@
-using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -28,12 +27,15 @@ public class MarketItemCardUI : MonoBehaviour
 
     private void OnEnable()
     {
-        buyBtn.onClick.AddListener(BuyAction);
+        if (buyBtn != null)
+            buyBtn.onClick.AddListener(BuyAction);
+
         AllTexts(marketItems);
     }
     private void OnDisable()
     {
-        buyBtn.onClick.RemoveListener(BuyAction);
+        if (buyBtn != null)
+            buyBtn.onClick.RemoveListener(BuyAction);
     }
 
     private void AllTexts(MarketItems items)
@@ -41,13 +43,10 @@ public class MarketItemCardUI : MonoBehaviour
         switch (items)
         {
             case MarketItems.Coins:
-                firstItemText.text = $"+{firstItemAmount:N0}";
-                secondItemText.text = $"+{secondItemAmount:N0}";
-                costText.text = $"${costAmount}";
-                if (topCornerText != null)
-                {
-                    topCornerText.text = LanguageManager.Instance?.GetText(411);
-                }
+                SetText(firstItemText, $"+{firstItemAmount:N0}");
+                SetText(secondItemText, $"+{secondItemAmount:N0}");
+                SetText(costText, $"${costAmount}");
+                SetText(topCornerText, LanguageManager.Instance?.GetText(411));
                 break;
             case MarketItems.Foods:
                 break;
@@ -64,5 +63,10 @@ public class MarketItemCardUI : MonoBehaviour
 
     }
 
+    private static void SetText(TMP_Text text, string value)
+    {
+        if (text != null)
+            text.text = value;
+    }
 
 }

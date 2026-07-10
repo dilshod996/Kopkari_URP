@@ -1,100 +1,108 @@
-﻿using UnityEngine;
 using DG.Tweening;
+using UnityEngine;
 using UnityEngine.UI;
-using System.Collections;
-using System.Threading.Tasks;
 
 public class EnvironmentChangeUI : MonoBehaviour
 {
-    [Header("Refs")]
-    [SerializeField] private RectTransform maskRT;   // RectMask2D bor object
-    [SerializeField] private CanvasGroup canvasGroup; // panel yoki parentda
+    private const float HiddenY = 390f;
+    private const float VisibleY = -264f;
+    private const float ShowDuration = 0.35f;
+    private const float HideDuration = 0.25f;
 
-    [Header("Timing")]
-    [SerializeField] private float duration = 2f;
-    [SerializeField] private Ease ease = Ease.OutCubic;
+    private RectTransform rectTransform;
+    private Tween moveTween;
+    private bool isOpen;
 
-    [Header("Behavior")]
-    [SerializeField] private bool disableAfterHide = true;
-    private bool _isOpen = false;
-
-    private float _fullWidth;
-    private Sequence _seq;
-
-
+    [SerializeField] private Button closeButton;
 
     private void Awake()
     {
-        if (maskRT != null)
-            _fullWidth = maskRT.sizeDelta.x;
+        CacheRefs();
+        SetY(HiddenY);
     }
 
     private void OnEnable()
     {
+        CacheRefs();
 
+        if (closeButton != null)
+            closeButton.onClick.AddListener(Hide);
     }
+
+    private void OnDisable()
+    {
+        if (closeButton != null)
+            closeButton.onClick.RemoveListener(Hide);
+
+        KillTween();
+        isOpen = false;
+        SetY(HiddenY);
+    }
+
     public void Toggle()
     {
-        if (_isOpen) Hide();
-        else Show();
+        if (isOpen)
+            Hide();
+        else
+            Show();
     }
+
     public void Show()
     {
-        if (maskRT == null) return;
+        CacheRefs();
 
-        KillTweens();
-        _isOpen = true;
-        // Reset start
-        maskRT.sizeDelta = new Vector2(0f, maskRT.sizeDelta.y);
-        if (canvasGroup != null) canvasGroup.alpha = 0f;
+        if (rectTransform == null)
+            return;
 
-        _seq = DOTween.Sequence();
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
 
-        // Fade + Reveal parallel
-        if (canvasGroup != null)
-            _seq.Join(canvasGroup.DOFade(1f, duration).SetEase(ease));
+        KillTween();
+        isOpen = true;
 
-        _seq.Join(maskRT.DOSizeDelta(new Vector2(_fullWidth, maskRT.sizeDelta.y), duration)
-            .SetEase(ease));
+        SetY(HiddenY);
+        moveTween = rectTransform
+            .DOAnchorPosY(VisibleY, ShowDuration)
+            .SetEase(Ease.OutCubic);
     }
 
     public void Hide()
     {
-        if (maskRT == null) return;
+        CacheRefs();
 
-        KillTweens();
-        _isOpen = false;
-        _seq = DOTween.Sequence();
+        if (rectTransform == null)
+            return;
 
-        // Reverse: FadeOut + Unreveal parallel
-        if (canvasGroup != null)
-            _seq.Join(canvasGroup.DOFade(0f, duration * 0.6f).SetEase(Ease.InCubic));
+        KillTween();
+        isOpen = false;
 
-        _seq.Join(maskRT.DOSizeDelta(new Vector2(0f, maskRT.sizeDelta.y), duration)
-            .SetEase(Ease.InCubic));
-
-        if (disableAfterHide)
-        {
-            _seq.OnComplete(() =>
-            {
-                gameObject.SetActive(false);
-            });
-        }
+        moveTween = rectTransform
+            .DOAnchorPosY(HiddenY, HideDuration)
+            .SetEase(Ease.InCubic)
+            .OnComplete(() => gameObject.SetActive(false));
     }
 
-
-    private void KillTweens()
+    private void CacheRefs()
     {
-        _seq?.Kill();
-        _seq = null;
-
-        maskRT?.DOKill();
-        canvasGroup?.DOKill();
+        if (rectTransform == null)
+            rectTransform = transform as RectTransform;
     }
-   
 
-    private void OnDisable()
+    private void SetY(float y)
     {
-        KillTweens();
+        if (rectTransform == null)
+            return;
+
+        rectTransform.anchoredPosition = new Vector2(rectTransform.anchoredPosition.x, y);
     }
+
+    private void KillTween()
+    {
+        moveTween?.Kill();
+        moveTween = null;
+
+        if (rectTransform != null)
+            rectTransform.DOKill();
+    }
+
 }

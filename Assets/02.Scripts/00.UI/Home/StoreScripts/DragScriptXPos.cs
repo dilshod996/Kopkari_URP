@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -8,8 +5,9 @@ public class DragScriptXPos : MonoBehaviour, IDragHandler, IBeginDragHandler, IE
 {
     public RectTransform panel;
     public bool isForOpening = true;
-    public bool isOpen = false; // optional: panel ochilganligini tekshirish uchun
+    public bool isOpen = false;
     public DragScript otherPanel;
+
     private Vector2 dragStartPos;
     private float closedX = -290f;
     private float openX = 180f;
@@ -18,8 +16,14 @@ public class DragScriptXPos : MonoBehaviour, IDragHandler, IBeginDragHandler, IE
 
     private void OnEnable()
     {
-        ClosePanel(); // Panelni boshlanishida yopish
+        ClosePanel();
     }
+
+    private void OnDisable()
+    {
+        CancelPanelTween();
+    }
+
     public void OnBeginDrag(PointerEventData eventData)
     {
         dragStartPos = eventData.position;
@@ -27,7 +31,6 @@ public class DragScriptXPos : MonoBehaviour, IDragHandler, IBeginDragHandler, IE
 
     public void OnDrag(PointerEventData eventData)
     {
-        // optional: jonli preview
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -49,14 +52,27 @@ public class DragScriptXPos : MonoBehaviour, IDragHandler, IBeginDragHandler, IE
     {
         if (otherPanel != null && otherPanel.IsOpen())
             otherPanel.ClosePanel();
+        if (panel == null) return;
+
+        CancelPanelTween();
         panel.LeanMoveX(openX, duration);
-        isOpen = true; // optional: panel ochilganligini belgilash
+        isOpen = true;
     }
 
     public void ClosePanel()
     {
+        if (panel == null) return;
+
+        CancelPanelTween();
         panel.LeanMoveX(closedX, duration);
-        isOpen = false; // optional: panel yopilganligini belgilash
+        isOpen = false;
     }
+
     public bool IsOpen() => isOpen;
+
+    private void CancelPanelTween()
+    {
+        if (panel != null)
+            LeanTween.cancel(panel.gameObject);
+    }
 }

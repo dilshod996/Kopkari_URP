@@ -3,7 +3,6 @@ using GPUInstancerPro.PrefabModule;
 using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -15,8 +14,6 @@ public class AvatarCustomManager : MonoBehaviour
 {
     [SerializeField] private ModalWindowManager Popup;
     [SerializeField] private AvatarCustomUIManager uiManager;
-
-    private bool isSaved;
 
     #region Player and Horse Data
     [Header("Player and Horse Prefab")]
@@ -151,7 +148,6 @@ public class AvatarCustomManager : MonoBehaviour
             await skinLoader.ApplyAllSkins();
         else
             Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
-
         horseInstance = Instantiate(horsePrefab, horseSpawnPos.position, horseSpawnPos.rotation /*HorseParent.transform*/);
 
         HorseSkinLoader horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
@@ -163,7 +159,6 @@ public class AvatarCustomManager : MonoBehaviour
         SceneLoadManager.Instance.SetAssetInstantiationFinished(true);
         UIOverlayRoot.I.HidePanel(UIPanelType.Custom);
     }
-
     public static void RaisePlayerSkinLoad(PlayerSkinLoader loader)
     {
         CurrentPlayerSkinLoader = loader;
@@ -277,11 +272,6 @@ public class AvatarCustomManager : MonoBehaviour
 
     #region Back and Save Actions
     public void BackPublic() => Back();
-    public void SavePublic()
-    {
-        // save logicing bor bo'lsa shu yerga chaqirib qo'yasan
-        // Debug.Log("Save clicked");
-    }
 
     private void Back()
     {
@@ -323,7 +313,13 @@ public class AvatarCustomManager : MonoBehaviour
         var instances = envRoot.GetComponentsInChildren<GPUIPrefab>(true);
 
         // 0 ID bo'lganlarini filtr qilamiz (aks holda error spam)
-        var valid = instances.Where(p => p != null && p.GetPrefabID() != 0 && !p.IsInstanced).ToArray();
+        List<GPUIPrefab> valid = new List<GPUIPrefab>(instances.Length);
+        for (int i = 0; i < instances.Length; i++)
+        {
+            GPUIPrefab instance = instances[i];
+            if (instance != null && instance.GetPrefabID() != 0 && !instance.IsInstanced)
+                valid.Add(instance);
+        }
 
         // Queue'ga qo'shadi, manager LateUpdate'da instancelaydi
         GPUIPrefabManager.AddPrefabInstances(valid);

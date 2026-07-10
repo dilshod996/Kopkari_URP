@@ -114,8 +114,8 @@ public class RacingTutorials : MonoBehaviour
     }
     private void OnEnable()
     {
-        StartPowerBar.OnSliderEnabled += StartSliderTutorial;
-        StartPowerBar.OnStartPowerSelected += OnSliderSelected;
+        LaunchTimingMeterUI.OnLaunchMeterStarted += StartSliderTutorial;
+        LaunchTimingMeterUI.OnLaunchFinishedGlobal += OnLaunchMeterFinished;
 
         ReinZone.OnRightReinUsed += OnRightReinUsed;
         ReinZone.OnLeftReinUsed += OnLeftReinUsed;
@@ -137,8 +137,8 @@ public class RacingTutorials : MonoBehaviour
 
     private void OnDisable()
     {
-        StartPowerBar.OnSliderEnabled -= StartSliderTutorial;
-        StartPowerBar.OnStartPowerSelected -= OnSliderSelected;
+        LaunchTimingMeterUI.OnLaunchMeterStarted -= StartSliderTutorial;
+        LaunchTimingMeterUI.OnLaunchFinishedGlobal -= OnLaunchMeterFinished;
 
         ReinZone.OnRightReinUsed -= OnRightReinUsed;
         ReinZone.OnLeftReinUsed -= OnLeftReinUsed;
@@ -174,6 +174,11 @@ public class RacingTutorials : MonoBehaviour
             StopCoroutine(tutorialFlowRoutine);
         FinishTutorial();
         tutorialFlowRoutine = StartCoroutine(ShowRightReinAfterDelay());
+    }
+
+    private void OnLaunchMeterFinished(LaunchTimingMeterUI.LaunchResult result, float boostMultiplier, float boostDuration)
+    {
+        OnSliderSelected(boostMultiplier);
     }
 
     private IEnumerator ShowRightReinAfterDelay()

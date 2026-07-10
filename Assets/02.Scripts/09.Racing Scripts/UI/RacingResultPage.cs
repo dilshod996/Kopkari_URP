@@ -1,11 +1,10 @@
-﻿using Michsky.UI.ModernUIPack;
+using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -99,15 +98,27 @@ public class RacingResultPage : MonoBehaviour
         }
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
-        foodPanelEnablerBtn.onClick.AddListener(OpenFoodPanelPopup);
+        if (foodPanelEnablerBtn != null)
+            foodPanelEnablerBtn.onClick.AddListener(OpenFoodPanelPopup);
+
         Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
-        adWatchBtn.onClick.AddListener(PlusMoneyReward);
+
+        if (adWatchBtn != null)
+            adWatchBtn.onClick.AddListener(PlusMoneyReward);
     }
     private void OnDisable()
     {
-        replayButton.onClick.RemoveAllListeners();
-        backToHome.onClick.RemoveAllListeners();
-        adWatchBtn.onClick.RemoveAllListeners();
+        if (replayButton != null)
+            replayButton.onClick.RemoveListener(Replay);
+
+        if (backToHome != null)
+            backToHome.onClick.RemoveListener(BackLobby);
+
+        if (foodPanelEnablerBtn != null)
+            foodPanelEnablerBtn.onClick.RemoveListener(OpenFoodPanelPopup);
+
+        if (adWatchBtn != null)
+            adWatchBtn.onClick.RemoveListener(PlusMoneyReward);
         Clear();
         Booster.OnWalkZoneDamagedTime -= GetWalkZoneOverAllTime;
     }
@@ -132,9 +143,15 @@ public class RacingResultPage : MonoBehaviour
         if (clearOnBuild)
             Clear();
 
+        entries = entries != null
+            ? entries.Where(e => e != null).ToList()
+            : new List<RacingAgent>();
+
         entries = sortByRankingAsc
-            ? entries.OrderBy(e => e.Ranking).ToList()
-            : entries.OrderByDescending(e => e.Ranking).ToList();
+            ? entries.OrderBy(e => e.Ranking > 0 ? e.Ranking : int.MaxValue).ToList()
+            : entries.OrderBy(e => e.Ranking > 0 ? 0 : 1)
+                .ThenByDescending(e => e.Ranking)
+                .ToList();
 
         float startX = 50f;
         float startY = -20f;
@@ -171,6 +188,28 @@ public class RacingResultPage : MonoBehaviour
             if (e.isPlayer && !rewardGiven)
             {
                 rewardGiven = true;
+
+                if (!e.HasFinished)
+                {
+                    if (xpAmountText != null) xpAmountText.text = "0";
+                    if (nyufiyAmountText != null) nyufiyAmountText.text = "+0";
+                    if (coinAmountText != null) coinAmountText.text = "+0";
+                    if (timeText != null) timeText.text = "-";
+                    if (recordText != null) recordText.text = string.Empty;
+
+                    if (DataManager.Instance != null && levelText != null && LanguageManager.Instance != null)
+                        levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
+
+                    if (CurrencyManager.Instance != null)
+                    {
+                        if (allNyufiyText != null) allNyufiyText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
+                        if (allCoinText != null) allCoinText.text = $"{CurrencyManager.Instance.Coin:N0}";
+                    }
+
+                    overAllTime = 0f;
+                    continue;
+                }
+
                 var prize = GetRacePrizeByMapAndRank(e.Ranking);
 
                 int taqaPrize = prize.taqaPrize;
@@ -285,7 +324,7 @@ public class RacingResultPage : MonoBehaviour
             case RacingController.RacingType.Egypt:
                 return ranking switch
                 {
-                    1 => (4, 2600, GetRandomXpByRank(1)),
+                    1 => (5, 2600, GetRandomXpByRank(1)),
                     2 => (3, 2000, GetRandomXpByRank(2)),
                     3 => (2, 1500, GetRandomXpByRank(3)),
                     _ => (0, 600, GetRandomXpByRank(4))
@@ -294,8 +333,8 @@ public class RacingResultPage : MonoBehaviour
             case RacingController.RacingType.Kansas:
                 return ranking switch
                 {
-                    1 => (6, 3000, GetRandomXpByRank(1)),
-                    2 => (3, 2300, GetRandomXpByRank(2)),
+                    1 => (7, 3000, GetRandomXpByRank(1)),
+                    2 => (4, 2300, GetRandomXpByRank(2)),
                     3 => (2, 1800, GetRandomXpByRank(3)),
                     _ => (0, 700, GetRandomXpByRank(4))
                 };
@@ -501,27 +540,12 @@ public class RacingResultPage : MonoBehaviour
     }
     public void PlayAgain()
     {
-        if (sceneType == SceneLoadManager.SceneType.TrainingRacing)
-        {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, LanguageManager.Instance.GetText(497), instant: false);
-        }
-        else if (sceneType == SceneLoadManager.SceneType.SecondRacing)
-        {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, LanguageManager.Instance.GetText(209), instant: false);
-        }
-        else if (sceneType == SceneLoadManager.SceneType.EgyptRacing)
-        {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, LanguageManager.Instance.GetText(210), instant: false);
-        }
-        else if(sceneType == SceneLoadManager.SceneType.Kansas)
-        {
-            UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, LanguageManager.Instance.GetText(519), instant: false);
-        }
+        UIOverlayRoot.I.ShowMovementPanelForScene(sceneType);
         SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
     }
     private void OpenTacticItemsPanel()
     {
-        UIButtonActions.Instance.OpenItemsPanel();
+        UIButtonActions.Instance?.OpenItemsPanel();
     }
     public void BackLobby()
     {
@@ -551,18 +575,22 @@ public class RacingResultPage : MonoBehaviour
     {
         StartCoroutine(PulseRoutine());
         foodPanelEnablerBtn?.gameObject.SetActive(true);
-        foodResourcesBtnText.text = LanguageManager.Instance?.GetText(369);
+        if (foodResourcesBtnText != null)
+            foodResourcesBtnText.text = LanguageManager.Instance?.GetText(369);
     }
     private IEnumerator PulseRoutine()
     {
         float t = 0f;
+        if (foodPanelEnablerBtn == null)
+            yield break;
+
         RectTransform rt = foodPanelEnablerBtn.GetComponent<RectTransform>();
 
         while (t < duration)
         {
             t += Time.deltaTime;
 
-            // 0 → 1 → 0 yurak urishi effekti
+            // Heartbeat pulse.
             float pingPong = Mathf.PingPong(Time.time * 2, 1f);
 
             float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
@@ -582,7 +610,7 @@ public class RacingResultPage : MonoBehaviour
     private void EnableFoodPage()
     {
         this.gameObject.SetActive(false);
-        UIButtonActions.Instance.ShowUI(foodPanel);
+        UIButtonActions.Instance?.ShowUI(foodPanel);
     }
 
     #endregion

@@ -98,7 +98,6 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject leaguePanel;
     [SerializeField] private GameObject collectionsPage;
     [SerializeField] private GameObject marketPage;
-    [SerializeField] private GameObject racingFields;
     [SerializeField] private GameObject kopkariFields;
     [SerializeField] private DailyRewardUI dailyRewardUI; 
     [SerializeField] private RewardPopup rewardPopup;
@@ -227,7 +226,7 @@ public class HomeMainUI : MonoBehaviour
         playBtn.onClick.AddListener(OpenGameMainPanel);
         marketBtn.onClick.AddListener(OpenMarketPage);
         nyufiyButton.onClick.AddListener(NyufiyClicked);
-        korakButton.onClick.AddListener(QorakClicked);
+        korakButton.onClick.AddListener(CoinClicked);
         collectionBtn.onClick.AddListener(OpenCollectionPage);
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
@@ -934,7 +933,7 @@ public class HomeMainUI : MonoBehaviour
 
     #region Coins
     
-    public void QorakClicked()
+    public void CoinClicked()
     {
         ShowUI(coinsPage);
         OnCoinsButtonPressed?.Invoke(true);
@@ -980,7 +979,7 @@ public class HomeMainUI : MonoBehaviour
     }
     public void CloseRacingField()
     {
-        racingFields.SetActive(false);
+        racingMaps.SetActive(false);
     }
     public void CloseKopkariFeld()
     {
@@ -1027,8 +1026,6 @@ public class HomeMainUI : MonoBehaviour
     }
     public void OpenEnvironmentChangePanel()
     {
-        if (!environmentChangePanel.gameObject.activeSelf)
-            environmentChangePanel.gameObject.SetActive(true);
         environmentChangePanel.Toggle();
     }
     #endregion
@@ -1211,7 +1208,7 @@ public class HomeMainUI : MonoBehaviour
     public void MoveTutorialRoom()
     {
         List<string> preloadRacing = new List<string>() { Constants.RoomSound.RacingSound };
-        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, LanguageManager.Instance.GetText(486), instant: false);
+        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, LanguageManager.Instance.GetText(486), instant: false, trackSceneProgress: true);
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.TrainingRacing, preloadRacing);
     }

@@ -12,12 +12,12 @@ public class TargetReachEvent : MonoBehaviour
 
     private void OnEnable()
     {
-        BaseManager.OnResetTarget += ResetTrigger;
+        KopkariManager.OnResetTarget += ResetTrigger;
     }
 
     private void OnDisable()
     {
-        BaseManager.OnResetTarget -= ResetTrigger;
+        KopkariManager.OnResetTarget -= ResetTrigger;
     }
 
     private void OnTriggerEnter(Collider other)

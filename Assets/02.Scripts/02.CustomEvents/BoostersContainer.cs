@@ -541,15 +541,17 @@ public class BoostersContainer : MonoBehaviour
         if (defendQobiq != null)
             defendQobiq.SetActive(false);
 
-        if (!isNpc)
-            OnDefendState?.Invoke(true);
-
         isDefend = false;
         defendCoroutine = null;
+
+        if (!isNpc)
+            OnDefendState?.Invoke(true);
     }
 
     private void CancelDefend()
     {
+        bool wasDefending = isDefend || defendCoroutine != null || (defendQobiq != null && defendQobiq.activeSelf);
+
         if (defendCoroutine != null)
         {
             StopCoroutine(defendCoroutine);
@@ -560,6 +562,9 @@ public class BoostersContainer : MonoBehaviour
             defendQobiq.SetActive(false);
 
         isDefend = false;
+
+        if (!isNpc && wasDefending)
+            OnDefendState?.Invoke(true);
     }
     #endregion
 

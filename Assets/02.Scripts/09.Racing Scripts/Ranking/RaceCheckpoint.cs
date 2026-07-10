@@ -34,6 +34,13 @@ public class RaceCheckpoint : MonoBehaviour
     private readonly Dictionary<RacingAgent, float> _lastShootTimeByAgent = new();
     private readonly HashSet<RacingAgent> _shootInProgress = new();
 
+    public static void ResetRaceState()
+    {
+        _agentCache.Clear();
+        _lastIndexByAgent.Clear();
+        _reverseByAgent.Clear();
+    }
+
     private void Reset()
     {
         var col = GetComponent<Collider>();
@@ -98,23 +105,31 @@ public class RaceCheckpoint : MonoBehaviour
             agent.Passed++;
             agent.RecordSplit();
 
-            // ✅ WebSnare faqat normal oldinga o'tishda va reverse yo'q bo'lsa
-            if (canShootWebSnare && !_reverseByAgent[agent])
-            {
-                int rank = lb != null ? lb.GetRank(agent) : -1; // 1..N bo'lishi kerak
-                TryScheduleWebSnare(agent, rank);
-            }
-
             // Finish
             if (index == total - 1)
             {
                 agent.EndRace();
-                RacingController.Instance.FinishRace();
+                lb?.NotifyCheckpoint(agent);
+
+                if (agent.isPlayer)
+                {
+                    RacingController.Instance.FinishRace();
+                    RacingLeaderboard.Instance?.FinishRace();
+                }
                 Debug.Log($"Agent {agent.name} finished {agent.ElapsedTime}");
             }
-                
+            else
+            {
+                lb?.NotifyCheckpoint(agent);
+            }
 
-            lb?.NotifyCheckpoint(agent);
+            // ✅ WebSnare faqat player uchun, current rank update bo'lgandan keyin.
+            if (canShootWebSnare && !_reverseByAgent[agent])
+            {
+                int playerRank = lb != null ? lb.PlayerRank() : -1;
+                if (ShouldScheduleWebSnareForPlayer(agent, lb, playerRank))
+                    TryScheduleWebSnare(agent, playerRank);
+            }
 
             // WalkTrap notify
             agent.boosterContainer?.NotifyCheckpointPassed(index, total);
@@ -131,6 +146,34 @@ public class RaceCheckpoint : MonoBehaviour
     }
 
     // -------------------- WEB SNARE --------------------
+    private bool ShouldScheduleWebSnareForPlayer(RacingAgent agent, RacingLeaderboard lb, int playerRank)
+    {
+        if (agent == null || !agent.isPlayer) return false;
+        if (playerRank <= 0) return false;
+
+        return HasActiveOpponentBehindPlayer(agent, lb, playerRank);
+    }
+
+    private bool HasActiveOpponentBehindPlayer(RacingAgent playerAgent, RacingLeaderboard lb, int playerRank)
+    {
+        var controller = RacingController.Instance;
+        if (controller == null) return false;
+
+        IReadOnlyList<RacingAgent> agents = controller.AllAgents;
+        for (int i = 0; i < agents.Count; i++)
+        {
+            RacingAgent other = agents[i];
+            if (other == null || other == playerAgent) continue;
+            if (other.isPlayer || other.HasFinished || !other.gameObject.activeInHierarchy) continue;
+
+            int otherRank = lb != null ? lb.GetRank(other) : other.Ranking;
+            if (otherRank > playerRank)
+                return true;
+        }
+
+        return false;
+    }
+
     private void TryScheduleWebSnare(RacingAgent agent, int rank)
     {
         if(RacingController.Instance.IsRaceOver)  return; 
@@ -138,9 +181,6 @@ public class RaceCheckpoint : MonoBehaviour
         if (agent == null || agent.HasFinished) return;
 
         if (_shootInProgress.Contains(agent)) return;
-
-        // Rank rules
-        if (rank == 8 || rank == 7 || rank == 9) return; // umuman otmaydi
 
         bool forceShoot = (rank >= 1 && rank <= 3); // top-3: "auto urish" (player/ai farqsiz)
 

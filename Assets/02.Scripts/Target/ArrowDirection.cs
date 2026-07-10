@@ -27,9 +27,9 @@ public class ArrowDirection : MonoBehaviour
             {
                 TargetState(PracticeRoomManager.Instance.IsCatched);
             }
-            else if(BeginerRoomManager.Instance != null)
+            else if(KopkariManager.Instance != null)
             {
-                TargetState(BeginerRoomManager.Instance.IsCatched);
+                TargetState(KopkariManager.Instance.IsCatched);
             }
             else
             {

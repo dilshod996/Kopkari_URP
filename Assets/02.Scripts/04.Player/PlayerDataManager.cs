@@ -74,7 +74,6 @@ public class PlayerDataManager : MonoBehaviour
         {
             Debug.Log("❌ PlayerSkinLoader component not found on instantiated player.");
         }
-
         // 2. Component sifatida MRider ni olamiz
         riderInstance = playerInstance.GetComponent<MRider>();
 
@@ -107,7 +106,6 @@ public class PlayerDataManager : MonoBehaviour
         OnLocalPlayerObject?.Invoke(playerInstance.transform.root.gameObject);
 
     }
-
 
     public void CustomizeRider(MaterialChanger materialChanger, int index)
     {

@@ -12,7 +12,6 @@ public class UserDetails : MonoBehaviour
     [SerializeField] private TMP_InputField nameInputField;
     [SerializeField] private TMP_Text levelLabelText;
     [SerializeField] private TMP_Text teamLabelText;
-    [SerializeField] private TMP_Text versionLabelText;
     [SerializeField] private TMP_Text saveBtnText;
     [SerializeField] private TMP_Text statusLabelText;
     [SerializeField] private TMP_Text rankingLabelText;
@@ -26,8 +25,6 @@ public class UserDetails : MonoBehaviour
     [SerializeField] private TMP_Text playerName;
     [SerializeField] private TMP_Text closeText;
 
-    //[SerializeField] private PlayerPrefsData playerPrefsObj;
-    //[SerializeField] private LobbyManager lobbyManager;
 
     [Header("User Details Settings")]
     [SerializeField] private float scaleUp = 1.2f;
@@ -67,7 +64,6 @@ public class UserDetails : MonoBehaviour
             int selectedCountry = countryDropdown.selectedItemIndex;
 
             PlayerPrefs.SetString(Constants.Player.UsernameKey, newUsername);
-            Debug.Log("Yangi username saqlandi: " + newUsername);
             playerName.text = newUsername;
             PlayerPrefs.SetInt(Constants.Player.CountryName, selectedCountry);
             PlayerPrefs.Save();
@@ -75,12 +71,10 @@ public class UserDetails : MonoBehaviour
             DataManager.Instance?.SavePlayerProfile(newUsername, selectedCountry, true);
 
             HomeMainUI.Instance.UpdatePlayerName(newUsername);
-            //gameObject.SetActive(false);
             HomeMainUI.Instance.FinishNameTutorial();
         }
         else
         {
-            //StartScaleLoop(nameContainerObj);
             Debug.Log("Username bo'sh bo'lishi mumkin emas.");
         }
 
@@ -88,7 +82,6 @@ public class UserDetails : MonoBehaviour
     }
     private void OnEnable()
     {
-       // nameContainerObj.transform.localScale = Vector3.one; // Reset scale to original size
         CountrySelection();
         UITransilations();
         RefreshLevelUI();
@@ -110,7 +103,6 @@ public class UserDetails : MonoBehaviour
         statusLabelText.text = LanguageManager.Instance.GetText(276);
         levelLabelText.text = LanguageManager.Instance.GetText(101);
         teamLabelText.text = LanguageManager.Instance.GetText(102);
-        versionLabelText.text = LanguageManager.Instance.GetText(103);
         saveBtnText.text = LanguageManager.Instance.GetText(39);
         closeText.text = LanguageManager.Instance.GetText(362);
         rankingLabelText.text = LanguageManager.Instance.GetText(247);

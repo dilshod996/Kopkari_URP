@@ -29,7 +29,8 @@ public class SceneLoadManager : MonoBehaviour
         TrainingRacing,
         SecondRacing, //Zarafshan
         EgyptRacing,
-        Kansas
+        Kansas,
+        Sibir
     }
 
     public SceneType CurrentSceneType  = SceneType.None;
@@ -37,6 +38,13 @@ public class SceneLoadManager : MonoBehaviour
 
     public float loadingTime; // Assign in LoadingScene
     public float fakeDurationIfCached = 5f;
+    public bool IsSceneLoading { get; private set; }
+    public float LastSceneMoveTime { get; private set; }
+    public float CurrentSceneMoveTime => IsSceneLoading
+        ? Time.realtimeSinceStartup - sceneMoveStartRealtime
+        : LastSceneMoveTime;
+
+    private float sceneMoveStartRealtime;
     HashSet<SceneType> assetAlreadyInstantiated = new();
 
     public Action OnSceneLoaded;
@@ -553,13 +561,43 @@ public class SceneLoadManager : MonoBehaviour
 
         onCompleted?.Invoke(task.Result);
     }
-    #region new Inro Load
-    public void LoadHomeFromIntro(SceneType homeScene, List<string> preloadKeys)
+
+    private bool IsSuccessful(Task<bool> task)
     {
-        StartCoroutine(HandleSceneLoadIntro_ToHome(homeScene, preloadKeys));
+        return task != null
+            && task.IsCompleted
+            && !task.IsCanceled
+            && !task.IsFaulted
+            && task.Result;
     }
 
-    private IEnumerator HandleSceneLoadIntro_ToHome(SceneType targetScene, List<string> preloadAddresses)
+    private void BeginSceneMove()
+    {
+        loadingTime = 0f;
+        IsSceneLoading = true;
+        sceneMoveStartRealtime = Time.realtimeSinceStartup;
+    }
+
+    private void CompleteSceneMove()
+    {
+        LastSceneMoveTime = CurrentSceneMoveTime;
+        IsSceneLoading = false;
+        loadingTime = 100f;
+        OnSceneLoaded?.Invoke();
+    }
+
+    private void CancelSceneMove()
+    {
+        IsSceneLoading = false;
+    }
+
+    #region new Inro Load
+    public void LoadHomeFromIntro(SceneType homeScene, List<string> preloadKeys, Task<bool> existingPreloadTask = null)
+    {
+        StartCoroutine(HandleSceneLoadIntro_ToHome(homeScene, preloadKeys, existingPreloadTask));
+    }
+
+    private IEnumerator HandleSceneLoadIntro_ToHome(SceneType targetScene, List<string> preloadAddresses, Task<bool> existingPreloadTask = null)
     {
         loadingTime = 0f;
         preloadAddresses ??= new List<string>();
@@ -569,14 +607,18 @@ public class SceneLoadManager : MonoBehaviour
 
 
         // ✅ 1) Preload (intro paytida)
-        var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
-            preloadAddresses,
-            p => loadingTime = p * 100f,
-            fakeDurationIfCached
-        );
+        Task<bool> preloadTask = existingPreloadTask;
+        if (preloadTask == null)
+        {
+            preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
+                preloadAddresses,
+                p => loadingTime = p * 100f,
+                fakeDurationIfCached
+            );
+        }
 
         yield return WaitTask(preloadTask);
-        if (!preloadTask.Result)
+        if (!IsSuccessful(preloadTask))
         {
             UIOverlayRoot.I.HidePanel(UIPanelType.Home, false);
             yield break;
@@ -635,6 +677,7 @@ public class SceneLoadManager : MonoBehaviour
     {
         PreviousSceneType = CurrentSceneType;
         CurrentSceneType = scene;
+        BeginSceneMove();
 
         // ❌ bu yerda OnSceneLoaded chaqirilmaydi (hali yuklanmadi)
 
@@ -654,9 +697,13 @@ public class SceneLoadManager : MonoBehaviour
     private IEnumerator LoadOnlySceneSingle(SceneType scene)
     {
         var op = SceneManager.LoadSceneAsync(scene.ToString(), LoadSceneMode.Single);
-        while (!op.isDone) yield return null;
+        while (!op.isDone)
+        {
+            loadingTime = Mathf.Clamp01(op.progress / 0.9f) * 95f;
+            yield return null;
+        }
 
-        OnSceneLoaded?.Invoke();
+        CompleteSceneMove();
     }
     private void LoadSceneCoroutine(SceneType targetScene, List<string> preloadAddresses)
     {
@@ -683,6 +730,7 @@ public class SceneLoadManager : MonoBehaviour
         if (!preloadTask.Result)
         {
            // UIOverlayRoot.I.HideLoading();
+            CancelSceneMove();
             yield break;
         }
 
@@ -706,7 +754,7 @@ public class SceneLoadManager : MonoBehaviour
 
             var horsePreloadTask = PlayerCatalogProvider.Instance.PreloadAllForHorseAsync(
                 horseId,
-                p => loadingTime = 80f + p * 20f,
+                p => loadingTime = 80f + p * 10f,
                 includeIcons: true
             );
 
@@ -715,6 +763,7 @@ public class SceneLoadManager : MonoBehaviour
             if (!playerPreloadTask.Result || !horsePreloadTask.Result)
             {
                 //UIOverlayRoot.I.HideLoading();
+                CancelSceneMove();
                 yield break;
             }
         }
@@ -730,13 +779,14 @@ public class SceneLoadManager : MonoBehaviour
             var aiHorsePoolTask = PlayerCatalogProvider.Instance.PreloadMaterialPoolAsync(
                 horseId,
                 slotIds,
-                p => loadingTime = 50f + p * 50f
+                p => loadingTime = 50f + p * 40f
             );
 
             yield return WaitTask(aiHorsePoolTask);
 
             if (!aiHorsePoolTask.Result)
             {
+                CancelSceneMove();
                 UIOverlayRoot.I.HideLoading();
                 yield break;
             }
@@ -745,15 +795,19 @@ public class SceneLoadManager : MonoBehaviour
         // ✅ 3) Endi target scene load (SINGLE)
         var sceneOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
         while (!sceneOp.isDone)
+        {
+            loadingTime = Mathf.Max(loadingTime, 50f + Mathf.Clamp01(sceneOp.progress / 0.9f) * 45f);
             yield return null;
+        }
         // ✅ 3.5) Scene ichidagi async instantiate tugaguncha kutamiz
+        loadingTime = Mathf.Max(loadingTime, 95f);
         while (!AssetInstantiationFinished)
             yield return null;
 
         SetAssetInstantiationFinished(false);
 
         // ✅ 4) Scene REAL loaded
-        OnSceneLoaded?.Invoke();
+        CompleteSceneMove();
 
         // ✅ 5) Loading panel yopiladi
         UIOverlayRoot.I.HideLoading();
@@ -771,7 +825,7 @@ public class SceneLoadManager : MonoBehaviour
         PreviousSceneType = CurrentSceneType;
         CurrentSceneType = newScene;
 
-        loadingTime = 0f;
+        BeginSceneMove();
 
         // ✅ Home'ga qaytayotganda HomePanel ko'rsatamiz (yoki Loading panel)
         //UIOverlayRoot.I.ShowPanel(UIPanelType.Home, instant: false, exclusive: true, message: "Home loading...");
@@ -779,17 +833,20 @@ public class SceneLoadManager : MonoBehaviour
         // ✅ Scene load (Single)
         var op = SceneManager.LoadSceneAsync(newScene.ToString(), LoadSceneMode.Single);
         while (!op.isDone)
+        {
+            loadingTime = Mathf.Clamp01(op.progress / 0.9f) * 95f;
             yield return null;
+        }
 
         // ✅ Scene ichidagi async instantiate tugaguncha kutamiz
+        loadingTime = Mathf.Max(loadingTime, 95f);
         while (!AssetInstantiationFinished)
             yield return null;
 
         SetAssetInstantiationFinished(false);
 
         // ✅ Tayyor bo'ldi -> panelni yopasiz (yoki Home UI'ni ko'rsatishga o'tasiz)
-
-        OnSceneLoaded?.Invoke();
+        CompleteSceneMove();
     }
 
     #endregion
