@@ -169,10 +169,11 @@ public class RacingSettingsPanel : MonoBehaviour
 
     public void ClosePanel()
     {
-        if (UIButtonActions.Instance != null)
-            UIButtonActions.Instance.HideUI(this);
-        else
-            gameObject.SetActive(false);
+        //if (UIButtonActions.Instance != null)
+        //    UIButtonActions.Instance.HideUI(this);
+        //else
+        //    gameObject.SetActive(false);
+        gameObject.SetActive(false);
     }
 
     private void AddListeners()

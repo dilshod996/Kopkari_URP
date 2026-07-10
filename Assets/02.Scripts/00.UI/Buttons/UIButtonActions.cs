@@ -70,7 +70,7 @@ public class UIButtonActions : MonoBehaviour
     [Header("Pages")]
     [SerializeField] private GameObject resultPage;
     [SerializeField] private GameObject foodPanel;
-    [SerializeField] private GameObject inGameSettingsPanel;
+    [SerializeField] private RacingSettingsPanel inGameSettingsPanel;
     [SerializeField] private UIPauseGame pauseMenu;
     [SerializeField] private PlayerItems itemsPanel;
     [SerializeField] private Image blinkOverlay;      // UI Image
@@ -274,12 +274,9 @@ public class UIButtonActions : MonoBehaviour
         if (_pausedByApp) return; // ✅ double-calldan saqlaydi
         _pausedByApp = true;
 
-        if(racingController.mapType != RacingController.RacingType.Training && pauseMenu != null)
-        {
-            pauseMenu.gameObject.SetActive(true);
-        }
         // ✅ global timer pause
         racingController.PauseRaceTime();
+        ShowPauseMenu();
 
         // ixtiyoriy: agar audio/vfx ham to‘xtasin desa
         // Time.timeScale = 0f;  // (agar sen game’ni to‘liq muzlatmoqchi bo‘lsang)
@@ -851,7 +848,8 @@ public class UIButtonActions : MonoBehaviour
 
     public void OpenInGameSettingsPanel()
     {
-        ShowUI(inGameSettingsPanel);
+        //ShowUI(inGameSettingsPanel);
+        inGameSettingsPanel.gameObject.SetActive(true);
     }
 
     public void ShowResultPage()
@@ -976,9 +974,17 @@ public class UIButtonActions : MonoBehaviour
             return;
 
         racingController.PauseRaceTime();
-        ShowUI(pauseMenu);
+        ShowPauseMenu();
     }
     #endregion
+
+    private void ShowPauseMenu()
+    {
+        if (inGameSettingsPanel != null && inGameSettingsPanel.gameObject.activeSelf)
+            HideUI(inGameSettingsPanel);
+
+        ShowUI(pauseMenu);
+    }
 
     private bool CanOpenSystemPauseMenu(RacingController racingController)
     {

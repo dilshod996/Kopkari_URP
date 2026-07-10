@@ -27,6 +27,14 @@ public class LaunchTimingMeterUI : MonoBehaviour
     [SerializeField] private TMP_Text resultText;
     [SerializeField] private TMP_Text countdownText;
 
+    [Header("UI Text Fields")]
+    [SerializeField] private TMP_Text titleText;
+    [SerializeField] private TMP_Text detailsText;
+    [SerializeField] private TMP_Text perfectText;
+    [SerializeField] private TMP_Text tooEarlyText;
+    [SerializeField] private TMP_Text tooLateText;
+    [SerializeField] private TMP_Text readyGoText;
+    [SerializeField] private TMP_Text selectionDataText;
     [Header("Ready Go Image")]
     [SerializeField] private RectTransform readyGoImage;
     [SerializeField] private CanvasGroup readyGoGroup;
@@ -79,7 +87,10 @@ public class LaunchTimingMeterUI : MonoBehaviour
         if (readyGoImage != null)
             readyGoOriginalPos = readyGoImage.anchoredPosition;
     }
-
+    private void OnEnable()
+    {
+        LangaugeUpdate();
+    }
     private void OnDestroy()
     {
         markerTween?.Kill();
@@ -100,6 +111,16 @@ public class LaunchTimingMeterUI : MonoBehaviour
         flowSequence?.Kill();
     }
 
+    private void LangaugeUpdate()
+    {
+        var lang = LanguageManager.Instance;
+        if (lang == null) return;
+        titleText.text = lang.GetText(542);
+        detailsText.text = lang.GetText(543);
+        perfectText.text = lang.GetText(568);
+        tooEarlyText.text = lang.GetText(570);
+        tooLateText.text = lang.GetText(569);
+    }
     public void StartLaunchMeter()
     {
         if (!gameObject.activeSelf)
@@ -357,7 +378,7 @@ public class LaunchTimingMeterUI : MonoBehaviour
         isRunning = false;
         hasClicked = true;
 
-        string resultLabel = GetResultText(result);
+        string resultLabel = LanguageManager.Instance?.GetText(GetResultText(result));
         HideCountdown();
 
         flowSequence = DOTween.Sequence();
@@ -399,15 +420,15 @@ public class LaunchTimingMeterUI : MonoBehaviour
         });
     }
 
-    private string GetResultText(LaunchResult result)
+    private int GetResultText(LaunchResult result)
     {
         return result switch
         {
-            LaunchResult.Perfect => "PERFECT START!",
-            LaunchResult.Good => "GOOD START!",
-            LaunchResult.Bad => "BAD START",
-            LaunchResult.Miss => "MISSED",
-            _ => ""
+            LaunchResult.Perfect => 544,
+            LaunchResult.Good => 545,
+            LaunchResult.Bad => 546,
+            LaunchResult.Miss => 547,
+            _ => 547
         };
     }
 
