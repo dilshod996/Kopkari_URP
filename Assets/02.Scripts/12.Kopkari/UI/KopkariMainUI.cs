@@ -22,6 +22,15 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private Button pushButton;
     [SerializeField] private Button pauseButton;
     #endregion
+
+    #region Kopkari Intro
+    [Header("Kopkari Intro")]
+    [SerializeField] private KopkariIntroFlowController introFlowController;
+    [SerializeField] private GameObject introPlayerListPanel;
+    [SerializeField] private Button introSkipButton;
+
+    public Button IntroSkipButton => introSkipButton;
+    #endregion
     #region Inspector - Texts
     [Header("Buttons Data Texts")]
     [SerializeField] private TMP_Text defendCountText;
@@ -170,7 +179,7 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnWalkZoneDamaged += EnableSprint;
         BoostersContainer.OnWebSnareDamaged += EnableSprint;
         BoostersContainer.OnObstacleDamage += OnObstacleDamageHandler;
-        HorseMine.OnReachedStartTarget += MoveUP;
+        KopkariManager.OnMainGameStarted += MoveUP;
         KopkariManager.OnGoatPicked += ShowMeters;
         TargetReachEvent.OnRoundEnded += DisableMeters;
         pushButton.onClick.AddListener(PushEffectStart);
@@ -207,7 +216,7 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnWalkZoneDamaged -= EnableSprint;
         BoostersContainer.OnWebSnareDamaged -= EnableSprint;
         BoostersContainer.OnObstacleDamage -= OnObstacleDamageHandler;
-        HorseMine.OnReachedStartTarget -= MoveUP;
+        KopkariManager.OnMainGameStarted -= MoveUP;
         TargetReachEvent.OnRoundEnded -= DisableMeters;
         KopkariManager.OnGoatPicked -= ShowMeters;
         pushButton.onClick.RemoveListener(PushEffectStart);
@@ -624,8 +633,36 @@ public class KopkariMainUI : MonoBehaviour
         if (loadingCompleted) return;
         loadingCompleted = true;
 
-        OnEverythingReadyStart?.Invoke();
         GetData();
+
+        if (introFlowController != null && introFlowController.isActiveAndEnabled)
+        {
+            introFlowController.PlayIntro(StartMatchAfterIntro);
+        }
+        else
+        {
+            StartMatchAfterIntro();
+        }
+    }
+
+    private void StartMatchAfterIntro()
+    {
+        OnEverythingReadyStart?.Invoke();
+    }
+
+    public void SetIntroPlayerListVisible(bool visible)
+    {
+        if (introPlayerListPanel != null)
+            introPlayerListPanel.SetActive(visible);
+    }
+
+    public void SetIntroSkipVisible(bool visible)
+    {
+        if (introSkipButton == null)
+            return;
+
+        introSkipButton.gameObject.SetActive(visible);
+        introSkipButton.interactable = visible;
     }
     #endregion
 
@@ -681,10 +718,14 @@ public class KopkariMainUI : MonoBehaviour
     #region Bottom Ui && Top Slider uloq
     public void PlayerDataRegister()
     {
+        KopkariResultsManager resultsManager = KopkariResultsManager.Instance;
+        if (resultsManager == null)
+            return;
+
         string namePlayer = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         int playerid = PlayerPrefs.GetInt(Constants.Player.Userid, 0);
         string teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
-        KopkariResultsManager.Instance.Register(playerid, namePlayer, teamName, true);
+        resultsManager.Register(playerid, namePlayer, teamName, true);
 
     }
     public void MoveUP()

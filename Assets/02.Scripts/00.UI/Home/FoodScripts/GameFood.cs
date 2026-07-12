@@ -25,9 +25,11 @@ public class GameFood : MonoBehaviour
     [SerializeField] private TMP_Text notEnoughPowerText, notEnoughCoolingText, notEnoughStaminaText;
     [SerializeField] private TMP_Text powerText, coolingText, staminaText;
 
+    [Header("Bottom Field")]
     [SerializeField] private GameObject bottomAlarmObj;
     [SerializeField] private TMP_Text bottomAlarmText;
-
+    [SerializeField] private TMP_Text feedHorseText, feedHorseDescription;
+    
     private static readonly Color goodConditionColor = new Color32(47, 255, 135, 255);
     private static readonly Color stableConditionColor = new Color32(255, 199, 117, 255);
     private static readonly Color badConditionColor = new Color32(238, 32, 30, 255);
@@ -53,19 +55,27 @@ public class GameFood : MonoBehaviour
         UITransilation();
         GetResources();
         EnableAdsPanel(false);
-        replayBtn.onClick.AddListener(PlayMore);
-        backButton.onClick.AddListener(BackHome);
+        if(replayBtn != null)
+            replayBtn.onClick.AddListener(PlayMore);
+        if(backButton != null)
+            backButton.onClick.AddListener(BackHome);
         CurrencyManager.Instance.OnNyufiyChanged += UpdateOnlyNyufiy;
         FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
         FoodInfo.OnMoneyNotEnough += AdsPanel;
-        watchBtn.onClick.AddListener(OnAdsButtonAction);
+        if(adsAmount != null)
+            adsAmount.text = $"+{amountWatch:N0}";
+        if(watchBtn != null)
+            watchBtn.onClick.AddListener(OnAdsButtonAction);
     }
 
     private void OnDisable()
     {
-        replayBtn.onClick.RemoveAllListeners();
-        backButton.onClick.RemoveAllListeners();
-        watchBtn.onClick.RemoveAllListeners();
+        if (replayBtn != null)
+            replayBtn.onClick.RemoveAllListeners();
+        if (backButton != null)
+            backButton.onClick.RemoveAllListeners();
+        if (watchBtn != null)
+            watchBtn.onClick.RemoveAllListeners();
         CurrencyManager.Instance.OnNyufiyChanged -= UpdateOnlyNyufiy;
         FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
         FoodInfo.OnMoneyNotEnough -= AdsPanel;
@@ -76,28 +86,13 @@ public class GameFood : MonoBehaviour
     }
     private void BackHome()
     {
-        if (sceneType.Equals(SceneLoadManager.SceneType.None))
+        if (SceneLoadManager.Instance.CurrentSceneType==SceneLoadManager.SceneType.Home)
         {
             HomeMainUI.Instance.HideUI(this);
             return;
         }
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
-    }
-    public void PlayAgainText()
-    {
-        switch (sceneType)
-        {
-            case SceneLoadManager.SceneType.SecondRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Zarafshan, "This time is your win!");
-                break;
-            case SceneLoadManager.SceneType.EgyptRacing:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Egypt, "Egypt People waiting you race");
-                break;
-            case SceneLoadManager.SceneType.Kansas:
-                UIOverlayRoot.I.ShowPanel(UIPanelType.Kansas, "Kansas is ready for");
-                break;
-        }
     }
     #region UI Transilations
     private void UITransilation()
@@ -116,6 +111,14 @@ public class GameFood : MonoBehaviour
             powerText.text = lang.GetText(326);
             coolingText.text = lang.GetText(327);
             staminaText.text = lang.GetText(328);
+            if(feedHorseText != null)
+            {
+                feedHorseText.text = lang.GetText(559);
+            }
+            if(feedHorseDescription != null)
+            {
+                feedHorseDescription.text = lang.GetText(560);
+            }
 
         }
     }
@@ -130,10 +133,18 @@ public class GameFood : MonoBehaviour
     }
     private void UpdateOnlyNyufiy(int amount)
     {
+        if (nyufiyText == null)
+        {
+            return;
+        }
         nyufiyText.text = amount > 0 ? $"{amount:N0}" : "0";
     }
     private void UpdateTexts(int nyufiy, int coin)
     {
+        if(nyufiyText==null || coinText == null)
+        {
+            return;
+        }
         nyufiyText.text = $"{nyufiy:N0}";
         coinText.text = $"{coin:N0}";
     }

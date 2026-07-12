@@ -124,8 +124,11 @@ public class FoodInfo : MonoBehaviour
 
         if (!success)
         {
-            OnMoneyNotEnough?.Invoke();
-            popup?.ShowNotEnoughNyufiy();
+            if (popup != null)
+                popup.ShowNotEnoughNyufiy();
+            else
+                OnMoneyNotEnough?.Invoke();
+
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             SoundManager.Instance?.PlayUI(UISoundType.Error);
             return;

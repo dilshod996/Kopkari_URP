@@ -27,9 +27,9 @@ public class HorseMine : MonoBehaviour
     [SerializeField] private bool maxSpeed = false;
     [SerializeField] private float maxSpeedDuration = 5f;
     [Header("Majburiy start nuqtasi")]
-    public Transform targetPoint;      // Rider borishi kerak bo'lgan joy
-    public float requiredRadius = 2f;  // Qancha yaqin bo'lsa "bordim" deb hisoblanadi
-    public float maxTime = 0f;        // Necha sekund ichida yetib borishi shart
+    public Transform targetPoint;
+    public float requiredRadius = 2f;
+    public float maxTime = 0f;
 
     private bool reached = false;
     private bool eliminated = false;
@@ -42,20 +42,12 @@ public class HorseMine : MonoBehaviour
         if (obstacleSensor != null)
             obstacleSensor.OnTouched += OnObstacleTouched;
 
-        KopkariManager.OnGameStarted += BeginCheck;
-        KopkariManager.OnStartPoint += StartPoint;
-        if (KopkariManager.CurrentStartPoint != null)
-        {
-            StartPoint(KopkariManager.CurrentStartPoint, KopkariManager.CurrentWarmupTime);
-        }
     }
 
     private void OnDisable()
     {
         if (obstacleSensor != null)
             obstacleSensor.OnTouched -= OnObstacleTouched;
-        KopkariManager.OnGameStarted -= BeginCheck;
-        KopkariManager.OnStartPoint -= StartPoint;
     }
 
     #region Penalty Section
@@ -74,87 +66,45 @@ public class HorseMine : MonoBehaviour
 
     #endregion
 
-
-    #region Starting Point
-    private void StartPoint(Transform point, float time)
+    #region Legacy Starting Point
+    public void SetLegacyStartPoint(Transform point, float time)
     {
         targetPoint = point;
         maxTime = time;
-
-        Debug.Log($"{name} start point oldi: {point.position}, warmup: {time}");
-
-        // Shu yerda warmup logikasini boshlasang bo‘ladi:
-        // masalan:
-        // StartCoroutine(WarmUpRoutine());
     }
+
     public void BeginCheck()
     {
-        // Har ehtimolga qarshi eski coroutine bo‘lsa – to‘xtatamiz
         if (checkCoroutine != null)
             StopCoroutine(checkCoroutine);
 
         reached = false;
         eliminated = false;
-
         checkCoroutine = StartCoroutine(CheckRoutine());
     }
 
     private IEnumerator CheckRoutine()
     {
         float timeLeft = maxTime;
-
-        // Riderning o‘zi (odatda root transform)
         Transform riderTransform = transform;
 
         while (timeLeft > 0f && !reached)
         {
             timeLeft -= Time.deltaTime;
 
-            if (targetPoint != null)
+            if (targetPoint != null &&
+                Vector3.Distance(riderTransform.position, targetPoint.position) <= requiredRadius)
             {
-                float dist = Vector3.Distance(riderTransform.position, targetPoint.position);
-
-                // Yetarlicha yaqinlashgan bo‘lsa – success
-                if (dist <= requiredRadius)
-                {
-                    reached = true;
-                    OnReachedStartPoint();
-                    yield break;
-                }
+                reached = true;
+                OnReachedStartTarget?.Invoke();
+                yield break;
             }
 
             yield return null;
         }
 
-        // Vaqt tugab bo‘ldi, lekin yetib bormagan bo‘lsa → o‘yindan chetlatamiz
         if (!reached)
-        {
-            EliminateRider();
-        }
-    }
-
-    private void OnReachedStartPoint()
-    {
-        OnReachedStartTarget?.Invoke();
-        Debug.Log($"{name} start nuqtasiga yetib bordi ✅");
-        // Hohlasang shu yerda:
-        // - AIga "normal race logic"ni yoqasan
-        // - Idle/ready animatsiyasini qo'yasan
-    }
-
-    private void EliminateRider()
-    {
-        if (eliminated) return;
-        eliminated = true;
-
-        Debug.Log($"{name} start nuqtasiga yetib bormadi, o‘yindan chetlatildi ❌");
-
-        // Bu yerda riderni o‘chirib tashlaysan yoki DQ qilasan:
-        // 1) Player bo'lsa – controlni o'chirish:
-        //    playerController.enabled = false;
-        // 2) AI bo'lsa – AIAgent/MAnimal harakatini o'chirish:
-        //    ai.enabled = false;  yoki  animal.LockMovement(true);
-        // 3) Hohlasang "DQ" popap, effekt, text va hokazo
+            eliminated = true;
     }
     #endregion
 }

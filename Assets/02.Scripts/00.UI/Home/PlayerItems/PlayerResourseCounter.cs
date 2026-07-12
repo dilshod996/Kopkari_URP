@@ -79,7 +79,8 @@ public class PlayerResourseCounter : MonoBehaviour
             resources,
             costOfResource,
             icon != null ? icon.sprite : null,
-            out int amount);
+            out int amount,
+            false);
 
         if (!success)
         {

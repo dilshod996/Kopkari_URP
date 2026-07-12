@@ -68,7 +68,13 @@ public class Booster : MonoBehaviour
 
     private bool walkZoneActive;
     private bool walkZoneTimeAdded;
+    public static float TotalWalkZoneDamagedTime { get; private set; }
     public static event Action<float> OnWalkZoneDamagedTime;
+
+    public static void ResetWalkZoneDamagedTime()
+    {
+        TotalWalkZoneDamagedTime = 0f;
+    }
 
     private void Awake()
     {
@@ -348,6 +354,7 @@ public class Booster : MonoBehaviour
         float damagedTime = walkZoneFinishTime - walkZoneStartTime;
         damagedTime = Mathf.Clamp(damagedTime, 0f, slowDuration);
 
+        TotalWalkZoneDamagedTime += damagedTime;
         OnWalkZoneDamagedTime?.Invoke(damagedTime);
     }
     #endregion

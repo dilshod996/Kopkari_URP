@@ -224,6 +224,7 @@ public class RacingController : MonoBehaviour
         _accumulated = 0f;
         _runStartTime = Time.time;
         _isPaused = false;
+        Booster.ResetWalkZoneDamagedTime();
         GameAnalytics();
     }
     private void GameAnalytics()

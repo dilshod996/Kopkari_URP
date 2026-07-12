@@ -1,10 +1,8 @@
 using Michsky.UI.ModernUIPack;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,7 +11,7 @@ public class RacingResultPage : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private RectTransform contentParent;   // VerticalLayoutGroup
     [SerializeField] private UIRacingPlayerFinal itemPrefab;
-    [SerializeField] private Button replayButton;            // Yangi qo‘shilgan Start Button
+    [SerializeField] private Button replayButton;
     [SerializeField] private Button backToHome;
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text mainMenuText, raceAgainText;
@@ -24,7 +22,6 @@ public class RacingResultPage : MonoBehaviour
     [SerializeField] private TMP_Text coolingText;
     [SerializeField] private TMP_Text powerText;
     [SerializeField] private TMP_Text staminaText;
-    [SerializeField] private TMP_Text alarmMessage;
 
     // Horse sliders
     [SerializeField] private ProgressBar powerProgress;
@@ -49,7 +46,7 @@ public class RacingResultPage : MonoBehaviour
     [Header("Options")]
     [SerializeField] private bool sortByRankingAsc = true;  // #1, #2, #3...
     [SerializeField] private bool clearOnBuild = true;
-    public SceneLoadManager.SceneType sceneType;
+    private SceneLoadManager.SceneType sceneType = SceneLoadManager.SceneType.None;
 
     private readonly List<UIRacingPlayerFinal> _spawned = new();
 
@@ -63,18 +60,17 @@ public class RacingResultPage : MonoBehaviour
     private float lastCooling = 0f;
     private float lastStamina = 0f;
 
-    [SerializeField] private float duration = 4f;     // qancha davom etadi
-    [SerializeField] private float scaleMin = 1f;     // boshlanish scale
-    [SerializeField] private float scaleMax = 1.05f;  // maksimal scale
-
-    [SerializeField] private ConditionCheck conditionCheck;
     public static Action<int> OnGetRiderRank;
 
-    [Header("Not Enough Resource")]
-    [SerializeField] private GameObject foodPanel;
-    [SerializeField] private Button foodPanelEnablerBtn;
-    [SerializeField] private TMP_Text foodResourcesBtnText;
+    private bool horseStatsApplied;
     private bool rewardGiven;
+    private int cachedTaqaPrize;
+    private int cachedNyufiyPrize;
+    private int cachedLevelUpPoint;
+    private float cachedRaceTime;
+    private float cachedRecordTime;
+    private string cachedRecordText;
+    private bool cachedPlayerFinished;
 
     private int GetAdsAmountByScene(SceneLoadManager.SceneType sceneType)
     {
@@ -88,6 +84,10 @@ public class RacingResultPage : MonoBehaviour
     }
     private void OnEnable()
     {
+        ResolveSceneType();
+        ResetRaceTimeBuckets();
+        Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
+
         if(replayButton != null)
         {
             replayButton.onClick.AddListener(Replay);
@@ -98,10 +98,6 @@ public class RacingResultPage : MonoBehaviour
         }
         if (LanguageManager.Instance != null) UITransilations();
         ShowResults();
-        if (foodPanelEnablerBtn != null)
-            foodPanelEnablerBtn.onClick.AddListener(OpenFoodPanelPopup);
-
-        Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
 
         if (adWatchBtn != null)
             adWatchBtn.onClick.AddListener(PlusMoneyReward);
@@ -114,13 +110,38 @@ public class RacingResultPage : MonoBehaviour
         if (backToHome != null)
             backToHome.onClick.RemoveListener(BackLobby);
 
-        if (foodPanelEnablerBtn != null)
-            foodPanelEnablerBtn.onClick.RemoveListener(OpenFoodPanelPopup);
 
         if (adWatchBtn != null)
             adWatchBtn.onClick.RemoveListener(PlusMoneyReward);
         Clear();
         Booster.OnWalkZoneDamagedTime -= GetWalkZoneOverAllTime;
+    }
+
+    private void ResolveSceneType()
+    {
+        SceneLoadManager manager = SceneLoadManager.Instance;
+        if (manager == null)
+            return;
+
+        SceneLoadManager.SceneType currentSceneType = manager.CurrentSceneType;
+        if (IsSupportedRacingScene(currentSceneType))
+            sceneType = currentSceneType;
+    }
+
+    private bool IsSupportedRacingScene(SceneLoadManager.SceneType type)
+    {
+        return type == SceneLoadManager.SceneType.TrainingRacing
+            || type == SceneLoadManager.SceneType.SecondRacing
+            || type == SceneLoadManager.SceneType.EgyptRacing
+            || type == SceneLoadManager.SceneType.Kansas;
+    }
+
+    private void ResetRaceTimeBuckets()
+    {
+        overAllTime = 0f;
+        overAllBoostTime = 0f;
+        overAllPenaltyTime = 0f;
+        overAllWalkZoneTime = Booster.TotalWalkZoneDamagedTime;
     }
     #region Player List && Racing Stats && Records
     public void ShowResults()
@@ -130,7 +151,7 @@ public class RacingResultPage : MonoBehaviour
 
         if (standings == null || standings.Count == 0)
         {
-            Debug.Log("[ShowResultPanel] standings bo'sh yoki null – panelni hozircha ko'rsatmiman");
+            Debug.Log("[ShowResultPanel] standings is null or empty.");
             return;
         }
         BuildList(standings);
@@ -158,6 +179,7 @@ public class RacingResultPage : MonoBehaviour
 
         float stepX = -18f;   
         float stepY = -100f;  // har safar y dan 100 pastga: -20, -120, -220, ...
+        bool playerHandled = false;
 
         for (int i = 0; i < entries.Count; i++)
         {
@@ -169,106 +191,115 @@ public class RacingResultPage : MonoBehaviour
 
             var rt = item.GetComponent<RectTransform>();
 
-            // ⚠ anchori/pivoti 1 marta shu yerda to‘g‘rilab qo‘yamiz
+            // Normalize item transform before applying manual list position.
             rt.anchorMin = new Vector2(0.5f, 1f);
             rt.anchorMax = new Vector2(0.5f, 1f);
             rt.pivot = new Vector2(0.5f, 1f);
 
             rt.localScale = Vector3.one;
 
-            // PREFABdagi eski offsetni yo‘qotish uchun avval nolga qo‘yamiz
             rt.anchoredPosition = Vector2.zero;
 
-            // Endi o‘zimiz kerakli koordinatani beramiz
             float x = startX + i * stepX;
             float y = startY + i * stepY;
 
             rt.anchoredPosition = new Vector2(x, y);
 
-            if (e.isPlayer && !rewardGiven)
+            if (e.isPlayer)
             {
-                rewardGiven = true;
-
-                if (!e.HasFinished)
+                if (!playerHandled)
                 {
-                    if (xpAmountText != null) xpAmountText.text = "0";
-                    if (nyufiyAmountText != null) nyufiyAmountText.text = "+0";
-                    if (coinAmountText != null) coinAmountText.text = "+0";
-                    if (timeText != null) timeText.text = "-";
-                    if (recordText != null) recordText.text = string.Empty;
-
-                    if (DataManager.Instance != null && levelText != null && LanguageManager.Instance != null)
-                        levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
-
-                    if (CurrencyManager.Instance != null)
-                    {
-                        if (allNyufiyText != null) allNyufiyText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
-                        if (allCoinText != null) allCoinText.text = $"{CurrencyManager.Instance.Coin:N0}";
-                    }
-
-                    overAllTime = 0f;
-                    continue;
+                    playerHandled = true;
+                    BuildPlayerResult(e);
                 }
 
-                var prize = GetRacePrizeByMapAndRank(e.Ranking);
-
-                int taqaPrize = prize.taqaPrize;
-                int nyufiyPrize = prize.nyufiyPrize;
-                int levelUpPoint = prize.levelUpPoint;
-                if(xpAmountText!=null)
-                {
-                    xpAmountText.text = levelUpPoint.ToString();
-                }
-                DataManager.Instance.AddLevelPoint(levelUpPoint, true);
-                OnGetRiderRank?.Invoke(e.Ranking);
-                levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
-
-                nyufiyAmountText.text = $"+{nyufiyPrize:N0}";
-                coinAmountText.text = $"+{taqaPrize:N0}";
-
-                CurrencyManager.Instance.AddNyufiy(nyufiyPrize, false);
-                CurrencyManager.Instance.AddCoin(taqaPrize, true);
-
-                allNyufiyText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
-                allCoinText.text = $"{CurrencyManager.Instance.Coin:N0}";
-
-                // Record tekshirish va yangilash bu faqat hozir Zarafshan uchun ishlaydi, boshqa xaritalar uchun kerak bo‘lsa shartni kengaytirish kerak
-
-                string recordKey = Constants.MapNames.Zarafshan;
-
-                if (sceneType == SceneLoadManager.SceneType.EgyptRacing)
-                    recordKey = Constants.MapNames.Egypt;
-                else if (sceneType == SceneLoadManager.SceneType.Kansas)
-                    recordKey = Constants.MapNames.Kansas;
-
-                float savedTime = DataManager.Instance != null ? DataManager.Instance.GetBestRecord(recordKey) : 0f;
-                if (savedTime == 0 || savedTime > e.LastSplitTime)
-                {
-                    recordText.text = LanguageManager.Instance?.GetText(315);
-                    savedTime = e.LastSplitTime;
-
-                    DataManager.Instance?.SaveBestRecord(recordKey, savedTime);
-                }
-                else
-                {
-                    recordText.text = LanguageManager.Instance?.GetText(316);
-                }
-
-                timeText.text = $"{e.LastSplitTime:0.00}s";
-                currentRecordTime.text = $"{savedTime:0.00}s";
-                overAllTime = e.LastSplitTime;
-                GameAnalyticsEvents.RaceFinished(sceneType.ToString(), "racing", e.Ranking, nyufiyPrize);
-                Debug.Log($"Ranking: {e.Ranking}");
-                bool isWin = e.Ranking == 1;
-                if (DataManager.Instance != null)
-                {
-                    DataManager.Instance.SaveRaceResult(GetMapKey(sceneType), isWin, (int)e.LastSplitTime);
-                }
-                //Debug.Log($"Split time {e.LastSplitTime}");
+                continue;
             }
+
         }
 
     }
+
+    private void BuildPlayerResult(RacingAgent e)
+    {
+        if (e == null)
+            return;
+
+        if (!rewardGiven)
+            CacheAndApplyPlayerResult(e);
+
+        ApplyCachedPlayerResultUI();
+    }
+
+    private void CacheAndApplyPlayerResult(RacingAgent e)
+    {
+        rewardGiven = true;
+        cachedPlayerFinished = e.HasFinished;
+        cachedRaceTime = e.HasFinished ? e.LastSplitTime : 0f;
+        cachedRecordText = string.Empty;
+        cachedRecordTime = 0f;
+
+        if (!e.HasFinished)
+        {
+            cachedTaqaPrize = 0;
+            cachedNyufiyPrize = 0;
+            cachedLevelUpPoint = 0;
+            overAllTime = 0f;
+            return;
+        }
+
+        var prize = GetRacePrizeByMapAndRank(e.Ranking);
+
+        cachedTaqaPrize = prize.taqaPrize;
+        cachedNyufiyPrize = prize.nyufiyPrize;
+        cachedLevelUpPoint = prize.levelUpPoint;
+
+        DataManager.Instance?.AddLevelPoint(cachedLevelUpPoint, true);
+        OnGetRiderRank?.Invoke(e.Ranking);
+        CurrencyManager.Instance?.AddNyufiy(cachedNyufiyPrize, false);
+        CurrencyManager.Instance?.AddCoin(cachedTaqaPrize, true);
+
+        string recordKey = GetMapKey(sceneType);
+        float savedTime = DataManager.Instance != null ? DataManager.Instance.GetBestRecord(recordKey) : 0f;
+        if (savedTime == 0 || savedTime > e.LastSplitTime)
+        {
+            cachedRecordText = LanguageManager.Instance?.GetText(315);
+            savedTime = e.LastSplitTime;
+
+            DataManager.Instance?.SaveBestRecord(recordKey, savedTime);
+        }
+        else
+        {
+            cachedRecordText = LanguageManager.Instance?.GetText(316);
+        }
+
+        cachedRecordTime = savedTime;
+        overAllTime = e.LastSplitTime;
+        GameAnalyticsEvents.RaceFinished(sceneType.ToString(), "racing", e.Ranking, cachedNyufiyPrize);
+        Debug.Log($"Ranking: {e.Ranking}");
+        bool isWin = e.Ranking == 1;
+        DataManager.Instance?.SaveRaceResult(GetMapKey(sceneType), isWin, (int)e.LastSplitTime);
+    }
+
+    private void ApplyCachedPlayerResultUI()
+    {
+        if (xpAmountText != null) xpAmountText.text = cachedLevelUpPoint.ToString();
+        if (nyufiyAmountText != null) nyufiyAmountText.text = $"+{cachedNyufiyPrize:N0}";
+        if (coinAmountText != null) coinAmountText.text = $"+{cachedTaqaPrize:N0}";
+        if (timeText != null) timeText.text = cachedPlayerFinished ? $"{cachedRaceTime:0.00}s" : "-";
+        if (recordText != null) recordText.text = cachedRecordText ?? string.Empty;
+        if (currentRecordTime != null) currentRecordTime.text = cachedPlayerFinished ? $"{cachedRecordTime:0.00}s" : "-";
+
+        if (DataManager.Instance != null && levelText != null && LanguageManager.Instance != null)
+            levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
+
+        if (CurrencyManager.Instance != null)
+        {
+            if (allNyufiyText != null) allNyufiyText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
+            if (allCoinText != null) allCoinText.text = $"{CurrencyManager.Instance.Coin:N0}";
+        }
+    }
+
     private string GetMapKey(SceneLoadManager.SceneType sceneType)
     {
         switch (sceneType)
@@ -364,6 +395,12 @@ public class RacingResultPage : MonoBehaviour
     #region Horse Details
     private void HorseStats()
     {
+        if (horseStatsApplied)
+        {
+            RefreshHorseStatsUI();
+            return;
+        }
+
         // --- Load ---
         HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
             HorseConditionStatsService.GetCachedMaxOrDefault());
@@ -372,12 +409,16 @@ public class RacingResultPage : MonoBehaviour
         float horseStaminaMain = current.Stamina;
         Debug.Log($"Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime}  over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
-        float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
-        float nonPenaltyTime = overAllTime - (overAllPenaltyTime + overAllWalkZoneTime);     // penalty bo‘lmagan vaqt
+        float raceTime = Mathf.Max(0f, overAllTime);
+        float boostTime = Mathf.Clamp(overAllBoostTime, 0f, raceTime);
+        float penaltyTime = Mathf.Clamp(overAllPenaltyTime, 0f, raceTime);
+        float walkZoneTime = Mathf.Clamp(overAllWalkZoneTime, 0f, Mathf.Max(0f, raceTime - penaltyTime));
+        float basicTime = Mathf.Max(0f, raceTime - boostTime);
+        float nonPenaltyTime = Mathf.Max(0f, raceTime - (penaltyTime + walkZoneTime));
 
-        float newPower = horsePowerMain - (overAllBoostTime * 0.2f + basicTime * 0.2f);
-        float newStamina = horseStaminaMain - (overAllTime * 0.2f);
-        float newCooling = horseCoolingMain - (overAllPenaltyTime * 0.5f + nonPenaltyTime * 0.05f);
+        float newPower = horsePowerMain - (boostTime * 0.2f + basicTime * 0.2f);
+        float newStamina = horseStaminaMain - (raceTime * 0.2f);
+        float newCooling = horseCoolingMain - (penaltyTime * 0.5f + walkZoneTime * 0.5f + nonPenaltyTime * 0.05f);
 
         newPower = Mathf.Max(0, newPower);
         newStamina = Mathf.Max(0, newStamina);//Hard coded now
@@ -398,47 +439,43 @@ public class RacingResultPage : MonoBehaviour
         staminaProgress.currentPercent = lastStamina;
         staminaProgress.UpdateUI();
         HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
+        horseStatsApplied = true;
 
-        Debug.Log($"Horse Stats Updated → Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
+        Debug.Log($"Horse Stats Updated -> Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
     }
-    private void GetOverallBoostTime(float time)
+
+    private void RefreshHorseStatsUI()
     {
-        overAllBoostTime+= time;
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+
+        lastPower = Mathf.Round(current.Power);
+        lastCooling = Mathf.Round(current.Cooling);
+        lastStamina = Mathf.Round(current.Stamina);
+
+        powerProgress.currentPercent = lastPower;
+        powerProgress.UpdateUI();
+        coolingProgress.currentPercent = lastCooling;
+        coolingProgress.UpdateUI();
+        staminaProgress.currentPercent = lastStamina;
+        staminaProgress.UpdateUI();
     }
+
     private void GetOverallPenaltyTime()
     {
         overAllPenaltyTime = UIButtonActions.Instance?.GetTotalWebSnareTime() ?? 0f; 
     }
     private void GetWalkZoneOverAllTime(float time)
     {
-        overAllWalkZoneTime= time;
+        overAllWalkZoneTime += Mathf.Max(0f, time);
         Debug.Log($"[WalkZone time] {overAllWalkZoneTime}");
     }
     private void GetBoostTime()
     {
         overAllBoostTime = UIButtonActions.Instance?.GetTotalHoldTime() ?? 0f;
     }
-    private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
-    {
-        HorseConditionStats current = HorseConditionStatsService.AddFood(
-            powerPercent,
-            coolingPercent,
-            staminaPercent);
-
-        // 4) UI barlarni yangilaymiz
-        powerProgress.currentPercent = current.Power;
-        coolingProgress.currentPercent = current.Cooling;
-        staminaProgress.currentPercent = current.Stamina;
-
-        powerProgress.UpdateUI();
-        coolingProgress.UpdateUI();
-        staminaProgress.UpdateUI();
-    }
     #endregion
 
-    #region Resources
-
-    #endregion
     private void UITransilations()
     {
         titleText.text = LanguageManager.Instance.GetText(318);
@@ -473,9 +510,7 @@ public class RacingResultPage : MonoBehaviour
     {
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
-            SHowResourcesNotEnough();
-            alarmMessage.text = LanguageManager.Instance.GetText(334);
-         
+            OpenFoodPanelPopup();
             return;  // Racing davom etmaydi
         }
         bool success = CurrencyManager.Instance != null && CurrencyManager.Instance.SpendNyufiy(CheckRoomCost(), true);
@@ -563,45 +598,11 @@ public class RacingResultPage : MonoBehaviour
                 return Constants.RoomEnterCosts.EgyptCost;
             case SceneLoadManager.SceneType.Kansas:
                 return Constants.RoomEnterCosts.Kansas;
-            //case SceneLoadManager.SceneType.TexasRacing:
-            //    return 2;
-
             default:
                 return 0;
         }
     }
     #region Resources
-    private void SHowResourcesNotEnough()
-    {
-        StartCoroutine(PulseRoutine());
-        foodPanelEnablerBtn?.gameObject.SetActive(true);
-        if (foodResourcesBtnText != null)
-            foodResourcesBtnText.text = LanguageManager.Instance?.GetText(369);
-    }
-    private IEnumerator PulseRoutine()
-    {
-        float t = 0f;
-        if (foodPanelEnablerBtn == null)
-            yield break;
-
-        RectTransform rt = foodPanelEnablerBtn.GetComponent<RectTransform>();
-
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-
-            // Heartbeat pulse.
-            float pingPong = Mathf.PingPong(Time.time * 2, 1f);
-
-            float scale = Mathf.Lerp(scaleMin, scaleMax, pingPong);
-
-            rt.localScale = new Vector3(scale, scale, 1);
-
-            yield return null;
-        }
-
-        rt.localScale = Vector3.one;
-    }
 
     private void OpenFoodPanelPopup()
     {
@@ -610,7 +611,7 @@ public class RacingResultPage : MonoBehaviour
     private void EnableFoodPage()
     {
         this.gameObject.SetActive(false);
-        UIButtonActions.Instance?.ShowUI(foodPanel);
+        UIButtonActions.Instance?.OpenFoodPanel();
     }
 
     #endregion

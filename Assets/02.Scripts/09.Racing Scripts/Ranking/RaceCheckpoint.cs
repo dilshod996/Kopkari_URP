@@ -123,12 +123,12 @@ public class RaceCheckpoint : MonoBehaviour
                 lb?.NotifyCheckpoint(agent);
             }
 
-            // ✅ WebSnare faqat player uchun, current rank update bo'lgandan keyin.
+            // WebSnare uses current rank after leaderboard update.
             if (canShootWebSnare && !_reverseByAgent[agent])
             {
-                int playerRank = lb != null ? lb.PlayerRank() : -1;
-                if (ShouldScheduleWebSnareForPlayer(agent, lb, playerRank))
-                    TryScheduleWebSnare(agent, playerRank);
+                int rank = lb != null ? lb.GetRank(agent) : agent.Ranking;
+                if (ShouldScheduleWebSnareForAgent(agent, lb, rank))
+                    TryScheduleWebSnare(agent, rank);
             }
 
             // WalkTrap notify
@@ -146,16 +146,14 @@ public class RaceCheckpoint : MonoBehaviour
     }
 
     // -------------------- WEB SNARE --------------------
-    private bool ShouldScheduleWebSnareForPlayer(RacingAgent agent, RacingLeaderboard lb, int playerRank)
+    private bool ShouldScheduleWebSnareForAgent(RacingAgent agent, RacingLeaderboard lb, int rank)
     {
-        if (agent == null || !agent.isPlayer) return false;
-        if (playerRank <= 0) return false;
+        if (agent == null || agent.HasFinished || !agent.gameObject.activeInHierarchy) return false;
+        if (rank <= 0) return false;
 
-        return HasActiveOpponentBehindPlayer(agent, lb, playerRank);
-    }
+        int activeCount = 0;
+        bool hasActiveBehind = false;
 
-    private bool HasActiveOpponentBehindPlayer(RacingAgent playerAgent, RacingLeaderboard lb, int playerRank)
-    {
         var controller = RacingController.Instance;
         if (controller == null) return false;
 
@@ -163,15 +161,17 @@ public class RaceCheckpoint : MonoBehaviour
         for (int i = 0; i < agents.Count; i++)
         {
             RacingAgent other = agents[i];
-            if (other == null || other == playerAgent) continue;
-            if (other.isPlayer || other.HasFinished || !other.gameObject.activeInHierarchy) continue;
+            if (other == null || other.HasFinished || !other.gameObject.activeInHierarchy) continue;
+
+            activeCount++;
+            if (other == agent) continue;
 
             int otherRank = lb != null ? lb.GetRank(other) : other.Ranking;
-            if (otherRank > playerRank)
-                return true;
+            if (otherRank > rank)
+                hasActiveBehind = true;
         }
 
-        return false;
+        return activeCount > 2 && hasActiveBehind;
     }
 
     private void TryScheduleWebSnare(RacingAgent agent, int rank)

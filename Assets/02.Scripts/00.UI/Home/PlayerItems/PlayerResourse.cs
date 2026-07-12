@@ -62,7 +62,7 @@ public class PlayerResourse : MonoBehaviour
     {
         TryBuyResource(playerResources, costOfResource, iconImage != null ? iconImage.sprite : null, out itemAmount);
     }
-    public static bool TryBuyResource(Resources resource, int cost, Sprite icon, out int amount)
+    public static bool TryBuyResource(Resources resource, int cost, Sprite icon, out int amount, bool notifyNotEnough = true)
     {
         amount = 0;
 
@@ -82,7 +82,8 @@ public class PlayerResourse : MonoBehaviour
         if (!success)
         {
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
-            OnMoneyNotEnough?.Invoke();
+            if (notifyNotEnough)
+                OnMoneyNotEnough?.Invoke();
             SoundManager.Instance?.PlayUI(UISoundType.Error);
             return false;
         }

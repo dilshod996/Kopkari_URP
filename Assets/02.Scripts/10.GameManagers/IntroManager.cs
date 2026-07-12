@@ -400,7 +400,8 @@ namespace Kopkari
                     if (SceneLoadManager.Instance != null)
                         SceneLoadManager.Instance.loadingTime = p * 100f;
                 },
-                fakeDurationIfCached: 0f
+                fakeDurationIfCached: 0f,
+                showErrorPopup: false
             );
 
             if (homePreloadReadyRoutine != null)

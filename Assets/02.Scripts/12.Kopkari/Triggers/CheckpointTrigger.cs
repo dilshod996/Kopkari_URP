@@ -15,10 +15,15 @@ public class CheckpointTrigger : MonoBehaviour
         GameObject riderRoot = other.transform.root.gameObject;
 
         // 1) NPC marshruti (faqat shu rider uchun)
-        var npc = riderRoot.GetComponent<NPCGetLamb_CodeAI>();
+        var npc = riderRoot.GetComponent<AIKopkariRider>();
         if (npc != null)
         {
             npc.OnCheckpointReached(this);
+        }
+        else
+        {
+            var legacyNpc = riderRoot.GetComponent<NPCGetLamb_CodeAI>();
+            legacyNpc?.OnCheckpointReached(this);
         }
 
         // 2) KopkariManager (oldin BaseManager edi)

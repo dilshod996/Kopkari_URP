@@ -26,6 +26,7 @@ public class BoostersContainer : MonoBehaviour
     public bool isDefend = false;
     [SerializeField] private float defendTime = 5f;
     public event Action OnDefendActivated;
+    public event Action<DebuffState> OnNpcGripBreakDamage;
     public static event Action<bool> OnDefendState;
 
     public static event Action<int> OnWalkZoneAdded;
@@ -404,7 +405,12 @@ public class BoostersContainer : MonoBehaviour
 
     public void SetDebuff(DebuffState state)
     {
-        if (isNpc) return;
+        if (isNpc)
+        {
+            if (state == DebuffState.WalkZone || state == DebuffState.WebSnare)
+                OnNpcGripBreakDamage?.Invoke(state);
+            return;
+        }
         if (CurrentDebuff == state) return;
 
         // old state OFF events

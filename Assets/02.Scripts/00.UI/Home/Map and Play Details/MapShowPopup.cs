@@ -456,6 +456,8 @@ public class MapShowPopup : MonoBehaviour
 
     private void OpenTacticItemsPanel()
     {
+        if(this.gameObject.activeSelf)
+            { this.gameObject.SetActive(false); }
         HomeMainUI.Instance.ShowSuppliesPanel();
     }
 
@@ -510,6 +512,7 @@ public class MapShowPopup : MonoBehaviour
             HomeMainUI.Instance.CloseRacingField();
         else
             HomeMainUI.Instance.CloseKopkariFeld();
+        this.gameObject.SetActive(false);
     }
 
     private void MoneyNotEnoughText()

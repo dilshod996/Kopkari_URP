@@ -1,4 +1,3 @@
-using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,9 +22,9 @@ public class GameOver : MonoBehaviour
     [SerializeField] private TMP_Text supportText;
 
     [SerializeField] private TMP_Text infoText;
-    [SerializeField] private GameFood foodPage;
+    [SerializeField] private PlayerItems playerItems;
 
-    public SceneLoadManager.SceneType sceneType;
+    private SceneLoadManager.SceneType sceneType = SceneLoadManager.SceneType.None;
 
     private float overAllTime = 0f;
     private float overAllBoostTime = 0f;
@@ -37,8 +36,12 @@ public class GameOver : MonoBehaviour
     private float lastPower = 0f;
     private float lastCooling = 0f;
     private float lastStamina = 0f;
+    private bool horseStatsApplied;
     private void OnEnable()
     {
+        ResolveSceneType();
+        overAllWalkZoneTime = Booster.TotalWalkZoneDamagedTime;
+        Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
         GetGameFinishedTime();
         if (gameType == GameType.Racing)
         {
@@ -64,8 +67,6 @@ public class GameOver : MonoBehaviour
         if (support != null)
             support.onClick.AddListener(OpenSuppliesPage);
         UITransilations();
-
-        Booster.OnWalkZoneDamagedTime += GetWalkZoneOverAllTime;
     }
 
     private void OnDisable()
@@ -82,6 +83,28 @@ public class GameOver : MonoBehaviour
     }
 
     #region Racing Over
+    private void ResolveSceneType()
+    {
+        SceneLoadManager manager = SceneLoadManager.Instance;
+        if (manager == null)
+            return;
+
+        SceneLoadManager.SceneType currentSceneType = manager.CurrentSceneType;
+        if (IsSupportedScene(currentSceneType))
+            sceneType = currentSceneType;
+    }
+
+    private bool IsSupportedScene(SceneLoadManager.SceneType type)
+    {
+        return type == SceneLoadManager.SceneType.TrainingRacing
+            || type == SceneLoadManager.SceneType.SecondRacing
+            || type == SceneLoadManager.SceneType.EgyptRacing
+            || type == SceneLoadManager.SceneType.Kansas
+            || type == SceneLoadManager.SceneType.Jomboy
+            || type == SceneLoadManager.SceneType.PastDargom
+            || type == SceneLoadManager.SceneType.Sibir;
+    }
+
     public void GetGameOverType(GameOverTypes type)
     {
         if(LanguageManager.Instance != null)
@@ -118,7 +141,7 @@ public class GameOver : MonoBehaviour
         {
             backText.text = LanguageManager.Instance.GetText(302);
             replayText.text = LanguageManager.Instance.GetText(197);
-            supportText.text = LanguageManager.Instance.GetText(198);
+            supportText.text = LanguageManager.Instance.GetText(386);
         }
     }
 
@@ -129,8 +152,7 @@ public class GameOver : MonoBehaviour
     }
     private void OpenSuppliesPage()
     {
-        this.gameObject.SetActive(false);
-        UIButtonActions.Instance?.ShowUI(foodPage);
+        UIButtonActions.Instance?.ShowUI(playerItems);
     }
     #endregion
 
@@ -191,7 +213,7 @@ public class GameOver : MonoBehaviour
     }
     private void ResourceNotEnoughPopup()
     {
-        UIButtonActions.Instance?.ShowUI(foodPage);
+        UIButtonActions.Instance?.OpenFoodPanel();
         this.gameObject.SetActive(false);
     }
     public void PlayAgain()
@@ -251,12 +273,18 @@ public class GameOver : MonoBehaviour
     }
     private void GetWalkZoneOverAllTime(float time)
     {
-        overAllWalkZoneTime = time;
+        overAllWalkZoneTime += Mathf.Max(0f, time);
         Debug.Log($"[WalkZone time] {overAllWalkZoneTime}");
     }
 
     private void HorseStats()
     {
+        if (horseStatsApplied)
+        {
+            RefreshHorseStatsCache();
+            return;
+        }
+
         // --- Load ---
         HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
             HorseConditionStatsService.GetCachedMaxOrDefault());
@@ -265,12 +293,16 @@ public class GameOver : MonoBehaviour
         float horseStaminaMain = current.Stamina;
         Debug.Log($"[Game Over] Overall Time {overAllTime} penalytTime {overAllPenaltyTime} over all boost time {overAllBoostTime} over all walkzone time{overAllWalkZoneTime}");
         // --- Calc ---
-        float basicTime = overAllTime - overAllBoostTime;       // oddiy yugurish vaqti
-        float nonPenaltyTime = overAllTime - (overAllPenaltyTime+overAllWalkZoneTime);     // Non-penalty time.
+        float raceTime = Mathf.Max(0f, overAllTime);
+        float boostTime = Mathf.Clamp(overAllBoostTime, 0f, raceTime);
+        float penaltyTime = Mathf.Clamp(overAllPenaltyTime, 0f, raceTime);
+        float walkZoneTime = Mathf.Clamp(overAllWalkZoneTime, 0f, Mathf.Max(0f, raceTime - penaltyTime));
+        float basicTime = Mathf.Max(0f, raceTime - boostTime);
+        float nonPenaltyTime = Mathf.Max(0f, raceTime - (penaltyTime + walkZoneTime));
 
-        float newPower = horsePowerMain - (overAllBoostTime * 0.4f + basicTime * 0.2f);
-        float newStamina = horseStaminaMain - (overAllTime * 0.3f);
-        float newCooling = horseCoolingMain - (overAllPenaltyTime * 0.5f + nonPenaltyTime * 0.05f);
+        float newPower = horsePowerMain - (boostTime * 0.4f + basicTime * 0.2f);
+        float newStamina = horseStaminaMain - (raceTime * 0.3f);
+        float newCooling = horseCoolingMain - (penaltyTime * 0.5f + walkZoneTime * 0.5f + nonPenaltyTime * 0.05f);
 
         newPower = Mathf.Max(0, newPower);
         newStamina = Mathf.Max(0, newStamina);//Hard coded now
@@ -286,8 +318,19 @@ public class GameOver : MonoBehaviour
         // Progress Bar Updatelar
      
         HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
+        horseStatsApplied = true;
 
         Debug.Log($"Horse Stats Updated -> Power:{rPower}, Stamina:{rStamina}, Cooling:{rCooling}");
+    }
+
+    private void RefreshHorseStatsCache()
+    {
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+
+        lastPower = Mathf.Round(current.Power);
+        lastCooling = Mathf.Round(current.Cooling);
+        lastStamina = Mathf.Round(current.Stamina);
     }
     #endregion
 

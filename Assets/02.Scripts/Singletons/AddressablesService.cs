@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
 public sealed class AddressablesService : MonoBehaviour
@@ -11,6 +12,8 @@ public sealed class AddressablesService : MonoBehaviour
 
     private Task _initTask;
     private bool _initialized;
+    private AsyncOperationHandle<IResourceLocator> _initHandle;
+    private bool _hasInitHandle;
 
     // Asset handle cache (LoadAssetAsync uchun)
     private readonly Dictionary<string, AsyncOperationHandle> _assetHandles = new();
@@ -43,6 +46,15 @@ public sealed class AddressablesService : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+
+        if (_hasInitHandle && _initHandle.IsValid())
+            Addressables.Release(_initHandle);
+    }
+
     // ----------------------------
     // 0) INIT
     // ----------------------------
@@ -62,7 +74,20 @@ public sealed class AddressablesService : MonoBehaviour
     {
         try
         {
-            await Addressables.InitializeAsync().Task;
+            _initHandle = Addressables.InitializeAsync(autoReleaseHandle: false);
+            _hasInitHandle = _initHandle.IsValid();
+
+            if (!_hasInitHandle)
+                throw new InvalidOperationException("Addressables initialization returned an invalid operation handle.");
+
+            await _initHandle.Task;
+
+            if (!IsSucceeded(_initHandle))
+            {
+                throw new InvalidOperationException(
+                    BuildHandleError("Addressables initialization failed.", _initHandle),
+                    GetOperationException(_initHandle));
+            }
 
             _initialized = true;
             Debug.Log("Addressables initialized safely");
@@ -71,6 +96,12 @@ public sealed class AddressablesService : MonoBehaviour
         {
             _initialized = false;
             _initTask = null;
+
+            if (_hasInitHandle && _initHandle.IsValid())
+            {
+                Addressables.Release(_initHandle);
+                _hasInitHandle = false;
+            }
 
             ReportAddressablesError("Addressables initialization failed.", ex);
 
@@ -93,7 +124,8 @@ public sealed class AddressablesService : MonoBehaviour
     public async Task<bool> PreloadDependenciesAsync(
         IList<string> keys,
         Action<float> onProgress = null,
-        float fakeDurationIfCached = 1.5f)
+        float fakeDurationIfCached = 1.5f,
+        bool showErrorPopup = true)
     {
         if (keys == null || keys.Count == 0) { onProgress?.Invoke(1f); return true; }
 
@@ -111,7 +143,8 @@ public sealed class AddressablesService : MonoBehaviour
             if (!IsSucceeded(sizeHandle))
             {
                 ReportAddressablesError(BuildHandleError($"Failed to check download size for: {keyText}", sizeHandle),
-                    GetOperationException(sizeHandle));
+                    GetOperationException(sizeHandle),
+                    showErrorPopup);
                 onProgress?.Invoke(0f);
                 return false;
             }
@@ -120,7 +153,9 @@ public sealed class AddressablesService : MonoBehaviour
 
             if (!isCached && requireInternetWhenDownloadNeeded && !HasInternetConnection())
             {
-                ReportAddressablesError($"Internet connection is required to download Addressables content: {keyText}");
+                ReportAddressablesError(
+                    $"Internet connection is required to download Addressables content: {keyText}",
+                    showPopup: showErrorPopup);
                 onProgress?.Invoke(0f);
                 return false;
             }
@@ -145,7 +180,8 @@ public sealed class AddressablesService : MonoBehaviour
             if (!ok)
             {
                 ReportAddressablesError(BuildHandleError($"Addressables download failed for: {keyText}", downloadHandle),
-                    GetOperationException(downloadHandle));
+                    GetOperationException(downloadHandle),
+                    showErrorPopup);
             }
 
             onProgress?.Invoke(ok ? 1f : 0f);
@@ -154,7 +190,7 @@ public sealed class AddressablesService : MonoBehaviour
         catch (Exception ex)
         {
             if (!WasInitializationFailureAlreadyReported())
-                ReportAddressablesError($"Addressables preload failed for: {keyText}", ex);
+                ReportAddressablesError($"Addressables preload failed for: {keyText}", ex, showErrorPopup);
 
             onProgress?.Invoke(0f);
             return false;
@@ -175,9 +211,10 @@ public sealed class AddressablesService : MonoBehaviour
     public async Task<bool> PreloadDependenciesAsync(
         string key,
         Action<float> onProgress = null,
-        float fakeDurationIfCached = 1.2f)
+        float fakeDurationIfCached = 1.2f,
+        bool showErrorPopup = true)
     {
-        return await PreloadDependenciesAsync(new List<string> { key }, onProgress, fakeDurationIfCached);
+        return await PreloadDependenciesAsync(new List<string> { key }, onProgress, fakeDurationIfCached, showErrorPopup);
     }
 
     private async Task FakeProgressAsync(Action<float> onProgress, float duration)
@@ -462,7 +499,7 @@ public sealed class AddressablesService : MonoBehaviour
         return Task.CompletedTask;
     }
 
-    private void ReportAddressablesError(string message, Exception exception = null)
+    private void ReportAddressablesError(string message, Exception exception = null, bool showPopup = true)
     {
         string fullMessage = exception == null || string.IsNullOrWhiteSpace(exception.Message)
             ? message
@@ -473,7 +510,8 @@ public sealed class AddressablesService : MonoBehaviour
 
         Debug.LogError(fullMessage);
 
-        ShowAddressablesErrorPopup();
+        if (showPopup)
+            ShowAddressablesErrorPopup();
     }
 
     private bool WasInitializationFailureAlreadyReported()

@@ -1,4 +1,5 @@
 using System;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,6 +12,9 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     private const int CloseButtonTextId = 137;
     private const int CostTextId = 548;
     private const int NotEnoughNyufiyTextId = 363;
+    private const int RewardAdNyufiyAmount = 300;
+    private const int FoodPopupTitleTextId = 559;
+    private const int PlayerResourcePopupTitleTextId = 549;
     private const int PlayerTypeTextId = 558;
     private const int PlayerTypeValueTextId = 549;
     private const int PlayerEffectTextId = 550;
@@ -28,6 +32,9 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     [Header("Root")]
     [SerializeField] private GameObject root;
     [SerializeField] private Image backgroundImage;
+
+    [Header("Title")]
+    [SerializeField] private TMP_Text titleText;
 
     [Header("Resource")]
     [SerializeField] private Image iconImage;
@@ -60,8 +67,18 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     [SerializeField] private Button closeButton;
     [SerializeField] private TMP_Text closeButtonText;
 
+    [Header("Not Enough Nyufiy")]
+    [SerializeField] private GameObject notEnoughNyufiyPanel;
+    [SerializeField] private TMP_Text notEnoughNyufiyText;
+    [SerializeField] private Button rewardAdsButton;
+    [SerializeField] private TMP_Text rewardAdsButtonText;
+    [SerializeField] private int rewardAdsNyufiyAmount = RewardAdNyufiyAmount;
+
     private Action onBuy;
     private Action onClose;
+    private Tween rewardAdsButtonTween;
+    private Vector3 rewardAdsButtonBaseScale = Vector3.one;
+    private bool hasRewardAdsButtonBaseScale;
 
     public readonly struct ResourceDetails
     {
@@ -158,6 +175,7 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
         buyButton?.onClick.AddListener(HandleBuy);
         closeButton?.onClick.AddListener(HandleClose);
+        rewardAdsButton?.onClick.AddListener(HandleRewardAds);
         CloseImmediate();
     }
 
@@ -165,6 +183,8 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     {
         buyButton?.onClick.RemoveListener(HandleBuy);
         closeButton?.onClick.RemoveListener(HandleClose);
+        rewardAdsButton?.onClick.RemoveListener(HandleRewardAds);
+        StopRewardAdsButtonAnimation(true);
 
         if (Instance == this)
             Instance = null;
@@ -182,11 +202,14 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
             backgroundImage.color = details.BackgroundColor;
 
         SetText(nameText, details.Name);
+        SetText(titleText, GetPopupTitle(details.Mode));
         SetText(costText, details.Cost > 0 ? $"{details.Cost:N0}" : "0");
         SetText(costText2, details.Cost > 0 ? $"{details.Cost:N0}" : "0");
         SetText(costTitle, GetLocalizedText(CostTextId, "Cost"));
         SetText(buyButtonText, GetLocalizedText(BuyButtonTextId, "Buy"));
         SetText(closeButtonText, GetLocalizedText(CloseButtonTextId, "Close"));
+        SetText(rewardAdsButtonText, $"+{rewardAdsNyufiyAmount:N0}");
+        HideNotEnoughNyufiy();
         ApplyMode(details);
 
         if (buyButton != null)
@@ -197,7 +220,15 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
     public void ShowNotEnoughNyufiy()
     {
-        SetText(nameText, GetLocalizedText(NotEnoughNyufiyTextId, "Not enough Nyufiy."));
+        string message = GetLocalizedText(NotEnoughNyufiyTextId, "Not enough Nyufiy.");
+
+        if (notEnoughNyufiyPanel == null)
+            SetText(nameText, message);
+
+        SetText(notEnoughNyufiyText, message);
+        SetText(rewardAdsButtonText, $"+{rewardAdsNyufiyAmount:N0}");
+        SetActive(notEnoughNyufiyPanel, true);
+        StartRewardAdsButtonAnimation();
     }
 
     public void Close()
@@ -208,7 +239,55 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
     private void HandleBuy()
     {
+        HideNotEnoughNyufiy();
         onBuy?.Invoke();
+    }
+
+    private void HandleRewardAds()
+    {
+        GameAnalyticsEvents.RewardedAdClicked(
+            placement: "resource_details_popup",
+            rewardType: "nyufiy",
+            rewardAmount: rewardAdsNyufiyAmount
+        );
+
+        if (AdsManager.Instance == null)
+        {
+            GameAnalyticsEvents.RewardedAdFailed("resource_details_popup");
+            return;
+        }
+
+        if (rewardAdsButton != null)
+            rewardAdsButton.interactable = false;
+
+        StopRewardAdsButtonAnimation(true);
+
+        AdsManager.Instance.ShowRewarded(() =>
+        {
+            CurrencyManager.Instance?.AddNyufiy(rewardAdsNyufiyAmount, true);
+
+            GameAnalyticsEvents.RewardedAdCompleted(
+                placement: "resource_details_popup",
+                rewardType: "nyufiy",
+                rewardAmount: rewardAdsNyufiyAmount
+            );
+
+            GameAnalyticsEvents.CoinRewardClaimed(
+                source: "rewarded_ad_resource_details_popup",
+                amount: rewardAdsNyufiyAmount
+            );
+
+            HideNotEnoughNyufiy();
+        },
+        () =>
+        {
+            GameAnalyticsEvents.RewardedAdFailed("resource_details_popup");
+
+            if (rewardAdsButton != null)
+                rewardAdsButton.interactable = true;
+
+            StartRewardAdsButtonAnimation();
+        });
     }
 
     private void HandleClose()
@@ -218,8 +297,48 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
     private void CloseImmediate()
     {
+        HideNotEnoughNyufiy();
+
         if (root != null)
             root.SetActive(false);
+    }
+
+    private void HideNotEnoughNyufiy()
+    {
+        StopRewardAdsButtonAnimation(true);
+        SetActive(notEnoughNyufiyPanel, false);
+
+        if (rewardAdsButton != null)
+            rewardAdsButton.interactable = true;
+    }
+
+    private void StartRewardAdsButtonAnimation()
+    {
+        if (rewardAdsButton == null)
+            return;
+
+        Transform target = rewardAdsButton.transform;
+        if (!hasRewardAdsButtonBaseScale)
+        {
+            rewardAdsButtonBaseScale = target.localScale;
+            hasRewardAdsButtonBaseScale = true;
+        }
+
+        rewardAdsButtonTween?.Kill(false);
+        target.localScale = rewardAdsButtonBaseScale;
+        rewardAdsButtonTween = target
+            .DOScale(rewardAdsButtonBaseScale * 1.08f, 0.45f)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+
+    private void StopRewardAdsButtonAnimation(bool resetScale)
+    {
+        rewardAdsButtonTween?.Kill(false);
+        rewardAdsButtonTween = null;
+
+        if (resetScale && hasRewardAdsButtonBaseScale && rewardAdsButton != null)
+            rewardAdsButton.transform.localScale = rewardAdsButtonBaseScale;
     }
 
     private void ApplyMode(ResourceDetails details)
@@ -246,6 +365,13 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
             SetText(powerText, GetLocalizedText(HorsePowerTextId, "Power"));
             SetText(powerValueText, details.PowerValue);
         }
+    }
+
+    private string GetPopupTitle(DetailsMode mode)
+    {
+        return mode == DetailsMode.HorseResource
+            ? GetLocalizedText(FoodPopupTitleTextId, "Food")
+            : GetLocalizedText(PlayerResourcePopupTitleTextId, "Resource");
     }
 
     private void SetActive(GameObject target, bool active)

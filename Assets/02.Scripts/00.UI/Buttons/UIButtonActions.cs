@@ -148,6 +148,8 @@ public class UIButtonActions : MonoBehaviour
 
     public bool isFinished = false;
     private bool _pausedByApp;
+    private bool _hasApplicationFocus = true;
+    private Coroutine focusPauseRoutine;
     private bool isFirstPersonCameraActive;
     #region Unity Events (OnEnable/Disable)
     private void OnEnable()
@@ -234,6 +236,8 @@ public class UIButtonActions : MonoBehaviour
         totalHoldTime = 0f;
         totalWebSnareTime = 0f;
         _pausedByApp = false;
+        _hasApplicationFocus = true;
+        StopFocusPauseRoutine();
         if (pauseButton != null)
             pauseButton.onClick.RemoveListener(PauseMenu);
 
@@ -246,6 +250,7 @@ public class UIButtonActions : MonoBehaviour
 
         if (pause)
         {
+            StopFocusPauseRoutine();
             PauseBySystem();
         }
         // ❗ bu yerda Resume qilmang (user continue bosganda qilasiz)
@@ -255,11 +260,40 @@ public class UIButtonActions : MonoBehaviour
     {
         if (isFinished) return;
 
+#if UNITY_EDITOR
         if (!hasFocus)
+            return;
+#endif
+
+        _hasApplicationFocus = hasFocus;
+
+        if (hasFocus)
         {
-            PauseBySystem();
+            StopFocusPauseRoutine();
+        }
+        else if (focusPauseRoutine == null)
+        {
+            focusPauseRoutine = StartCoroutine(PauseAfterSustainedFocusLoss());
         }
         // hasFocus == true bo‘lsa ham Resume qilmang
+    }
+
+    private IEnumerator PauseAfterSustainedFocusLoss()
+    {
+        yield return new WaitForSecondsRealtime(0.75f);
+        focusPauseRoutine = null;
+
+        if (!_hasApplicationFocus)
+            PauseBySystem();
+    }
+
+    private void StopFocusPauseRoutine()
+    {
+        if (focusPauseRoutine == null)
+            return;
+
+        StopCoroutine(focusPauseRoutine);
+        focusPauseRoutine = null;
     }
 
     private void PauseBySystem()
@@ -419,18 +453,27 @@ public class UIButtonActions : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        if (rt == null || cg == null) return;
-
         page.SetActive(true);
+
+        if (rt == null)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+
         _currentTween?.Kill();
 
-        cg.alpha = 0f;
+        if (cg != null)
+            cg.alpha = 0f;
+
         rt.localScale = Vector3.one * startScale;
         rt.anchoredPosition = new Vector2(0, -slideDistance);
 
-        Sequence seq = DOTween.Sequence();
+        Sequence seq = DOTween.Sequence().SetUpdate(true);
 
-        seq.Join(cg.DOFade(1f, fadeTime));
+        if (cg != null)
+            seq.Join(cg.DOFade(1f, fadeTime).SetUpdate(true));
+
         seq.Join(rt.DOAnchorPos(Vector2.zero, animTime).SetEase(Ease.OutExpo));
         seq.Join(rt.DOScale(overshootScale, animTime * 0.8f).SetEase(Ease.OutBack));
         seq.Append(rt.DOScale(1f, 0.15f).SetEase(Ease.OutQuad));
@@ -444,6 +487,7 @@ public class UIButtonActions : MonoBehaviour
                 .DOColor(flashColor, flashDuration)
                 .SetLoops(2, LoopType.Yoyo)
                 .SetEase(Ease.InOutQuad)
+                .SetUpdate(true)
                 .OnComplete(() =>
                 {
                     borderImage.gameObject.SetActive(false);
@@ -466,14 +510,20 @@ public class UIButtonActions : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        if (rt == null || cg == null) return;
+        if (rt == null)
+        {
+            page.SetActive(false);
+            onComplete?.Invoke();
+            return;
+        }
 
         _currentTween?.Kill();
 
-        Sequence seq = DOTween.Sequence();
+        Sequence seq = DOTween.Sequence().SetUpdate(true);
 
         // Fade out
-        seq.Join(cg.DOFade(0f, fadeTime));
+        if (cg != null)
+            seq.Join(cg.DOFade(0f, fadeTime).SetUpdate(true));
 
         // Slide down fast
         seq.Join(rt.DOAnchorPos(new Vector2(0, -slideDistance), animTime)

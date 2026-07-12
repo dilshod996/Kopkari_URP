@@ -39,7 +39,17 @@ public class TargetReachEvent : MonoBehaviour
         // Rider ID aniqlash
         if (isNpc)
         {
-            riderid = riderRoot.GetComponent<NPCGetLamb_CodeAI>().GetId();
+            var rider = riderRoot.GetComponent<AIKopkariRider>();
+            if (rider != null)
+            {
+                riderid = rider.GetId();
+            }
+            else
+            {
+                var legacyRider = riderRoot.GetComponent<NPCGetLamb_CodeAI>();
+                if (legacyRider == null) return;
+                riderid = legacyRider.GetId();
+            }
         }
         else
         {
