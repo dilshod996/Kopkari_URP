@@ -94,7 +94,7 @@ public sealed class KopkariObjectCharacteristics : MonoBehaviour
         SetActive(fullBackground, false);
         SetActive(riderBackground, true);
         SetText(riderNameText, rider.RiderName);
-        SetText(riderCountryNameText, rider.CountryName);
+        SetText(riderCountryNameText, rider.TeamName);
         SetFlag(riderFlagImage, rider.FlagIcon);
     }
 

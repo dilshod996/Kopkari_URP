@@ -9,6 +9,9 @@ public class KopkariPlayersResult : MonoBehaviour
     [SerializeField] private TMP_Text catchCountText;
     [SerializeField] private TMP_Text catchTimingText;
     [SerializeField] private TMP_Text triggerCountText;
+    [SerializeField] private TMP_Text carrierTakeoverCountText;
+    [SerializeField] private TMP_Text roundWinsText;
+    [SerializeField] private TMP_Text winningTimeText;
 
     [Header("Colors")]
     [SerializeField] private Color playerNameColor = new Color(1f, 0.84f, 0f, 1f); // gold
@@ -31,6 +34,10 @@ public class KopkariPlayersResult : MonoBehaviour
         if (catchCountText) catchCountText.text = stats.pickupTimes.ToString();
         if (triggerCountText) triggerCountText.text = stats.triggerPoints.ToString();
         if (catchTimingText) catchTimingText.text = FormatTime(stats.totalCatchTime);
+        if (carrierTakeoverCountText) carrierTakeoverCountText.text = stats.carrierTakeovers.ToString();
+        if (roundWinsText) roundWinsText.text = stats.roundWins.ToString();
+        if (winningTimeText)
+            winningTimeText.text = stats.roundWins > 0 ? FormatTime(stats.lastRoundFinishTime) : "--:--";
     }
 
     private string FormatTime(float seconds)

@@ -13,6 +13,10 @@ public class AIRacingRider : MonoBehaviour
     [SerializeField] private NavMeshAgent agent;
     [Header("Obstacle Details")]
     [SerializeField] private ObstacleTouchSensor sensor;
+    [Header("Navigation Avoidance")]
+    [SerializeField] private ObstacleAvoidanceType avoidanceQuality = ObstacleAvoidanceType.LowQualityObstacleAvoidance;
+    [SerializeField, Range(0, 99)] private int avoidancePriorityMin = 40;
+    [SerializeField, Range(0, 99)] private int avoidancePriorityMax = 75;
     [Header("Hit Settings")]
     [SerializeField] private int maxHits = 3;
     [SerializeField] private float penaltyDuration = 10f;
@@ -23,6 +27,7 @@ public class AIRacingRider : MonoBehaviour
     private bool isPenalized;
     private void Awake()
     {
+        ConfigureAvoidancePriority();
         DisableNavmesh();
 
     }
@@ -67,6 +72,7 @@ public class AIRacingRider : MonoBehaviour
     {
         if(agent != null)
         {
+            ConfigureAvoidancePriority();
             agent.isStopped = false;
             if (RacingController.Instance.mapType == RacingController.RacingType.Training)
             {
@@ -77,6 +83,18 @@ public class AIRacingRider : MonoBehaviour
     #endregion
 
     #region Rider Speed Obstacle
+    private void ConfigureAvoidancePriority()
+    {
+        if (agent == null) return;
+
+        int minimum = Mathf.Min(avoidancePriorityMin, avoidancePriorityMax);
+        int maximum = Mathf.Max(avoidancePriorityMin, avoidancePriorityMax);
+        int range = maximum - minimum + 1;
+
+        agent.obstacleAvoidanceType = avoidanceQuality;
+        agent.avoidancePriority = minimum + Mathf.Abs(GetInstanceID() % range);
+    }
+
     private void OnObstacleTouched()
     {
         boostersContainer.NotifyObstacleTouched_Npc();

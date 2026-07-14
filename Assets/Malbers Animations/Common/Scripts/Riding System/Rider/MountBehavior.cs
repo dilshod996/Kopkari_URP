@@ -55,7 +55,7 @@ namespace MalbersAnimations.HAP
 
 
             //Smootly move to the Mount Start Position && rotation
-            if (norm_time < alignTime)
+            if (norm_time < alignTime && MountTrigger != null)
             {
                 var lerp = norm_time / alignTime;
 

@@ -1,12 +1,15 @@
 ﻿using UnityEngine;
 using MalbersAnimations;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace MalbersExtensions
 {
     [AddComponentMenu("Malbers/Input/Mobile Joystick With Turn")]
     public class JoystickTurnMixer : MobileJoystick
     {
+        private const string TrainingRacingSceneName = "TrainingRacing";
+
         [Header("Turn Buttons")]
         [SerializeField] private bool turnButtonsEnabled = true;
         [SerializeField] private TurnButton leftButton;
@@ -151,17 +154,32 @@ namespace MalbersExtensions
 
         public void ApplySavedController()
         {
+            if (ShouldForceReinsController())
+            {
+                SetControllerType(RacingControllerType.Reins);
+                return;
+            }
+
             SetControllerType(RacingControllerSelecterUI.GetSavedControllerOrDefault());
         }
 
         private void ApplySavedControllerIfSelected()
         {
+            if (ShouldForceReinsController())
+            {
+                SetControllerType(RacingControllerType.Reins);
+                return;
+            }
+
             if (RacingControllerSelecterUI.HasSavedControllerSelection())
                 ApplySavedController();
         }
 
         public void SetControllerType(RacingControllerType controllerType)
         {
+            if (ShouldForceReinsController())
+                controllerType = RacingControllerType.Reins;
+
             bool useReins = controllerType == RacingControllerType.Reins;
             bool useButtons = controllerType == RacingControllerType.Buttons;
             bool useTilt = controllerType == RacingControllerType.Tilt;
@@ -194,6 +212,16 @@ namespace MalbersExtensions
             }
 
             ResetTurnValue();
+        }
+
+        private static bool ShouldForceReinsController()
+        {
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (activeScene.name == TrainingRacingSceneName)
+                return true;
+
+            Scene trainingScene = SceneManager.GetSceneByName(TrainingRacingSceneName);
+            return trainingScene.IsValid() && trainingScene.isLoaded;
         }
 
         public void SelectReinsController()

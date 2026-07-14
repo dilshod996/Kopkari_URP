@@ -72,6 +72,18 @@ public class RacingAgent : MonoBehaviour
             displayName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
             teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
         }
+
+        RacingController.Instance?.RegisterAgent(this);
+    }
+
+    private void Start()
+    {
+        RacingController.Instance?.RegisterAgent(this);
+    }
+
+    private void OnDisable()
+    {
+        RacingController.Instance?.RemoveAgent(this);
     }
     public void DisableNavmesh()
     {

@@ -35,6 +35,7 @@ public class SceneLoadManager : MonoBehaviour
 
     public SceneType CurrentSceneType  = SceneType.None;
     public SceneType PreviousSceneType  = SceneType.None;
+    private const string RegistanSceneName = "Registon";
 
     public float loadingTime; // Assign in LoadingScene
     public float fakeDurationIfCached = 5f;
@@ -97,7 +98,7 @@ public class SceneLoadManager : MonoBehaviour
         if (!scene.IsValid() || string.IsNullOrEmpty(scene.name))
             return;
 
-        if (!Enum.TryParse(scene.name, out SceneType sceneType))
+        if (!TryGetSceneType(scene.name, out SceneType sceneType))
             return;
 
         if (CurrentSceneType == sceneType)
@@ -105,6 +106,22 @@ public class SceneLoadManager : MonoBehaviour
 
         PreviousSceneType = CurrentSceneType;
         CurrentSceneType = sceneType;
+    }
+
+    private static string GetUnitySceneName(SceneType sceneType)
+    {
+        return sceneType == SceneType.Beginer ? RegistanSceneName : sceneType.ToString();
+    }
+
+    private static bool TryGetSceneType(string sceneName, out SceneType sceneType)
+    {
+        if (sceneName == RegistanSceneName || sceneName == "Registan")
+        {
+            sceneType = SceneType.Beginer;
+            return true;
+        }
+
+        return Enum.TryParse(sceneName, out sceneType);
     }
 
     public void LoadSmartScene(SceneType scene, List<string> preloadKeys)
@@ -181,12 +198,13 @@ public class SceneLoadManager : MonoBehaviour
         }
 
         // 2) Target scene ADDITIVE load
-        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Additive);
+        string targetSceneName = GetUnitySceneName(targetScene);
+        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetSceneName, LoadSceneMode.Additive);
         while (!sceneLoadOp.isDone)
             yield return null;
 
         // 3) Active qilish
-        Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+        Scene loadedScene = SceneManager.GetSceneByName(targetSceneName);
         while (!loadedScene.isLoaded)
             yield return null;
 
@@ -315,11 +333,12 @@ public class SceneLoadManager : MonoBehaviour
 
         Scene oldScene = SceneManager.GetActiveScene();
 
-        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+        string targetSceneName = GetUnitySceneName(targetScene);
+        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetSceneName, LoadSceneMode.Single);
         while (!sceneLoadOp.isDone)
             yield return null;
 
-        Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+        Scene loadedScene = SceneManager.GetSceneByName(targetSceneName);
         while (!loadedScene.isLoaded)
             yield return null;
 
@@ -394,7 +413,7 @@ public class SceneLoadManager : MonoBehaviour
         yield return new WaitForSeconds(fakeDurationIfCached);
 
         // To'g'ridan-to'g'ri sahnani yuklaymiz
-        SceneManager.LoadScene(newScene.ToString(), LoadSceneMode.Single);
+        SceneManager.LoadScene(GetUnitySceneName(newScene), LoadSceneMode.Single);
     }
 
     #endregion
@@ -480,12 +499,13 @@ public class SceneLoadManager : MonoBehaviour
         //AssetInstantiationFinished = false;
 
         // 3) Target SINGLE
-        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+        string targetSceneName = GetUnitySceneName(targetScene);
+        AsyncOperation sceneLoadOp = SceneManager.LoadSceneAsync(targetSceneName, LoadSceneMode.Single);
         while (!sceneLoadOp.isDone)
             yield return null;
 
         // 4) Active
-        Scene loadedScene = SceneManager.GetSceneByName(targetScene.ToString());
+        Scene loadedScene = SceneManager.GetSceneByName(targetSceneName);
         while (!loadedScene.isLoaded)
             yield return null;
 
@@ -529,7 +549,7 @@ public class SceneLoadManager : MonoBehaviour
 
         yield return new WaitForSeconds(fakeDurationIfCached);
 
-        SceneManager.LoadScene(newScene.ToString(), LoadSceneMode.Single);
+        SceneManager.LoadScene(GetUnitySceneName(newScene), LoadSceneMode.Single);
     }
 
     private IEnumerator FakeLoadingTimeProgress()
@@ -653,7 +673,7 @@ public class SceneLoadManager : MonoBehaviour
         }
 
         // ✅ 3) Home scene load (Single)
-        var sceneOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+        var sceneOp = SceneManager.LoadSceneAsync(GetUnitySceneName(targetScene), LoadSceneMode.Single);
         while (!sceneOp.isDone)
             yield return null;
 
@@ -696,7 +716,7 @@ public class SceneLoadManager : MonoBehaviour
 
     private IEnumerator LoadOnlySceneSingle(SceneType scene)
     {
-        var op = SceneManager.LoadSceneAsync(scene.ToString(), LoadSceneMode.Single);
+        var op = SceneManager.LoadSceneAsync(GetUnitySceneName(scene), LoadSceneMode.Single);
         while (!op.isDone)
         {
             loadingTime = Mathf.Clamp01(op.progress / 0.9f) * 95f;
@@ -793,7 +813,7 @@ public class SceneLoadManager : MonoBehaviour
         }
 
         // ✅ 3) Endi target scene load (SINGLE)
-        var sceneOp = SceneManager.LoadSceneAsync(targetScene.ToString(), LoadSceneMode.Single);
+        var sceneOp = SceneManager.LoadSceneAsync(GetUnitySceneName(targetScene), LoadSceneMode.Single);
         while (!sceneOp.isDone)
         {
             loadingTime = Mathf.Max(loadingTime, 50f + Mathf.Clamp01(sceneOp.progress / 0.9f) * 45f);
@@ -831,7 +851,7 @@ public class SceneLoadManager : MonoBehaviour
         //UIOverlayRoot.I.ShowPanel(UIPanelType.Home, instant: false, exclusive: true, message: "Home loading...");
 
         // ✅ Scene load (Single)
-        var op = SceneManager.LoadSceneAsync(newScene.ToString(), LoadSceneMode.Single);
+        var op = SceneManager.LoadSceneAsync(GetUnitySceneName(newScene), LoadSceneMode.Single);
         while (!op.isDone)
         {
             loadingTime = Mathf.Clamp01(op.progress / 0.9f) * 95f;

@@ -1,17 +1,20 @@
-﻿using MalbersAnimations.Controller;
 using System;
 using UnityEngine;
 
 public class TargetReachEvent : MonoBehaviour
 {
-    [SerializeField] private Pickable lambObject;
-    public static event Action<int, bool> OnReachedTargetWithLamb; // winner-only actions
+    public static event Action<int, bool> OnReachedTargetWithLamb;
     public static event Action OnRoundEnded;
-    private bool triggerLocked;
+
     [SerializeField] private string requiredChildTag = "RacingHead";
+    private bool triggerLocked;
 
     private void OnEnable()
     {
+        // This component lives on the target object, which is disabled between
+        // rounds. It cannot receive OnResetTarget while inactive, so every
+        // activation must begin unlocked for the newly prepared round.
+        ResetTrigger();
         KopkariManager.OnResetTarget += ResetTrigger;
     }
 
@@ -22,57 +25,45 @@ public class TargetReachEvent : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (triggerLocked) return;
-        if (!other.CompareTag(requiredChildTag)) return;
-        // Rider rootni topamiz (player ham, npc ham)
-        var riderRoot = other.transform.root;
-        if (riderRoot == null) return;
-        bool isPlayer = riderRoot.CompareTag("Player");
-        bool isNpc = riderRoot.CompareTag("NPC");
-        Debug.Log($"Entered to final pos and is NPC {isNpc} or is Player {isPlayer}");
-        if (!isPlayer && !isNpc) return;
-        var bm = KopkariManager.Instance;
-        if (bm == null) return;
-        if (bm.currentGoatOwner == null) return;
-        if (bm.currentGoatOwner != riderRoot.gameObject) return;
-        int riderid = 0;
-        // Rider ID aniqlash
-        if (isNpc)
-        {
-            var rider = riderRoot.GetComponent<AIKopkariRider>();
-            if (rider != null)
-            {
-                riderid = rider.GetId();
-            }
-            else
-            {
-                var legacyRider = riderRoot.GetComponent<NPCGetLamb_CodeAI>();
-                if (legacyRider == null) return;
-                riderid = legacyRider.GetId();
-            }
-        }
-        else
-        {
-            riderid = PlayerPrefs.GetInt(Constants.Player.Userid);
-        }
+        if (triggerLocked || !other.CompareTag(requiredChildTag))
+            return;
 
+        Transform riderRoot = other.transform.root;
+        if (riderRoot == null)
+            return;
 
-        // 2) RaceResultsManager ga finish deb aytamiz
-        KopkariResultsManager.Instance?.OnFinish(riderid);
-        KopkariResultsManager.Instance.DebugLogLeaderboard();
-        // 1) Winner o‘z drop/win logicini qiladi
-        OnReachedTargetWithLamb?.Invoke(riderid, isPlayer);
+        KopkariManager manager = KopkariManager.Instance;
+        if (manager == null || manager.roomState != KopkariManager.RoomState.GameStarted)
+            return;
 
-        // 2) Round tugadi → hamma warm pointga ketadi
-        OnRoundEnded?.Invoke();
+        bool isPlayer = manager.IsLocalRiderTransform(other.transform) ||
+                        manager.IsLocalRiderTransform(riderRoot);
+        AIKopkariRider aiRider = isPlayer
+            ? null
+            : (other.GetComponentInParent<AIKopkariRider>() ??
+               riderRoot.GetComponentInChildren<AIKopkariRider>(true));
+        if (!isPlayer && aiRider == null)
+            return;
+        if (!manager.IsCurrentGoatOwnerTransform(isPlayer ? other.transform : aiRider.transform))
+            return;
 
-        // 3) Player bo‘lsa BaseManager flow
-        if (isPlayer)
-        {
-            KopkariManager.Instance?.MarkPlayerReachedTarget();
-        }
+        int riderId = isPlayer
+            ? PlayerPrefs.GetInt(Constants.Player.Userid, 0)
+            : aiRider.GetId();
 
+        // Lock before callbacks so physics cannot report the same winner twice.
         triggerLocked = true;
+        KopkariResultsManager.Instance?.OnFinish(riderId);
+        KopkariResultsManager.Instance?.DebugLogLeaderboard();
+
+        // Complete the AI carrier before KopkariManager handles the winner event.
+        // Otherwise the manager clears ownership first and the AI's later event
+        // callback sees hasLamb == false, skipping its physical Ulak drop.
+        if (!isPlayer)
+            aiRider.CompleteRoundAtTarget();
+
+        OnReachedTargetWithLamb?.Invoke(riderId, isPlayer);
+        OnRoundEnded?.Invoke();
     }
 
     public void ResetTrigger()

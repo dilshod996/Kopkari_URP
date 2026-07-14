@@ -74,6 +74,7 @@ public class EsportUITutorial : MonoBehaviour
     Tween _sweepTween;
     Tween _handTween;
     Sequence _showSeq;
+    Sequence _hideSeq;
 
     bool _running;
     Action _onFinished;
@@ -142,11 +143,11 @@ public class EsportUITutorial : MonoBehaviour
         KillTweens();
 
         // hide with small fade
-        var seq = DOTween.Sequence().SetUpdate(true);
-        if (overlay) seq.Join(overlay.DOFade(0f, 0.2f).SetUpdate(true));
-        if (tooltipGroup) seq.Join(tooltipGroup.DOFade(0f, 0.2f).SetUpdate(true));
+        _hideSeq = DOTween.Sequence().SetUpdate(true);
+        if (overlay) _hideSeq.Join(overlay.DOFade(0f, 0.2f).SetUpdate(true));
+        if (tooltipGroup) _hideSeq.Join(tooltipGroup.DOFade(0f, 0.2f).SetUpdate(true));
 
-        seq.OnComplete(() =>
+        _hideSeq.OnComplete(() =>
         {
             gameObject.SetActive(false);
             _onFinished?.Invoke();
@@ -237,17 +238,19 @@ public class EsportUITutorial : MonoBehaviour
     }
     void ShowStepInternal(Step step)
     {
-        if (step == null || step.target == null) { return; }
+        if (step == null) { return; }
 
         KillTweens();
+        bool hasTarget = step.target != null;
+        bool requiresTargetClick = hasTarget && step.requireTargetClick;
 
         if (titleText) titleText.text = LanguageManager.Instance.GetText(step.titleId);
         if (descText) descText.text = LanguageManager.Instance.GetText(step.descriptionId);
 
         if (btnNext)
-            btnNext.gameObject.SetActive(!step.requireTargetClick);
+            btnNext.gameObject.SetActive(!requiresTargetClick);
 
-        if (inputMode == InputMode.AllowTargetOnly || step.requireTargetClick)
+        if (hasTarget && (inputMode == InputMode.AllowTargetOnly || step.requireTargetClick))
         {
             SetPassThrough(true);
             FitPassThroughToTarget(step.target, step.holePadding);
@@ -257,8 +260,13 @@ public class EsportUITutorial : MonoBehaviour
             SetPassThrough(false);
         }
 
-        FitHoleToTarget(step.target, step.holePadding);
-        FitHighlightToTarget(step.target, step.holePadding);
+        SetTargetFrameVisible(hasTarget);
+        if (hasTarget)
+        {
+            FitHoleToTarget(step.target, step.holePadding);
+            FitHighlightToTarget(step.target, step.holePadding);
+        }
+
         PlaceTooltip(step.target, step.tooltipOffset);
 
 
@@ -276,18 +284,31 @@ public class EsportUITutorial : MonoBehaviour
             _showSeq.Join(highlightBorder.DOScale(1f, animDuration).SetEase(Ease.OutBack).SetUpdate(true));
         }
 
-        StartPulse();
-        StartSweep();
+        if (hasTarget)
+        {
+            StartPulse();
+            StartSweep();
+        }
 
-        if (handPointer && step.showHandPointer)
+        if (handPointer && step.showHandPointer && hasTarget)
             StartHand(step);
         else if (handPointer)
             handPointer.gameObject.SetActive(false);
 
-        if (step.requireTargetClick)
+        if (requiresTargetClick)
             HookTargetClick(step.target);
         else
             UnhookTargetClick(null);
+    }
+
+    void SetTargetFrameVisible(bool visible)
+    {
+        if (maskTop) maskTop.gameObject.SetActive(visible);
+        if (maskBottom) maskBottom.gameObject.SetActive(visible);
+        if (maskLeft) maskLeft.gameObject.SetActive(visible);
+        if (maskRight) maskRight.gameObject.SetActive(visible);
+        if (highlightBorder) highlightBorder.gameObject.SetActive(visible);
+        if (sweepGlow) sweepGlow.gameObject.SetActive(visible);
     }
 
     void FitHoleToTarget(RectTransform target, Vector2 padding)
@@ -357,10 +378,33 @@ public class EsportUITutorial : MonoBehaviour
     }
     void PlaceTooltip(RectTransform target, Vector2 offset)
     {
-        if (!tooltipPanel || !target || !canvasRect) return;
+        if (!tooltipPanel || !canvasRect) return;
 
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(tooltipPanel);
+
+        tooltipPanel.anchorMin = new Vector2(0.5f, 0.5f);
+        tooltipPanel.anchorMax = new Vector2(0.5f, 0.5f);
+        tooltipPanel.pivot = new Vector2(0.5f, 0.5f);
+        tooltipPanel.localScale = Vector3.one;
+
+        Vector2 tooltipSize = tooltipPanel.rect.size;
+        if (tooltipSize.x <= 1f || tooltipSize.y <= 1f)
+            tooltipSize = tooltipPanel.sizeDelta;
+
+        Vector2 tooltipHalf = tooltipSize * 0.5f;
+        Rect canvasBounds = canvasRect.rect;
+
+        float minX = canvasBounds.xMin + tooltipHalf.x + tooltipCanvasMargin;
+        float maxX = canvasBounds.xMax - tooltipHalf.x - tooltipCanvasMargin;
+        float minY = canvasBounds.yMin + tooltipHalf.y + tooltipCanvasMargin;
+        float maxY = canvasBounds.yMax - tooltipHalf.y - tooltipCanvasMargin;
+
+        if (!target)
+        {
+            tooltipPanel.anchoredPosition = ClampTooltipPosition(offset, minX, maxX, minY, maxY);
+            return;
+        }
 
         Camera cam = null; // Screen Space Overlay bo'lsa null
         Vector3[] corners = new Vector3[4];
@@ -378,23 +422,7 @@ public class EsportUITutorial : MonoBehaviour
             cam,
             out Vector2 targetMax);
 
-        tooltipPanel.anchorMin = new Vector2(0.5f, 0.5f);
-        tooltipPanel.anchorMax = new Vector2(0.5f, 0.5f);
-        tooltipPanel.pivot = new Vector2(0.5f, 0.5f);
-        tooltipPanel.localScale = Vector3.one;
-
-        Vector2 tooltipSize = tooltipPanel.rect.size;
-        if (tooltipSize.x <= 1f || tooltipSize.y <= 1f)
-            tooltipSize = tooltipPanel.sizeDelta;
-
-        Vector2 tooltipHalf = tooltipSize * 0.5f;
-        Rect canvasBounds = canvasRect.rect;
         Vector2 targetCenter = (targetMin + targetMax) * 0.5f;
-
-        float minX = canvasBounds.xMin + tooltipHalf.x + tooltipCanvasMargin;
-        float maxX = canvasBounds.xMax - tooltipHalf.x - tooltipCanvasMargin;
-        float minY = canvasBounds.yMin + tooltipHalf.y + tooltipCanvasMargin;
-        float maxY = canvasBounds.yMax - tooltipHalf.y - tooltipCanvasMargin;
 
         Vector2 desired = PickTooltipPosition(
             targetMin,
@@ -671,7 +699,8 @@ public class EsportUITutorial : MonoBehaviour
         _sweepTween?.Kill();
         _handTween?.Kill();
         _showSeq?.Kill();
-        _pulseTween = _sweepTween = _handTween = _showSeq = null;
+        _hideSeq?.Kill();
+        _pulseTween = _sweepTween = _handTween = _showSeq = _hideSeq = null;
 
         if (handPointer) handPointer.DOKill();
         if (sweepGlow) sweepGlow.DOKill();

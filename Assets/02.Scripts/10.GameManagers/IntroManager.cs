@@ -1,14 +1,8 @@
 ﻿using Michsky.UI.ModernUIPack;
 using System.Collections;
 using System.Collections.Generic;
-using System.Net;
 using System.Threading.Tasks;
-using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -20,7 +14,6 @@ namespace Kopkari
         //SingletonScene
         public static IntroManager Instance;
         [SerializeField] GameObject startingPage;
-        [SerializeField] GameObject moveLobbyPage;
         [SerializeField] VideoPlayer videoPlayer;
 
         // Popup
@@ -28,12 +21,6 @@ namespace Kopkari
         public ModalWindowManager notificationManager;
         public ProgressBar progressBar;
 
-        AsyncOperationHandle<VideoClip> handle;
-        List<AsyncOperationHandle<Object>> handles;
-
-        [SerializeField] AudioClip introMusic;
-        [SerializeField] TMP_Text gameName;
-        [SerializeField] private Button startButton;
         [SerializeField] private Button skipButton;
         //Intro scene addressable addresses
         private List<string> myAddresses = new List<string> { "IntroSound", "IntroVideo" };
@@ -53,10 +40,6 @@ namespace Kopkari
         private const string FirstTimeKey = "firstTime";
         private const string PlayerFaceKey = "Player_Face";
 
-        [Header("Fade Settings")]
-        [SerializeField] private Image fadeImage;   // ✔ Sen so‘ragan Image
-        [SerializeField] private float fadeDuration = 0.5f;
-        private Color fadeColor;
         private void Awake()
         {
             if (Instance == null)
@@ -95,14 +78,7 @@ namespace Kopkari
             //PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
             SetInitialLanguage();
-            if (startButton != null)
-            {
-                startButton.onClick.AddListener(() =>
-                {
-                    LoadLobbyScene();
-                });
-            }
-            if (skipButton != null && skipButton != startButton)
+            if (skipButton != null)
             {
                 skipButton.onClick.AddListener(() =>
                 {
@@ -443,22 +419,11 @@ namespace Kopkari
 
         private void SetSkipAvailable(bool available)
         {
-            Button activeSkipButton = skipButton != null ? skipButton : startButton;
-
-            if (startButton != null)
-            {
-                startButton.interactable = available && activeSkipButton == startButton;
-                startButton.gameObject.SetActive(available && activeSkipButton == startButton);
-            }
-
             if (skipButton != null)
             {
                 skipButton.interactable = available;
                 skipButton.gameObject.SetActive(available);
             }
-
-            if (moveLobbyPage != null && activeSkipButton != null && activeSkipButton.transform.IsChildOf(moveLobbyPage.transform))
-                moveLobbyPage.SetActive(available);
         }
 
         #endregion
@@ -518,38 +483,6 @@ namespace Kopkari
                     AddressablesService.Instance.ReleaseLoadedAsset(addr);
             }
         }
-        /// Fade-in → 0 dan 1 ga (ekran qora bo‘ladi)
-        /// </summary>
-        public IEnumerator FadeIn()   // 0 -> 1
-        {
-            // 1) Avval aktiv qilamiz
-            fadeImage.gameObject.SetActive(true);
-
-            float t = 0f;
-
-            // 2) Bor rangni olamiz, faqat alpha 0 qilamiz
-            Color c = fadeImage.color;
-            c.a = 0f;
-            fadeImage.color = c;
-
-            // 3) Asta-sekin 0 dan 1 ga ko‘taramiz
-            while (t < fadeDuration)
-            {
-                t += Time.deltaTime;
-                float a = Mathf.Lerp(0f, 1f, t / fadeDuration);
-
-                c = fadeImage.color; // rangni buzmaslik uchun har safar o‘sha rangdan olamiz
-                c.a = a;
-                fadeImage.color = c;
-
-                yield return null;
-            }
-
-            c = fadeImage.color;
-            c.a = 1f;
-            fadeImage.color = c;
-        }
-
         #region Player Data
 
         private void PlayerMaterialsData()

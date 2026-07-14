@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -6,229 +6,316 @@ public class KopkariResultsManager : MonoBehaviour
 {
     public static KopkariResultsManager Instance { get; private set; }
 
-    private readonly Dictionary<int, RiderRaceStats> _stats = new();
+    private readonly Dictionary<int, RiderRaceStats> stats = new Dictionary<int, RiderRaceStats>();
+    private bool sessionStarted;
+    private bool roundStarted;
+    private float sessionStartTime;
+    private float roundStartTime;
+    private float lastRoundDuration;
+    private int currentRoundNumber;
 
-
-    private bool _raceStarted;
-    private float _raceStartTime;
     public float RaceDuration { get; private set; }
-    public string UloqOwner;
-
-    // Optional: kim birinchi lamb bilan finishga kirdi (winner id)
+    public float LastRoundDuration => lastRoundDuration;
+    public int CurrentRoundNumber => currentRoundNumber;
     public int WinnerId { get; private set; }
+    public string UloqOwner { get; private set; }
 
     private void Awake()
     {
         if (Instance == null)
-        {
             Instance = this;
-        }
         else
             Destroy(gameObject);
     }
 
     private void OnDestroy()
     {
-        // Manager yo‘q bo‘lsa ham data qolib ketmasin
-        if (Instance == this)
-        {
-            ResetAll();
-            Instance = null;
-        }
-    }
+        if (Instance != this)
+            return;
 
-    // =========================
-    // Life-cycle controls
-    // =========================
+        ResetAll();
+        Instance = null;
+    }
 
     public void ResetAll()
     {
-        _stats.Clear();
-
-        _raceStarted = false;
-        _raceStartTime = 0f;
-
+        stats.Clear();
+        sessionStarted = false;
+        roundStarted = false;
+        sessionStartTime = 0f;
+        roundStartTime = 0f;
+        lastRoundDuration = 0f;
+        currentRoundNumber = 0;
+        RaceDuration = 0f;
         WinnerId = 0;
+        UloqOwner = string.Empty;
     }
 
+    // Compatibility for older callers.
     public void StartRace()
     {
-        _raceStarted = true;
-        _raceStartTime = Time.time;
+        StartRound(Mathf.Max(1, currentRoundNumber + 1));
+    }
+
+    public void StartRound(int roundNumber)
+    {
+        if (roundStarted)
+            CloseAllActiveHolds();
+
+        if (!sessionStarted)
+        {
+            sessionStarted = true;
+            sessionStartTime = Time.time;
+            RaceDuration = 0f;
+        }
+
+        currentRoundNumber = Mathf.Max(1, roundNumber);
+        roundStartTime = Time.time;
+        lastRoundDuration = 0f;
         WinnerId = 0;
-        RaceDuration = 0f;
-        // Agar oldindan register bo‘lganlar bo‘lsa — finished/holding reset qilamiz
-        foreach (var s in _stats.Values)
-            ResetRuntimeFields(s);
+        UloqOwner = string.Empty;
+        roundStarted = true;
+
+        foreach (RiderRaceStats rider in stats.Values)
+            ResetRoundFields(rider);
     }
 
     public void EndRace()
     {
-        _raceStarted = false;
-
-        // Kimdir uloqni ushlab turgan bo‘lsa ham yopib qo‘yamiz (optional)
-        foreach (var s in _stats.Values)
-        {
-            if (s.isHolding)
-                ForceEndHold(s);
-        }
+        CloseAllActiveHolds();
+        roundStarted = false;
+        if (sessionStarted)
+            RaceDuration = Mathf.Max(0f, Time.time - sessionStartTime);
+        sessionStarted = false;
     }
 
-    private void ResetRuntimeFields(RiderRaceStats s)
+    private static void ResetRoundFields(RiderRaceStats rider)
     {
-        s.isHolding = false;
-        s.holdStartTime = 0f;
-;
-        s.finishedWithLamb = false;
-
-        s.totalCatchTime = 0f;
-
-        s.pickupTimes = 0;
-        s.triggerPoints = 0;
+        rider.isHolding = false;
+        rider.holdStartTime = 0f;
+        rider.finishedWithLamb = false;
+        rider.roundPickupTimes = 0;
+        rider.roundCarrierTakeovers = 0;
+        rider.roundTriggerPoints = 0;
+        rider.roundCatchTime = 0f;
+        rider.roundCoinPrize = 0;
+        rider.roundNyufiyPrize = 0;
+        rider.roundComboPrize = 0;
     }
-
-    // =========================
-    // Register / Get
-    // =========================
 
     public void Register(int riderId, string name, string teamName = "Nomads", bool isPlayer = false)
     {
-        if (!_stats.TryGetValue(riderId, out var s))
+        if (!stats.TryGetValue(riderId, out RiderRaceStats rider))
         {
-            s = new RiderRaceStats { riderId = riderId };
-            _stats.Add(riderId, s);
+            rider = new RiderRaceStats { riderId = riderId };
+            stats.Add(riderId, rider);
         }
 
-        s.playerName = string.IsNullOrEmpty(name) ? $"Rider {riderId}" : name;
-        s.isPlayer = isPlayer;
-        s.teamName = teamName;
+        rider.playerName = string.IsNullOrEmpty(name) ? $"Rider {riderId}" : name;
+        rider.isPlayer = isPlayer;
+        rider.teamName = teamName;
+        if (rider.roundResults == null)
+            rider.roundResults = new List<RiderRoundStats>();
     }
-
 
     public RiderRaceStats Get(int riderId)
     {
-        return _stats.TryGetValue(riderId, out var s) ? s : null;
+        return stats.TryGetValue(riderId, out RiderRaceStats rider) ? rider : null;
     }
 
-
-    // =========================
-    // Gameplay events
-    // =========================
-
-    public void OnLambPicked(int riderId)
+    public void OnLambPicked(int riderId, bool takenFromCarrier = false)
     {
-        var s = Get(riderId);
-        if (s == null) return;
+        RiderRaceStats rider = Get(riderId);
+        if (rider == null || rider.isHolding)
+            return;
 
-        s.pickupTimes++;
-
-        if (!s.isHolding)
+        rider.pickupTimes++;
+        rider.roundPickupTimes++;
+        if (takenFromCarrier)
         {
-            s.isHolding = true;
-            s.holdStartTime = Time.time;
+            rider.carrierTakeovers++;
+            rider.roundCarrierTakeovers++;
         }
-        UloqOwner = s.playerName;
+
+        rider.isHolding = true;
+        rider.holdStartTime = Time.time;
+        UloqOwner = rider.playerName;
     }
 
     public void OnLambDropped(int riderId)
     {
-        var s = Get(riderId);
-        if (s == null) return;
+        RiderRaceStats rider = Get(riderId);
+        if (rider == null || !rider.isHolding)
+            return;
 
-        if (!s.isHolding) return;
-        ForceEndHold(s);
-        UloqOwner = string.Empty;
+        ForceEndHold(rider);
+        if (UloqOwner == rider.playerName)
+            UloqOwner = string.Empty;
     }
 
-    private void ForceEndHold(RiderRaceStats s)
+    private static void ForceEndHold(RiderRaceStats rider)
     {
-        float held = Mathf.Max(0f, Time.time - s.holdStartTime);
-        s.totalCatchTime += held;
+        float held = Mathf.Max(0f, Time.time - rider.holdStartTime);
+        rider.totalCatchTime += held;
+        rider.roundCatchTime += held;
+        rider.isHolding = false;
+        rider.holdStartTime = 0f;
+    }
 
-        s.isHolding = false;
-        s.holdStartTime = 0f;
+    private void CloseAllActiveHolds()
+    {
+        foreach (RiderRaceStats rider in stats.Values)
+        {
+            if (rider.isHolding)
+                ForceEndHold(rider);
+        }
+        UloqOwner = string.Empty;
     }
 
     public void OnTriggerPoint(int riderId)
     {
-        var s = Get(riderId);
-        if (s == null) return;
+        RiderRaceStats rider = Get(riderId);
+        if (rider == null)
+            return;
 
-        s.triggerPoints++;
+        rider.triggerPoints++;
+        rider.roundTriggerPoints++;
+    }
+
+    public void AwardRoundPrize(int riderId, int coinAmount, int nyufiyAmount)
+    {
+        RiderRaceStats rider = Get(riderId);
+        if (rider == null)
+            return;
+
+        int coins = Mathf.Max(0, coinAmount);
+        int nyufiy = Mathf.Max(0, nyufiyAmount);
+        rider.coinPrize += coins;
+        rider.nyufiyPrize += nyufiy;
+        rider.roundCoinPrize += coins;
+        rider.roundNyufiyPrize += nyufiy;
+
+        RiderRoundStats snapshot = GetCurrentRoundSnapshot(rider);
+        if (snapshot != null)
+        {
+            snapshot.coinPrize += coins;
+            snapshot.nyufiyPrize += nyufiy;
+        }
+    }
+
+    public void AwardComboPrize(int riderId, int prizeAmount)
+    {
+        RiderRaceStats rider = Get(riderId);
+        if (rider == null)
+            return;
+
+        int prize = Mathf.Max(0, prizeAmount);
+        if (prize <= 0)
+            return;
+
+        rider.comboPrize += prize;
+        rider.comboWins++;
+        rider.roundComboPrize += prize;
+
+        RiderRoundStats snapshot = GetCurrentRoundSnapshot(rider);
+        if (snapshot != null)
+            snapshot.comboPrize += prize;
+    }
+
+    private RiderRoundStats GetCurrentRoundSnapshot(RiderRaceStats rider)
+    {
+        if (rider == null || rider.roundResults == null || rider.roundResults.Count == 0)
+            return null;
+
+        RiderRoundStats snapshot = rider.roundResults[rider.roundResults.Count - 1];
+        return snapshot != null && snapshot.roundNumber == currentRoundNumber ? snapshot : null;
     }
 
     public void OnFinish(int riderId)
     {
-        var s = Get(riderId);
-        if (s == null) return;
-        if (s.finishedWithLamb) return; // allaqachon winner bor
-        // Finish paytida uloq qo‘lida bo‘lsa
-        s.finishedWithLamb = s.isHolding;
-        // Winner: birinchi bo‘lib lamb bilan finishga kirgan
-        if (s.finishedWithLamb && WinnerId==0)
-            WinnerId = s.riderId;
-        if (_raceStarted && RaceDuration <= 0f)
-            RaceDuration = Mathf.Max(0f, Time.time - _raceStartTime);
-        // Finishda hold yopilsin (overall catch time to‘liq bo‘lsin)
-        if (s.isHolding)
-            ForceEndHold(s);
-        _raceStarted = false;
+        if (!roundStarted)
+            return;
+
+        RiderRaceStats winner = Get(riderId);
+        if (winner == null || !winner.isHolding)
+            return;
+
+        float finishTime = Mathf.Max(0f, Time.time - roundStartTime);
+        winner.finishedWithLamb = true;
+        winner.roundWins++;
+        winner.lastRoundFinishTime = finishTime;
+        winner.totalWinningTime += finishTime;
+        if (winner.bestRoundFinishTime <= 0f || finishTime < winner.bestRoundFinishTime)
+            winner.bestRoundFinishTime = finishTime;
+
+        WinnerId = riderId;
+        lastRoundDuration = finishTime;
+        CloseAllActiveHolds();
+        SaveRoundSnapshots(riderId, finishTime);
+
+        roundStarted = false;
+        RaceDuration = sessionStarted
+            ? Mathf.Max(0f, Time.time - sessionStartTime)
+            : finishTime;
     }
 
-    // =========================
-    // Leaderboard
-    // =========================
+    private void SaveRoundSnapshots(int winnerId, float finishTime)
+    {
+        foreach (RiderRaceStats rider in stats.Values)
+        {
+            if (rider.roundResults == null)
+                rider.roundResults = new List<RiderRoundStats>();
+
+            rider.roundResults.Add(new RiderRoundStats
+            {
+                roundNumber = currentRoundNumber,
+                pickupTimes = rider.roundPickupTimes,
+                carrierTakeovers = rider.roundCarrierTakeovers,
+                triggerPoints = rider.roundTriggerPoints,
+                totalCatchTime = rider.roundCatchTime,
+                isWinner = rider.riderId == winnerId,
+                finishTime = rider.riderId == winnerId ? finishTime : 0f,
+                coinPrize = rider.roundCoinPrize,
+                nyufiyPrize = rider.roundNyufiyPrize,
+                comboPrize = rider.roundComboPrize
+            });
+        }
+    }
 
     public List<RiderRaceStats> BuildLeaderboard()
     {
-        return _stats.Values
-            // 1) winner har doim tepada
-            .OrderByDescending(s => s.finishedWithLamb)
-
-            // 2) pickup ko‘p bo‘lsa yuqori
-            .ThenByDescending(s => s.pickupTimes)
-
-            // 3) lambni ko‘p ushlab turgan yuqori
-            .ThenByDescending(s => s.totalCatchTime)
-
-            // 4) trigger ko‘p bo‘lsa yuqori
-            .ThenByDescending(s => s.triggerPoints)
+        return stats.Values
+            .OrderByDescending(rider => rider.roundWins)
+            .ThenByDescending(rider => rider.pickupTimes)
+            .ThenByDescending(rider => rider.carrierTakeovers)
+            .ThenByDescending(rider => rider.totalCatchTime)
+            .ThenByDescending(rider => rider.triggerPoints)
             .ToList();
     }
 
     public void DebugLogLeaderboard()
     {
-        var list = BuildLeaderboard();
-
-        if (list == null || list.Count == 0)
+        List<RiderRaceStats> leaderboard = BuildLeaderboard();
+        if (leaderboard.Count == 0)
         {
             Debug.Log("[Leaderboard] Empty");
             return;
         }
 
-        System.Text.StringBuilder sb = new System.Text.StringBuilder();
-        sb.AppendLine("===== LEADERBOARD =====");
-
-        for (int i = 0; i < list.Count; i++)
+        System.Text.StringBuilder text = new System.Text.StringBuilder();
+        text.AppendLine("===== KOPKARI LEADERBOARD =====");
+        for (int i = 0; i < leaderboard.Count; i++)
         {
-            var s = list[i];
-
-            sb.AppendLine(
-                $"#{i + 1} | " +
-                $"ID:{s.riderId} | " +
-                $"{s.playerName} | " +
-                $"Team:{s.teamName} | " +
-                $"Pickup:{s.pickupTimes} | " +
-                $"Catch:{s.totalCatchTime:F2}s | " +
-                $"Triggers:{s.triggerPoints} | " +
-                $"Winner:{s.finishedWithLamb}"
-            );
+            RiderRaceStats rider = leaderboard[i];
+            text.AppendLine(
+                $"#{i + 1} ID:{rider.riderId} {rider.playerName} Team:{rider.teamName} " +
+                $"Wins:{rider.roundWins} Pickups:{rider.pickupTimes} " +
+                $"Takeovers:{rider.carrierTakeovers} Catch:{rider.totalCatchTime:F2}s " +
+                $"LastWin:{rider.lastRoundFinishTime:F2}s BestWin:{rider.bestRoundFinishTime:F2}s " +
+                $"Coin:{rider.coinPrize} Nyufiy:{rider.nyufiyPrize} Combo:{rider.comboPrize}");
         }
 
-        Debug.Log(sb.ToString());
-        Debug.Log($"RaceDuration: {RaceDuration:F2}s");
-
+        Debug.Log(text.ToString());
+        Debug.Log($"Overall duration: {RaceDuration:F2}s | Last round: {lastRoundDuration:F2}s");
     }
-
-
 }

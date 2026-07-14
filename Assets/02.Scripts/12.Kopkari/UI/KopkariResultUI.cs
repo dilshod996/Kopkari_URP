@@ -48,6 +48,12 @@ public class KopkariResultUI : MonoBehaviour
 
     [SerializeField] private TMP_Text adsWatchAmountNyufiy;
 
+    [Header("Player Round Details")]
+    [SerializeField] private TMP_Text playerPickupCountText;
+    [SerializeField] private TMP_Text playerCarrierTakeoverCountText;
+    [SerializeField] private TMP_Text playerRoundWinsText;
+    [SerializeField] private TMP_Text playerWinningTimeText;
+
     [Header("Horse Statistics")]
     [SerializeField] private ProgressBar powerProgress;
     [SerializeField] private ProgressBar staminaProgress;
@@ -106,10 +112,16 @@ public class KopkariResultUI : MonoBehaviour
     #endregion
 
     #region Players List
+    public void RefreshFromResults()
+    {
+        RefreshUI();
+    }
+
     private void RefreshUI()
     {
         FillOverallTime();
         BuildPlayersList();
+        FillPlayerRoundDetails();
         //FillPlayerStats();
         ApplyPlayerRankRewards(); // ✅ shu
         HorseStats();
@@ -165,6 +177,25 @@ public class KopkariResultUI : MonoBehaviour
         // agar oldin boshqa childlar ham qolib ketayotgan bo‘lsa:
         // for (int i = playersParent.childCount - 1; i >= 0; i--)
         //     Destroy(playersParent.GetChild(i).gameObject);
+    }
+
+    private void FillPlayerRoundDetails()
+    {
+        KopkariResultsManager manager = KopkariResultsManager.Instance;
+        if (manager == null)
+            return;
+
+        RiderRaceStats player = manager.BuildLeaderboard().Find(stats => stats != null && stats.isPlayer);
+        if (player == null)
+            return;
+
+        if (playerPickupCountText) playerPickupCountText.text = player.pickupTimes.ToString();
+        if (playerCarrierTakeoverCountText) playerCarrierTakeoverCountText.text = player.carrierTakeovers.ToString();
+        if (playerRoundWinsText) playerRoundWinsText.text = player.roundWins.ToString();
+        if (playerWinningTimeText)
+            playerWinningTimeText.text = player.roundWins > 0
+                ? FormatTime(player.lastRoundFinishTime)
+                : "--:--";
     }
 
     private string FormatTime(float seconds)
@@ -254,8 +285,11 @@ public class KopkariResultUI : MonoBehaviour
         int bonusAmount = BonusAmount(playerStats.pickupTimes);
 
         int rank = playerIndex + 1;               // 1-based
-        int nyufiyReward = GetNyufiyByRank(rank);
-        int coinReward = GetCoinByRank(rank);
+        int nyufiyReward = GetNyufiyByRank(rank) +
+                           playerStats.nyufiyPrize +
+                           playerStats.comboPrize +
+                           bonusAmount;
+        int coinReward = GetCoinByRank(rank) + playerStats.coinPrize;
         int xpAmount = GetRandomXpByRank(rank);
         DataManager.Instance.AddLevelPoint(xpAmount, true);
         if (xpAddAmountText != null)
@@ -268,7 +302,6 @@ public class KopkariResultUI : MonoBehaviour
         if(coinEarningAmount) coinEarningAmount.text = coinReward.ToString();
         levelText.text = $"{LanguageManager.Instance.GetText(319)} {DataManager.Instance.LevelAmount}/20";
         bonusAmountText.text = $"+{bonusAmount.ToString()}";
-        nyufiyReward = nyufiyReward+bonusAmount;
 
         UpdatCoins(nyufiyReward, coinReward);
         Debug.Log($"[Rewards] Player rank={rank}, NyufiyReward={nyufiyReward}, Coin={coinReward}");

@@ -75,6 +75,8 @@ public class RacingTutorials : MonoBehaviour
     private bool skipTutorialsThisRun = false;
     private bool allowReplayTutorialThisRun = false;
     private bool isSprintShown=false;
+    private bool rightReinCompleted = false;
+    private bool leftReinCompleted = false;
     private enum TutorialState
     {
         None,
@@ -161,6 +163,12 @@ public class RacingTutorials : MonoBehaviour
     private void StartSliderTutorial()
     {
         if (!CanShowTutorial()) return;
+        if (IsOpeningTutorialSequenceActive()) return;
+
+        StopTutorialFlowRoutine();
+        rightReinCompleted = false;
+        leftReinCompleted = false;
+
         tutorialImages.SetActive(true);
         currentState = TutorialState.Slider;
         tutorial.ShowStep(sliderStepIndex);
@@ -170,8 +178,7 @@ public class RacingTutorials : MonoBehaviour
     {
         if (currentState != TutorialState.Slider) return;
 
-        if (tutorialFlowRoutine != null)
-            StopCoroutine(tutorialFlowRoutine);
+        StopTutorialFlowRoutine();
         FinishTutorial();
         tutorialFlowRoutine = StartCoroutine(ShowRightReinAfterDelay());
     }
@@ -185,6 +192,9 @@ public class RacingTutorials : MonoBehaviour
     {
         
         yield return new WaitForSecondsRealtime(afterSliderDelay);
+        if (currentState != TutorialState.Finished || rightReinCompleted || leftReinCompleted)
+            yield break;
+
         tutorialImages.SetActive(true);
         currentState = TutorialState.RightRein;
         Time.timeScale = 0f;
@@ -195,9 +205,10 @@ public class RacingTutorials : MonoBehaviour
     {
         if (!CanShowTutorial()) return;
         if (currentState != TutorialState.RightRein) return;
+        if (rightReinCompleted) return;
 
-        if (tutorialFlowRoutine != null)
-            StopCoroutine(tutorialFlowRoutine);
+        rightReinCompleted = true;
+        StopTutorialFlowRoutine();
         Time.timeScale = 1f;
         tutorialFlowRoutine = StartCoroutine(ShowLeftReinAfterDelay());
     }
@@ -205,6 +216,9 @@ public class RacingTutorials : MonoBehaviour
     private IEnumerator ShowLeftReinAfterDelay()
     {
         yield return new WaitForSecondsRealtime(betweenReinsDelay);
+        if (currentState != TutorialState.RightRein || !rightReinCompleted || leftReinCompleted)
+            yield break;
+
         currentState = TutorialState.LeftRein;
         Time.timeScale = 0f;
         tutorial.ShowStep(leftReinStepIndex);
@@ -214,6 +228,10 @@ public class RacingTutorials : MonoBehaviour
     {
         if (!CanShowTutorial()) return;
         if (currentState != TutorialState.LeftRein) return;
+        if (leftReinCompleted) return;
+
+        leftReinCompleted = true;
+        StopTutorialFlowRoutine();
         Time.timeScale = 1f;
         FinishTutorial();
         //StartCoroutine(ShowCameraAfterDelay());
@@ -260,8 +278,7 @@ public class RacingTutorials : MonoBehaviour
             switch (type)
             {
                 case Booster.BoosterType.Defend:
-                    if (tutorialFlowRoutine != null)
-                        tutorialFlowRoutine = null;
+                    StopTutorialFlowRoutine();
                     tutorialFlowRoutine = StartCoroutine(ShowDefendButtonPoint());
                     break;
                 case Booster.BoosterType.WalkZone:
@@ -292,8 +309,7 @@ public class RacingTutorials : MonoBehaviour
         {
             if(type == Booster.BoosterType.WalkZone)
             {
-                if (tutorialFlowRoutine != null)
-                    tutorialFlowRoutine = null;
+                StopTutorialFlowRoutine();
                 tutorialFlowRoutine = StartCoroutine(DefendActivator());
             }
         }
@@ -330,8 +346,7 @@ public class RacingTutorials : MonoBehaviour
         if (isSprintFinished)
             return;
         isSprintFinished = true;
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(ShowSprintTutorial());
     }
     private IEnumerator ShowSprintTutorial()
@@ -353,8 +368,7 @@ public class RacingTutorials : MonoBehaviour
         isSprintShown = true;
         Time.timeScale = 1f;
         FinishTutorial();
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(SprintSlider());
     }
     private IEnumerator SprintSlider()
@@ -369,8 +383,7 @@ public class RacingTutorials : MonoBehaviour
     public void CheckPointTutorial()
     {
         if (!CanShowTutorial()) return;
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(DelayChekPointTutorial());
     }
     private IEnumerator DelayChekPointTutorial()
@@ -395,8 +408,7 @@ public class RacingTutorials : MonoBehaviour
     private void WebSnareBtnClick()
     {
         if (!CanShowTutorial()) return;
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(WebSnareClicked());
     }
     private IEnumerator WebSnareClicked()
@@ -425,8 +437,7 @@ public class RacingTutorials : MonoBehaviour
             return;
         }
             
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(ShowWhereToShoot());
     }
     private IEnumerator ShowWhereToShoot()
@@ -441,8 +452,7 @@ public class RacingTutorials : MonoBehaviour
     public void DamagedWebSnare()
     {
         if (!CanShowTutorial()) return;
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(DelaywebnareDamage());
     }
     IEnumerator DelaywebnareDamage()
@@ -458,8 +468,7 @@ public class RacingTutorials : MonoBehaviour
     public void GotWalkZonePickup()
     {
         if (!CanShowTutorial()) return;
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(DelayWalkZonepickUp());
     }
     IEnumerator DelayWalkZonepickUp()
@@ -481,8 +490,7 @@ public class RacingTutorials : MonoBehaviour
         isWallObstacleShown = true;
         if(obstacleSliderObj != null)
             obstacleSliderObj.SetActive(true);
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(WallObstacleDelay());
     }
     IEnumerator WallObstacleDelay()
@@ -496,6 +504,8 @@ public class RacingTutorials : MonoBehaviour
     private void FinishTutorial()
     {
         if (!CanShowTutorial()) return;
+        StopTutorialFlowRoutine();
+
         if (currentState == TutorialState.ResultPage)
         {
             if (finalStepPointer < finalSteps.Length)
@@ -523,12 +533,27 @@ public class RacingTutorials : MonoBehaviour
         tutorialImages.SetActive(false);
         tutorial.Finish();
     }
+
+    private bool IsOpeningTutorialSequenceActive()
+    {
+        return currentState == TutorialState.Slider
+            || currentState == TutorialState.RightRein
+            || currentState == TutorialState.LeftRein;
+    }
+
+    private void StopTutorialFlowRoutine()
+    {
+        if (tutorialFlowRoutine == null)
+            return;
+
+        StopCoroutine(tutorialFlowRoutine);
+        tutorialFlowRoutine = null;
+    }
     #region Result Page Tutorial
     public void ShowResultPageTutorial()
     {
         if (!CanShowTutorial()) return;
-        if (tutorialFlowRoutine != null)
-            tutorialFlowRoutine = null;
+        StopTutorialFlowRoutine();
         tutorialFlowRoutine = StartCoroutine(ResultPlace());
     }
     private IEnumerator ResultPlace()

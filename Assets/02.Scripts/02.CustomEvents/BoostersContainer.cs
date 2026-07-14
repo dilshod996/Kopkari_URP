@@ -27,6 +27,7 @@ public class BoostersContainer : MonoBehaviour
     [SerializeField] private float defendTime = 5f;
     public event Action OnDefendActivated;
     public event Action<DebuffState> OnNpcGripBreakDamage;
+    public event Action OnNpcAttackDamageReceived;
     public static event Action<bool> OnDefendState;
 
     public static event Action<int> OnWalkZoneAdded;
@@ -165,7 +166,8 @@ public class BoostersContainer : MonoBehaviour
         }
         else
         {
-            damageable.events.OnReceivingDamage.RemoveListener(OnReceiveDamageHandler);
+            if (damageable != null)
+                damageable.events.OnReceivingDamage.RemoveListener(OnReceiveDamageHandler);
         }
     }
     #endregion
@@ -591,6 +593,11 @@ public class BoostersContainer : MonoBehaviour
 
     public void OnReceiveDamageHandler(float dam = 0)
     {
+        // This is an instance event, so it is safe for both the local player and
+        // NPCs. Consumers still validate whether the damage came from an active
+        // Guard engagement before releasing Ulak.
+        OnNpcAttackDamageReceived?.Invoke();
+
         if (isUnderSlow) return;
 
         // Defend aktiv bo‘lsa slow umuman yo‘q

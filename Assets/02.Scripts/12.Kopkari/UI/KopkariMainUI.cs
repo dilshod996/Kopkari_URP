@@ -31,6 +31,7 @@ public class KopkariMainUI : MonoBehaviour
 
     public Button IntroSkipButton => introSkipButton;
     #endregion
+
     #region Inspector - Texts
     [Header("Buttons Data Texts")]
     [SerializeField] private TMP_Text defendCountText;
@@ -61,6 +62,8 @@ public class KopkariMainUI : MonoBehaviour
 
     [Header("Pages")]
     [SerializeField] private KopkariResultUI resultPage;
+    [SerializeField] private KopkariRoundChangePopup kopkariRoundChangeUI;
+    [SerializeField] private ComboPrize comboPrizeUI;
     [SerializeField] private UIPauseGame pauseMenu;
     [SerializeField] private GameObject foodPanel;
     [SerializeField] private GameOver gameOverPage;
@@ -80,6 +83,9 @@ public class KopkariMainUI : MonoBehaviour
     [Header("Top Slider && BottomUI")]
     [SerializeField] private RectTransform bottomUI;
     [SerializeField] private Slider topUloqSlider;
+    [SerializeField] private GameObject matchStatusBackground;
+    [SerializeField] private TMP_Text mainTimeText;
+    [SerializeField] private TMP_Text roundProgressText;
     [SerializeField] private GameObject[] pointTexts; // 0..4
     [SerializeField] private GameObject[] pointFlags; // 0..4
 
@@ -149,6 +155,12 @@ public class KopkariMainUI : MonoBehaviour
         }
         else
             Destroy(gameObject);
+
+        kopkariRoundChangeUI?.HideAll();
+        comboPrizeUI?.Hide();
+        SetMatchStatusVisible(false);
+        UpdateMainTime(0f);
+        UpdateRoundProgress(0, 0);
     }
     private void OnEnable()
     {
@@ -596,15 +608,17 @@ public class KopkariMainUI : MonoBehaviour
         if (state)
         {
             // Darhol yoqiladi
-            mobileCanvas.SetActive(true);
+            SetMobileCanvasVisible(true);
             roomCanvas.SetActive(true);
+            SetMatchStatusVisible(true);
             Debug.Log("Yoq");
         }
         else
         {
-            // 2 sekunddan keyin o‘chadi
+            SetMobileCanvasVisible(false);
+            SetMatchStatusVisible(false);
+            // 2 sekunddan keyin o'chadi
             canvasRoutine = StartCoroutine(DisableCanvasDelayed());
-            ShowUI(resultPage);
         }
     }
 
@@ -663,6 +677,99 @@ public class KopkariMainUI : MonoBehaviour
 
         introSkipButton.gameObject.SetActive(visible);
         introSkipButton.interactable = visible;
+    }
+
+    public void ShowRoundChange()
+    {
+        bool canStartNextRound = KopkariManager.Instance != null &&
+                                 KopkariManager.Instance.HasPreparedNextRound;
+        kopkariRoundChangeUI?.ShowRoundChange(canStartNextRound);
+    }
+
+    public void HideRoundChange()
+    {
+        kopkariRoundChangeUI?.HideRoundChange();
+    }
+
+    public void ShowRoundWarmupCountdown(int seconds)
+    {
+        kopkariRoundChangeUI?.ShowWarmupCountdown(seconds);
+    }
+
+    public void HideRoundWarmupCountdown()
+    {
+        kopkariRoundChangeUI?.HideWarmupCountdown();
+    }
+
+    public void ShowResult()
+    {
+        kopkariRoundChangeUI?.HideAll();
+        HideCombo();
+        if (KopkariManager.Instance != null)
+            KopkariManager.Instance.FinishMatch();
+        else
+            KopkariResultsManager.Instance?.EndRace();
+        CanvasEnable(false);
+
+        if (resultPage == null)
+            return;
+
+        bool wasAlreadyActive = resultPage.gameObject.activeSelf;
+        ShowUI(resultPage);
+        if (wasAlreadyActive)
+            resultPage.RefreshFromResults();
+    }
+
+    public void UpdateMainTime(float remainingTime)
+    {
+        if (mainTimeText == null)
+            return;
+
+        int totalSeconds = Mathf.Max(0, Mathf.CeilToInt(remainingTime));
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        mainTimeText.text = $"{minutes:00}:{seconds:00}";
+    }
+
+    public void SetMobileCanvasVisible(bool visible)
+    {
+        if (mobileCanvas != null)
+            mobileCanvas.SetActive(visible);
+    }
+
+    public void SetMatchStatusVisible(bool visible)
+    {
+        if (matchStatusBackground != null)
+            matchStatusBackground.SetActive(visible);
+    }
+
+    public void UpdateRoundProgress(int roundNumber, int totalRounds)
+    {
+        if (roundProgressText == null)
+            return;
+
+        int total = Mathf.Max(0, totalRounds);
+        int current = total > 0 ? Mathf.Clamp(roundNumber, 0, total) : 0;
+        roundProgressText.text = $"{current}/{total}";
+    }
+
+    public void ShowCombo()
+    {
+        KopkariManager manager = KopkariManager.Instance;
+        if (manager == null || comboPrizeUI == null)
+            return;
+
+        comboPrizeUI.Show(manager.CurrentComboTime, manager.CurrentComboPrize);
+    }
+
+    public void HideCombo()
+    {
+        comboPrizeUI?.Hide();
+    }
+
+    public bool TryCompleteCombo()
+    {
+        return comboPrizeUI != null && comboPrizeUI.TryComplete();
     }
     #endregion
 
@@ -732,8 +839,11 @@ public class KopkariMainUI : MonoBehaviour
     {
         MoveBottomUI(28, 1f);
         ShowMeters(false);
-        KopkariResultsManager.Instance?.StartRace();
         PlayerDataRegister();
+        int roundNumber = KopkariManager.Instance != null
+            ? KopkariManager.Instance.CurrentRoundNumber
+            : 1;
+        KopkariResultsManager.Instance?.StartRound(roundNumber);
     }
     public void MoveDown()
     {
@@ -908,7 +1018,9 @@ public class KopkariMainUI : MonoBehaviour
     #region Game Over Panel
     public void GameOverShow()
     {
-        if(mobileCanvas != null) mobileCanvas.SetActive(false); 
+        HideCombo();
+        SetMobileCanvasVisible(false);
+        SetMatchStatusVisible(false);
         ShowUI(gameOverPage);
     }
     #endregion

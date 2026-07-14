@@ -13,6 +13,7 @@ public class PlayerDataManager : MonoBehaviour
 {
     public bool isWater = false;
     [SerializeField] private MPickUp pickableObj;
+    public MPickUp PickupController => pickableObj;
 
     //public MRider riderPrefab;
     public GameObject playerPrefab;

@@ -12,8 +12,8 @@ EditorBuildSettings:
     path: Assets/02.Scenes/Racing Rooms/SecondRacing.unity
     guid: 5ae0c67022233be41b11a4770eaf9d16
   - enabled: 1
-    path: Assets/02.Scenes/GamePlayScenes/Beginer.unity
-    guid: 2b407fdeae3e9da4484fdc377516d679
+    path: Assets/02.Scenes/GamePlayScenes/Registon.unity
+    guid: 356566e2353a0aa4da64d9c75bd852e5
   - enabled: 1
     path: Assets/02.Scenes/Home.unity
     guid: a897dd7b43d54b746910dc018dfa80e7

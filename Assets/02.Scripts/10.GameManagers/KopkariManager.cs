@@ -1,14 +1,39 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using MalbersAnimations;
 using MalbersAnimations.Controller;
 using Michsky.UI.ModernUIPack;
+using UnityEngine.Serialization;
 
 public class KopkariManager : MonoBehaviour
 {
+    [Serializable]
+    public sealed class RoundPoints
+    {
+        [SerializeField] private Transform warmupPosition;
+        [SerializeField] private Transform ulakPosition;
+        [SerializeField] private Transform targetPosition;
+        [SerializeField, Min(1f)] private float roundTime = 120f;
+        [SerializeField, Min(1f)] private float warmupDuration = 10f;
+        [SerializeField, Min(0)] private int coinAmount;
+        [SerializeField, Min(0)] private int nyufiyAmount;
+        [SerializeField, Min(0f)] private float comboTime = 10f;
+        [SerializeField, Min(0)] private int comboPrize;
+
+        public Transform WarmupPosition => warmupPosition;
+        public Transform UlakPosition => ulakPosition;
+        public Transform TargetPosition => targetPosition;
+        public float RoundTime => roundTime;
+        public float WarmupDuration => warmupDuration;
+        public int CoinAmount => coinAmount;
+        public int NyufiyAmount => nyufiyAmount;
+        public float ComboTime => comboTime;
+        public int ComboPrize => comboPrize;
+        public bool IsValid => warmupPosition != null && ulakPosition != null && targetPosition != null;
+    }
+
     [Header("-------------HorseAnimal---------------")]
     public MAnimal horseAnimal;
     public MAnimal LocalRiderAnimal { get; private set; }
@@ -20,33 +45,59 @@ public class KopkariManager : MonoBehaviour
     [SerializeField] private ThirdPersonFollowTarget sprintCam;
     public ThirdPersonFollowTarget GameplayFollowTarget => mainCam;
 
-    [Header("Main Time")]
-    public TMP_Text timeText;
+    [Header("Main Time Fallback")]
     public float mainTime = 0f;
     private float totalMainTime;
 
     [Header("Lamp Realated")]
     public string LambOwner;
     [SerializeField] private GameObject myLamb;
-    [SerializeField] private GameObject targetPos;
-    [Tooltip("Optional explicit first salym target for AI. Falls back to Target Pos when empty.")]
-    [SerializeField] private Transform firstSalymPosition;
-    [Tooltip("Shared position where AI riders move after a round finishes.")]
-    [SerializeField] private Transform secondRoundWarmupPoint;
-    [SerializeField] private GameObject targetVFX;
-    [SerializeField] private GameObject finalFlag;
+    [FormerlySerializedAs("targetPos"), FormerlySerializedAs("legacyTargetPosition")]
+    [SerializeField] private GameObject targetObject;
+    [SerializeField] private Transform ulakBottomObject;
+    [Header("Round Points")]
+    [Tooltip("Each entry keeps one round's Warmup, Ulak and Target positions together.")]
+    [SerializeField] private List<RoundPoints> rounds = new List<RoundPoints>();
+    [SerializeField, Min(0f)] private float roundStartCountdown = 3f;
+    [SerializeField, Min(0.25f)] private float warmupReachDistance = 2.5f;
+    [SerializeField, Min(0f)] private float winnerNeighHoldDuration = 1.25f;
+    [SerializeField] private KopkariWarmupTrigger warmupTrigger;
+
+    // Hidden migration fallback for scenes created before grouped Round Points.
+    [FormerlySerializedAs("firstSalymPosition"), SerializeField, HideInInspector]
+    private Transform legacyFirstSalymPosition;
+    [FormerlySerializedAs("secondRoundWarmupPoint"), SerializeField, HideInInspector]
+    private Transform legacyWarmupPosition;
 
     [Header("Gameplay")]
     public Pickable pickableObj;
+    [SerializeField, Min(0f)] private float carrierTakeoverWindow = 1.5f;
 
     public GameObject currentGoatOwner;
+    private GameObject lastReleasedGoatOwner;
+    private float lastGoatOwnerReleaseTime = float.NegativeInfinity;
     public Transform UlakTransform => pickableObj != null
         ? pickableObj.transform
         : (myLamb != null ? myLamb.transform : null);
-    public Transform FirstSalymPosition => firstSalymPosition != null
-        ? firstSalymPosition
-        : (targetPos != null ? targetPos.transform : null);
-    public Transform SecondRoundWarmupPoint => secondRoundWarmupPoint;
+    public Transform CurrentWarmupPosition => CurrentRound != null
+        ? CurrentRound.WarmupPosition
+        : legacyWarmupPosition;
+    public Transform CurrentUlakPosition => CurrentRound != null
+        ? CurrentRound.UlakPosition
+        : UlakTransform;
+    public Transform CurrentTargetPosition => CurrentRound != null
+        ? CurrentRound.TargetPosition
+        : (legacyFirstSalymPosition != null
+            ? legacyFirstSalymPosition
+            : (targetObject != null ? targetObject.transform : null));
+    public Transform FirstSalymPosition => CurrentTargetPosition;
+    public int CurrentRoundIndex => currentRoundIndex;
+    public int CurrentRoundNumber => completedRoundCount + 1;
+    public int TotalRoundCount => GetValidRoundCount();
+    public float CurrentWarmupDuration => CurrentRound != null ? CurrentRound.WarmupDuration : 10f;
+    public float CurrentComboTime => CurrentRound != null ? CurrentRound.ComboTime : 0f;
+    public int CurrentComboPrize => CurrentRound != null ? CurrentRound.ComboPrize : 0;
+    public bool HasPreparedNextRound => nextRoundPrepared;
     public IReadOnlyList<CheckpointTrigger> Checkpoints => checkpoints;
 
     [SerializeField] private bool isCatched;
@@ -121,10 +172,13 @@ public class KopkariManager : MonoBehaviour
     [Header("Checkpoints")]
     [SerializeField] private List<CheckpointTrigger> checkpoints = new List<CheckpointTrigger>();
     private int passedCheckpointCount = 0;
+    // Reserved for a future rules update. Current rounds do not process them.
+    private bool CheckpointsEnabled => false;
 
     [Header("Local Player")]
     [SerializeField] private GameObject LocalRiderRoot;
     private Coroutine pickUpTimerCoroutine;
+    private BoostersContainer localPlayerBoosters;
 
     [Header("Room Resources")]
     public GameObject walkZonePrefab;
@@ -138,8 +192,16 @@ public class KopkariManager : MonoBehaviour
 
     private int UserId;
     private bool roundEnded = false;
-    private bool droppedReported = false;
     private bool timeFinishedHandled = false;
+    private readonly List<int> unusedRoundIndices = new List<int>();
+    private readonly List<AIKopkariRider> roundRiders = new List<AIKopkariRider>();
+    private int currentRoundIndex = -1;
+    private int completedRoundCount;
+    private bool roundPoolInitialized;
+    private bool nextRoundPrepared;
+    private bool localPlayerWarmupQualified;
+    private float configuredRoundTime;
+    private Coroutine roundTransitionCoroutine;
     // ✅ Eski BaseManager.Instance o‘rniga shu ishlaydi
     public static KopkariManager Instance { get; private set; }
 
@@ -151,6 +213,11 @@ public class KopkariManager : MonoBehaviour
     private float webSnareDamageTime;
     private float boostTime;
     public GameOverTypes gameOverTypes = GameOverTypes.None;
+
+    private RoundPoints CurrentRound => currentRoundIndex >= 0 && currentRoundIndex < rounds.Count
+        ? rounds[currentRoundIndex]
+        : null;
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -160,9 +227,14 @@ public class KopkariManager : MonoBehaviour
         sceneReadySignaled = false;
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
+        configuredRoundTime = mainTime;
 
         if (modalWindowPopup != null)
             modalWindowPopup.onConfirm.AddListener(MoveLobby);
+
+        KopkariMainUI.Instance?.HideRoundChange();
+        KopkariMainUI.Instance?.HideRoundWarmupCountdown();
+        warmupTrigger?.Deactivate();
     }
 
     private void Start()
@@ -171,6 +243,10 @@ public class KopkariManager : MonoBehaviour
         {
             pickableObj.OnPicked.RemoveListener(OnUloqPicked);
             pickableObj.OnPicked.AddListener(OnUloqPicked);
+            pickableObj.OnFocusedBy.RemoveListener(HandleUlakFocusedBy);
+            pickableObj.OnFocusedBy.AddListener(HandleUlakFocusedBy);
+            pickableObj.OnUnfocusedBy.RemoveListener(HandleUlakUnfocusedBy);
+            pickableObj.OnUnfocusedBy.AddListener(HandleUlakUnfocusedBy);
         }
 
         // ✅ Pool create faqat bir marta
@@ -210,9 +286,11 @@ public class KopkariManager : MonoBehaviour
 
         // Kopkari scene flow
         KopkariMainUI.OnEverythingReadyStart += StartGame;
+        TargetReachEvent.OnReachedTargetWithLamb += HandleRoundWinner;
         UILookBackButton.OnCameraPressedState += CameraBackState;
         BoostersContainer.OnBoostTime += SetBoostTime;
         BoostersContainer.OnPenaltyTime += SetPenaltyTime;
+        BindLocalPlayerAttackDamage(FindLocalPlayerBoosters());
     }
 
     private void OnDisable()
@@ -228,13 +306,30 @@ public class KopkariManager : MonoBehaviour
 
         // Kopkari scene flow
         KopkariMainUI.OnEverythingReadyStart -= StartGame;
+        TargetReachEvent.OnReachedTargetWithLamb -= HandleRoundWinner;
         UILookBackButton.OnCameraPressedState -= CameraBackState;
         BoostersContainer.OnPenaltyTime -= SetPenaltyTime;
         BoostersContainer.OnBoostTime -= SetBoostTime;
+        UnbindLocalPlayerAttackDamage();
+
+        if (roundTransitionCoroutine != null)
+        {
+            StopCoroutine(roundTransitionCoroutine);
+            roundTransitionCoroutine = null;
+        }
+        KopkariMainUI.Instance?.HideRoundChange();
+        KopkariMainUI.Instance?.HideRoundWarmupCountdown();
     }
 
     private void OnDestroy()
     {
+        if (pickableObj != null)
+        {
+            pickableObj.OnPicked.RemoveListener(OnUloqPicked);
+            pickableObj.OnFocusedBy.RemoveListener(HandleUlakFocusedBy);
+            pickableObj.OnUnfocusedBy.RemoveListener(HandleUlakUnfocusedBy);
+        }
+
         if (modalWindowPopup != null)
             modalWindowPopup.onConfirm.RemoveListener(MoveLobby);
 
@@ -244,9 +339,16 @@ public class KopkariManager : MonoBehaviour
     }
     private void StartMainGame()
     {
+        float selectedRoundTime = CurrentRound != null ? CurrentRound.RoundTime : configuredRoundTime;
+        if (selectedRoundTime <= 0f)
+            selectedRoundTime = configuredRoundTime > 0f ? configuredRoundTime : mainTime;
+
+        mainTime = Mathf.Max(1f, selectedRoundTime);
         totalMainTime = mainTime;
         roomState = RoomState.GameStarted;
         webSnareDamageTime = 0;
+        KopkariMainUI.Instance?.UpdateMainTime(mainTime);
+        KopkariMainUI.Instance?.UpdateRoundProgress(CurrentRoundNumber, TotalRoundCount);
         OnMainGameStarted?.Invoke();
     }
 
@@ -275,18 +377,11 @@ public class KopkariManager : MonoBehaviour
             if (mainTime < 0f)
                 mainTime = 0f;
 
-            int minutes = Mathf.FloorToInt(mainTime / 60);
-            int seconds = Mathf.FloorToInt(mainTime % 60);
-
-            if (timeText != null)
-            {
-                timeText.SetText($"{minutes:00}:{seconds:00}");
-                if (mainTime <= 3f) timeText.color = Color.red;
-            }
+            KopkariMainUI.Instance?.UpdateMainTime(mainTime);
         }
         else
         {
-            if (timeText != null) timeText.SetText("00:00");
+            KopkariMainUI.Instance?.UpdateMainTime(0f);
             roomState = RoomState.TimeFinished;
             gameOverTypes = GameOverTypes.ByTime;
         }
@@ -301,6 +396,7 @@ public class KopkariManager : MonoBehaviour
     {
         horseAnimal = horse;
         LocalRiderAnimal = player;
+        BindLocalPlayerAttackDamage(FindLocalPlayerBoosters());
 
         if (sceneReadyRoutine != null)
             StopCoroutine(sceneReadyRoutine);
@@ -352,11 +448,10 @@ public class KopkariManager : MonoBehaviour
 
     public void FinalPosState(bool state)
     {
-        if (state && targetPos != null && targetPos.activeSelf) return;
+        GameObject target = targetObject;
+        if (state && target != null && target.activeSelf) return;
 
-        targetPos?.SetActive(state);
-        targetVFX?.SetActive(state);
-        if (finalFlag != null) finalFlag.SetActive(state);
+        target?.SetActive(state);
     }
 
 
@@ -398,8 +493,23 @@ public class KopkariManager : MonoBehaviour
 
     private void OnUloqPicked(GameObject pickerObj)
     {
-        NotifyGoatOwner(pickerObj.transform.root.gameObject, true);
+        if (pickerObj == null)
+            return;
+
+        NotifyGoatOwner(pickerObj, true);
         StartCoroutine(NotifyRoom());
+    }
+
+    private void HandleUlakFocusedBy(GameObject focusOwner)
+    {
+        if (roomState == RoomState.GameStarted && focusOwner != null)
+            AIKopkariRider.NotifyUlakFocusedBy(focusOwner);
+    }
+
+    private void HandleUlakUnfocusedBy(GameObject focusOwner)
+    {
+        if (focusOwner != null)
+            AIKopkariRider.NotifyUlakUnfocusedBy(focusOwner);
     }
 
     private IEnumerator NotifyRoom()
@@ -413,7 +523,6 @@ public class KopkariManager : MonoBehaviour
         {
             if (speechBubble != null)
                 speechBubble.ShowPopup(LanguageManager.Instance?.GetText(510)); // Lets go!!! Faster Polvon"
-            TriggerPointNotFinished();
         }
         else
         {
@@ -430,19 +539,46 @@ public class KopkariManager : MonoBehaviour
 
     public void NotifyGoatOwner(GameObject ownerRoot, bool hasGoat)
     {
-        bool isLocalPlayer = (LocalRiderRoot != null && ownerRoot == LocalRiderRoot);
+        bool isLocalPlayer = ownerRoot != null && IsLocalRiderTransform(ownerRoot.transform);
+        ownerRoot = NormalizeRiderOwner(ownerRoot);
+        isLocalPlayer |= LocalRiderRoot != null && ownerRoot == LocalRiderRoot;
 
         if (hasGoat)
         {
+            if (ownerRoot == null || currentGoatOwner == ownerRoot)
+                return;
+
+            GameObject previousOwner = currentGoatOwner;
+            if (previousOwner == null &&
+                lastReleasedGoatOwner != null &&
+                lastReleasedGoatOwner != ownerRoot &&
+                Time.time - lastGoatOwnerReleaseTime <= Mathf.Max(0f, carrierTakeoverWindow))
+            {
+                previousOwner = lastReleasedGoatOwner;
+            }
+            bool takenFromCarrier = previousOwner != null && previousOwner != ownerRoot;
+            if (TryGetRiderId(previousOwner, out int previousOwnerId))
+                KopkariResultsManager.Instance?.OnLambDropped(previousOwnerId);
+            if (previousOwner != null && previousOwner == LocalRiderRoot)
+                KopkariMainUI.Instance?.HideCombo();
+            if (TryGetRiderId(ownerRoot, out int newOwnerId))
+                KopkariResultsManager.Instance?.OnLambPicked(newOwnerId, takenFromCarrier);
+
             SetCurrentGoatOwner(ownerRoot);
+            // Checkpoints are intentionally inactive for the current game rules.
+            // Every successful pickup immediately opens the selected round target.
+            FinalPosState(true);
+            lastReleasedGoatOwner = null;
+            lastGoatOwnerReleaseTime = float.NegativeInfinity;
 
             if (isLocalPlayer)
             {
                 OnGoatPicked?.Invoke(true);
                 IsCatched = true;
                 StartPickUpTime();
+                if (roomState == RoomState.GameStarted)
+                    KopkariMainUI.Instance?.ShowCombo();
 
-                KopkariResultsManager.Instance?.OnLambPicked(UserId);
             }
             else
             {
@@ -456,13 +592,47 @@ public class KopkariManager : MonoBehaviour
         {
             if (currentGoatOwner == ownerRoot)
             {
-                if (isLocalPlayer)
-                    StopPickUpTime();
+                if (TryGetRiderId(ownerRoot, out int droppedOwnerId))
+                    KopkariResultsManager.Instance?.OnLambDropped(droppedOwnerId);
 
+                if (isLocalPlayer)
+                {
+                    StopPickUpTime();
+                    KopkariMainUI.Instance?.HideCombo();
+                }
+
+                lastReleasedGoatOwner = ownerRoot;
+                lastGoatOwnerReleaseTime = Time.time;
                 SetCurrentGoatOwner(null);
+                FinalPosState(false);
                 IsCatched = false;
             }
         }
+    }
+
+    private bool TryGetRiderId(GameObject riderRoot, out int riderId)
+    {
+        if (riderRoot == null)
+        {
+            riderId = 0;
+            return false;
+        }
+
+        if (LocalRiderRoot != null && riderRoot == LocalRiderRoot)
+        {
+            riderId = PlayerPrefs.GetInt(Constants.Player.Userid, UserId);
+            return true;
+        }
+
+        AIKopkariRider rider = riderRoot.GetComponentInChildren<AIKopkariRider>(true);
+        if (rider != null)
+        {
+            riderId = rider.GetId();
+            return true;
+        }
+
+        riderId = 0;
+        return false;
     }
 
     private void SetCurrentGoatOwner(GameObject ownerRoot)
@@ -473,14 +643,88 @@ public class KopkariManager : MonoBehaviour
         currentGoatOwner = ownerRoot;
         OnGoatOwnerChanged?.Invoke(currentGoatOwner);
     }
+
+    private GameObject NormalizeRiderOwner(GameObject ownerCandidate)
+    {
+        if (ownerCandidate == null)
+            return null;
+
+        if (IsLocalRiderTransform(ownerCandidate.transform))
+        {
+            if (LocalRiderRoot != null)
+                return LocalRiderRoot;
+            if (horseAnimal != null)
+                return horseAnimal.transform.root.gameObject;
+            if (LocalRiderAnimal != null)
+                return LocalRiderAnimal.transform.root.gameObject;
+        }
+
+        AIKopkariRider aiRider = ownerCandidate.GetComponentInParent<AIKopkariRider>();
+        if (aiRider == null)
+            aiRider = ownerCandidate.GetComponentInChildren<AIKopkariRider>(true);
+        return aiRider != null ? aiRider.transform.root.gameObject : ownerCandidate.transform.root.gameObject;
+    }
+
+    public Transform ResolveGoatOwnerTarget(GameObject ownerRoot)
+    {
+        GameObject normalizedOwner = NormalizeRiderOwner(ownerRoot);
+        if (normalizedOwner == null)
+            return null;
+
+        if (LocalRiderRoot != null && normalizedOwner == LocalRiderRoot)
+            return horseAnimal != null ? horseAnimal.transform : LocalRiderRoot.transform;
+
+        AIKopkariRider aiRider = normalizedOwner.GetComponentInChildren<AIKopkariRider>(true);
+        return aiRider != null && aiRider.Animal != null
+            ? aiRider.Animal.transform
+            : normalizedOwner.transform;
+    }
+
+    public bool IsLocalRiderTransform(Transform candidate)
+    {
+        if (candidate == null)
+            return false;
+
+        MPickUp localPickup = playerDataManager != null ? playerDataManager.PickupController : null;
+        if (localPickup != null && localPickup.Root != null &&
+            IsSameHierarchy(candidate, localPickup.Root))
+            return true;
+
+        if (horseAnimal != null && IsSameHierarchy(candidate, horseAnimal.transform))
+            return true;
+
+        if (LocalRiderAnimal != null && IsSameHierarchy(candidate, LocalRiderAnimal.transform))
+            return true;
+
+        return LocalRiderRoot != null && IsSameHierarchy(candidate, LocalRiderRoot.transform);
+    }
+
+    public bool IsCurrentGoatOwnerTransform(Transform candidate)
+    {
+        if (candidate == null || currentGoatOwner == null)
+            return false;
+
+        GameObject normalizedCandidate = NormalizeRiderOwner(candidate.gameObject);
+        return normalizedCandidate != null && normalizedCandidate == currentGoatOwner;
+    }
+
+    private static bool IsSameHierarchy(Transform first, Transform second)
+    {
+        return first != null && second != null &&
+               (first == second || first.IsChildOf(second) || second.IsChildOf(first));
+    }
     #endregion
 
     #region Drop Uloq
     public void TriggerEvent()
     {
         IsCatched = false;
-        SetCurrentGoatOwner(null);
+        GameObject owner = currentGoatOwner;
+        if (owner != null)
+            NotifyGoatOwner(owner, false);
         playerDataManager?.DropObject();
+        if (pickableObj != null && pickableObj.Picker != null)
+            pickableObj.ForceDrop();
     }
 
     public void StopPickUpTime()
@@ -496,18 +740,342 @@ public class KopkariManager : MonoBehaviour
         OnGoatPickedTime?.Invoke(0f);
         OnGoatPicked?.Invoke(false);
 
-        if (!droppedReported)
-        {
-            droppedReported = true;
-            KopkariResultsManager.Instance?.OnLambDropped(UserId);
-        }
     }
     #endregion
 
-    public void WinOrLosePage()
+    private bool SelectUnusedRound()
     {
-        Debug.Log("KopkariManager: WinOrLosePage (implement qilinadi)");
-        // bu yerda sen final UI/Result page ochasan
+        if (!roundPoolInitialized)
+        {
+            unusedRoundIndices.Clear();
+            for (int i = 0; i < rounds.Count; i++)
+            {
+                RoundPoints candidate = rounds[i];
+                if (candidate != null && candidate.IsValid)
+                    unusedRoundIndices.Add(i);
+                else
+                    Debug.LogWarning($"[{nameof(KopkariManager)}] Round Points element {i} is incomplete and will be skipped.", this);
+            }
+
+            roundPoolInitialized = true;
+        }
+
+        if (unusedRoundIndices.Count == 0)
+            return false;
+
+        int poolIndex = UnityEngine.Random.Range(0, unusedRoundIndices.Count);
+        currentRoundIndex = unusedRoundIndices[poolIndex];
+        unusedRoundIndices.RemoveAt(poolIndex);
+        return true;
+    }
+
+    private int GetValidRoundCount()
+    {
+        int count = 0;
+        for (int i = 0; i < rounds.Count; i++)
+        {
+            if (rounds[i] != null && rounds[i].IsValid)
+                count++;
+        }
+
+        return count;
+    }
+
+    private bool EnsureInitialRoundSelected()
+    {
+        if (CurrentRound != null)
+            return true;
+
+        if (rounds.Count > 0)
+            return SelectUnusedRound();
+
+        // Old scenes can still run once while their grouped list is being set up.
+        return targetObject != null && UlakTransform != null;
+    }
+
+    private void PrepareCurrentRoundForGameplay()
+    {
+        GameObject owner = currentGoatOwner;
+        if (owner != null)
+            NotifyGoatOwner(owner, false);
+        lastReleasedGoatOwner = null;
+        lastGoatOwnerReleaseTime = float.NegativeInfinity;
+        IsCatched = false;
+
+        Transform targetPosition = CurrentTargetPosition;
+        if (targetObject != null)
+        {
+            targetObject.SetActive(false);
+            if (targetPosition != null)
+                targetObject.transform.SetPositionAndRotation(targetPosition.position, targetPosition.rotation);
+        }
+
+        Transform ulak = UlakTransform;
+        Transform ulakPosition = CurrentUlakPosition;
+        if (ulakPosition == null)
+            return;
+
+        if (ulakBottomObject != null)
+            ulakBottomObject.SetPositionAndRotation(ulakPosition.position, ulakPosition.rotation);
+
+        if (ulak == null)
+            return;
+
+        GameObject ulakObject = ulak.gameObject;
+        ulakObject.SetActive(false);
+        ulak.SetPositionAndRotation(ulakPosition.position, ulakPosition.rotation);
+
+        Rigidbody body = ulak.GetComponent<Rigidbody>();
+        if (body != null)
+        {
+            body.position = ulakPosition.position;
+            body.rotation = ulakPosition.rotation;
+            body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
+        ulakObject.SetActive(true);
+    }
+
+    private void HandleRoundWinner(int riderId, bool isPlayer)
+    {
+        if (roundEnded || roomState != RoomState.GameStarted)
+            return;
+
+        roundEnded = true;
+        bool comboCompleted = isPlayer && KopkariMainUI.Instance != null &&
+                              KopkariMainUI.Instance.TryCompleteCombo();
+        KopkariResultsManager.Instance?.AwardRoundPrize(
+            riderId,
+            CurrentRound != null ? CurrentRound.CoinAmount : 0,
+            CurrentRound != null ? CurrentRound.NyufiyAmount : 0);
+        if (comboCompleted)
+            KopkariResultsManager.Instance?.AwardComboPrize(riderId, CurrentComboPrize);
+
+        completedRoundCount++;
+        KopkariMainUI.Instance?.UpdateRoundProgress(completedRoundCount, TotalRoundCount);
+        roomState = RoomState.GameFinished;
+        timeFinishedHandled = true;
+        KopkariMainUI.Instance?.SetMobileCanvasVisible(false);
+
+        StopPickUpTime();
+        if (isPlayer)
+            TriggerEvent();
+        else if (currentGoatOwner != null)
+            NotifyGoatOwner(currentGoatOwner, false);
+
+        if (targetObject != null)
+            targetObject.SetActive(false);
+
+        if (isPlayer && horseAnimal != null)
+        {
+            horseAnimal.StopMoving();
+            horseAnimal.Reset_Movement();
+            horseAnimal.State_Activate(StateEnum.Jump);
+        }
+
+        nextRoundPrepared = SelectUnusedRound();
+        if (!nextRoundPrepared)
+        {
+            warmupTrigger?.Deactivate();
+            if (pickableObj != null)
+                pickableObj.gameObject.SetActive(false);
+
+            if (KopkariMainUI.Instance != null)
+                KopkariMainUI.Instance.ShowResult();
+            else
+                FinishMatch();
+            return;
+        }
+
+        warmupTrigger?.Prepare(CurrentWarmupPosition, this);
+
+        if (roundTransitionCoroutine != null)
+            StopCoroutine(roundTransitionCoroutine);
+        roundTransitionCoroutine = StartCoroutine(OfferNextRoundAfterWinner());
+    }
+
+    public void FinishMatch()
+    {
+        nextRoundPrepared = false;
+        roundEnded = true;
+        roomState = RoomState.GameFinished;
+        warmupTrigger?.Deactivate();
+
+        if (roundTransitionCoroutine != null)
+        {
+            StopCoroutine(roundTransitionCoroutine);
+            roundTransitionCoroutine = null;
+        }
+
+        KopkariResultsManager.Instance?.EndRace();
+    }
+
+    private IEnumerator OfferNextRoundAfterWinner()
+    {
+        yield return null;
+        if (pickableObj != null)
+            pickableObj.gameObject.SetActive(false);
+        else if (myLamb != null)
+            myLamb.SetActive(false);
+
+        if (winnerNeighHoldDuration > 0f)
+            yield return new WaitForSecondsRealtime(winnerNeighHoldDuration);
+
+        KopkariMainUI.Instance?.ShowRoundChange();
+        roundTransitionCoroutine = null;
+    }
+
+    public void BeginNextRoundWarmup()
+    {
+        if (!nextRoundPrepared || !roundEnded || CurrentWarmupPosition == null ||
+            roundTransitionCoroutine != null)
+            return;
+
+        // The round winner only prepares the next points. Movement begins when
+        // the player explicitly accepts the next round, so no rider can leave
+        // while the round-change popup is still being shown.
+        warmupTrigger?.Prepare(CurrentWarmupPosition, this);
+        CacheRoundRiders();
+        DispatchAIRidersToRoundWarmup();
+
+        KopkariMainUI.Instance?.HideRoundChange();
+        KopkariMainUI.Instance?.SetMobileCanvasVisible(true);
+        roundTransitionCoroutine = StartCoroutine(NextRoundWarmupRoutine());
+    }
+
+    private void DispatchAIRidersToRoundWarmup()
+    {
+        for (int i = 0; i < roundRiders.Count; i++)
+        {
+            AIKopkariRider rider = roundRiders[i];
+            if (rider != null && !rider.IsEliminatedFromRounds)
+                rider.BeginRoundWarmupMovement();
+        }
+    }
+
+    private IEnumerator NextRoundWarmupRoutine()
+    {
+        CacheRoundRiders();
+        RefreshAIRiderWarmupQualification();
+        localPlayerWarmupQualified = IsLocalPlayerAtWarmup();
+
+        float deadline = Time.unscaledTime + Mathf.Max(1f, CurrentWarmupDuration);
+        int displayedValue = -1;
+
+        while (Time.unscaledTime < deadline)
+        {
+            localPlayerWarmupQualified |= IsLocalPlayerAtWarmup();
+            if (localPlayerWarmupQualified && AreAllActiveAIRidersWarmupQualified())
+                break;
+
+            int nextValue = Mathf.Max(1, Mathf.CeilToInt(deadline - Time.unscaledTime));
+            if (nextValue != displayedValue)
+            {
+                displayedValue = nextValue;
+                RefreshAIRiderWarmupQualification();
+                KopkariMainUI.Instance?.ShowRoundWarmupCountdown(displayedValue);
+            }
+
+            yield return null;
+        }
+
+        localPlayerWarmupQualified |= IsLocalPlayerAtWarmup();
+        RefreshAIRiderWarmupQualification();
+        bool everyoneQualified = localPlayerWarmupQualified && AreAllActiveAIRidersWarmupQualified();
+        if (!everyoneQualified && Time.unscaledTime >= deadline)
+        {
+            KopkariMainUI.Instance?.ShowRoundWarmupCountdown(0);
+            yield return null;
+        }
+        StopUnqualifiedAIRidersForWarmup();
+
+        if (!localPlayerWarmupQualified)
+        {
+            KopkariMainUI.Instance?.HideRoundWarmupCountdown();
+            roomState = RoomState.PlayerEliminated;
+            nextRoundPrepared = false;
+            roundTransitionCoroutine = null;
+            KopkariResultsManager.Instance?.EndRace();
+            KopkariMainUI.Instance?.GameOverShow();
+            yield break;
+        }
+
+        KopkariMainUI.Instance?.HideRoundWarmupCountdown();
+        yield return null;
+
+        float startDeadline = Time.unscaledTime + Mathf.Max(0f, roundStartCountdown);
+        displayedValue = -1;
+        while (Time.unscaledTime < startDeadline)
+        {
+            int nextValue = Mathf.Max(1, Mathf.CeilToInt(startDeadline - Time.unscaledTime));
+            if (nextValue != displayedValue)
+            {
+                displayedValue = nextValue;
+                KopkariMainUI.Instance?.ShowRoundWarmupCountdown(displayedValue);
+            }
+            yield return null;
+        }
+
+        KopkariMainUI.Instance?.HideRoundWarmupCountdown();
+        roundTransitionCoroutine = null;
+        StartGame();
+    }
+
+    private bool IsLocalPlayerAtWarmup()
+    {
+        // The local player must produce a fresh trigger entry for this round.
+        // Distance remains an AI fallback below, but using it for the player
+        // allowed a new round to start without entering the warmup trigger.
+        return warmupTrigger != null && warmupTrigger.LocalPlayerEntered;
+    }
+
+    private void CacheRoundRiders()
+    {
+        roundRiders.Clear();
+        AIKopkariRider[] found = FindObjectsOfType<AIKopkariRider>(true);
+        for (int i = 0; i < found.Length; i++)
+        {
+            if (found[i] != null && !found[i].IsEliminatedFromRounds)
+                roundRiders.Add(found[i]);
+        }
+    }
+
+    private bool AreAllActiveAIRidersWarmupQualified()
+    {
+        for (int i = 0; i < roundRiders.Count; i++)
+        {
+            AIKopkariRider rider = roundRiders[i];
+            if (rider != null && !rider.IsEliminatedFromRounds && !rider.IsRoundWarmupQualified)
+                return false;
+        }
+        return true;
+    }
+
+    private void RefreshAIRiderWarmupQualification()
+    {
+        Transform warmup = CurrentWarmupPosition;
+        for (int i = 0; i < roundRiders.Count; i++)
+        {
+            AIKopkariRider rider = roundRiders[i];
+            if (rider == null || rider.IsEliminatedFromRounds)
+                continue;
+
+            if (warmupTrigger != null && warmupTrigger.HasAIRider(rider))
+                rider.MarkRoundWarmupQualified();
+            else
+                rider.RefreshRoundWarmupQualification(warmup, warmupReachDistance);
+        }
+    }
+
+    private void StopUnqualifiedAIRidersForWarmup()
+    {
+        for (int i = 0; i < roundRiders.Count; i++)
+        {
+            AIKopkariRider rider = roundRiders[i];
+            if (rider != null && !rider.IsEliminatedFromRounds && !rider.IsRoundWarmupQualified)
+                rider.PauseAtWarmupTimeout();
+        }
     }
 
     public void StartGame()
@@ -515,7 +1083,18 @@ public class KopkariManager : MonoBehaviour
         if (roomState == RoomState.GameStarted)
             return;
 
-        droppedReported = false;
+        if (!EnsureInitialRoundSelected())
+        {
+            Debug.LogError($"[{nameof(KopkariManager)}] No valid Round Points entry is available.", this);
+            return;
+        }
+
+        PrepareCurrentRoundForGameplay();
+        warmupTrigger?.Deactivate();
+        nextRoundPrepared = false;
+        KopkariMainUI.Instance?.HideRoundChange();
+        KopkariMainUI.Instance?.HideRoundWarmupCountdown();
+
         roundEnded = false;
         timeFinishedHandled = false;
         Booster.ResetWalkZoneDamagedTime();
@@ -526,10 +1105,7 @@ public class KopkariManager : MonoBehaviour
 
         OnResetTarget?.Invoke();
         OnGameStartFinishState?.Invoke(true);
-        OnGameStarted?.Invoke();
 
-        if (timeText != null)
-            timeText.color = Color.white;
         if (horseAnimal != null)
             OnHorseTransform?.Invoke(horseAnimal.transform);
 
@@ -545,36 +1121,65 @@ public class KopkariManager : MonoBehaviour
         // kerak bo‘lsa implement qilasan
     }
 
-    /// <summary>
-    /// Finish is here
-    /// </summary>
-    public void MarkPlayerReachedTarget()
-    {
-        if (roundEnded) return;
-        if (roomState != RoomState.GameStarted) return;
-
-        if (!IsCatched) return;
-        if (currentGoatOwner == null) return;
-        if (LocalRiderRoot != null && currentGoatOwner != LocalRiderRoot) return;
-
-        KopkariMainUI.Instance?.UpdateSlider();
-
-        roundEnded = true;
-
-        TriggerEvent();
-        roomState = RoomState.GameFinished;
-        StopPickUpTime();
-
-        if (pickableObj != null)
-            pickableObj.gameObject.SetActive(false);
-
-        OnGameStartFinishState?.Invoke(false);
-        WinOrLosePage();
-    }
-
     public void RegisterLocalRider(GameObject riderRoot)
     {
         LocalRiderRoot = riderRoot;
+        BindLocalPlayerAttackDamage(FindLocalPlayerBoosters());
+    }
+
+    private BoostersContainer FindLocalPlayerBoosters()
+    {
+        if (horseAnimal != null)
+        {
+            BoostersContainer fromHorse = horseAnimal.GetComponentInParent<BoostersContainer>();
+            if (fromHorse != null)
+                return fromHorse;
+
+            fromHorse = horseAnimal.transform.root.GetComponentInChildren<BoostersContainer>(true);
+            if (fromHorse != null)
+                return fromHorse;
+        }
+
+        return LocalRiderRoot != null
+            ? LocalRiderRoot.GetComponentInChildren<BoostersContainer>(true)
+            : null;
+    }
+
+    private void BindLocalPlayerAttackDamage(BoostersContainer source)
+    {
+        if (localPlayerBoosters == source)
+        {
+            if (localPlayerBoosters != null)
+            {
+                localPlayerBoosters.OnNpcAttackDamageReceived -= HandleLocalPlayerAttackDamageReceived;
+                localPlayerBoosters.OnNpcAttackDamageReceived += HandleLocalPlayerAttackDamageReceived;
+            }
+            return;
+        }
+
+        UnbindLocalPlayerAttackDamage();
+        localPlayerBoosters = source;
+        if (localPlayerBoosters != null)
+            localPlayerBoosters.OnNpcAttackDamageReceived += HandleLocalPlayerAttackDamageReceived;
+    }
+
+    private void UnbindLocalPlayerAttackDamage()
+    {
+        if (localPlayerBoosters == null)
+            return;
+
+        localPlayerBoosters.OnNpcAttackDamageReceived -= HandleLocalPlayerAttackDamageReceived;
+        localPlayerBoosters = null;
+    }
+
+    private void HandleLocalPlayerAttackDamageReceived()
+    {
+        if (roomState != RoomState.GameStarted || currentGoatOwner == null ||
+            LocalRiderRoot == null || currentGoatOwner != LocalRiderRoot ||
+            !AIKopkariRider.IsCarrierEngagedByGuard(currentGoatOwner))
+            return;
+
+        TriggerEvent();
     }
 
     #region Camera Section
@@ -625,6 +1230,7 @@ public class KopkariManager : MonoBehaviour
     #region CheckPoints
     public void OnCheckpointReached(CheckpointTrigger checkpoint, GameObject riderObj)
     {
+        if (!CheckpointsEnabled) return;
         if (roomState != RoomState.GameStarted) return;
 
         if (!IsCatched || currentGoatOwner == null)
@@ -660,14 +1266,9 @@ public class KopkariManager : MonoBehaviour
             OnAllCheckpointsCompleted();
     }
 
-    private void TriggerPointNotFinished()
-    {
-        if (passedCheckpointCount != checkpoints.Count)
-            FinalPosState(false);
-    }
-
     public void OnAllCheckpointsCompleted()
     {
+        if (!CheckpointsEnabled) return;
         Debug.Log("[Checkpoint] 🔥 Barcha checkpointlar uloq bilan o‘tilgan!");
         FinalPosState(true);
     }

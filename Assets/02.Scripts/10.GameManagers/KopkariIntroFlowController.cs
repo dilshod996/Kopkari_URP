@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Cinemachine;
 using MalbersAnimations;
 using MalbersAnimations.Controller;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -37,6 +38,10 @@ public class KopkariIntroFlowController : MonoBehaviour
     [SerializeField, Range(0, 3)] private int orbitRiderCount = 3;
     [Tooltip("Optional preferred orbit riders. Empty slots are filled randomly from the remaining riders.")]
     [SerializeField] private List<AIKopkariRider> preferredOrbitRiders = new List<AIKopkariRider>();
+    [Tooltip("Random non-rival, non-orbit riders that guard the Ulak without picking it up.")]
+    [SerializeField, Range(0, 4)] private int guardRiderCount = 2;
+    [Tooltip("Optional preferred Guard riders. Empty slots are filled randomly from the remaining non-rival, non-orbit riders.")]
+    [SerializeField] private List<AIKopkariRider> preferredGuardRiders = new List<AIKopkariRider>();
 
     [Header("Cinemachine")]
     [SerializeField] private CinemachineVirtualCamera introCamera;
@@ -88,6 +93,10 @@ public class KopkariIntroFlowController : MonoBehaviour
     [SerializeField] private KopkariIntroPlayersList playersList;
     [SerializeField] private KopkariObjectCharacteristics objectCharacteristics;
 
+    [Header("Gameplay Countdown UI")]
+    [SerializeField] private GameObject countBackground;
+    [SerializeField] private TMP_Text countText;
+
     [Header("Gate Shake")]
     [Tooltip("Multiplier applied to the gate impulse. Lower values produce a softer camera shake.")]
     [SerializeField, Range(0f, 1f)] private float gateImpulseStrength = 0.35f;
@@ -98,6 +107,9 @@ public class KopkariIntroFlowController : MonoBehaviour
     private readonly List<AIKopkariRider> pendingRiderBuffer = new List<AIKopkariRider>();
     private readonly List<AIKopkariRider> orbitSelectionBuffer = new List<AIKopkariRider>();
     private readonly List<AIKopkariRider> orbitCandidateBuffer = new List<AIKopkariRider>();
+    private readonly List<AIKopkariRider> guardSelectionBuffer = new List<AIKopkariRider>();
+    private readonly List<AIKopkariRider> guardCandidateBuffer = new List<AIKopkariRider>();
+    private readonly Dictionary<GameObject, int> aiColliderOriginalLayers = new Dictionary<GameObject, int>();
     private Coroutine introRoutine;
     private Coroutine gateShakeRoutine;
     private Action completionCallback;
@@ -112,6 +124,9 @@ public class KopkariIntroFlowController : MonoBehaviour
     private bool allowSkipDisplay;
     private float lastImpulseTime = float.NegativeInfinity;
     private int queuedGatePasses;
+    private int aiHorseCollisionLayer = -1;
+    private bool aiCollisionIsolationActive;
+    private bool originalAIHorseSelfCollisionIgnored;
     private MAnimal localPlayerPresentationAnimal;
     private IntroState state = IntroState.Idle;
 
@@ -133,6 +148,7 @@ public class KopkariIntroFlowController : MonoBehaviour
         PrepareCameraState();
         SetIntroUiVisible(false);
         HideObjectCharacteristics();
+        SetCountdownVisible(false);
     }
 
     private void OnEnable()
@@ -160,7 +176,9 @@ public class KopkariIntroFlowController : MonoBehaviour
 
         StopGateShake();
         StopLocalPlayerPresentation();
+        RestoreAIRiderCollisions();
         HideObjectCharacteristics();
+        SetCountdownVisible(false);
         isPlaying = false;
         RestoreCameraState();
     }
@@ -195,6 +213,7 @@ public class KopkariIntroFlowController : MonoBehaviour
     {
         isPlaying = true;
         ResolveRiders();
+        IsolateAIRiderCollisions();
         SelectMainRival();
         AssignUlakRoles();
         CacheCameraState();
@@ -203,6 +222,7 @@ public class KopkariIntroFlowController : MonoBehaviour
         playersList?.BuildList(riders);
         SetIntroUiVisible(false);
         HideObjectCharacteristics();
+        SetCountdownVisible(false);
 
         Transform openingSpectatorCamera = SelectRandomCameraPosition();
         bool hasOpeningSpectatorShot = openingSpectatorCamera != null;
@@ -316,14 +336,34 @@ public class KopkariIntroFlowController : MonoBehaviour
             return;
         }
 
-        if (selectRandomMainRival || mainRival == null || !riders.Contains(mainRival))
-            mainRival = riders[UnityEngine.Random.Range(0, riders.Count)];
+        if (!selectRandomMainRival && mainRival != null && riders.Contains(mainRival))
+            return;
+
+        // Keep mounted-melee riders available for the requested Guard slots
+        // whenever another valid rival candidate exists.
+        if (guardRiderCount > 0)
+        {
+            int startIndex = UnityEngine.Random.Range(0, riders.Count);
+            for (int offset = 0; offset < riders.Count; offset++)
+            {
+                AIKopkariRider candidate = riders[(startIndex + offset) % riders.Count];
+                if (candidate != null && !candidate.HasGuardRiderMeleeAttack)
+                {
+                    mainRival = candidate;
+                    return;
+                }
+            }
+        }
+
+        mainRival = riders[UnityEngine.Random.Range(0, riders.Count)];
     }
 
     private void AssignUlakRoles()
     {
         orbitSelectionBuffer.Clear();
         orbitCandidateBuffer.Clear();
+        guardSelectionBuffer.Clear();
+        guardCandidateBuffer.Clear();
 
         for (int i = 0; i < riders.Count; i++)
         {
@@ -334,6 +374,35 @@ public class KopkariIntroFlowController : MonoBehaviour
             rider.ConfigureUlakRole(AIKopkariRider.UlakRole.Competitor);
             if (rider != mainRival)
                 orbitCandidateBuffer.Add(rider);
+        }
+
+        int requestedGuardReservation = Mathf.Min(guardRiderCount, orbitCandidateBuffer.Count);
+
+        // Explicit Guard choices have first priority over the Orbit list.
+        for (int i = 0; i < preferredGuardRiders.Count &&
+                        guardSelectionBuffer.Count < requestedGuardReservation; i++)
+        {
+            AIKopkariRider preferred = preferredGuardRiders[i];
+            if (preferred == null || preferred == mainRival ||
+                !orbitCandidateBuffer.Remove(preferred) || guardSelectionBuffer.Contains(preferred))
+                continue;
+
+            guardSelectionBuffer.Add(preferred);
+        }
+
+        // When no explicit entries fill the slots, reserve riders that already
+        // have a melee object. Otherwise an old Preferred Orbit list can consume
+        // every weapon-equipped rider before Guards are selected.
+        for (int i = orbitCandidateBuffer.Count - 1;
+             i >= 0 && guardSelectionBuffer.Count < requestedGuardReservation;
+             i--)
+        {
+            AIKopkariRider candidate = orbitCandidateBuffer[i];
+            if (candidate == null || !candidate.HasGuardRiderMeleeAttack)
+                continue;
+
+            guardSelectionBuffer.Add(candidate);
+            orbitCandidateBuffer.RemoveAt(i);
         }
 
         int requestedCount = Mathf.Min(orbitRiderCount, orbitCandidateBuffer.Count);
@@ -369,6 +438,64 @@ public class KopkariIntroFlowController : MonoBehaviour
             Debug.LogWarning(
                 $"[{nameof(KopkariIntroFlowController)}] Requested {orbitRiderCount} Ulak orbit riders, " +
                 $"but only {assignedCount} non-rival riders are available.",
+                this);
+        }
+
+        for (int i = 0; i < riders.Count; i++)
+        {
+            AIKopkariRider rider = riders[i];
+            if (rider != null && rider != mainRival && !orbitSelectionBuffer.Contains(rider))
+                guardCandidateBuffer.Add(rider);
+        }
+
+        int requestedGuardCount = Mathf.Min(guardRiderCount, guardCandidateBuffer.Count);
+
+        for (int i = 0; i < preferredGuardRiders.Count && guardSelectionBuffer.Count < requestedGuardCount; i++)
+        {
+            AIKopkariRider preferred = preferredGuardRiders[i];
+            if (preferred == null || preferred == mainRival || !guardCandidateBuffer.Contains(preferred) ||
+                guardSelectionBuffer.Contains(preferred))
+                continue;
+
+            guardSelectionBuffer.Add(preferred);
+            guardCandidateBuffer.Remove(preferred);
+        }
+
+        for (int i = guardCandidateBuffer.Count - 1; i > 0; i--)
+        {
+            int swapIndex = UnityEngine.Random.Range(0, i + 1);
+            AIKopkariRider temp = guardCandidateBuffer[i];
+            guardCandidateBuffer[i] = guardCandidateBuffer[swapIndex];
+            guardCandidateBuffer[swapIndex] = temp;
+        }
+
+        // Prefer riders that have a configured mounted-melee object. This keeps
+        // random Guard selection functional even when the optional preferred
+        // list has not been filled in the scene yet.
+        for (int i = 0; i < guardCandidateBuffer.Count && guardSelectionBuffer.Count < requestedGuardCount; i++)
+        {
+            AIKopkariRider candidate = guardCandidateBuffer[i];
+            if (candidate != null && candidate.HasGuardRiderMeleeAttack &&
+                !guardSelectionBuffer.Contains(candidate))
+                guardSelectionBuffer.Add(candidate);
+        }
+
+        for (int i = 0; i < guardCandidateBuffer.Count && guardSelectionBuffer.Count < requestedGuardCount; i++)
+        {
+            AIKopkariRider candidate = guardCandidateBuffer[i];
+            if (candidate != null && !guardSelectionBuffer.Contains(candidate))
+                guardSelectionBuffer.Add(candidate);
+        }
+
+        int assignedGuardCount = guardSelectionBuffer.Count;
+        for (int i = 0; i < assignedGuardCount; i++)
+            guardSelectionBuffer[i].ConfigureUlakRole(AIKopkariRider.UlakRole.Guard, i, assignedGuardCount);
+
+        if (assignedGuardCount < guardRiderCount)
+        {
+            Debug.LogWarning(
+                $"[{nameof(KopkariIntroFlowController)}] Requested {guardRiderCount} Ulak Guards, " +
+                $"but only {assignedGuardCount} non-rival, non-orbit riders are available.",
                 this);
         }
     }
@@ -518,8 +645,44 @@ public class KopkariIntroFlowController : MonoBehaviour
         PrepareGameplayCameraStartView();
         yield return BlinkOpen();
 
-        if (gameplayStartCountdown > 0f)
-            yield return WaitRealtime(gameplayStartCountdown, false);
+        yield return ShowGameplayStartCountdown();
+    }
+
+    private IEnumerator ShowGameplayStartCountdown()
+    {
+        if (gameplayStartCountdown <= 0f)
+        {
+            SetCountdownVisible(false);
+            yield break;
+        }
+
+        SetCountdownVisible(true);
+        float deadline = Time.unscaledTime + gameplayStartCountdown;
+        int displayedValue = -1;
+
+        while (Time.unscaledTime < deadline)
+        {
+            int nextValue = Mathf.Max(1, Mathf.CeilToInt(deadline - Time.unscaledTime));
+            if (nextValue != displayedValue)
+            {
+                displayedValue = nextValue;
+                if (countText != null)
+                    countText.text = displayedValue.ToString();
+            }
+
+            yield return null;
+        }
+
+        SetCountdownVisible(false);
+    }
+
+    private void SetCountdownVisible(bool visible)
+    {
+        if (countBackground != null)
+            countBackground.SetActive(visible);
+
+        if (!visible && countText != null)
+            countText.text = string.Empty;
     }
 
     private static void ShuffleRiders(List<AIKopkariRider> source)
@@ -567,10 +730,80 @@ public class KopkariIntroFlowController : MonoBehaviour
 
     private void CompleteIntro()
     {
+        RestoreAIRiderCollisions();
         state = IntroState.Complete;
         isPlaying = false;
         introRoutine = null;
         InvokeCompletionOnce();
+    }
+
+    private void IsolateAIRiderCollisions()
+    {
+        RestoreAIRiderCollisions();
+
+        aiHorseCollisionLayer = LayerMask.NameToLayer("AIHorse");
+        if (aiHorseCollisionLayer < 0)
+        {
+            Debug.LogWarning(
+                $"[{nameof(KopkariIntroFlowController)}] AIHorse layer was not found; intro AI collision isolation is disabled.",
+                this);
+            return;
+        }
+
+        originalAIHorseSelfCollisionIgnored = Physics.GetIgnoreLayerCollision(
+            aiHorseCollisionLayer,
+            aiHorseCollisionLayer);
+        Physics.IgnoreLayerCollision(aiHorseCollisionLayer, aiHorseCollisionLayer, true);
+
+        for (int riderIndex = 0; riderIndex < riders.Count; riderIndex++)
+        {
+            AIKopkariRider rider = riders[riderIndex];
+            if (rider == null)
+                continue;
+
+            Collider[] colliders = rider.GetComponentsInChildren<Collider>(true);
+            for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
+            {
+                Collider target = colliders[colliderIndex];
+                if (target == null ||
+                    !target.enabled ||
+                    !target.gameObject.activeInHierarchy ||
+                    target.isTrigger)
+                    continue;
+
+                GameObject colliderObject = target.gameObject;
+                if (!aiColliderOriginalLayers.ContainsKey(colliderObject))
+                    aiColliderOriginalLayers.Add(colliderObject, colliderObject.layer);
+
+                colliderObject.layer = aiHorseCollisionLayer;
+            }
+        }
+
+        aiCollisionIsolationActive = true;
+    }
+
+    private void RestoreAIRiderCollisions()
+    {
+        if (!aiCollisionIsolationActive)
+            return;
+
+        foreach (KeyValuePair<GameObject, int> entry in aiColliderOriginalLayers)
+        {
+            if (entry.Key != null)
+                entry.Key.layer = entry.Value;
+        }
+        aiColliderOriginalLayers.Clear();
+
+        if (aiHorseCollisionLayer >= 0)
+        {
+            Physics.IgnoreLayerCollision(
+                aiHorseCollisionLayer,
+                aiHorseCollisionLayer,
+                originalAIHorseSelfCollisionIgnored);
+        }
+
+        aiHorseCollisionLayer = -1;
+        aiCollisionIsolationActive = false;
     }
 
     private void StartLocalPlayerPresentation()
