@@ -191,8 +191,6 @@ public class RacingController : MonoBehaviour
         UILookBackButton.OnCameraPressedState += CameraBackState;
         FoodInfo.OnFoodAddToHorse += AddFoods;
 
-        //StartSound();
-
     }
     private void OnDestroy()
     {
@@ -283,14 +281,6 @@ public class RacingController : MonoBehaviour
     {
         DisableNavmesh();
         //StopAlwaysForward();
-    }
-    private async void StartSound()
-    {
-        var clip  = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.RacingSound);
-        if (clip != null)
-        {
-            SoundManager.Instance.PlayRoom(clip);
-        }
     }
     #endregion
 
@@ -552,7 +542,7 @@ public class RacingController : MonoBehaviour
         if (winningPanelBG != null)
             winningPanelBG.SetActive(true);
 
-        SoundManager.Instance.StopRoomSmooth();
+        SoundManager.Instance?.StopRoomSmooth(force: true);
     }
 
     private void MoveCameraToStartFinalPose()

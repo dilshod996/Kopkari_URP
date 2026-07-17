@@ -51,3 +51,18 @@ public class RiderRaceStats
     public int roundNyufiyPrize;
     public int roundComboPrize;
 }
+
+[Serializable]
+public class KopkariMatchRewardSummary
+{
+    public int playerRank;
+    public int rankNyufiy;
+    public int roundNyufiy;
+    public int comboNyufiy;
+    public int pickupBonus;
+    public int totalNyufiy;
+    public int rankCoin;
+    public int roundCoin;
+    public int totalCoin;
+    public int xp;
+}

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
+using MalbersAnimations;
+using MalbersAnimations.Controller;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -40,10 +43,8 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private TMP_Text webSnareCounter;
     #endregion
 
-    #region Effects / Sprint/ Hit / Walk
+    #region Effects / Sprint
     [SerializeField] private Image sprintImg;
-    [SerializeField] private Image slowImg;
-    [SerializeField] private Image shockImg;
 
     #endregion
     #region Inspector - Sprint Timings
@@ -57,11 +58,10 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private Slider sprintSlider;
     #endregion
     #region Inspector - Others
-    [Header("Hit Count Slider")]
-    public Slider hitCountSlider;
-
     [Header("Pages")]
     [SerializeField] private KopkariResultUI resultPage;
+    [SerializeField] private GameObject pickupButton;
+    [SerializeField] private UIGetLamp pickupProgress;
     [SerializeField] private KopkariRoundChangePopup kopkariRoundChangeUI;
     [SerializeField] private ComboPrize comboPrizeUI;
     [SerializeField] private UIPauseGame pauseMenu;
@@ -77,25 +77,29 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private LeanTweenType easeOut = LeanTweenType.easeInOutQuad;
 
     public bool WeaponInHand;
-    public Sprite obstacleHitSprite;
     #endregion
 
     [Header("Top Slider && BottomUI")]
     [SerializeField] private RectTransform bottomUI;
-    [SerializeField] private Slider topUloqSlider;
     [SerializeField] private GameObject matchStatusBackground;
     [SerializeField] private TMP_Text mainTimeText;
     [SerializeField] private TMP_Text roundProgressText;
-    [SerializeField] private GameObject[] pointTexts; // 0..4
-    [SerializeField] private GameObject[] pointFlags; // 0..4
+    [Header("Horse Health")]
+    [SerializeField] private Slider horseHealthSlider;
+    [SerializeField] private TMP_Text horseHealthAmountText;
+    [SerializeField] private string horseHealthStatName = "Health";
+    [Header("Carrier Grip")]
+    [SerializeField] private GameObject carrierInfoBackground;
+    [SerializeField] private TMP_Text carrierGripAmountText;
+    [SerializeField] private Slider carrierGripSlider;
+    [SerializeField] private TMP_Text carrierNameText;
+    [Header("Local Grip Feedback")]
+    [SerializeField, Min(0.01f)] private float gripLossPunchScale = 0.06f;
+    [SerializeField, Min(0.05f)] private float gripLossPunchDuration = 0.2f;
+    private Tween carrierGripFeedbackTween;
+    private Vector3 carrierInfoBaseScale = Vector3.one;
+    private bool keepDropFeedbackVisible;
 
-    private int sliderCount = 0;
-
-    #region Projectiles
-    [Header("Projectiles")]
-    [SerializeField] private TMP_Text uloqPushCounterText;
-
-    #endregion
 
     #region Show and Hide UI Animation Data
 
@@ -111,10 +115,6 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private GameObject mobileCanvas;
     [SerializeField] private GameObject roomCanvas;
     #endregion[Header("Game Canvases")]
-
-    #region Lamp Show Ui
-    [SerializeField] private GoatDistanceUI goalDistanceUI;
-    #endregion
 
     #region Events (DO NOT REMOVE)
     public static Action OnSprintStart;   // ✅ QAYTDI
@@ -135,6 +135,7 @@ public class KopkariMainUI : MonoBehaviour
     private bool canSprint = true;
     private bool isPointerHeld;
     private bool autoSprintBoostActive;
+    private bool webSnareShotActive;
 
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
@@ -144,8 +145,8 @@ public class KopkariMainUI : MonoBehaviour
     private Coroutine canvasRoutine;
     private Coroutine moveBottomRoutine;
     private bool loadingCompleted;
-
-    public Sprite tiggerFlag;
+    private BoostersContainer boundBoosters;
+    private MalbersAnimations.Stat boundHorseHealth;
     #region Awake/Start/OnEnable/OnDisable
     private void Awake()
     {
@@ -158,9 +159,14 @@ public class KopkariMainUI : MonoBehaviour
 
         kopkariRoundChangeUI?.HideAll();
         comboPrizeUI?.Hide();
+        if (carrierInfoBackground != null)
+            carrierInfoBaseScale = carrierInfoBackground.transform.localScale;
+        HideCarrierGrip();
+        UpdateCarrierGrip(100f, 100f);
         SetMatchStatusVisible(false);
         UpdateMainTime(0f);
         UpdateRoundProgress(0, 0);
+        UpdateHorseHealthUI(1f, 1f);
     }
     private void OnEnable()
     {
@@ -169,6 +175,9 @@ public class KopkariMainUI : MonoBehaviour
             CompleteLoadingPanel();
 
         KopkariManager.OnGameStartFinishState += CanvasEnable;
+        KopkariManager.OnGoatOwnerChanged += HandleCarrierOwnerChanged;
+        AIKopkariRider.OnCarrierGripChanged += HandleAICarrierGripChanged;
+        PlayerDataManager.OnRiderAndHorse += BindHorseHealth;
         OnBindRequested += Bind;
         Booster.OnSprintFull += HandleSprintFull;
 
@@ -187,17 +196,25 @@ public class KopkariMainUI : MonoBehaviour
        // RacingController.OnRacingFinished += ShowResultPage;
         //KopkariManager.OnGameStarted += GetData;
 
-        BoostersContainer.OnDefendState += SetDefendState;
+        BoostersContainer.OnDefendState += HandleDefendStateChanged;
         BoostersContainer.OnWalkZoneDamaged += EnableSprint;
         BoostersContainer.OnWebSnareDamaged += EnableSprint;
         BoostersContainer.OnObstacleDamage += OnObstacleDamageHandler;
         KopkariManager.OnMainGameStarted += MoveUP;
-        KopkariManager.OnGoatPicked += ShowMeters;
-        TargetReachEvent.OnRoundEnded += DisableMeters;
-        pushButton.onClick.AddListener(PushEffectStart);
-        pauseButton.onClick.AddListener(PauseMenu);
+        if (pushButton != null)
+            pushButton.onClick.AddListener(PushEffectStart);
+        if (pauseButton != null)
+            pauseButton.onClick.AddListener(PauseMenu);
 
         KopkariManager.OnTimeFinished += GameOverShow;
+
+        if (KopkariManager.Instance != null)
+        {
+            HandleCarrierOwnerChanged(KopkariManager.Instance.currentGoatOwner);
+            BindHorseHealth(KopkariManager.Instance.horseAnimal, KopkariManager.Instance.LocalRiderAnimal);
+        }
+
+        RestoreSprintRefillAfterEnable();
     }
 
     private void OnDisable()
@@ -205,6 +222,10 @@ public class KopkariMainUI : MonoBehaviour
         KopkariManager.OnSceneReady -= CompleteLoadingPanel;
 
         KopkariManager.OnGameStartFinishState -= CanvasEnable;
+        KopkariManager.OnGoatOwnerChanged -= HandleCarrierOwnerChanged;
+        AIKopkariRider.OnCarrierGripChanged -= HandleAICarrierGripChanged;
+        PlayerDataManager.OnRiderAndHorse -= BindHorseHealth;
+        UnbindHorseHealth();
         OnBindRequested -= Bind;
 
         Booster.OnSprintFull -= HandleSprintFull;
@@ -224,16 +245,24 @@ public class KopkariMainUI : MonoBehaviour
         //KopkariManager.OnRacingFinished -= ShowResultPage;
         //RacingController.OnRacingStarted -= GetData;
         KopkariManager.OnTimeFinished -= GameOverShow;
-        BoostersContainer.OnDefendState -= SetDefendState;
+        BoostersContainer.OnDefendState -= HandleDefendStateChanged;
         BoostersContainer.OnWalkZoneDamaged -= EnableSprint;
         BoostersContainer.OnWebSnareDamaged -= EnableSprint;
         BoostersContainer.OnObstacleDamage -= OnObstacleDamageHandler;
         KopkariManager.OnMainGameStarted -= MoveUP;
-        TargetReachEvent.OnRoundEnded -= DisableMeters;
-        KopkariManager.OnGoatPicked -= ShowMeters;
-        pushButton.onClick.RemoveListener(PushEffectStart);
-        pauseButton.onClick.RemoveListener(PauseMenu);
-        isPointerHeld = false;
+        if (pushButton != null)
+            pushButton.onClick.RemoveListener(PushEffectStart);
+        if (pauseButton != null)
+            pauseButton.onClick.RemoveListener(PauseMenu);
+        if (walkZoneBtn != null)
+            walkZoneBtn.onClick.RemoveListener(HandleWalkZoneClicked);
+        if (defendBtn != null)
+            defendBtn.onClick.RemoveListener(HandleDefendClicked);
+        ReleaseSprintForUIInterruption();
+        StopCarrierGripFeedback();
+        StopAllCoroutines();
+        canvasRoutine = null;
+        moveBottomRoutine = null;
         autoSprintBoostActive = false;
     }
     #endregion
@@ -241,61 +270,190 @@ public class KopkariMainUI : MonoBehaviour
     #region Text Updates
     public void UpdateDefendText(int count)
     {
-        defendCountText.text = count.ToString();
-        SaveItem(Constants.PlayerItems.Defense, count);
+        if (defendCountText != null)
+            defendCountText.text = count.ToString();
         SetDefendState(count > 0);
     }
 
     public void UpdateWalkZoneText(int count)
     {
-        walkZoneCountText.text = count.ToString();
-        SaveItem(Constants.PlayerItems.SlowDown, count);
+        if (walkZoneCountText != null)
+            walkZoneCountText.text = count.ToString();
         SetWalkZoneState(count > 0);
     }
 
     public void UpdateHitText(int count)
     {
-        hitCountText.text = count.ToString();
-        SaveItem(Constants.PlayerItems.Whip, count);
+        if (hitCountText != null)
+            hitCountText.text = count.ToString();
         SetHitState(count > 0);
     }
 
     public void UpdateWebCount(int count)
     {
-        webSnareCounter.text = count.ToString();
-        SaveItem(Constants.PlayerItems.WebSnare, count);
+        if (webSnareCounter != null)
+            webSnareCounter.text = count.ToString();
         SetWebState(count > 0);
+    }
+
+    private void BindHorseHealth(MAnimal horse, MAnimal rider)
+    {
+        UnbindHorseHealth();
+        if (horse == null)
+            return;
+
+        MalbersAnimations.Stats stats = horse.GetComponent<MalbersAnimations.Stats>();
+        if (stats == null)
+            stats = horse.GetComponentInParent<MalbersAnimations.Stats>();
+        if (stats == null)
+            stats = horse.GetComponentInChildren<MalbersAnimations.Stats>(true);
+
+        boundHorseHealth = stats != null ? stats.Stat_Get(horseHealthStatName) : null;
+
+        // Some horse prefabs keep Stats beside the damage receiver instead of
+        // on the MAnimal object. Follow that exact receiver reference as a fallback.
+        if (boundHorseHealth == null)
+        {
+            MDamageable[] damageables = horse.GetComponentsInChildren<MDamageable>(true);
+            for (int i = 0; i < damageables.Length; i++)
+            {
+                MalbersAnimations.Stats damageStats = damageables[i] != null ? damageables[i].stats : null;
+                MalbersAnimations.Stat health = damageStats != null
+                    ? damageStats.Stat_Get(horseHealthStatName)
+                    : null;
+                if (health == null)
+                    continue;
+
+                boundHorseHealth = health;
+                break;
+            }
+        }
+
+        if (boundHorseHealth == null)
+        {
+            Debug.LogWarning($"[{nameof(KopkariMainUI)}] The local horse has no '{horseHealthStatName}' Malbers stat.", horse);
+            return;
+        }
+
+        boundHorseHealth.OnValueChange.AddListener(HandleHorseHealthChanged);
+        boundHorseHealth.OnMaxValueChange.AddListener(HandleHorseHealthMaxChanged);
+        RefreshHorseHealthUI();
+    }
+
+    private void UnbindHorseHealth()
+    {
+        if (boundHorseHealth == null)
+            return;
+
+        boundHorseHealth.OnValueChange.RemoveListener(HandleHorseHealthChanged);
+        boundHorseHealth.OnMaxValueChange.RemoveListener(HandleHorseHealthMaxChanged);
+        boundHorseHealth = null;
+    }
+
+    private void HandleHorseHealthChanged(float value)
+    {
+        RefreshHorseHealthUI();
+    }
+
+    private void HandleHorseHealthMaxChanged(float value)
+    {
+        RefreshHorseHealthUI();
+    }
+
+    private void RefreshHorseHealthUI()
+    {
+        if (boundHorseHealth == null)
+            return;
+
+        UpdateHorseHealthUI(boundHorseHealth.Value, boundHorseHealth.MaxValue);
+    }
+
+    private void UpdateHorseHealthUI(float current, float maximum)
+    {
+        float safeMaximum = Mathf.Max(0.0001f, maximum);
+        float safeCurrent = Mathf.Clamp(current, 0f, safeMaximum);
+
+        if (horseHealthSlider != null)
+        {
+            horseHealthSlider.minValue = 0f;
+            horseHealthSlider.maxValue = safeMaximum;
+            horseHealthSlider.SetValueWithoutNotify(safeCurrent);
+        }
+
+        if (horseHealthAmountText != null)
+            horseHealthAmountText.text = $"{Mathf.CeilToInt(safeCurrent)} / {Mathf.CeilToInt(safeMaximum)}";
     }
     #endregion
 
     #region Button State Updates
     public void SetSprintState(bool state)
     {
-        // canSprint — umumiy ruxsat (page/scene)
         canSprint = state;
+        RefreshSprintButtonState();
+    }
 
-        // ✅ “toki slider to‘lmaguncha bosilmasin”
-        bool sliderFull = (sprintSlider == null) || (sprintSlider.value >= 0.001f);
-
-        // ✅ debuff bo‘lsa ham bosilmasin
+    private void RefreshSprintButtonState()
+    {
+        bool hasEnergy = sprintSlider == null || sprintSlider.value >= 0.001f;
         bool interactable =
             canSprint &&
             !autoSprintBoostActive &&
             !isDamaged &&
-            !isPressing &&
-            sliderFull &&
+            hasEnergy &&
             CanSprintNow();
 
         if (sprintBtn != null)
             sprintBtn.interactable = interactable;
-
     }
 
-    public void SetJumpState(bool state) => jumpBtn.interactable = state;
-    public void SetDefendState(bool state) => defendBtn.interactable = state;
-    public void SetWalkZoneState(bool state) => walkZoneBtn.interactable = state;
-    public void SetHitState(bool state) => hitBtn.interactable = state;
-    public void SetWebState(bool state) => shootWebBtn.interactable = state;
+    private void RestoreSprintRefillAfterEnable()
+    {
+        if (sprintSlider == null || sprintSlider.value >= 1f || isDamaged || autoSprintBoostActive)
+        {
+            RefreshSprintButtonState();
+            return;
+        }
+
+        // Coroutines are stopped when this GameObject is disabled. If the UI is
+        // enabled with partially depleted energy, restart the refill that was lost.
+        SetSprintState(false);
+        StopIfRunning(ref refillRoutine);
+        refillRoutine = StartCoroutine(RefillDelayedCoroutine());
+    }
+
+    public void SetJumpState(bool state)
+    {
+        if (jumpBtn != null)
+            jumpBtn.interactable = state;
+    }
+    public void SetDefendState(bool state)
+    {
+        if (!state)
+        {
+            if (defendBtn != null)
+                defendBtn.interactable = false;
+            return;
+        }
+
+        RefreshDefendButtonState();
+    }
+    public void SetWalkZoneState(bool state)
+    {
+        if (walkZoneBtn != null)
+            walkZoneBtn.interactable = state;
+    }
+
+    public void SetHitState(bool state)
+    {
+        if (hitBtn != null)
+            hitBtn.interactable = state;
+    }
+
+    public void SetWebState(bool state)
+    {
+        if (shootWebBtn != null)
+            shootWebBtn.interactable = state;
+    }
     #endregion
 
     #region Data (Inventory)
@@ -325,81 +483,111 @@ public class KopkariMainUI : MonoBehaviour
         return PlayerPrefs.GetInt(itemKey, 0);
     }
 
-    private void SaveItem(string itemKey, int value)
-    {
-        if (DataManager.Instance != null)
-        {
-            DataManager.Instance.SetItemAmountFromGame(itemKey, value, false);
-            return;
-        }
-
-        PlayerPrefs.SetInt(itemKey, value);
-        PlayerPrefs.Save();
-    }
     #endregion
 
     #region Bind Player BoostersContainer
     public void Bind(BoostersContainer boosters)
     {
-        if (walkZoneBtn)
+        if (boosters == null || boosters.isNpc)
+            return;
+
+        boundBoosters = boosters;
+
+        if (walkZoneBtn != null)
         {
-            walkZoneBtn.onClick.RemoveAllListeners();
-            walkZoneBtn.onClick.AddListener(() =>
-            {
-                if (boosters != null && !boosters.isNpc)
-                    boosters.DropWalkTrap();
-            });
+            walkZoneBtn.onClick.RemoveListener(HandleWalkZoneClicked);
+            walkZoneBtn.onClick.AddListener(HandleWalkZoneClicked);
         }
 
-        if (defendBtn)
+        if (defendBtn != null)
         {
-            defendBtn.onClick.RemoveAllListeners();
-            defendBtn.onClick.AddListener(() =>
-            {
-                if (boosters != null && !boosters.isNpc)
-                {
-                    boosters.DefendPlayer();
-                }
-            });
+            defendBtn.onClick.RemoveListener(HandleDefendClicked);
+            defendBtn.onClick.AddListener(HandleDefendClicked);
         }
-    }
-    #endregion
 
-    #region UI Effects (minimal)
-    public void PlayShock()
-    {
-        if (!shockImg) return;
-        if (hitCountSlider != null) hitCountSlider.value--;
+        RefreshDefendButtonState();
     }
 
-    public void SprintEffect(bool value)
+    private void HandleWalkZoneClicked() => boundBoosters?.DropWalkTrap();
+
+    private void HandleDefendClicked()
     {
-        if (sprintImg != null) sprintImg.gameObject.SetActive(value);
-        if (value && slowImg != null) slowImg.gameObject.SetActive(false);
+        if (boundBoosters == null || IsBoundDefendRunning())
+            return;
+
+        SetDefendState(false);
+        boundBoosters.DefendPlayer();
+    }
+
+    private void HandleDefendStateChanged(bool available)
+    {
+        if (!available)
+        {
+            SetDefendState(false);
+            return;
+        }
+
+        RefreshDefendButtonState();
+    }
+
+    private void RefreshDefendButtonState(int? countOverride = null)
+    {
+        if (defendBtn == null)
+            return;
+
+        int count = countOverride ?? GetItemAmount(Constants.PlayerItems.Defense);
+        defendBtn.interactable = count > 0 && !IsBoundDefendRunning();
+    }
+
+    private bool IsBoundDefendRunning()
+    {
+        return boundBoosters != null &&
+               (boundBoosters.isDefend ||
+                (boundBoosters.defendQobiq != null && boundBoosters.defendQobiq.activeSelf));
     }
     #endregion
 
     #region UI Pages (Show/Hide)
-    public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
-    public void HideUI(MonoBehaviour ui) => HideUI(ui.gameObject);
+    public void ShowUI(MonoBehaviour ui)
+    {
+        if (ui != null)
+            ShowUI(ui.gameObject);
+    }
+
+    public void HideUI(MonoBehaviour ui)
+    {
+        if (ui != null)
+            HideUI(ui.gameObject);
+    }
 
     public void ShowUI(GameObject page)
     {
         if (!page) return;
 
+        ReleaseSprintForUIInterruption();
+
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
         page.SetActive(true);
-        rt.localScale = Vector3.one * startScale;
-        cg.alpha = 0f;
+        if (rt == null)
+            return;
 
-        LeanTween.alphaCanvas(cg, 1f, fadeTime);
+        rt.localScale = Vector3.one * startScale;
+        if (cg != null)
+        {
+            cg.alpha = 0f;
+            LeanTween.alphaCanvas(cg, 1f, fadeTime).setIgnoreTimeScale(true);
+        }
+
         LeanTween.scale(rt, Vector3.one * punchScale, animTime)
+            .setIgnoreTimeScale(true)
             .setEase(easeIn)
             .setOnComplete(() =>
             {
-                LeanTween.scale(rt, Vector3.one, animTime * 0.7f).setEase(easeOut);
+                LeanTween.scale(rt, Vector3.one, animTime * 0.7f)
+                    .setIgnoreTimeScale(true)
+                    .setEase(easeOut);
             });
     }
 
@@ -410,8 +598,16 @@ public class KopkariMainUI : MonoBehaviour
         RectTransform rt = page.GetComponent<RectTransform>();
         CanvasGroup cg = page.GetComponent<CanvasGroup>();
 
-        LeanTween.alphaCanvas(cg, 0f, fadeTime);
+        if (rt == null)
+        {
+            page.SetActive(false);
+            return;
+        }
+
+        if (cg != null)
+            LeanTween.alphaCanvas(cg, 0f, fadeTime).setIgnoreTimeScale(true);
         LeanTween.scale(rt, Vector3.one * startScale, animTime)
+            .setIgnoreTimeScale(true)
             .setEase(easeOut)
             .setOnComplete(() => page.SetActive(false));
     }
@@ -433,7 +629,7 @@ public class KopkariMainUI : MonoBehaviour
         }
 
         Debug.Log("Pressed");
-        if (isDamaged || isPressing || sprintSlider.value <= 0.0001f)
+        if (isDamaged || isPressing || (sprintSlider != null && sprintSlider.value <= 0.0001f))
         {
             HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
             return;
@@ -455,8 +651,7 @@ public class KopkariMainUI : MonoBehaviour
 
         drainRoutine = StartCoroutine(DrainCoroutine());
 
-        // tugma holatini yangila
-        SetSprintState(canSprint);
+        RefreshSprintButtonState();
     }
 
     private void HandlePointerUp()
@@ -491,10 +686,7 @@ public class KopkariMainUI : MonoBehaviour
                 sprintSlider.value = 0f;
                 HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
 
-                // ✅ tugadi: release + refill boshlansin (bosilganda qaytmasin)
                 ForceReleaseSprint(startRefill: true);
-
-                // refill davomida bosilmasin
                 SetSprintState(false);
                 yield break;
             }
@@ -520,27 +712,24 @@ public class KopkariMainUI : MonoBehaviour
             refillRoutine = StartCoroutine(RefillDelayedCoroutine());
         }
 
-        // holatni qayta hisobla
-        SetSprintState(canSprint);
+        RefreshSprintButtonState();
     }
 
     private IEnumerator RefillDelayedCoroutine()
     {
         yield return new WaitForSecondsRealtime(refillDelay);
 
-        // refill jarayonida bosilmasin
         SetSprintState(false);
 
         while (!isPressing && sprintSlider != null && sprintSlider.value < 1f)
         {
-            sprintSlider.value = Mathf.Min(1f, sprintSlider.value + refillRate * Time.unscaledDeltaTime);
+            sprintSlider.value = Mathf.Min(1f, sprintSlider.value + refillRate * Time.deltaTime);
             yield return null;
         }
 
         if (sprintSlider != null)
             sprintSlider.value = Mathf.Clamp01(sprintSlider.value);
 
-        // ✅ to‘lgandan keyin (debuff yo‘q bo‘lsa) sprint qaytadi
         if (!isDamaged)
         {
             SetSprintState(true);
@@ -560,7 +749,6 @@ public class KopkariMainUI : MonoBehaviour
         if (sprintSlider != null)
             sprintSlider.value = 1f;
 
-        // full bo‘lganda tugma qaytsin (agar debuff bo‘lmasa)
         SetSprintState(true);
 
         // agar user bosib turgan bo‘lsa drain davom etadi
@@ -588,8 +776,7 @@ public class KopkariMainUI : MonoBehaviour
         if (debuffOn && sprintImg != null && sprintImg.gameObject.activeSelf)
             sprintImg.gameObject.SetActive(false);
 
-        // ✅ debuff ON paytida sprint bosilmasin, OFF bo‘lsa slider holatiga qarab qaytsin
-        SetSprintState(!debuffOn);
+        RefreshSprintButtonState();
     }
     #endregion
 
@@ -609,12 +796,14 @@ public class KopkariMainUI : MonoBehaviour
         {
             // Darhol yoqiladi
             SetMobileCanvasVisible(true);
-            roomCanvas.SetActive(true);
+            if (roomCanvas != null)
+                roomCanvas.SetActive(true);
             SetMatchStatusVisible(true);
             Debug.Log("Yoq");
         }
         else
         {
+            ReleaseSprintForUIInterruption();
             SetMobileCanvasVisible(false);
             SetMatchStatusVisible(false);
             // 2 sekunddan keyin o'chadi
@@ -628,8 +817,10 @@ public class KopkariMainUI : MonoBehaviour
         MoveDown();
         yield return new WaitForSeconds(2f);
         Debug.Log("Uchir");
-        mobileCanvas.SetActive(false);
-        roomCanvas.SetActive(false);
+        if (mobileCanvas != null)
+            mobileCanvas.SetActive(false);
+        if (roomCanvas != null)
+            roomCanvas.SetActive(false);
 
         canvasRoutine = null;
     }
@@ -681,9 +872,15 @@ public class KopkariMainUI : MonoBehaviour
 
     public void ShowRoundChange()
     {
+        ShowRoundChange(null);
+    }
+
+    public void ShowRoundChange(string details)
+    {
+        ReleaseSprintForUIInterruption();
         bool canStartNextRound = KopkariManager.Instance != null &&
                                  KopkariManager.Instance.HasPreparedNextRound;
-        kopkariRoundChangeUI?.ShowRoundChange(canStartNextRound);
+        kopkariRoundChangeUI?.ShowRoundChange(canStartNextRound, details);
     }
 
     public void HideRoundChange()
@@ -693,6 +890,7 @@ public class KopkariMainUI : MonoBehaviour
 
     public void ShowRoundWarmupCountdown(int seconds)
     {
+        ReleaseSprintForUIInterruption();
         kopkariRoundChangeUI?.ShowWarmupCountdown(seconds);
     }
 
@@ -703,8 +901,10 @@ public class KopkariMainUI : MonoBehaviour
 
     public void ShowResult()
     {
+        HidePickupForRoundTransition();
         kopkariRoundChangeUI?.HideAll();
         HideCombo();
+        HideCarrierGrip();
         if (KopkariManager.Instance != null)
             KopkariManager.Instance.FinishMatch();
         else
@@ -718,6 +918,13 @@ public class KopkariMainUI : MonoBehaviour
         ShowUI(resultPage);
         if (wasAlreadyActive)
             resultPage.RefreshFromResults();
+    }
+
+    public void HidePickupForRoundTransition()
+    {
+        pickupProgress?.CancelImmediately();
+        if (pickupButton != null)
+            pickupButton.SetActive(false);
     }
 
     public void UpdateMainTime(float remainingTime)
@@ -771,6 +978,132 @@ public class KopkariMainUI : MonoBehaviour
     {
         return comboPrizeUI != null && comboPrizeUI.TryComplete();
     }
+
+    public void ShowCarrierGrip(float currentGrip, float maximumGrip)
+    {
+        if (keepDropFeedbackVisible)
+            StopCarrierGripFeedback();
+        UpdateCarrierGrip(currentGrip, maximumGrip);
+        if (carrierInfoBackground != null)
+            carrierInfoBackground.SetActive(true);
+    }
+
+    public void UpdateCarrierGrip(float currentGrip, float maximumGrip)
+    {
+        float maximum = Mathf.Max(1f, maximumGrip);
+        float normalizedGrip = Mathf.Clamp01(currentGrip / maximum);
+
+        if (carrierGripAmountText != null)
+            carrierGripAmountText.text = $"{Mathf.CeilToInt(normalizedGrip * 100f)}%";
+
+        if (carrierGripSlider != null)
+        {
+            carrierGripSlider.minValue = 0f;
+            carrierGripSlider.maxValue = 1f;
+            carrierGripSlider.value = normalizedGrip;
+        }
+    }
+
+    public void PlayLocalCarrierGripLossFeedback(bool dropped)
+    {
+        if (carrierInfoBackground != null)
+        {
+            Transform target = carrierInfoBackground.transform;
+            StopCarrierGripFeedback();
+            target.localScale = carrierInfoBaseScale;
+            float strength = dropped ? gripLossPunchScale * 1.35f : gripLossPunchScale;
+            float duration = dropped ? gripLossPunchDuration * 1.2f : gripLossPunchDuration;
+            carrierGripFeedbackTween = target
+                .DOPunchScale(Vector3.one * strength, duration, dropped ? 8 : 5, 0.65f)
+                .SetEase(Ease.OutQuad)
+                .SetLink(carrierInfoBackground, LinkBehaviour.KillOnDisable);
+            keepDropFeedbackVisible = dropped;
+        }
+
+        HomeHapticsManager.Instance?.Play(
+            dropped ? HomeHapticId.CarrierGripDrop : HomeHapticId.CarrierGripLoss);
+    }
+
+    private void StopCarrierGripFeedback()
+    {
+        if (carrierGripFeedbackTween != null && carrierGripFeedbackTween.IsActive())
+            carrierGripFeedbackTween.Kill(false);
+        carrierGripFeedbackTween = null;
+        keepDropFeedbackVisible = false;
+
+        if (carrierInfoBackground != null)
+            carrierInfoBackground.transform.localScale = carrierInfoBaseScale;
+    }
+
+    public void HideCarrierGrip()
+    {
+        if (keepDropFeedbackVisible && carrierGripFeedbackTween != null &&
+            carrierGripFeedbackTween.IsActive() && carrierInfoBackground != null)
+        {
+            carrierGripFeedbackTween.OnComplete(() =>
+            {
+                carrierGripFeedbackTween = null;
+                keepDropFeedbackVisible = false;
+                carrierInfoBackground.transform.localScale = carrierInfoBaseScale;
+                carrierInfoBackground.SetActive(false);
+            });
+            return;
+        }
+
+        StopCarrierGripFeedback();
+        if (carrierInfoBackground != null)
+            carrierInfoBackground.SetActive(false);
+    }
+
+    private void HandleCarrierOwnerChanged(GameObject ownerRoot)
+    {
+        if (ownerRoot == null)
+        {
+            HideCarrierGrip();
+            return;
+        }
+
+        KopkariManager manager = KopkariManager.Instance;
+        if (manager != null && manager.IsLocalRiderTransform(ownerRoot.transform))
+        {
+            string playerName = PlayerPrefs.GetString(Constants.Player.UsernameKey, "You");
+            ShowCarrierName(string.IsNullOrWhiteSpace(playerName) ? "You" : playerName);
+            return;
+        }
+
+        AIKopkariRider rider = ownerRoot.GetComponentInChildren<AIKopkariRider>(true);
+        if (rider == null)
+            rider = ownerRoot.GetComponentInParent<AIKopkariRider>();
+        if (rider == null)
+        {
+            HideCarrierGrip();
+            return;
+        }
+
+        ShowCarrierName(string.IsNullOrWhiteSpace(rider.RiderName) ? "Rider" : rider.RiderName);
+        ShowCarrierGrip(rider.CurrentGrip, rider.MaximumGrip);
+    }
+
+    private void HandleAICarrierGripChanged(AIKopkariRider rider, float currentGrip, float maximumGrip)
+    {
+        KopkariManager manager = KopkariManager.Instance;
+        if (rider == null || manager == null || manager.currentGoatOwner == null ||
+            manager.currentGoatOwner != rider.transform.root.gameObject)
+        {
+            return;
+        }
+
+        ShowCarrierName(string.IsNullOrWhiteSpace(rider.RiderName) ? "Rider" : rider.RiderName);
+        ShowCarrierGrip(currentGrip, maximumGrip);
+    }
+
+    private void ShowCarrierName(string carrierName)
+    {
+        if (carrierNameText != null)
+            carrierNameText.text = carrierName;
+        if (carrierInfoBackground != null)
+            carrierInfoBackground.SetActive(true);
+    }
     #endregion
 
     #region Chain
@@ -778,17 +1111,19 @@ public class KopkariMainUI : MonoBehaviour
 
     public void OnWebSnoreButtonDown(BaseEventData data)
     {
-        bool success = false;
+        bool success = TrySpendItem(Constants.PlayerItems.WebSnare, 1);
 
-        if (DataManager.Instance != null)
-            success = DataManager.Instance.SpendItem(Constants.PlayerItems.WebSnare, 1, false);
+        if (!success)
+        {
+            UpdateWebCount(GetItemAmount(Constants.PlayerItems.WebSnare));
+            HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
+            return;
+        }
 
         int countSnare = GetItemAmount(Constants.PlayerItems.WebSnare);
 
-        if (!success)
-            countSnare = 0;
-
         UpdateWebCount(countSnare);
+        webSnareShotActive = true;
         OnWebSnareStart?.Invoke();
         StartCoroutine(OnShootCooling(countSnare));
     }
@@ -802,7 +1137,33 @@ public class KopkariMainUI : MonoBehaviour
         else chainContainerBtn.interactable = true;
     }
 
-    public void OnWebSnoreButtonUp(BaseEventData data) => OnWebSnareFinish?.Invoke();
+    public void OnWebSnoreButtonUp(BaseEventData data)
+    {
+        FinishActiveWebSnare();
+    }
+
+    private void FinishActiveWebSnare()
+    {
+        if (!webSnareShotActive)
+            return;
+
+        webSnareShotActive = false;
+        OnWebSnareFinish?.Invoke();
+    }
+
+    private bool TrySpendItem(string itemKey, int amount)
+    {
+        if (DataManager.Instance != null)
+            return DataManager.Instance.SpendItem(itemKey, amount, false);
+
+        int current = PlayerPrefs.GetInt(itemKey, 0);
+        if (amount <= 0 || current < amount)
+            return false;
+
+        PlayerPrefs.SetInt(itemKey, current - amount);
+        PlayerPrefs.Save();
+        return true;
+    }
 
     public void OnClickChain()
     {
@@ -822,7 +1183,7 @@ public class KopkariMainUI : MonoBehaviour
     }
     #endregion
 
-    #region Bottom Ui && Top Slider uloq
+    #region Bottom UI
     public void PlayerDataRegister()
     {
         KopkariResultsManager resultsManager = KopkariResultsManager.Instance;
@@ -838,7 +1199,6 @@ public class KopkariMainUI : MonoBehaviour
     public void MoveUP()
     {
         MoveBottomUI(28, 1f);
-        ShowMeters(false);
         PlayerDataRegister();
         int roundNumber = KopkariManager.Instance != null
             ? KopkariManager.Instance.CurrentRoundNumber
@@ -851,6 +1211,9 @@ public class KopkariMainUI : MonoBehaviour
     }
     public void MoveBottomUI(float targetY, float duration)
     {
+        if (bottomUI == null)
+            return;
+
         if (moveBottomRoutine != null)
         {
             StopCoroutine(moveBottomRoutine);
@@ -877,71 +1240,12 @@ public class KopkariMainUI : MonoBehaviour
         bottomUI.anchoredPosition = endPos;
         moveBottomRoutine = null;
     }
-
-
-    public void UpdateSlider()
-    {
-        sliderCount++;
-        sliderCount = Mathf.Clamp(sliderCount, 0, 4);
-
-        topUloqSlider.value = sliderCount;
-        BoosterUIAnimator.RaiseBoosterPicked(
-            Booster.BoosterType.TriggerPoint,
-            tiggerFlag // icon sprite
-        );
-        UpdateFlag(sliderCount);
-    }
-
-    private void UpdateFlag(int pointNumber) // 1..4 keladi
-    {
-        int idx = pointNumber - 1; // 0..3 ga map
-
-        for (int i = 0; i < pointTexts.Length; i++)
-        {
-            // ✅ Flaglar: ortda qolganlar ham ON bo‘lib qoladi (o‘chmaydi)
-            if (pointFlags[i] != null && i <= idx)
-                pointFlags[i].SetActive(true);
-
-            // ✅ Textlar: faqat ortda qolganlar OFF
-            if (pointTexts[i] != null && i < idx)
-                pointTexts[i].SetActive(false);
-        }
-
-        if (pointNumber == 3)
-        {
-            Debug.Log("You are near to final!");
-            //KopkariManager.Instance?.FinalPosState(true);
-        }
-
-           
-    }
-
     #endregion
 
     #region Push Effect
     private void PushEffectStart()
     {
         OnHorsePushEffect?.Invoke();
-    }
-    #endregion
-
-    #region Goat show meters/ Finish Events
-    private void DisableMeters()
-    {
-        ShowMeters(true);
-
-        //goalDistanceUI.ForceHide();
-        //MoveDown();
-    }
-    private void ShowMeters(bool hasGoat)
-    {
-        if(KopkariManager.Instance.roomState==KopkariManager.RoomState.GameFinished)
-        {
-            //goalDistanceUI.Hide();
-            return;
-        }
-        else          
-            goalDistanceUI.SHowHide(hasGoat);
     }
     #endregion
 
@@ -981,7 +1285,10 @@ public class KopkariMainUI : MonoBehaviour
         autoSprintBoostActive = true;
 
         if (isPressing)
+        {
             isPressing = false;
+            OnSprintEnd?.Invoke();
+        }
 
         StopIfRunning(ref drainRoutine);
 
@@ -993,25 +1300,30 @@ public class KopkariMainUI : MonoBehaviour
         SetSprintState(false);
     }
 
+    public void ReleaseSprintForUIInterruption()
+    {
+        bool shouldNotifySprintEnd = isPressing || autoSprintBoostActive ||
+                                     (sprintImg != null && sprintImg.gameObject.activeSelf);
+
+        isPointerHeld = false;
+        isPressing = false;
+        autoSprintBoostActive = false;
+        StopIfRunning(ref drainRoutine);
+        StopIfRunning(ref refillRoutine);
+
+        if (sprintImg != null)
+            sprintImg.gameObject.SetActive(false);
+
+        if (shouldNotifySprintEnd)
+            OnSprintEnd?.Invoke();
+
+        FinishActiveWebSnare();
+        SetSprintState(!isDamaged);
+    }
+
     private void OnObstacleDamageHandler(bool isDamaged)
     {
-        // slow visual (xohlasang)
-        if (isDamaged)
-            PlaySlow();
-
-        // sprintni bloklash / qaytarish
         EnableSprint(isDamaged);
-    }
-
-    public void PlaySlow()
-    {
-
-    }
-
-    public void SliderValueRestore()
-    {
-        if (hitCountSlider == null) return;
-        hitCountSlider.value = hitCountSlider.maxValue;
     }
     #endregion
 
@@ -1019,6 +1331,7 @@ public class KopkariMainUI : MonoBehaviour
     public void GameOverShow()
     {
         HideCombo();
+        HideCarrierGrip();
         SetMobileCanvasVisible(false);
         SetMatchStatusVisible(false);
         ShowUI(gameOverPage);
@@ -1028,16 +1341,14 @@ public class KopkariMainUI : MonoBehaviour
     #region Game Stats
     public float GetTotalHoldTime()
     {
-        float autoBoostTime = KopkariManager.Instance.GetBoostTime();
+        float autoBoostTime = KopkariManager.Instance != null ? KopkariManager.Instance.GetBoostTime() : 0f;
         Debug.Log("[AUTO BOOST]" + autoBoostTime);
-        totalHoldTime += autoBoostTime;
-        return totalHoldTime;
+        return totalHoldTime + autoBoostTime;
     }
     public float GetTotalWebSnareTime()
     {
-        float get = KopkariManager.Instance.GetWebSnareDamageTime();
-        totalWebSnareTime += get;
-        return totalWebSnareTime;
+        float webSnareTime = KopkariManager.Instance != null ? KopkariManager.Instance.GetWebSnareDamageTime() : 0f;
+        return totalWebSnareTime + webSnareTime;
     }
     #endregion
 }

@@ -6,6 +6,7 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
 {
     [Header("Round Change")]
     [SerializeField] private GameObject roundChangePanel;
+    [SerializeField] private TMP_Text roundDetailsText;
     [SerializeField] private Button nextRoundButton;
     [SerializeField] private Button finishHereButton;
 
@@ -36,10 +37,17 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
 
     public void ShowRoundChange(bool canStartNextRound)
     {
+        ShowRoundChange(canStartNextRound, null);
+    }
+
+    public void ShowRoundChange(bool canStartNextRound, string details)
+    {
         HideWarmupCountdown();
 
         if (roundChangePanel != null)
             roundChangePanel.SetActive(true);
+        if (roundDetailsText != null)
+            roundDetailsText.text = details ?? string.Empty;
 
         SetButtonState(nextRoundButton, canStartNextRound);
         SetButtonState(finishHereButton, true);
@@ -49,6 +57,8 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
     {
         if (roundChangePanel != null)
             roundChangePanel.SetActive(false);
+        if (roundDetailsText != null)
+            roundDetailsText.text = string.Empty;
 
         SetButtonState(nextRoundButton, false);
         SetButtonState(finishHereButton, false);

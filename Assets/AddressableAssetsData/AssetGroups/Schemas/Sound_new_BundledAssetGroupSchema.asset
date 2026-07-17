@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e5d17a21594effb4e9591490b009e7aa, type: 3}
-  m_Name: Sounds_BundledAssetGroupSchema
+  m_Name: Sound_new_BundledAssetGroupSchema
   m_EditorClassIdentifier: 
-  m_Group: {fileID: 11400000, guid: 754cdf73b4a9c5448b49e936b8f4c0b0, type: 2}
+  m_Group: {fileID: 11400000, guid: 4b58a59350028884fb6dd5c524509419, type: 2}
   m_InternalBundleIdMode: 1
   m_Compression: 1
   m_IncludeAddressInCatalog: 1

@@ -192,7 +192,6 @@ namespace Kopkari
                 {
                     videoPlayer.clip = video;
                     videoPlayer.Play();
-                    StartHomePreloadDuringVideo();
                 }
                 if (startingPage != null && startingPage.activeSelf)
                     startingPage.SetActive(false);
@@ -214,6 +213,7 @@ namespace Kopkari
             if (audio != null)
             {
                 SoundEffect(audio);
+                StartHomePreloadDuringVideo();
                 Debug.Log($"🔊 Audio played: {Constants.RoomSound.IntroSound}");
 
             }
@@ -223,73 +223,6 @@ namespace Kopkari
         {
             RetryIntroContentLoad();
         }
-        //public async void GetAddressableData()
-        //{
-        //    handles = await AddressablesManager.Instance.LoadAssetsWithHandlesAsync<Object>(
-        //        myAddresses,
-        //        progress =>
-        //        {
-
-        //            progressBar.currentPercent = progress * 100f;
-        //            progressBar.UpdateUI();
-        //        },
-        //        fakeDurationIfCached: 2f
-        //    );
-        //    if (handles.Count > 0)
-        //    {
-        //        foreach (var handle in handles)
-        //        {
-        //            if (handle.Status == AsyncOperationStatus.Succeeded)
-        //            {
-        //                Object loadedAsset = handle.Result;
-
-        //                // 🎬 Agar bu VideoClip bo‘lsa
-        //                if (loadedAsset is VideoClip video)
-        //                {
-        //                    videoPlayer.clip = video;
-        //                    videoPlayer.Play();
-        //                    Debug.Log("▶️ Video played");
-        //                }
-
-        //                // 🔊 Agar bu AudioClip bo‘lsa
-        //                else if (loadedAsset is AudioClip audio)
-        //                {
-        //                    SoundEffect(audio);
-        //                    Debug.Log("🔊 Audio played");
-        //                }
-        //                if(startingPage.activeSelf)
-        //                    startingPage.SetActive(false);
-        //            }
-        //            else
-        //            {
-        //                Debug.LogWarning("❌ One of the assets failed to load.");
-        //            }
-        //        }
-        //    }
-
-        //}
-        //public async void GetIntroVideo()
-        //{
-        //    handle = await AddressablesManager.Instance.LoadAssetWithHandleAsync<VideoClip>(
-        //        "IntroVideo",
-        //        progress =>
-        //        {
-        //            float percent = progress * 100f;
-        //            progressBar.currentPercent = percent;
-        //            progressBar.UpdateUI();
-        //        },
-        //        fakeDurationIfCached: 3f
-        //    );
-
-        //    if (handle.Status == AsyncOperationStatus.Succeeded)
-        //    {
-        //        videoPlayer.clip = handle.Result;
-        //        videoPlayer.Play();
-        //        if (startingPage.activeSelf)
-        //            startingPage.SetActive(false);
-        //    }
-
-        //}
         #endregion
 
         #region Notification Popup
@@ -460,22 +393,13 @@ namespace Kopkari
         void OnVideoFinished(VideoPlayer vp)
         {
             LoadLobbyScene();
-            //StartCoroutine(GoToLobbyAfterSmallDelay());
         }
 
         private void OnDisable()
         {
-            //foreach (var handle in handles)
-            //{
-            //    if (handle.IsValid())
-            //    {
-            //        Debug.Log("Addressables released");
-            //        Addressables.Release(handle);
-            //    }
-            //}
             if(SoundManager.Instance != null)
             {
-                SoundManager.Instance.StopRoomSmooth();
+                SoundManager.Instance.StopRoomSmooth(force: true);
             }
             if (AddressablesService.Instance != null)
             {

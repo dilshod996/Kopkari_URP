@@ -42,6 +42,12 @@ public class KopkariIntroFlowController : MonoBehaviour
     [SerializeField, Range(0, 4)] private int guardRiderCount = 2;
     [Tooltip("Optional preferred Guard riders. Empty slots are filled randomly from the remaining non-rival, non-orbit riders.")]
     [SerializeField] private List<AIKopkariRider> preferredGuardRiders = new List<AIKopkariRider>();
+    [Tooltip("A non-rival rider that predicts the carrier route and places pooled traps at intervals.")]
+    [SerializeField, Range(0, 1)] private int trapSetterRiderCount = 1;
+    [Tooltip("Optional preferred Trap Setter. Guard and main-rival assignments still remain exclusive.")]
+    [SerializeField] private List<AIKopkariRider> preferredTrapSetters = new List<AIKopkariRider>();
+    [Tooltip("Random gameplay-ready ground traps. If empty, the selected rider's BoostersContainer Walk Zone is used.")]
+    [SerializeField] private List<GameObject> randomTrapPrefabs = new List<GameObject>();
 
     [Header("Cinemachine")]
     [SerializeField] private CinemachineVirtualCamera introCamera;
@@ -109,6 +115,8 @@ public class KopkariIntroFlowController : MonoBehaviour
     private readonly List<AIKopkariRider> orbitCandidateBuffer = new List<AIKopkariRider>();
     private readonly List<AIKopkariRider> guardSelectionBuffer = new List<AIKopkariRider>();
     private readonly List<AIKopkariRider> guardCandidateBuffer = new List<AIKopkariRider>();
+    private readonly List<AIKopkariRider> trapSetterSelectionBuffer = new List<AIKopkariRider>();
+    private readonly List<AIKopkariRider> trapSetterCandidateBuffer = new List<AIKopkariRider>();
     private readonly Dictionary<GameObject, int> aiColliderOriginalLayers = new Dictionary<GameObject, int>();
     private Coroutine introRoutine;
     private Coroutine gateShakeRoutine;
@@ -339,15 +347,19 @@ public class KopkariIntroFlowController : MonoBehaviour
         if (!selectRandomMainRival && mainRival != null && riders.Contains(mainRival))
             return;
 
-        // Keep mounted-melee riders available for the requested Guard slots
-        // whenever another valid rival candidate exists.
-        if (guardRiderCount > 0)
+        // Keep explicitly preferred role riders and mounted-melee Guard candidates
+        // available whenever another valid rival candidate exists.
+        if (guardRiderCount > 0 || trapSetterRiderCount > 0)
         {
             int startIndex = UnityEngine.Random.Range(0, riders.Count);
             for (int offset = 0; offset < riders.Count; offset++)
             {
                 AIKopkariRider candidate = riders[(startIndex + offset) % riders.Count];
-                if (candidate != null && !candidate.HasGuardRiderMeleeAttack)
+                bool preserveForGuard = guardRiderCount > 0 && candidate != null &&
+                                        candidate.HasGuardRiderMeleeAttack;
+                bool preserveForTrapSetter = trapSetterRiderCount > 0 && candidate != null &&
+                                             preferredTrapSetters.Contains(candidate);
+                if (candidate != null && !preserveForGuard && !preserveForTrapSetter)
                 {
                     mainRival = candidate;
                     return;
@@ -364,6 +376,8 @@ public class KopkariIntroFlowController : MonoBehaviour
         orbitCandidateBuffer.Clear();
         guardSelectionBuffer.Clear();
         guardCandidateBuffer.Clear();
+        trapSetterSelectionBuffer.Clear();
+        trapSetterCandidateBuffer.Clear();
 
         for (int i = 0; i < riders.Count; i++)
         {
@@ -405,6 +419,77 @@ public class KopkariIntroFlowController : MonoBehaviour
             orbitCandidateBuffer.RemoveAt(i);
         }
 
+        int requestedTrapSetterCount = Mathf.Min(trapSetterRiderCount, orbitCandidateBuffer.Count);
+
+        // A preferred Trap Setter is reserved before Orbit riders are chosen.
+        // Explicit/pre-equipped Guards above keep priority if a rider was put in both lists.
+        for (int i = 0; i < preferredTrapSetters.Count &&
+                        trapSetterSelectionBuffer.Count < requestedTrapSetterCount; i++)
+        {
+            AIKopkariRider preferred = preferredTrapSetters[i];
+            if (preferred == null || preferred == mainRival ||
+                !orbitCandidateBuffer.Remove(preferred) || trapSetterSelectionBuffer.Contains(preferred))
+                continue;
+
+            trapSetterSelectionBuffer.Add(preferred);
+        }
+
+        trapSetterCandidateBuffer.AddRange(orbitCandidateBuffer);
+        for (int i = trapSetterCandidateBuffer.Count - 1; i > 0; i--)
+        {
+            int swapIndex = UnityEngine.Random.Range(0, i + 1);
+            AIKopkariRider temp = trapSetterCandidateBuffer[i];
+            trapSetterCandidateBuffer[i] = trapSetterCandidateBuffer[swapIndex];
+            trapSetterCandidateBuffer[swapIndex] = temp;
+        }
+
+        for (int i = 0; i < trapSetterCandidateBuffer.Count &&
+                        trapSetterSelectionBuffer.Count < requestedTrapSetterCount; i++)
+        {
+            AIKopkariRider candidate = trapSetterCandidateBuffer[i];
+            if (candidate == null || candidate == mainRival || preferredOrbitRiders.Contains(candidate) ||
+                trapSetterSelectionBuffer.Contains(candidate))
+                continue;
+
+            trapSetterSelectionBuffer.Add(candidate);
+            orbitCandidateBuffer.Remove(candidate);
+        }
+
+        // Only consume a preferred Orbit rider when no other exclusive rider is available.
+        for (int i = 0; i < trapSetterCandidateBuffer.Count &&
+                        trapSetterSelectionBuffer.Count < requestedTrapSetterCount; i++)
+        {
+            AIKopkariRider candidate = trapSetterCandidateBuffer[i];
+            if (candidate == null || candidate == mainRival || trapSetterSelectionBuffer.Contains(candidate))
+                continue;
+
+            trapSetterSelectionBuffer.Add(candidate);
+            orbitCandidateBuffer.Remove(candidate);
+        }
+
+        int assignedTrapSetterCount = trapSetterSelectionBuffer.Count;
+        for (int i = 0; i < assignedTrapSetterCount; i++)
+        {
+            AIKopkariRider trapSetter = trapSetterSelectionBuffer[i];
+            trapSetter.ConfigureTrapSetterPrefabs(randomTrapPrefabs);
+            trapSetter.ConfigureUlakRole(AIKopkariRider.UlakRole.TrapSetter, i, assignedTrapSetterCount);
+        }
+
+        for (int i = 0; i < randomTrapPrefabs.Count; i++)
+        {
+            GameObject prefab = randomTrapPrefabs[i];
+            if (prefab != null)
+                SimplePool.CreatePool(prefab, prewarm: 2, maxSize: 8, expandable: true);
+        }
+
+        if (assignedTrapSetterCount < trapSetterRiderCount)
+        {
+            Debug.LogWarning(
+                $"[{nameof(KopkariIntroFlowController)}] Requested {trapSetterRiderCount} Trap Setter, " +
+                $"but only {assignedTrapSetterCount} exclusive non-rival rider is available.",
+                this);
+        }
+
         int requestedCount = Mathf.Min(orbitRiderCount, orbitCandidateBuffer.Count);
 
         for (int i = 0; i < preferredOrbitRiders.Count && orbitSelectionBuffer.Count < requestedCount; i++)
@@ -444,7 +529,8 @@ public class KopkariIntroFlowController : MonoBehaviour
         for (int i = 0; i < riders.Count; i++)
         {
             AIKopkariRider rider = riders[i];
-            if (rider != null && rider != mainRival && !orbitSelectionBuffer.Contains(rider))
+            if (rider != null && rider != mainRival && !orbitSelectionBuffer.Contains(rider) &&
+                !trapSetterSelectionBuffer.Contains(rider))
                 guardCandidateBuffer.Add(rider);
         }
 
@@ -495,7 +581,7 @@ public class KopkariIntroFlowController : MonoBehaviour
         {
             Debug.LogWarning(
                 $"[{nameof(KopkariIntroFlowController)}] Requested {guardRiderCount} Ulak Guards, " +
-                $"but only {assignedGuardCount} non-rival, non-orbit riders are available.",
+                $"but only {assignedGuardCount} non-rival, non-orbit, non-Trap-Setter riders are available.",
                 this);
         }
     }

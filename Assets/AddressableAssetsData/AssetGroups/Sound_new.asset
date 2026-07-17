@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
-  m_Name: Sounds
+  m_Name: Sound_new
   m_EditorClassIdentifier: 
-  m_GroupName: Sounds
+  m_GroupName: Sound_new
   m_Data:
     m_SerializedData: []
-  m_GUID: 766d32c68b0ebc648955c088636cbb36
+  m_GUID: 032ccce1210e3bc47bd3f9ef8394140b
   m_SerializeEntries:
   - m_GUID: b2aeab7bafd06b4418489f71e8a1bee3
     m_Address: IntroSound
@@ -87,5 +87,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 2be812f5dab9fff4294a71f73993cc85, type: 2}
-    - {fileID: 11400000, guid: 83c6752088e7e0f46a436c14d06b46d2, type: 2}
+    - {fileID: 11400000, guid: 4dc7de186c91c294d82b9676646b5cc7, type: 2}
+    - {fileID: 11400000, guid: f4d0d96699513aa4ca8248235281488c, type: 2}

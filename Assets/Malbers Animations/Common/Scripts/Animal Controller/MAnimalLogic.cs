@@ -868,7 +868,7 @@ namespace MalbersAnimations.Controller
 
             if (TargetDir.magnitude > 1) TargetDir.Normalize();
 
-            TargetSpeed = DeltaTime * Mode_Multiplier * ScaleFactor * Speed_Modifier * TargetDir;   //Calculate these Once per Cycle Extremely important 
+            TargetSpeed = DeltaTime * Mode_Multiplier * ScaleFactor * KopkariMovementSpeedMultiplier * Speed_Modifier * TargetDir;   //Calculate these Once per Cycle Extremely important
 
 
 

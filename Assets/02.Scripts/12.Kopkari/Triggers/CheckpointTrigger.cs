@@ -26,9 +26,6 @@ public class CheckpointTrigger : MonoBehaviour
             legacyNpc?.OnCheckpointReached(this);
         }
 
-        // 2) KopkariManager (oldin BaseManager edi)
-        if (KopkariManager.Instance == null) return;
-        KopkariManager.Instance.OnCheckpointReached(this, riderRoot);
     }
 
     public void MarkPassedWithGoat()

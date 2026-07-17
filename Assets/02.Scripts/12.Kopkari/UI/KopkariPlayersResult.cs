@@ -17,6 +17,26 @@ public class KopkariPlayersResult : MonoBehaviour
     [SerializeField] private Color playerNameColor = new Color(1f, 0.84f, 0f, 1f); // gold
     [SerializeField] private Color normalNameColor = Color.white;
 
+    public void Configure(
+        TMP_Text rank,
+        TMP_Text playerName,
+        TMP_Text teamName,
+        TMP_Text wins,
+        TMP_Text pickups,
+        TMP_Text takeovers,
+        TMP_Text possession,
+        TMP_Text bestWin)
+    {
+        rankText = rank;
+        playerNameText = playerName;
+        teamNameText = teamName;
+        roundWinsText = wins;
+        catchCountText = pickups;
+        carrierTakeoverCountText = takeovers;
+        catchTimingText = possession;
+        winningTimeText = bestWin;
+    }
+
     public void BindData(RiderRaceStats stats, int rankIndex)
     {
         if (stats == null) { gameObject.SetActive(false); return; }

@@ -117,26 +117,10 @@ public class AvatarCustomManager : MonoBehaviour
         );
         // eski Start'ingni saqlab qoldim (commentlar ham)
         await InitializePlayerAndHorse();
-        PlaySound();
         RegisterEnvPrefabs(_currentEnvInstance.transform);
         //Popup.confirmButton.onClick.AddListener(LoadLobbyScene);
     }
 
-
-    #region Sound
-    private async void PlaySound()
-    {
-
-        var audioClip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>("CustomRoomSound");
-        if (audioClip == null)
-        {
-            Debug.Log("❌ Custom Room sound not exist.");
-            return;
-        }
-        if(SoundManager.Instance != null)
-            SoundManager.Instance.PlayRoom(audioClip);
-    }
-    #endregion
 
     #region Player And Horse Initialization
     private async Task InitializePlayerAndHorse()

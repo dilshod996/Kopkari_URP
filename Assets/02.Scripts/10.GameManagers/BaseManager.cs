@@ -550,7 +550,6 @@ public class BaseManager : MonoBehaviour
         if (!IsCatched) return;
         if (currentGoatOwner == null) return;
         if (LocalRiderRoot != null && currentGoatOwner != LocalRiderRoot) return;
-        KopkariMainUI.Instance.UpdateSlider();
         roundEnded = true;
 
         // 3) Drop + state reset
@@ -659,7 +658,6 @@ public class BaseManager : MonoBehaviour
         // ✅ Birinchi marta, hozirgi goat owner bilan o‘tildi:
         checkpoint.MarkPassedWithGoat();
         passedCheckpointCount++;
-        KopkariMainUI.Instance.UpdateSlider();
         KopkariResultsManager.Instance.OnTriggerPoint(UserId);
         Debug.Log($"[Checkpoint] {riderObj.name} uloq bilan checkpoint o'tdi. Jami: {passedCheckpointCount}/{checkpoints.Count}");
 

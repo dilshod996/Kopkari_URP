@@ -596,6 +596,7 @@ public class SceneLoadManager : MonoBehaviour
         loadingTime = 0f;
         IsSceneLoading = true;
         sceneMoveStartRealtime = Time.realtimeSinceStartup;
+        SoundManager.Instance?.PrepareForSceneChange();
     }
 
     private void CompleteSceneMove()

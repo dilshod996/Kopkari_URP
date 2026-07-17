@@ -10,7 +10,9 @@ public enum HomeHapticId
     ItemPickup,
     BoosterUse,
     PlayerHit,
-    RaceFinish
+    RaceFinish,
+    CarrierGripLoss,
+    CarrierGripDrop
 }
 
 public class HomeHapticsManager : MonoBehaviour
@@ -88,6 +90,14 @@ public class HomeHapticsManager : MonoBehaviour
 
             case HomeHapticId.RaceFinish:
                 HapticPatterns.PlayPreset(HapticPatterns.PresetType.Success);
+                break;
+
+            case HomeHapticId.CarrierGripLoss:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.LightImpact);
+                break;
+
+            case HomeHapticId.CarrierGripDrop:
+                HapticPatterns.PlayPreset(HapticPatterns.PresetType.HeavyImpact);
                 break;
         }
     }

@@ -28,6 +28,7 @@ public class BoostersContainer : MonoBehaviour
     public event Action OnDefendActivated;
     public event Action<DebuffState> OnNpcGripBreakDamage;
     public event Action OnNpcAttackDamageReceived;
+    public GameObject LastAttackDamager => damageable != null ? damageable.LastDamage.Damager : null;
     public static event Action<bool> OnDefendState;
 
     public static event Action<int> OnWalkZoneAdded;
@@ -134,7 +135,24 @@ public class BoostersContainer : MonoBehaviour
         }
     }
 
-    private int GetPrefs(string key) => DataManager.Instance.GetItemAmount(key);
+    private int GetPrefs(string key)
+    {
+        return DataManager.Instance != null
+            ? DataManager.Instance.GetItemAmount(key)
+            : PlayerPrefs.GetInt(key, 0);
+    }
+
+    private void SetPlayerItemCount(string key, int value)
+    {
+        value = Mathf.Max(0, value);
+        if (DataManager.Instance != null)
+            DataManager.Instance.SetItemAmountFromGame(key, value, false);
+        else
+        {
+            PlayerPrefs.SetInt(key, value);
+            PlayerPrefs.Save();
+        }
+    }
 
     private void OnEnable()
     {
@@ -301,6 +319,7 @@ public class BoostersContainer : MonoBehaviour
         {
             int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
             playerSlowDown += 1;
+            SetPlayerItemCount(Constants.PlayerItems.SlowDown, playerSlowDown);
             OnWalkZoneAdded?.Invoke(playerSlowDown);
         }
     }
@@ -310,7 +329,8 @@ public class BoostersContainer : MonoBehaviour
         if (!isNpc)
         {
             int playerSlowDown = GetPrefs(Constants.PlayerItems.SlowDown);
-            playerSlowDown -= 1;
+            playerSlowDown = Mathf.Max(0, playerSlowDown - 1);
+            SetPlayerItemCount(Constants.PlayerItems.SlowDown, playerSlowDown);
             OnWalkZoneRemoved?.Invoke(playerSlowDown);
         }
         else
@@ -321,7 +341,8 @@ public class BoostersContainer : MonoBehaviour
 
     public void DropWalkTrap()
     {
-        if (RacingController.Instance.mapType == RacingController.RacingType.Training)
+        if (RacingController.Instance != null &&
+            RacingController.Instance.mapType == RacingController.RacingType.Training)
         {
             if (TryAlignDropToGround(out var x, out var y))
                 SimplePool.Spawn(walkzonePrefab, x, y);
@@ -460,6 +481,7 @@ public class BoostersContainer : MonoBehaviour
         {
             int defendPlayer = GetPrefs(Constants.PlayerItems.Defense);
             defendPlayer += 1;
+            SetPlayerItemCount(Constants.PlayerItems.Defense, defendPlayer);
             OnDefendAdded?.Invoke(defendPlayer);
         }
         else defendCount++;
@@ -470,7 +492,8 @@ public class BoostersContainer : MonoBehaviour
         if (!isNpc)
         {
             int defendPlayer = GetPrefs(Constants.PlayerItems.Defense);
-            defendPlayer -= 1;
+            defendPlayer = Mathf.Max(0, defendPlayer - 1);
+            SetPlayerItemCount(Constants.PlayerItems.Defense, defendPlayer);
             OnDefendRemoved?.Invoke(defendPlayer);
         }
         else defendCount = Mathf.Max(0, defendCount - 1);
@@ -478,6 +501,17 @@ public class BoostersContainer : MonoBehaviour
 
     public void DefendPlayer()
     {
+        bool isTraining = RacingController.Instance != null &&
+                          RacingController.Instance.mapType == RacingController.RacingType.Training;
+        if (!isTraining)
+        {
+            int defenderCount = GetPrefs(Constants.PlayerItems.Defense);
+            if (defenderCount <= 0)
+                return;
+
+            DecreaseDefend();
+        }
+
         if (defendCoroutine != null)
         {
             StopCoroutine(defendCoroutine);
@@ -493,14 +527,8 @@ public class BoostersContainer : MonoBehaviour
 
         if (!isNpc)
             OnDefendState?.Invoke(false);
-        if (RacingController.Instance.mapType == RacingController.RacingType.Training)
-        {
+        if (isTraining)
             return;
-        }
-        int defenderCount = GetPrefs(Constants.PlayerItems.Defense);
-        if (defenderCount <= 0) return;
-
-        DecreaseDefend();
 
         // ✅ Defend faqat damage/debuffni yechadi (sprint/boostni buzmaydi)
         CancelObstaclePenalty(forceRestoreSpeed: true);
@@ -586,6 +614,7 @@ public class BoostersContainer : MonoBehaviour
         {
             int webSnare = GetPrefs(Constants.PlayerItems.WebSnare);
             webSnare += 1;
+            SetPlayerItemCount(Constants.PlayerItems.WebSnare, webSnare);
             OnWebSnareAdded?.Invoke(webSnare);
         }
         else walkZoneCount++;
@@ -705,7 +734,7 @@ public class BoostersContainer : MonoBehaviour
         if (UIButtonActions.Instance != null)
             obstacleIcon = UIButtonActions.Instance.obstacleHitSprite;
         else
-            obstacleIcon = KopkariMainUI.Instance.obstacleHitSprite;
+            obstacleIcon = null;
 
         if (!isNpc && obstacleIcon != null)
         {

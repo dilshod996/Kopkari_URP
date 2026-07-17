@@ -12,7 +12,12 @@ public class KopkariResultsManager : MonoBehaviour
     private float sessionStartTime;
     private float roundStartTime;
     private float lastRoundDuration;
+    private float completedRoundDuration;
     private int currentRoundNumber;
+    private KopkariMatchRewardSummary playerRewardSummary;
+    private bool playerRewardGranted;
+    private bool horseConditionApplied;
+    private HorseConditionStats finalHorseCondition;
 
     public float RaceDuration { get; private set; }
     public float LastRoundDuration => lastRoundDuration;
@@ -45,10 +50,15 @@ public class KopkariResultsManager : MonoBehaviour
         sessionStartTime = 0f;
         roundStartTime = 0f;
         lastRoundDuration = 0f;
+        completedRoundDuration = 0f;
         currentRoundNumber = 0;
         RaceDuration = 0f;
         WinnerId = 0;
         UloqOwner = string.Empty;
+        playerRewardSummary = null;
+        playerRewardGranted = false;
+        horseConditionApplied = false;
+        finalHorseCondition = default;
     }
 
     // Compatibility for older callers.
@@ -66,6 +76,7 @@ public class KopkariResultsManager : MonoBehaviour
         {
             sessionStarted = true;
             sessionStartTime = Time.time;
+            completedRoundDuration = 0f;
             RaceDuration = 0f;
         }
 
@@ -82,11 +93,33 @@ public class KopkariResultsManager : MonoBehaviour
 
     public void EndRace()
     {
-        CloseAllActiveHolds();
+        if (roundStarted)
+        {
+            lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
+            completedRoundDuration += lastRoundDuration;
+            CloseAllActiveHolds();
+            SaveRoundSnapshots(0, 0f);
+        }
+        else
+        {
+            CloseAllActiveHolds();
+        }
         roundStarted = false;
-        if (sessionStarted)
-            RaceDuration = Mathf.Max(0f, Time.time - sessionStartTime);
+        RaceDuration = completedRoundDuration;
         sessionStarted = false;
+    }
+
+    public void EndRoundWithoutWinner()
+    {
+        if (!roundStarted)
+            return;
+
+        CloseAllActiveHolds();
+        lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
+        completedRoundDuration += lastRoundDuration;
+        SaveRoundSnapshots(0, 0f);
+        roundStarted = false;
+        RaceDuration = completedRoundDuration;
     }
 
     private static void ResetRoundFields(RiderRaceStats rider)
@@ -250,13 +283,12 @@ public class KopkariResultsManager : MonoBehaviour
 
         WinnerId = riderId;
         lastRoundDuration = finishTime;
+        completedRoundDuration += finishTime;
         CloseAllActiveHolds();
         SaveRoundSnapshots(riderId, finishTime);
 
         roundStarted = false;
-        RaceDuration = sessionStarted
-            ? Mathf.Max(0f, Time.time - sessionStartTime)
-            : finishTime;
+        RaceDuration = completedRoundDuration;
     }
 
     private void SaveRoundSnapshots(int winnerId, float finishTime)
@@ -291,6 +323,135 @@ public class KopkariResultsManager : MonoBehaviour
             .ThenByDescending(rider => rider.totalCatchTime)
             .ThenByDescending(rider => rider.triggerPoints)
             .ToList();
+    }
+
+    public KopkariMatchRewardSummary GetOrGrantPlayerMatchReward()
+    {
+        if (playerRewardSummary != null)
+        {
+            if (!playerRewardGranted)
+            {
+                RiderRaceStats cachedPlayer = stats.Values.FirstOrDefault(rider => rider != null && rider.isPlayer);
+                GrantPlayerMatchReward(cachedPlayer, playerRewardSummary);
+            }
+            return playerRewardSummary;
+        }
+
+        List<RiderRaceStats> leaderboard = BuildLeaderboard();
+        int playerIndex = leaderboard.FindIndex(rider => rider != null && rider.isPlayer);
+        if (playerIndex < 0)
+            return null;
+
+        RiderRaceStats player = leaderboard[playerIndex];
+        int rank = playerIndex + 1;
+        int pickupBonus = GetPickupBonus(player.pickupTimes);
+        playerRewardSummary = new KopkariMatchRewardSummary
+        {
+            playerRank = rank,
+            rankNyufiy = GetNyufiyByRank(rank),
+            roundNyufiy = player.nyufiyPrize,
+            comboNyufiy = player.comboPrize,
+            pickupBonus = pickupBonus,
+            rankCoin = GetCoinByRank(rank),
+            roundCoin = player.coinPrize,
+            xp = GetXpByRank(rank)
+        };
+        playerRewardSummary.totalNyufiy = playerRewardSummary.rankNyufiy +
+                                          playerRewardSummary.roundNyufiy +
+                                          playerRewardSummary.comboNyufiy +
+                                          playerRewardSummary.pickupBonus;
+        playerRewardSummary.totalCoin = playerRewardSummary.rankCoin + playerRewardSummary.roundCoin;
+
+        GrantPlayerMatchReward(player, playerRewardSummary);
+        return playerRewardSummary;
+    }
+
+    private void GrantPlayerMatchReward(RiderRaceStats player, KopkariMatchRewardSummary reward)
+    {
+        if (playerRewardGranted || player == null || reward == null)
+            return;
+
+        if (CurrencyManager.Instance == null || DataManager.Instance == null)
+        {
+            Debug.LogWarning("[KopkariResultsManager] Reward services are not ready.");
+            return;
+        }
+
+        CurrencyManager.Instance.AddNyufiy(reward.totalNyufiy, true);
+        CurrencyManager.Instance.AddCoin(reward.totalCoin, true);
+        DataManager.Instance.AddLevelPoint(reward.xp, true);
+
+        float savedPossession = DataManager.Instance.GetBestRecord(Constants.MapNames.Registan);
+        if (player.totalCatchTime > savedPossession)
+            DataManager.Instance.SaveBestRecord(Constants.MapNames.Registan, player.totalCatchTime);
+
+        DataManager.Instance.SaveRaceResult(
+            Constants.MapNames.Registan,
+            reward.playerRank == 1,
+            Mathf.RoundToInt(RaceDuration));
+        playerRewardGranted = true;
+    }
+
+    public HorseConditionStats GetOrApplyHorseCondition()
+    {
+        if (horseConditionApplied)
+            return finalHorseCondition;
+
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
+            HorseConditionStatsService.GetCachedMaxOrDefault());
+        RiderRaceStats player = stats.Values.FirstOrDefault(rider => rider != null && rider.isPlayer);
+        float possession = player != null ? player.totalCatchTime : 0f;
+
+        finalHorseCondition = new HorseConditionStats(
+            Mathf.Max(0f, Mathf.Round(current.Power - RaceDuration * 0.2f)),
+            Mathf.Max(0f, Mathf.Round(current.Cooling - RaceDuration * 0.05f - possession * 0.4f)),
+            Mathf.Max(0f, Mathf.Round(current.Stamina - RaceDuration * 0.3f)));
+        HorseConditionStatsService.SaveCurrent(finalHorseCondition);
+        horseConditionApplied = true;
+        return finalHorseCondition;
+    }
+
+    private static int GetNyufiyByRank(int rank)
+    {
+        switch (rank)
+        {
+            case 1: return 3400;
+            case 2: return 2600;
+            case 3: return 1800;
+            case 4: return 1000;
+            case 5: return 800;
+            default: return 200;
+        }
+    }
+
+    private static int GetCoinByRank(int rank)
+    {
+        switch (rank)
+        {
+            case 1: return 7;
+            case 2: return 5;
+            case 3: return 3;
+            default: return 0;
+        }
+    }
+
+    private static int GetXpByRank(int rank)
+    {
+        switch (rank)
+        {
+            case 1: return Random.Range(22, 26);
+            case 2: return Random.Range(15, 21);
+            case 3: return Random.Range(10, 15);
+            default: return Random.Range(7, 11);
+        }
+    }
+
+    private static int GetPickupBonus(int pickupTimes)
+    {
+        if (pickupTimes <= 0) return 0;
+        if (pickupTimes == 1) return 50;
+        if (pickupTimes == 2) return 150;
+        return 250;
     }
 
     public void DebugLogLeaderboard()

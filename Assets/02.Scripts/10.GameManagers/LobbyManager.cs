@@ -150,7 +150,6 @@ public class LobbyManager : MonoBehaviour
         HorseAnimGet();
         GetPlayerAnimator();
 
-        RoomSound();
         UIOverlayRoot.I.HidePanel(UIPanelType.Home, instant: false);
         SetWeather();
     }
@@ -763,17 +762,6 @@ public class LobbyManager : MonoBehaviour
         UIOverlayRoot.I.ShowPanel(UIPanelType.Custom, message, instant: false, exclusive: true);
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.AvatarCustom, customSceneAddressableAddresses);
-    }
-    #endregion
-
-    #region Room Sound
-    private async void RoomSound()
-    {
-        var clip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.HomeRoomSound);
-        if(clip != null && SoundManager.Instance !=null)
-        {
-            SoundManager.Instance.PlayRoom(clip);
-        }
     }
     #endregion
 

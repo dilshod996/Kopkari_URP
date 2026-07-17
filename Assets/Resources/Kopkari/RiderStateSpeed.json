@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "speedIndexPolicy": "Use dedicated Malbers speed indices for every Kopkari movement state.",
+  "multiplierMode": "replace",
+  "states": [
+    {
+      "id": "ai_competitor_default",
+      "riderType": "AI",
+      "role": "Competitor",
+      "isMainRival": false,
+      "isCarrier": false,
+      "isSprinting": false,
+      "speedIndex": 6,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "ai_competitor_carrier",
+      "riderType": "AI",
+      "role": "Competitor",
+      "isMainRival": false,
+      "isCarrier": true,
+      "isSprinting": false,
+      "speedIndex": 5,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "ai_carrier_escape_boost",
+      "riderType": "AI",
+      "role": "Competitor",
+      "isMainRival": false,
+      "isCarrier": true,
+      "isSprinting": false,
+      "speedIndex": 6,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "ai_main_rival_default",
+      "riderType": "AI",
+      "role": "Competitor",
+      "isMainRival": true,
+      "isCarrier": false,
+      "isSprinting": false,
+      "speedIndex": 7,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "ai_main_rival_carrier",
+      "riderType": "AI",
+      "role": "Competitor",
+      "isMainRival": true,
+      "isCarrier": true,
+      "isSprinting": false,
+      "speedIndex": 5,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "ai_guard",
+      "riderType": "AI",
+      "role": "Guard",
+      "isMainRival": false,
+      "isCarrier": false,
+      "isSprinting": false,
+      "speedIndex": 6,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "ai_trap_setter",
+      "riderType": "AI",
+      "role": "TrapSetter",
+      "isMainRival": false,
+      "isCarrier": false,
+      "isSprinting": false,
+      "speedIndex": 7,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "player_default",
+      "riderType": "Player",
+      "role": "Player",
+      "isMainRival": false,
+      "isCarrier": false,
+      "isSprinting": false,
+      "speedIndex": 5,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "player_carrier",
+      "riderType": "Player",
+      "role": "Player",
+      "isMainRival": false,
+      "isCarrier": true,
+      "isSprinting": false,
+      "speedIndex": 4,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "player_sprint",
+      "riderType": "Player",
+      "role": "Player",
+      "isMainRival": false,
+      "isCarrier": false,
+      "isSprinting": true,
+      "speedIndex": 6,
+      "speedMultiplier": 1.0
+    },
+    {
+      "id": "player_carrier_sprint",
+      "riderType": "Player",
+      "role": "Player",
+      "isMainRival": false,
+      "isCarrier": true,
+      "isSprinting": true,
+      "speedIndex": 5,
+      "speedMultiplier": 1.0
+    }
+  ]
+}

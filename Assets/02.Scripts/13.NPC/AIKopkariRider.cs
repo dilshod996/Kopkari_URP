@@ -19,7 +19,20 @@ public class AIKopkariRider : MonoBehaviour
     {
         Competitor,
         Orbit,
-        Guard
+        Guard,
+        TrapSetter
+    }
+
+    public enum GripDamageSource
+    {
+        WalkTrap,
+        GuardRiderMelee,
+        GuardHorseAttack,
+        GuardContact,
+        MainRivalSideAttack,
+        TrapSetterContact,
+        OtherRiderContact,
+        PlayerTouch
     }
 
     public enum PreparationState
@@ -54,9 +67,11 @@ public class AIKopkariRider : MonoBehaviour
     [SerializeField] private bool useHoldTimeout;
     [SerializeField] private float itemPickedDuration = 20f; // qo‘lda ushlab turish vaqti
 
+    [Header("AI Carrier Escape Boost")]
+    [Tooltip("Short AI-only speed boost immediately after taking the Uloq.")]
+    [SerializeField, Min(0f)] private float carrierEscapeSpeedBoostDuration = 1.75f;
+
     [Header("Ulak Gameplay")]
-    [SerializeField] private int normalGameplaySpeedIndex = 4;
-    [SerializeField] private int mainRivalGameplaySpeedIndex = 5;
     [SerializeField, Min(1f)] private float orbitRadius = 7f;
     [SerializeField, Range(6, 24)] private int orbitPointCount = 12;
     [SerializeField, Min(0.1f)] private float orbitStoppingDistance = 0.8f;
@@ -67,6 +82,25 @@ public class AIKopkariRider : MonoBehaviour
     [Tooltip("Low-frequency Guard navigation refresh. Two Guards at 0.25 seconds is mobile friendly.")]
     [SerializeField, Min(0.1f)] private float guardRepathInterval = 0.25f;
     [SerializeField, Min(0.1f)] private float guardRepathDistance = 0.65f;
+
+    [Header("Trap Setter")]
+    [Tooltip("A trap is placed after the current carrier has travelled this far.")]
+    [SerializeField, Min(5f)] private float trapPlacementDistance = 20f;
+    [Tooltip("How far ahead of the carrier the Trap Setter tries to ride.")]
+    [SerializeField, Min(1f)] private float trapLeadDistance = 10f;
+    [SerializeField, Min(0f)] private float trapLateralOffset = 1.5f;
+    [SerializeField, Min(0f)] private float trapDropBehindDistance = 3f;
+    [SerializeField, Min(0.1f)] private float trapSetterStoppingDistance = 1.25f;
+    [SerializeField, Min(0.5f)] private float trapSetterContactDistance = 1.8f;
+    [SerializeField, Min(0.5f)] private float trapSetterContactResetDistance = 3f;
+    [FormerlySerializedAs("trapSetterIdlePatrolRadius")]
+    [Tooltip("Distance from the grounded Uloq toward the current finish where the Trap Setter waits for a carrier.")]
+    [SerializeField, Min(1f)] private float trapSetterWaitingDistance = 5f;
+    [Tooltip("Low-frequency navigation and distance sample. This does not run in Update.")]
+    [SerializeField, Min(0.2f)] private float trapSetterRepathInterval = 0.4f;
+    [SerializeField, Min(1f)] private float trapFinishExclusionRadius = 6f;
+    [SerializeField, Min(0.1f)] private float trapNavMeshSampleRadius = 2f;
+    [SerializeField, Min(1f)] private float trapLifetime = 14f;
     [Header("Guard Attack")]
     [Tooltip("Malbers Attack1 Mode ID on the horse prefab.")]
     [SerializeField] private int guardAttackModeId = 1;
@@ -75,6 +109,8 @@ public class AIKopkariRider : MonoBehaviour
     [SerializeField, Min(0.1f)] private float guardAttackCooldown = 2.5f;
     [Tooltip("Distance kept from a rider while the Guard is actively defending the Ulak.")]
     [SerializeField, Min(0.25f)] private float guardEngageStoppingDistance = 1.25f;
+    [Tooltip("Horizontal holder-to-Uloq distance that counts as Guard body contact. Grip protection and per-Guard cooldown still apply.")]
+    [SerializeField, Min(0.1f)] private float guardCarrierContactDistance = 1f;
     [Tooltip("The Guard faces the picker before playing the forward attack.")]
     [SerializeField, Range(5f, 60f)] private float guardAttackFacingAngle = 25f;
     [Tooltip("A Guard stops pursuing if the focusing rider moves this far from the Ulak.")]
@@ -101,6 +137,12 @@ public class AIKopkariRider : MonoBehaviour
     [SerializeField, Min(0.05f)] private float guardRiderMeleeHitDuration = 0.45f;
 
     [SerializeField, Min(0.1f)] private float movingUlakStoppingDistance = 1.2f;
+    [Tooltip("Close stopping distance used by non-carriers while pursuing the carrier horse.")]
+    [SerializeField, Min(0.05f)] private float carrierChaseStoppingDistance = 0.15f;
+    [Tooltip("Horizontal range in which a competitor can build pickup focus against a carrier.")]
+    [SerializeField, Min(0.5f)] private float carrierTakeoverFocusRange = 2f;
+    [Tooltip("Low-cost sampling interval for held-Uloq pickup focus.")]
+    [SerializeField, Range(0.05f, 0.5f)] private float carrierTakeoverFocusInterval = 0.1f;
     [Tooltip("Tighter distance used only when a pushed rider must re-enter its pickup trigger.")]
     [SerializeField, Min(0.05f)] private float ulakReturnStoppingDistance = 0.25f;
     [Tooltip("Cheap fallback for competitors pushed out after their pickup trigger stopped navigation.")]
@@ -118,12 +160,21 @@ public class AIKopkariRider : MonoBehaviour
         ObstacleAvoidanceType.MedQualityObstacleAvoidance;
     [Tooltip("Normal AI separation radius. Keep this close to the horse body's horizontal half-width.")]
     [SerializeField, Min(0.1f)] private float baseAvoidanceRadius = 0.78f;
-    [Tooltip("Temporary larger separation radius while this rider carries the Uloq.")]
+    [Tooltip("Chase radius for ordinary riders. With the active carrier radius, this keeps about 1.1 metres of combined avoidance.")]
+    [SerializeField, Min(0.1f)] private float ordinaryChaserAvoidanceRadius = 0.75f;
+    [Tooltip("Closer chase radius for the Main Rival, Guards, and Trap Setter. Runtime also clamps this against Close Role Carrier Approach Distance.")]
+    [SerializeField, Min(0.1f)] private float closeRoleChaserAvoidanceRadius = 0.15f;
+    [Tooltip("Required close approach to the carried Uloq for the Main Rival, Guards, and Trap Setter. Ordinary riders keep their existing spacing.")]
+    [SerializeField, Range(0.4f, 0.5f)] private float closeRoleCarrierApproachDistance = 0.45f;
+    [Tooltip("Larger carrier radius used only during the pickup grip-protection period.")]
     [SerializeField, Min(0.1f)] private float carrierAvoidanceRadius = 1.05f;
+    [Tooltip("Carrier radius after pickup protection expires, allowing selected roles to make close contact.")]
+    [SerializeField, Min(0.1f)] private float activeCarrierAvoidanceRadius = 0.3f;
     [Tooltip("Lower values have higher NavMesh avoidance priority.")]
     [SerializeField, Range(0, 99)] private int carrierAvoidancePriority = 20;
     [SerializeField, Range(0, 99)] private int mainRivalAvoidancePriority = 35;
     [SerializeField, Range(0, 99)] private int guardAvoidancePriority = 38;
+    [SerializeField, Range(0, 99)] private int trapSetterAvoidancePriority = 42;
     [SerializeField, Range(0, 99)] private int competitorAvoidancePriorityMin = 45;
     [SerializeField, Range(0, 99)] private int competitorAvoidancePriorityMax = 60;
     [SerializeField, Range(0, 99)] private int orbitAvoidancePriorityMin = 65;
@@ -149,7 +200,6 @@ public class AIKopkariRider : MonoBehaviour
     [SerializeField, Min(0.5f)] private float chaseDetourForwardDistance = 3f;
     [SerializeField, Min(0.25f)] private float chaseDetourSideDistance = 1.75f;
     [SerializeField, Min(0.1f)] private float chaseDetourNavMeshSampleRadius = 1.5f;
-    [SerializeField, Min(0.1f)] private float chaseDetourStoppingDistance = 0.6f;
     [SerializeField, Min(0f)] private float chaseDetourCooldown = 1.25f;
     [SerializeField] private LayerMask chaseAvoidanceLayers = ~0;
 
@@ -157,6 +207,26 @@ public class AIKopkariRider : MonoBehaviour
     [SerializeField] private bool dropOnWalkZone = true;
     [SerializeField] private bool dropOnWebSnare = true;
     [SerializeField] private bool dropOnObstacle = true;
+
+    [Header("Carrier Grip")]
+    [SerializeField, Min(1f)] private float maximumGrip = 100f;
+    [SerializeField, Min(0f)] private float guardRiderMeleeGripDamage = 35f;
+    [SerializeField, Min(0f)] private float walkTrapGripDamage = 50f;
+    [SerializeField, Min(0f)] private float mainRivalSideAttackGripDamage = 20f;
+    [SerializeField, Min(0f)] private float trapSetterContactGripDamage = 20f;
+    [SerializeField, Min(0f)] private float otherRiderContactGripDamage = 10f;
+    [SerializeField, Min(0f)] private float playerTouchGripDamage = 20f;
+    [SerializeField, Min(0f)] private float guardHorseAttackGripDamage = 10f;
+    [SerializeField, Min(0f)] private float guardContactGripDamage = 20f;
+    [Tooltip("Prevents a newly picked Uloq from being dropped immediately by an overlapping hitbox.")]
+    [SerializeField, Min(0f)] private float gripPickupProtectionDuration = 1.5f;
+    [Tooltip("Per attacker and damage type. Multiple colliders cannot drain grip every physics step.")]
+    [SerializeField, Min(0.1f)] private float gripDamageCooldown = 1f;
+    [Tooltip("Only the current AI carrier checks nearby rider contact, at this low-frequency interval.")]
+    [SerializeField, Min(0.6f)] private float playerTouchCheckInterval = 0.6f;
+    [SerializeField, Min(0.25f)] private float playerTouchCheckRadius = 1.65f;
+    [SerializeField] private Vector3 playerTouchCheckOffset = new Vector3(0f, 0.8f, 0.25f);
+    [SerializeField] private LayerMask gripContactLayers = ~0;
 
     private int currentCheckpointIndex = -1;
     public bool hasLamb = false;
@@ -166,12 +236,16 @@ public class AIKopkariRider : MonoBehaviour
     private Coroutine itemTimerCoroutine;
     private Coroutine orbitCoroutine;
     private Coroutine guardCoroutine;
+    private Coroutine trapSetterCoroutine;
+    private Coroutine gripContactCoroutine;
     private Coroutine ulakRecoveryCoroutine;
     private Coroutine guardRiderMeleeObjectCoroutine;
     private bool guardRiderMeleeDamageWindowActive;
     private MAttackTrigger[] guardRiderMeleeAttackTriggers = Array.Empty<MAttackTrigger>();
     private Coroutine returnToUlakCoroutine;
     private Coroutine chaseAvoidanceCoroutine;
+    private Coroutine carrierEscapeSpeedBoostCoroutine;
+    private Coroutine carrierAvoidanceTransitionCoroutine;
     private float currentItemTime;
     private float pickupFocusElapsed;
     private float pickupFocusRequired;
@@ -235,9 +309,22 @@ public class AIKopkariRider : MonoBehaviour
     private float nextGuardRiderMeleeTime;
     private bool guardHorseAttackTriggersInitialActive;
     private bool guardHorseAttackTriggersStateCached;
+    private readonly List<GameObject> trapSetterPrefabs = new List<GameObject>(4);
+    private GameObject trapSetterCarrierOwner;
+    private Vector3 trapSetterLastTravelPosition;
+    private float trapSetterTravel;
+    private float trapSetterSideSign = 1f;
+    private bool trapSetterContactLatched;
+    private int lastTrapPrefabIndex = -1;
+    private bool trapSetterMissingPrefabWarningShown;
+    private readonly Dictionary<int, float> nextGripDamageTimes = new Dictionary<int, float>(12);
+    private readonly Collider[] gripContactBuffer = new Collider[24];
+    private float currentGrip = 100f;
+    private float gripProtectionUntil;
     private bool hasCarrierHistory;
     private bool isCarrierEscaping;
     private bool carrierEscapeCompletedForCurrentHold;
+    private bool carrierEscapeSpeedBoostActive;
     private Transform carrierEscapeTarget;
     private NavMeshPath carrierEscapePath;
     private bool isUsingChaseDetour;
@@ -259,6 +346,7 @@ public class AIKopkariRider : MonoBehaviour
 
     public static event Action<AIKopkariRider> OnRiderReady;
     public static event Action<AIKopkariRider> OnRiderPassedGate;
+    public static event Action<AIKopkariRider, float, float> OnCarrierGripChanged;
 
     public int Id => id;
     public string RiderName => nameNpc;
@@ -268,6 +356,8 @@ public class AIKopkariRider : MonoBehaviour
     public string HorseName => string.IsNullOrWhiteSpace(horseName) ? "Horse" : horseName;
     public int Winnings => Mathf.Max(0, winnings);
     public bool HasGuardRiderMeleeAttack => guardRiderMeleeAttackObject != null;
+    public bool IsMainRival => isMainRival;
+    public bool CanTakeCarriedUlak => ulakRole == UlakRole.Competitor || ulakRole == UlakRole.Guard;
     public bool IsReadyAtStart => preparationState == PreparationState.Ready;
     public bool IsPreparing => preparationState != PreparationState.Idle &&
                                preparationState != PreparationState.Ready &&
@@ -276,6 +366,7 @@ public class AIKopkariRider : MonoBehaviour
     public Transform StartPoint => startingPoint;
     public Transform InspectionCameraPoint => inspectionCameraPoint;
     public MAnimal Animal => ai != null ? ai.animal : null;
+    public MPickUp PickupController => pickUp;
     public UlakRole GameplayUlakRole => ulakRole;
     public bool IsRoundWarmupQualified => isRoundWarmupQualified;
     public bool IsEliminatedFromRounds => isEliminatedFromRounds;
@@ -284,6 +375,84 @@ public class AIKopkariRider : MonoBehaviour
     public float PickupFocusProgress01 => pickupFocusRequired > 0f
         ? Mathf.Clamp01(pickupFocusElapsed / pickupFocusRequired)
         : 0f;
+    public float CurrentGrip => currentGrip;
+    public float MaximumGrip => Mathf.Max(1f, maximumGrip);
+    public float GripNormalized => Mathf.Clamp01(currentGrip / MaximumGrip);
+
+    /// <summary>
+    /// Counts active gameplay AI near a point without allocations. Used by the
+    /// local player's contested Uloq pickup and sampled at a low frequency.
+    /// </summary>
+    public static int CountActiveRidersNear(Vector3 position, float radius)
+    {
+        float clampedRadius = Mathf.Max(0f, radius);
+        float radiusSqr = clampedRadius * clampedRadius;
+        int count = 0;
+
+        for (int i = ActiveRiders.Count - 1; i >= 0; i--)
+        {
+            AIKopkariRider rider = ActiveRiders[i];
+            if (rider == null)
+            {
+                ActiveRiders.RemoveAt(i);
+                continue;
+            }
+
+            if (!rider.isActiveAndEnabled || !rider.isGameplayActive || rider.isFinished)
+                continue;
+
+            Transform riderTransform = rider.Animal != null
+                ? rider.Animal.transform
+                : rider.transform;
+            if ((riderTransform.position - position).sqrMagnitude <= radiusSqr)
+                count++;
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Cheap collider-independent contact fallback. Rider count is small and
+    /// callers sample this at low frequency, so this avoids per-frame physics work.
+    /// </summary>
+    public static bool TryGetNearestActiveRider(
+        Vector3 position,
+        float radius,
+        AIKopkariRider excludedRider,
+        out AIKopkariRider nearestRider)
+    {
+        position.y = 0f;
+        float radiusSqr = Mathf.Max(0f, radius) * Mathf.Max(0f, radius);
+        float nearestSqr = float.PositiveInfinity;
+        nearestRider = null;
+
+        for (int i = ActiveRiders.Count - 1; i >= 0; i--)
+        {
+            AIKopkariRider candidate = ActiveRiders[i];
+            if (candidate == null)
+            {
+                ActiveRiders.RemoveAt(i);
+                continue;
+            }
+
+            if (candidate == excludedRider || !candidate.isActiveAndEnabled ||
+                !candidate.isGameplayActive || candidate.isFinished || candidate.Animal == null)
+            {
+                continue;
+            }
+
+            Vector3 candidatePosition = candidate.Animal.transform.position;
+            candidatePosition.y = 0f;
+            float distanceSqr = (candidatePosition - position).sqrMagnitude;
+            if (distanceSqr > radiusSqr || distanceSqr >= nearestSqr)
+                continue;
+
+            nearestSqr = distanceSqr;
+            nearestRider = candidate;
+        }
+
+        return nearestRider != null;
+    }
 
     private void Awake()
     {
@@ -340,9 +509,13 @@ public class AIKopkariRider : MonoBehaviour
         RestoreGuardHorseAttackTriggers();
         StopPresentationNeigh();
         StopGuardingUlak();
+        StopTrapSetterRole();
+        StopGripContactMonitoring();
         CancelCarrierEscape();
         CancelReturnToUlak();
         StopChaseObstacleSteering();
+        StopCarrierEscapeSpeedBoost();
+        StopCarrierAvoidanceTransition();
         if (roundWinnerRoutine != null)
         {
             StopCoroutine(roundWinnerRoutine);
@@ -374,6 +547,7 @@ public class AIKopkariRider : MonoBehaviour
         if (preparationCoroutine != null) StopCoroutine(preparationCoroutine);
         if (alignmentCoroutine != null) StopCoroutine(alignmentCoroutine);
         if (orbitCoroutine != null) StopCoroutine(orbitCoroutine);
+        KopkariRiderSpeedController.RestoreUnmodifiedSpeed(Animal);
     }
 
     public int GetId()
@@ -402,6 +576,9 @@ public class AIKopkariRider : MonoBehaviour
 
     public void ConfigureUlakRole(UlakRole role, int slotIndex = 0, int slotCount = 1)
     {
+        if (role != UlakRole.TrapSetter)
+            StopTrapSetterRole();
+
         ulakRole = role;
         orbitSlotIndex = Mathf.Max(0, slotIndex);
         orbitSlotCount = Mathf.Max(1, slotCount);
@@ -423,6 +600,78 @@ public class AIKopkariRider : MonoBehaviour
 
         if (!hasLamb)
             ApplyBaseNavigationAvoidance();
+
+        if (isGameplayActive)
+            ApplyConfiguredGameplaySpeed();
+    }
+
+    private void ApplyConfiguredGameplaySpeed()
+    {
+        if (Animal == null)
+            return;
+
+        if (Animal.CurrentSpeedSet != null)
+            Animal.CurrentSpeedSet.LockSpeed = false;
+        Animal.Sprint = false;
+        if (hasLamb && carrierEscapeSpeedBoostActive)
+            KopkariRiderSpeedController.ApplyAICarrierEscapeBoost(Animal);
+        else
+            KopkariRiderSpeedController.ApplyAI(Animal, ulakRole, isMainRival, hasLamb);
+    }
+
+    private void StartCarrierEscapeSpeedBoost()
+    {
+        if (carrierEscapeSpeedBoostActive)
+            return;
+
+        float duration = Mathf.Max(0f, carrierEscapeSpeedBoostDuration);
+        if (!isGameplayActive || ulakRole != UlakRole.Competitor || !hasLamb || duration <= 0f)
+        {
+            ApplyConfiguredGameplaySpeed();
+            return;
+        }
+
+        carrierEscapeSpeedBoostActive = true;
+        ApplyConfiguredGameplaySpeed();
+        carrierEscapeSpeedBoostCoroutine = StartCoroutine(CarrierEscapeSpeedBoostRoutine(duration));
+    }
+
+    private IEnumerator CarrierEscapeSpeedBoostRoutine(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        carrierEscapeSpeedBoostCoroutine = null;
+        carrierEscapeSpeedBoostActive = false;
+
+        if (isGameplayActive && hasLamb)
+            ApplyConfiguredGameplaySpeed();
+    }
+
+    private void StopCarrierEscapeSpeedBoost()
+    {
+        if (carrierEscapeSpeedBoostCoroutine != null)
+        {
+            StopCoroutine(carrierEscapeSpeedBoostCoroutine);
+            carrierEscapeSpeedBoostCoroutine = null;
+        }
+
+        carrierEscapeSpeedBoostActive = false;
+    }
+
+    public void ConfigureTrapSetterPrefabs(IReadOnlyList<GameObject> prefabs)
+    {
+        trapSetterPrefabs.Clear();
+        lastTrapPrefabIndex = -1;
+        trapSetterMissingPrefabWarningShown = false;
+
+        if (prefabs == null)
+            return;
+
+        for (int i = 0; i < prefabs.Count; i++)
+        {
+            GameObject prefab = prefabs[i];
+            if (prefab != null && !trapSetterPrefabs.Contains(prefab))
+                trapSetterPrefabs.Add(prefab);
+        }
     }
 
     private void ApplyBaseNavigationAvoidance()
@@ -432,7 +681,104 @@ public class AIKopkariRider : MonoBehaviour
 
     private void ApplyCarrierNavigationAvoidance()
     {
+        StopCarrierAvoidanceTransition();
+
+        float protectionRemaining = gripProtectionUntil - Time.time;
+        if (protectionRemaining <= 0f)
+        {
+            ApplyActiveCarrierNavigationAvoidance();
+            return;
+        }
+
         ConfigureNavigationAvoidance(carrierAvoidancePriority, carrierAvoidanceRadius);
+        carrierAvoidanceTransitionCoroutine = StartCoroutine(
+            ReduceCarrierAvoidanceAfterProtection(protectionRemaining));
+    }
+
+    private void ApplyChaseNavigationAvoidance()
+    {
+        float chaseRadius;
+        if (UsesCloseCarrierChaseRadius())
+        {
+            // The active carrier contributes its own radius. Clamp the selected
+            // roles so their combined avoidance is about 0.4-0.5 m. During the
+            // pickup protection window the carrier intentionally remains wider.
+            float remainingRadius = GetCloseRoleCarrierApproachDistance() -
+                                    Mathf.Max(0.1f, activeCarrierAvoidanceRadius);
+            chaseRadius = Mathf.Min(
+                closeRoleChaserAvoidanceRadius,
+                Mathf.Max(0.1f, remainingRadius));
+        }
+        else
+        {
+            chaseRadius = ordinaryChaserAvoidanceRadius;
+        }
+
+        ConfigureNavigationAvoidance(
+            GetBaseAvoidancePriority(),
+            Mathf.Min(baseAvoidanceRadius, chaseRadius));
+    }
+
+    private void ApplyGuardCarrierNavigationAvoidance(GameObject ownerRoot)
+    {
+        ApplyChaseNavigationAvoidance();
+
+        KopkariManager manager = KopkariManager.Instance;
+        if (ownerRoot == null || manager == null ||
+            !manager.IsLocalRiderTransform(ownerRoot.transform) || ai == null || ai.Agent == null)
+            return;
+
+        // The player's horse uses a non-carving NavMeshObstacle. Disabling local
+        // avoidance only on the pursuing Guards lets them pass that dynamic
+        // obstacle and make contact without changing the player or the NavMesh.
+        ai.Agent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+    }
+
+    private void ApplyActiveCarrierNavigationAvoidance()
+    {
+        ConfigureNavigationAvoidance(carrierAvoidancePriority, activeCarrierAvoidanceRadius);
+    }
+
+    private IEnumerator ReduceCarrierAvoidanceAfterProtection(float delay)
+    {
+        yield return new WaitForSeconds(Mathf.Max(0f, delay));
+        carrierAvoidanceTransitionCoroutine = null;
+
+        if (isGameplayActive && hasLamb)
+            ApplyActiveCarrierNavigationAvoidance();
+    }
+
+    private void StopCarrierAvoidanceTransition()
+    {
+        if (carrierAvoidanceTransitionCoroutine == null)
+            return;
+
+        StopCoroutine(carrierAvoidanceTransitionCoroutine);
+        carrierAvoidanceTransitionCoroutine = null;
+    }
+
+    private bool UsesCloseCarrierChaseRadius()
+    {
+        return isMainRival || ulakRole == UlakRole.Guard || ulakRole == UlakRole.TrapSetter;
+    }
+
+    private float GetCloseRoleCarrierApproachDistance()
+    {
+        return Mathf.Clamp(closeRoleCarrierApproachDistance, 0.4f, 0.5f);
+    }
+
+    private Transform GetCloseRoleApproachOrigin()
+    {
+        if (pickUp != null && pickUp.Holder != null)
+            return pickUp.Holder;
+
+        return Animal != null ? Animal.transform : transform;
+    }
+
+    private Transform GetCarriedUlakApproachTarget(Transform fallback)
+    {
+        Transform heldUlak = GetCurrentUlakTransform();
+        return heldUlak != null ? heldUlak : fallback;
     }
 
     private void ConfigureNavigationAvoidance(int priority, float radius)
@@ -452,6 +798,9 @@ public class AIKopkariRider : MonoBehaviour
 
         if (ulakRole == UlakRole.Guard)
             return Mathf.Clamp(guardAvoidancePriority, 0, 99);
+
+        if (ulakRole == UlakRole.TrapSetter)
+            return Mathf.Clamp(trapSetterAvoidancePriority, 0, 99);
 
         if (ulakRole == UlakRole.Orbit)
         {
@@ -807,8 +1156,14 @@ public class AIKopkariRider : MonoBehaviour
 
         Vector3 toCarrier = carrierTarget.position - Animal.transform.position;
         toCarrier.y = 0f;
-        float range = Mathf.Max(0.5f, guardRiderMeleeRange);
-        if (toCarrier.sqrMagnitude > range * range || toCarrier.sqrMagnitude < 0.001f)
+        float range = guardCarrierOwner != null
+            ? GetCloseRoleCarrierApproachDistance()
+            : Mathf.Max(0.5f, guardRiderMeleeRange);
+        Transform approachOrigin = GetCloseRoleApproachOrigin();
+        Transform approachTarget = GetCarriedUlakApproachTarget(carrierTarget);
+        Vector3 closeOffset = approachTarget.position - approachOrigin.position;
+        closeOffset.y = 0f;
+        if (closeOffset.sqrMagnitude > range * range || toCarrier.sqrMagnitude < 0.001f)
             return;
 
         Animal.RotateAtDirection(toCarrier.normalized);
@@ -992,6 +1347,7 @@ public class AIKopkariRider : MonoBehaviour
 
         if (Animal != null)
         {
+            KopkariRiderSpeedController.RestoreUnmodifiedSpeed(Animal);
             if (Animal.CurrentSpeedSet != null)
                 Animal.CurrentSpeedSet.LockSpeed = false;
             Animal.Sprint = false;
@@ -1016,6 +1372,8 @@ public class AIKopkariRider : MonoBehaviour
 
     private void ResetGameplayState()
     {
+        StopGripContactMonitoring();
+        ResetCarrierGrip(clearProtection: true);
         hasLamb = false;
         isFinished = false;
         timeFinishedProcessed = false;
@@ -1130,7 +1488,14 @@ public class AIKopkariRider : MonoBehaviour
         {
             isUsingChaseDetour = false;
             if (ShouldRunChaseObstacleSteering())
-                MoveToCurrentUlak();
+            {
+                KopkariManager manager = KopkariManager.Instance;
+                GameObject owner = manager != null ? manager.currentGoatOwner : null;
+                if (owner != null)
+                    MoveToCarrier(owner);
+                else
+                    MoveToCurrentUlak();
+            }
             return;
         }
 
@@ -1417,35 +1782,22 @@ public class AIKopkariRider : MonoBehaviour
 
         ResetForRoundGameplay();
         EnablePickupInteraction();
-        if (ulakRole == UlakRole.Guard && pickUp != null)
+        if (ulakRole != UlakRole.Competitor && pickUp != null)
             pickUp.enabled = false;
         ApplyBaseNavigationAvoidance();
         preparationState = PreparationState.Released;
         isGameplayActive = true;
         if (ulakRole == UlakRole.Competitor)
             StartUlakRecovery();
-        if (Animal != null)
-        {
-            if (Animal.CurrentSpeedSet != null)
-                Animal.CurrentSpeedSet.LockSpeed = false;
-            Animal.Sprint = false;
-
-            int requestedSpeed = isMainRival || ulakRole == UlakRole.Guard
-                ? mainRivalGameplaySpeedIndex
-                : normalGameplaySpeedIndex;
-            Animal.Speed_CurrentIndex_Set(requestedSpeed);
-            if (Animal.CurrentSpeedIndex != requestedSpeed)
-            {
-                Debug.LogWarning(
-                    $"[{nameof(AIKopkariRider)}] {name} requested gameplay speed {requestedSpeed}, " +
-                    $"but Malbers selected {Animal.CurrentSpeedIndex}. Check the active speed set.",
-                    this);
-            }
-        }
+        ApplyConfiguredGameplaySpeed();
 
         if (ulakRole == UlakRole.Guard)
         {
             StartGuardingUlak();
+        }
+        else if (ulakRole == UlakRole.TrapSetter)
+        {
+            StartTrapSetterRole();
         }
         else if (KopkariManager.Instance != null && KopkariManager.Instance.currentGoatOwner != null)
         {
@@ -1474,6 +1826,7 @@ public class AIKopkariRider : MonoBehaviour
         isGameplayActive = false;
         isFinished = false;
         timeFinishedProcessed = false;
+        StopCarrierEscapeSpeedBoost();
         hasLamb = false;
         hasCarrierHistory = false;
         wonCurrentRound = false;
@@ -1488,6 +1841,9 @@ public class AIKopkariRider : MonoBehaviour
         CancelReturnToUlak();
         StopUlakRecovery();
         StopGuardingUlak();
+        StopTrapSetterRole();
+        StopGripContactMonitoring();
+        ResetCarrierGrip(clearProtection: true);
         StopChaseObstacleSteering();
         CancelPickupFocus();
         StopItemTimer();
@@ -1706,6 +2062,93 @@ public class AIKopkariRider : MonoBehaviour
         ResetPickupFocusProgress();
     }
 
+    private void StartCarrierTakeoverFocus(GameObject ownerRoot)
+    {
+        if (!CanAttemptCarrierTakeover(ownerRoot) || waitCoroutine != null)
+        {
+            return;
+        }
+
+        waitCoroutine = StartCoroutine(WaitToTakeUlakFromCarrier(ownerRoot));
+    }
+
+    private IEnumerator WaitToTakeUlakFromCarrier(GameObject expectedOwner)
+    {
+        float minimum = Mathf.Max(0f, Mathf.Min(pickupFocusMinDuration, pickupFocusMaxDuration));
+        float maximum = Mathf.Max(minimum, Mathf.Max(pickupFocusMinDuration, pickupFocusMaxDuration));
+        pickupFocusRequired = Random.Range(minimum, maximum);
+        pickupFocusElapsed = 0f;
+
+        float interval = Mathf.Clamp(carrierTakeoverFocusInterval, 0.05f, 0.5f);
+        WaitForSeconds wait = new WaitForSeconds(interval);
+        while (CanAttemptCarrierTakeover(expectedOwner))
+        {
+            KopkariManager manager = KopkariManager.Instance;
+            if (manager == null || manager.currentGoatOwner == null ||
+                manager.currentGoatOwner != expectedOwner)
+            {
+                break;
+            }
+
+            Transform carrier = manager.ResolveGoatOwnerTarget(expectedOwner);
+            if (carrier == null || Animal == null)
+                break;
+
+            Transform heldUlak = manager.UlakTransform;
+            bool focusHeldUlak = isMainRival || ulakRole == UlakRole.Guard;
+            Transform focusOrigin = focusHeldUlak && pickUp != null && pickUp.Holder != null
+                ? pickUp.Holder
+                : Animal.transform;
+            Vector3 focusTargetPosition = focusHeldUlak && heldUlak != null
+                ? heldUlak.position
+                : carrier.position;
+            float focusRange = isMainRival
+                ? GetCloseRoleCarrierApproachDistance()
+                : Mathf.Max(0.5f, carrierTakeoverFocusRange);
+            float distance = HorizontalDistance(focusOrigin.position, focusTargetPosition);
+            if (distance <= focusRange)
+                pickupFocusElapsed += interval;
+            else
+                pickupFocusElapsed = 0f;
+
+            if (pickupFocusElapsed >= pickupFocusRequired)
+            {
+                // Ownership callbacks are synchronous. Clear the coroutine handle
+                // first so the callback cannot stop the currently executing routine.
+                waitCoroutine = null;
+                pickupRequestPending = true;
+                bool transferred = manager.TryTransferUlakToAIRider(this);
+                pickupRequestPending = false;
+                ResetPickupFocusProgress();
+
+                if (!transferred && isGameplayActive && !hasLamb &&
+                    manager.currentGoatOwner != null)
+                {
+                    StartCarrierTakeoverFocus(manager.currentGoatOwner);
+                }
+                yield break;
+            }
+
+            yield return wait;
+        }
+
+        waitCoroutine = null;
+        pickupRequestPending = false;
+        ResetPickupFocusProgress();
+    }
+
+    private bool CanAttemptCarrierTakeover(GameObject ownerRoot)
+    {
+        if (!isGameplayActive || hasLamb || ownerRoot == null ||
+            ownerRoot == transform.root.gameObject || !CanTakeCarriedUlak)
+        {
+            return false;
+        }
+
+        KopkariManager manager = KopkariManager.Instance;
+        return manager != null && manager.currentGoatOwner == ownerRoot;
+    }
+
     private bool CanContinuePickupFocus(Pickable focusedAtStart)
     {
         return isGameplayActive &&
@@ -1743,7 +2186,13 @@ public class AIKopkariRider : MonoBehaviour
             return;
         }
 
-        if (ulakRole != UlakRole.Competitor || !isGameplayActive)
+        GameObject carrierOwner = KopkariManager.Instance != null
+            ? KopkariManager.Instance.currentGoatOwner
+            : null;
+        bool canUsePickupFlow = ulakRole == UlakRole.Competitor ||
+                                (ulakRole == UlakRole.Guard &&
+                                 CanAttemptCarrierTakeover(carrierOwner));
+        if (!canUsePickupFlow || !isGameplayActive)
         {
             CancelPickupFocus();
             return;
@@ -1757,12 +2206,20 @@ public class AIKopkariRider : MonoBehaviour
 
     private void HandleItemPicked(GameObject pickedObject)
     {
-        if (!isGameplayActive || ulakRole != UlakRole.Competitor || hasLamb || pickedObject == null)
+        if (!isGameplayActive || !CanTakeCarriedUlak || pickedObject == null)
             return;
 
+        bool gripWasInitialized = hasLamb && gripContactCoroutine != null;
         pickupRequestPending = false;
         ResetPickupFocusProgress();
         hasLamb = true;
+        StartCarrierEscapeSpeedBoost();
+        if (!gripWasInitialized)
+        {
+            ResetCarrierGrip(clearProtection: false);
+            gripProtectionUntil = Time.time + Mathf.Max(0f, gripPickupProtectionDuration);
+            StartGripContactMonitoring();
+        }
         CancelReturnToUlak();
         CancelCarrierEscape();
         ApplyCarrierNavigationAvoidance();
@@ -1855,6 +2312,32 @@ public class AIKopkariRider : MonoBehaviour
 
         while (isGameplayActive && ulakRole == UlakRole.Guard)
         {
+            KopkariManager manager = KopkariManager.Instance;
+            GameObject liveCarrierOwner = manager != null ? manager.currentGoatOwner : null;
+            if (liveCarrierOwner != guardCarrierOwner)
+            {
+                if (liveCarrierOwner != null && liveCarrierOwner != transform.root.gameObject)
+                {
+                    EnablePickupInteraction();
+                    guardCarrierOwner = liveCarrierOwner;
+                    Transform liveCarrier = manager.ResolveGoatOwnerTarget(liveCarrierOwner);
+                    guardEngagementTarget = GetCarriedUlakApproachTarget(liveCarrier);
+                    guardEngagementAIRider = null;
+                    guardEngagementDeadline = float.PositiveInfinity;
+                    ApplyGuardCarrierNavigationAvoidance(liveCarrierOwner);
+                }
+                else if (guardCarrierOwner != null)
+                {
+                    ClearGuardEngagement();
+                    ApplyBaseNavigationAvoidance();
+                    CancelPickupFocus();
+                    if (pickUp != null && !pickUp.Has_Item)
+                        pickUp.enabled = false;
+                }
+
+                lastDestination = new Vector3(float.PositiveInfinity, 0f, 0f);
+            }
+
             Transform ulak = GetCurrentUlakTransform();
             if (ulak != null)
             {
@@ -1870,12 +2353,30 @@ public class AIKopkariRider : MonoBehaviour
 
                 if (isEngaging)
                 {
-                    destination = engagementTarget.position;
-                    stoppingDistance = Mathf.Clamp(guardEngageStoppingDistance, 0.25f, 1.25f);
                     if (guardCarrierOwner != null)
-                        TryGuardRiderMeleeAttack(engagementTarget);
+                    {
+                        Transform carrier = manager != null
+                            ? manager.ResolveGoatOwnerTarget(guardCarrierOwner)
+                            : guardCarrierOwner.transform;
+                        Transform approachTarget = GetCarriedUlakApproachTarget(carrier);
+                        ai.StoppingDistance = 0f;
+                        if (ai.Target != approachTarget || ai.HasArrived || !ai.IsMoving)
+                            ai.SetTarget(approachTarget, true);
+                        if (ai.Agent != null)
+                            ai.CurrentStoppingDistance = 0f;
+                        StartCarrierTakeoverFocus(guardCarrierOwner);
+                        TryGuardRiderMeleeAttack(approachTarget);
+                        TryApplyGuardCarrierContact(manager, guardCarrierOwner, carrier);
+                        lastDestination = new Vector3(float.PositiveInfinity, 0f, 0f);
+                        yield return repathWait;
+                        continue;
+                    }
                     else
+                    {
+                        destination = engagementTarget.position;
+                        stoppingDistance = Mathf.Clamp(guardEngageStoppingDistance, 0.25f, 1.25f);
                         TryAttackFocusedRider(engagementTarget);
+                    }
                 }
                 else
                 {
@@ -1896,8 +2397,7 @@ public class AIKopkariRider : MonoBehaviour
                 if (destinationDelta.sqrMagnitude >= repathThreshold * repathThreshold ||
                     guardDelta.sqrMagnitude >= returnThreshold * returnThreshold)
                 {
-                    ai.StoppingDistance = stoppingDistance;
-                    ai.SetDestination(destination, true);
+                    SetGuardDestination(destination, stoppingDistance);
                     lastDestination = destination;
                 }
             }
@@ -1907,6 +2407,349 @@ public class AIKopkariRider : MonoBehaviour
 
         guardCoroutine = null;
     }
+
+    private void SetGuardDestination(Vector3 destination, float stoppingDistance)
+    {
+        float closeDistance = Mathf.Max(0.05f, stoppingDistance);
+        ai.StoppingDistance = closeDistance;
+        ai.SetDestinationClearTarget(destination);
+
+        // MAnimalAIControl.SetDestination replaces the requested target distance
+        // with its serialized PointStoppingDistance. Re-apply the role-specific
+        // value so Guards do not stop several metres short of the Uloq.
+        if (ai.Agent != null)
+            ai.CurrentStoppingDistance = closeDistance;
+    }
+
+    private void TryApplyGuardCarrierContact(
+        KopkariManager manager,
+        GameObject ownerRoot,
+        Transform carrier)
+    {
+        if (manager == null || ownerRoot == null || carrier == null || Animal == null)
+            return;
+
+        Transform approachOrigin = GetCloseRoleApproachOrigin();
+        Transform approachTarget = GetCarriedUlakApproachTarget(carrier);
+        float contactDistance = Mathf.Max(0.1f, guardCarrierContactDistance);
+        if (HorizontalDistance(approachOrigin.position, approachTarget.position) > contactDistance)
+            return;
+
+        GameObject guardRoot = transform.root.gameObject;
+        if (manager.IsLocalRiderTransform(ownerRoot.transform))
+        {
+            manager.ApplyGuardContactDamage(guardRoot);
+            return;
+        }
+
+        AIKopkariRider carrierRider = ownerRoot.GetComponentInChildren<AIKopkariRider>(true);
+        if (carrierRider != null && carrierRider != this)
+            carrierRider.ApplyGripDamage(GripDamageSource.GuardContact, guardRoot);
+    }
+
+    #region Trap Setter
+    private void StartTrapSetterRole()
+    {
+        StopTrapSetterRole();
+        if (!isGameplayActive || ulakRole != UlakRole.TrapSetter || ai == null || Animal == null)
+            return;
+
+        trapSetterSideSign = Random.value < 0.5f ? -1f : 1f;
+        trapSetterCoroutine = StartCoroutine(TrapSetterRoutine());
+    }
+
+    private void StopTrapSetterRole()
+    {
+        if (trapSetterCoroutine != null)
+        {
+            StopCoroutine(trapSetterCoroutine);
+            trapSetterCoroutine = null;
+        }
+
+        trapSetterCarrierOwner = null;
+        trapSetterTravel = 0f;
+        trapSetterLastTravelPosition = Vector3.zero;
+        trapSetterContactLatched = false;
+    }
+
+    private IEnumerator TrapSetterRoutine()
+    {
+        WaitForSeconds repathWait = new WaitForSeconds(Mathf.Max(0.2f, trapSetterRepathInterval));
+        Vector3 lastDestination = new Vector3(float.PositiveInfinity, 0f, 0f);
+        while (isGameplayActive && !isFinished && ulakRole == UlakRole.TrapSetter)
+        {
+            KopkariManager manager = KopkariManager.Instance;
+            GameObject ownerRoot = manager != null ? manager.currentGoatOwner : null;
+            Transform carrier = ownerRoot != null && manager != null
+                ? manager.ResolveGoatOwnerTarget(ownerRoot)
+                : null;
+
+            if (ownerRoot != trapSetterCarrierOwner)
+            {
+                ResetTrapSetterCarrierProgress(ownerRoot, carrier);
+                lastDestination = new Vector3(float.PositiveInfinity, 0f, 0f);
+            }
+
+            if (carrier == null)
+            {
+                trapSetterContactLatched = false;
+                Transform ulak = GetCurrentUlakTransform();
+                Transform waitingFinish = manager != null ? manager.FirstSalymPosition : null;
+                if (ulak != null)
+                {
+                    Vector3 towardFinish = waitingFinish != null
+                        ? waitingFinish.position - ulak.position
+                        : ulak.forward;
+                    towardFinish.y = 0f;
+                    if (towardFinish.sqrMagnitude < 0.01f)
+                    {
+                        towardFinish = ulak.forward;
+                        towardFinish.y = 0f;
+                    }
+                    if (towardFinish.sqrMagnitude < 0.01f)
+                        towardFinish = Vector3.forward;
+                    towardFinish.Normalize();
+
+                    Vector3 right = Vector3.Cross(Vector3.up, towardFinish);
+                    Vector3 requested = ulak.position +
+                                        towardFinish * Mathf.Max(1f, trapSetterWaitingDistance) +
+                                        right * (trapSetterSideSign * Mathf.Max(0f, trapLateralOffset));
+                    if (TrySampleTrapPoint(requested, out Vector3 waitingDestination))
+                    {
+                        Vector3 destinationDelta = waitingDestination - lastDestination;
+                        destinationDelta.y = 0f;
+                        float stoppingDistance = Mathf.Max(0.5f, trapSetterStoppingDistance);
+                        bool wasDisplaced = ai.HasArrived &&
+                                            HorizontalDistance(Animal.transform.position, waitingDestination) >
+                                            stoppingDistance + 0.75f;
+                        if (destinationDelta.sqrMagnitude >= 1f || wasDisplaced)
+                        {
+                            ai.StoppingDistance = stoppingDistance;
+                            ai.SetDestination(waitingDestination, true);
+                            lastDestination = waitingDestination;
+                        }
+                    }
+                }
+
+                yield return repathWait;
+                continue;
+            }
+
+            Transform finish = manager != null ? manager.FirstSalymPosition : null;
+            if (finish != null &&
+                TryGetTrapSetterDestination(carrier.position, finish.position, out Vector3 destination,
+                    out Vector3 routeDirection, out float distanceToFinish))
+            {
+                if (!trapSetterContactLatched)
+                {
+                    // Close directly on the live carrier until actual contact.
+                    ai.StoppingDistance = Mathf.Max(0.05f, carrierChaseStoppingDistance);
+                    Transform approachTarget = GetCarriedUlakApproachTarget(carrier);
+                    ai.SetTarget(approachTarget, true);
+                    lastDestination = approachTarget.position;
+                }
+                else
+                {
+                    Vector3 destinationDelta = destination - lastDestination;
+                    destinationDelta.y = 0f;
+                    if (destinationDelta.sqrMagnitude >= 0.25f)
+                    {
+                        ai.StoppingDistance = Mathf.Max(0.1f, trapSetterStoppingDistance);
+                        ai.SetDestination(destination, true);
+                        lastDestination = destination;
+                    }
+                }
+
+                AccumulateTrapSetterTravel(Animal.transform.position);
+                TryApplyTrapSetterContact(manager, ownerRoot, carrier);
+
+                if (trapSetterTravel >= Mathf.Max(5f, trapPlacementDistance) &&
+                    distanceToFinish > Mathf.Max(1f, trapFinishExclusionRadius))
+                {
+                    if (TryPlaceTrap(routeDirection))
+                    {
+                        trapSetterTravel = 0f;
+                        trapSetterSideSign = Random.value < 0.5f ? -1f : 1f;
+                    }
+                }
+            }
+            else
+            {
+                ai.StoppingDistance = Mathf.Max(0.05f, carrierChaseStoppingDistance);
+                ai.SetTarget(GetCarriedUlakApproachTarget(carrier), true);
+                TryApplyTrapSetterContact(manager, ownerRoot, carrier);
+            }
+
+            yield return repathWait;
+        }
+
+        trapSetterCoroutine = null;
+    }
+
+    private void ResetTrapSetterCarrierProgress(GameObject ownerRoot, Transform carrier)
+    {
+        trapSetterCarrierOwner = ownerRoot;
+        trapSetterTravel = 0f;
+        trapSetterLastTravelPosition = Animal != null ? Animal.transform.position : Vector3.zero;
+        trapSetterSideSign = Random.value < 0.5f ? -1f : 1f;
+        trapSetterContactLatched = false;
+    }
+
+    private void AccumulateTrapSetterTravel(Vector3 setterPosition)
+    {
+        if (trapSetterLastTravelPosition == Vector3.zero)
+        {
+            trapSetterLastTravelPosition = setterPosition;
+            return;
+        }
+
+        float moved = HorizontalDistance(setterPosition, trapSetterLastTravelPosition);
+        // Ignore teleports and round resets; normal movement remains accumulated.
+        if (moved <= Mathf.Max(5f, trapPlacementDistance * 0.5f))
+            trapSetterTravel += moved;
+
+        trapSetterLastTravelPosition = setterPosition;
+    }
+
+    private void TryApplyTrapSetterContact(
+        KopkariManager manager,
+        GameObject ownerRoot,
+        Transform carrier)
+    {
+        if (manager == null || ownerRoot == null || carrier == null || Animal == null)
+            return;
+
+        float contactDistance = Mathf.Min(
+            Mathf.Max(0.1f, trapSetterContactDistance),
+            GetCloseRoleCarrierApproachDistance());
+        float resetDistance = Mathf.Max(contactDistance + 0.25f, trapSetterContactResetDistance);
+        Transform approachOrigin = GetCloseRoleApproachOrigin();
+        Transform approachTarget = GetCarriedUlakApproachTarget(carrier);
+        float distance = HorizontalDistance(approachOrigin.position, approachTarget.position);
+        if (distance > resetDistance)
+        {
+            trapSetterContactLatched = false;
+            return;
+        }
+
+        if (trapSetterContactLatched || distance > contactDistance)
+            return;
+
+        bool damageApplied;
+        if (manager.IsLocalRiderTransform(ownerRoot.transform))
+        {
+            damageApplied = manager.ApplyTrapSetterContactDamage(transform.root.gameObject);
+        }
+        else
+        {
+            AIKopkariRider carrierRider = ownerRoot.GetComponentInChildren<AIKopkariRider>(true);
+            damageApplied = carrierRider != null && carrierRider != this &&
+                            carrierRider.ApplyGripDamage(
+                                GripDamageSource.TrapSetterContact,
+                                transform.root.gameObject);
+        }
+
+        if (damageApplied)
+            trapSetterContactLatched = true;
+    }
+
+    private bool TryGetTrapSetterDestination(
+        Vector3 origin,
+        Vector3 finish,
+        out Vector3 destination,
+        out Vector3 routeDirection,
+        out float distanceToFinish)
+    {
+        Vector3 toFinish = finish - origin;
+        toFinish.y = 0f;
+        distanceToFinish = toFinish.magnitude;
+        routeDirection = distanceToFinish > 0.01f ? toFinish / distanceToFinish : Animal.transform.forward;
+        routeDirection.y = 0f;
+        routeDirection.Normalize();
+
+        float usableLead = trapSetterContactLatched
+            ? Mathf.Max(0f, Mathf.Min(
+                Mathf.Min(trapLeadDistance, 1.5f),
+                distanceToFinish - Mathf.Max(1f, trapFinishExclusionRadius)))
+            : 0f;
+        Vector3 right = Vector3.Cross(Vector3.up, routeDirection);
+        float lateral = trapSetterContactLatched
+            ? trapSetterSideSign * Mathf.Min(0.75f, Mathf.Max(0f, trapLateralOffset))
+            : 0f;
+        Vector3 requested = origin + routeDirection * usableLead +
+                            right * lateral;
+        return TrySampleTrapPoint(requested, out destination);
+    }
+
+    private bool TryPlaceTrap(Vector3 routeDirection)
+    {
+        GameObject prefab = SelectTrapPrefab();
+        if (prefab == null)
+        {
+            if (!trapSetterMissingPrefabWarningShown)
+            {
+                trapSetterMissingPrefabWarningShown = true;
+                Debug.LogWarning(
+                    $"[{nameof(AIKopkariRider)}] Trap Setter '{name}' has no trap prefab. " +
+                    "Assign Random Trap Prefabs on KopkariIntroFlowController or a Walk Zone on BoostersContainer.",
+                    this);
+            }
+            return false;
+        }
+
+        Vector3 requested = Animal.transform.position -
+                            routeDirection * Mathf.Max(0f, trapDropBehindDistance);
+        if (!TrySampleTrapPoint(requested, out Vector3 spawnPosition))
+            return false;
+
+        Quaternion rotation = routeDirection.sqrMagnitude > 0.001f
+            ? Quaternion.LookRotation(routeDirection, Vector3.up)
+            : Quaternion.identity;
+        SimplePool.Spawn(prefab, spawnPosition, rotation, lifeTime: Mathf.Max(1f, trapLifetime));
+        return true;
+    }
+
+    private GameObject SelectTrapPrefab()
+    {
+        if (trapSetterPrefabs.Count == 0)
+        {
+            if (boosterContainer != null && boosterContainer.walkzonePrefab != null)
+                return boosterContainer.walkzonePrefab;
+
+            return KopkariManager.Instance != null
+                ? KopkariManager.Instance.walkZonePrefab
+                : null;
+        }
+
+        int index = Random.Range(0, trapSetterPrefabs.Count);
+        if (trapSetterPrefabs.Count > 1 && index == lastTrapPrefabIndex)
+            index = (index + Random.Range(1, trapSetterPrefabs.Count)) % trapSetterPrefabs.Count;
+
+        lastTrapPrefabIndex = index;
+        return trapSetterPrefabs[index];
+    }
+
+    private bool TrySampleTrapPoint(Vector3 requested, out Vector3 sampled)
+    {
+        int areaMask = ai != null && ai.Agent != null ? ai.Agent.areaMask : NavMesh.AllAreas;
+        if (NavMesh.SamplePosition(requested, out NavMeshHit hit,
+                Mathf.Max(0.1f, trapNavMeshSampleRadius), areaMask))
+        {
+            sampled = hit.position;
+            return true;
+        }
+
+        sampled = requested;
+        return false;
+    }
+
+    private static float HorizontalDistance(Vector3 a, Vector3 b)
+    {
+        a.y = 0f;
+        b.y = 0f;
+        return Vector3.Distance(a, b);
+    }
+    #endregion
 
     private void HandleGoatOwnerChanged(GameObject ownerRoot)
     {
@@ -1919,23 +2762,75 @@ public class AIKopkariRider : MonoBehaviour
             CancelCarrierEscape();
             StopChaseObstacleSteering();
 
+            bool isThisGuard = ownerRoot != null && ownerRoot == transform.root.gameObject;
+            if (isThisGuard)
+            {
+                ClearGuardEngagement();
+                StopGuardingUlak();
+                EnablePickupInteraction();
+                hasCarrierHistory = true;
+                hasLamb = true;
+                StartCarrierEscapeSpeedBoost();
+                ApplyCarrierNavigationAvoidance();
+                MoveOwnerToFirstSalym();
+                return;
+            }
+
+            if (hasLamb)
+            {
+                hasLamb = false;
+                StopCarrierEscapeSpeedBoost();
+                StopGripContactMonitoring();
+                StopItemTimer();
+            }
+
             if (ownerRoot != null && ownerRoot != transform.root.gameObject)
             {
+                EnablePickupInteraction();
+                ApplyConfiguredGameplaySpeed();
+                ApplyGuardCarrierNavigationAvoidance(ownerRoot);
                 guardCarrierOwner = ownerRoot;
                 KopkariManager manager = KopkariManager.Instance;
-                guardEngagementTarget = manager != null
+                Transform carrierTarget = manager != null
                     ? manager.ResolveGoatOwnerTarget(ownerRoot)
                     : ownerRoot.transform;
+                guardEngagementTarget = GetCarriedUlakApproachTarget(carrierTarget);
                 guardEngagementAIRider = null;
                 guardEngagementDeadline = float.PositiveInfinity;
+                MoveToCarrier(ownerRoot);
+                StartCarrierTakeoverFocus(ownerRoot);
             }
             else
             {
                 ClearGuardEngagement();
+                ApplyConfiguredGameplaySpeed();
+                ApplyBaseNavigationAvoidance();
+                if (pickUp != null && !pickUp.Has_Item)
+                    pickUp.enabled = false;
             }
 
             if (guardCoroutine == null)
                 StartGuardingUlak();
+            return;
+        }
+
+        if (ulakRole == UlakRole.TrapSetter)
+        {
+            ApplyConfiguredGameplaySpeed();
+            CancelPickupFocus();
+            CancelCarrierEscape();
+            StopChaseObstacleSteering();
+            if (ownerRoot != null)
+                ApplyChaseNavigationAvoidance();
+            else
+                ApplyBaseNavigationAvoidance();
+            KopkariManager manager = KopkariManager.Instance;
+            Transform carrier = ownerRoot != null && manager != null
+                ? manager.ResolveGoatOwnerTarget(ownerRoot)
+                : null;
+            ResetTrapSetterCarrierProgress(ownerRoot, carrier);
+            if (trapSetterCoroutine == null)
+                StartTrapSetterRole();
             return;
         }
 
@@ -1951,6 +2846,9 @@ public class AIKopkariRider : MonoBehaviour
 
         if (isThisRider)
         {
+            CancelPickupFocus();
+            hasLamb = true;
+            StartCarrierEscapeSpeedBoost();
             StopChaseObstacleSteering();
             ApplyCarrierNavigationAvoidance();
             MoveOwnerToFirstSalym();
@@ -1958,22 +2856,38 @@ public class AIKopkariRider : MonoBehaviour
         }
 
         CancelCarrierEscape();
+        CancelPickupFocus();
 
         if (hasLamb)
         {
             hasLamb = false;
+            StopCarrierEscapeSpeedBoost();
+            StopGripContactMonitoring();
             StopItemTimer();
         }
 
-        ApplyBaseNavigationAvoidance();
+        ApplyConfiguredGameplaySpeed();
+
+        if (ownerRoot != null)
+            ApplyChaseNavigationAvoidance();
+        else
+            ApplyBaseNavigationAvoidance();
 
         if (ownerRoot != null)
             StartChaseObstacleSteering();
         else
             StopChaseObstacleSteering();
 
-        if (ownerRoot == null && ulakRole == UlakRole.Orbit && !hasCarrierHistory)
+        // A dropped Uloq must always restart the Orbit role. hasCarrierHistory
+        // remains useful for carrier/chase behavior, but must not permanently
+        // block the orbit coroutine after the first pickup of the round.
+        if (ownerRoot == null && ulakRole == UlakRole.Orbit)
             orbitCoroutine = StartCoroutine(OrbitUlak());
+        else if (ownerRoot != null)
+        {
+            MoveToCarrier(ownerRoot);
+            StartCarrierTakeoverFocus(ownerRoot);
+        }
         else
             MoveToCurrentUlak();
     }
@@ -2186,31 +3100,38 @@ public class AIKopkariRider : MonoBehaviour
     private void EvaluateChaseObstacleSteering()
     {
         Transform horseTransform = Animal != null ? Animal.transform : transform.root;
-        Transform ulak = GetCurrentUlakTransform();
-        if (horseTransform == null || ulak == null)
+        KopkariManager manager = KopkariManager.Instance;
+        GameObject owner = manager != null ? manager.currentGoatOwner : null;
+        Transform pursuitTarget = owner != null && manager != null
+            ? manager.ResolveGoatOwnerTarget(owner)
+            : GetCurrentUlakTransform();
+        if (horseTransform == null || pursuitTarget == null)
             return;
 
-        Vector3 toUlak = ulak.position - horseTransform.position;
-        toUlak.y = 0f;
+        Vector3 toTarget = pursuitTarget.position - horseTransform.position;
+        toTarget.y = 0f;
         float engagementDistance = Mathf.Max(0.5f, chaseEngagementDistance);
-        if (toUlak.sqrMagnitude <= engagementDistance * engagementDistance)
+        if (toTarget.sqrMagnitude <= engagementDistance * engagementDistance)
         {
             ResetChaseProgressTracking();
             if (isUsingChaseDetour)
             {
                 isUsingChaseDetour = false;
-                MoveToCurrentUlak();
+                if (owner != null)
+                    MoveToCarrier(owner);
+                else
+                    MoveToCurrentUlak();
             }
             return;
         }
 
-        if (isUsingChaseDetour || toUlak.sqrMagnitude < 0.0001f)
+        if (isUsingChaseDetour || toTarget.sqrMagnitude < 0.0001f)
             return;
 
         if (!HasChaserBeenStuck(horseTransform.position) || Time.time < nextChaseDetourTime)
             return;
 
-        Vector3 pursuitDirection = toUlak.normalized;
+        Vector3 pursuitDirection = toTarget.normalized;
         if (!HasBlockingObjectAhead(horseTransform, pursuitDirection))
             return;
 
@@ -2250,7 +3171,7 @@ public class AIKopkariRider : MonoBehaviour
             Quaternion.LookRotation(pursuitDirection, Vector3.up));
         isUsingChaseDetour = true;
         ResetChaseProgressTracking();
-        ai.StoppingDistance = chaseDetourStoppingDistance;
+        ai.StoppingDistance = 0f;
         ai.SetTarget(chaseDetourTarget, true);
     }
 
@@ -2400,6 +3321,23 @@ public class AIKopkariRider : MonoBehaviour
         }
     }
 
+    private void MoveToCarrier(GameObject ownerRoot)
+    {
+        if (ai == null || ownerRoot == null)
+            return;
+
+        KopkariManager manager = KopkariManager.Instance;
+        Transform carrier = manager != null
+            ? manager.ResolveGoatOwnerTarget(ownerRoot)
+            : ownerRoot.transform;
+        if (carrier == null)
+            return;
+
+        Transform heldUlak = GetCurrentUlakTransform();
+        ai.StoppingDistance = 0f;
+        ai.SetTarget(heldUlak != null ? heldUlak : carrier, true);
+    }
+
     private void ScheduleReturnToUlak()
     {
         if (!isGameplayActive || ulakRole != UlakRole.Competitor || hasLamb ||
@@ -2513,20 +3451,190 @@ public class AIKopkariRider : MonoBehaviour
             : null;
     }
 
+    public bool ApplyGripDamage(GripDamageSource source, GameObject attacker = null)
+    {
+        if (!isGameplayActive || !hasLamb || Time.time < gripProtectionUntil)
+            return false;
+
+        float damage = GetGripDamage(source);
+        if (damage <= 0f)
+            return false;
+
+        GameObject attackerRoot = attacker != null && attacker.transform.root != null
+            ? attacker.transform.root.gameObject
+            : null;
+        int attackerId = attackerRoot != null ? attackerRoot.GetInstanceID() : 0;
+        int cooldownKey = unchecked(attackerId * 397 ^ ((int)source + 1) * 7919);
+        if (nextGripDamageTimes.TryGetValue(cooldownKey, out float nextAllowedTime) &&
+            Time.time < nextAllowedTime)
+            return false;
+
+        nextGripDamageTimes[cooldownKey] = Time.time + Mathf.Max(0.1f, gripDamageCooldown);
+        currentGrip = Mathf.Max(0f, currentGrip - damage);
+        OnCarrierGripChanged?.Invoke(this, currentGrip, MaximumGrip);
+        if (currentGrip <= 0f)
+            DropOwnedUlak();
+        return true;
+    }
+
+    private float GetGripDamage(GripDamageSource source)
+    {
+        switch (source)
+        {
+            case GripDamageSource.WalkTrap:
+                return Mathf.Max(0f, walkTrapGripDamage);
+            case GripDamageSource.GuardRiderMelee:
+                return Mathf.Max(0f, guardRiderMeleeGripDamage);
+            case GripDamageSource.GuardHorseAttack:
+                return Mathf.Max(0f, guardHorseAttackGripDamage);
+            case GripDamageSource.GuardContact:
+                return Mathf.Max(0f, guardContactGripDamage);
+            case GripDamageSource.MainRivalSideAttack:
+                return Mathf.Max(0f, mainRivalSideAttackGripDamage);
+            case GripDamageSource.TrapSetterContact:
+                return Mathf.Max(0f, trapSetterContactGripDamage);
+            case GripDamageSource.OtherRiderContact:
+                return Mathf.Max(0f, otherRiderContactGripDamage);
+            case GripDamageSource.PlayerTouch:
+                return Mathf.Max(0f, playerTouchGripDamage);
+            default:
+                return 0f;
+        }
+    }
+
+    private void ResetCarrierGrip(bool clearProtection)
+    {
+        currentGrip = Mathf.Max(1f, maximumGrip);
+        OnCarrierGripChanged?.Invoke(this, currentGrip, MaximumGrip);
+        nextGripDamageTimes.Clear();
+        if (clearProtection)
+            gripProtectionUntil = 0f;
+    }
+
+    private void StartGripContactMonitoring()
+    {
+        StopGripContactMonitoring();
+        if (isGameplayActive && hasLamb && Animal != null)
+            gripContactCoroutine = StartCoroutine(GripContactRoutine());
+    }
+
+    private void StopGripContactMonitoring()
+    {
+        if (gripContactCoroutine == null)
+            return;
+
+        StopCoroutine(gripContactCoroutine);
+        gripContactCoroutine = null;
+    }
+
+    private IEnumerator GripContactRoutine()
+    {
+        WaitForSeconds checkWait = new WaitForSeconds(Mathf.Max(0.6f, playerTouchCheckInterval));
+        while (isGameplayActive && hasLamb && Animal != null)
+        {
+            KopkariManager manager = KopkariManager.Instance;
+            if (manager != null && manager.currentGoatOwner == transform.root.gameObject)
+            {
+                Vector3 center = Animal.transform.TransformPoint(playerTouchCheckOffset);
+                int count = Physics.OverlapSphereNonAlloc(
+                    center,
+                    Mathf.Max(0.25f, playerTouchCheckRadius),
+                    gripContactBuffer,
+                    gripContactLayers,
+                    QueryTriggerInteraction.Ignore);
+
+                bool contactDamageApplied = false;
+                for (int i = 0; i < count; i++)
+                {
+                    Collider touched = gripContactBuffer[i];
+                    gripContactBuffer[i] = null;
+                    if (touched == null || touched.transform.root == transform.root)
+                        continue;
+
+                    GripDamageSource source;
+                    GameObject attackerRoot = touched.transform.root.gameObject;
+                    if (manager.IsLocalRiderTransform(touched.transform))
+                    {
+                        source = GripDamageSource.PlayerTouch;
+                    }
+                    else
+                    {
+                        AIKopkariRider touchingRider = ResolveAttackingAIRider(touched.gameObject);
+                        if (touchingRider == null || touchingRider == this)
+                            continue;
+
+                        attackerRoot = touchingRider.transform.root.gameObject;
+
+                        if (touchingRider.ulakRole == UlakRole.TrapSetter)
+                            source = GripDamageSource.TrapSetterContact;
+                        else if (touchingRider.ulakRole == UlakRole.Guard)
+                            source = GripDamageSource.GuardContact;
+                        else
+                            source = GripDamageSource.OtherRiderContact;
+                    }
+
+                    if (ApplyGripDamage(source, attackerRoot))
+                    {
+                        contactDamageApplied = true;
+                        break;
+                    }
+                }
+
+                // Remaining gameplay contact must not depend on optional horse
+                // colliders. This low-frequency position fallback also survives
+                // collider cleanup and per-layer collision filtering.
+                float centerContactRadius = Mathf.Max(2f, playerTouchCheckRadius);
+                if (!contactDamageApplied && manager.horseAnimal != null)
+                {
+                    Vector3 playerPosition = manager.horseAnimal.transform.position;
+                    if (HorizontalDistance(Animal.transform.position, playerPosition) <= centerContactRadius)
+                    {
+                        contactDamageApplied = ApplyGripDamage(
+                            GripDamageSource.PlayerTouch,
+                            manager.horseAnimal.transform.root.gameObject);
+                    }
+                }
+
+                if (!contactDamageApplied && TryGetNearestActiveRider(
+                        Animal.transform.position,
+                        centerContactRadius,
+                        this,
+                        out AIKopkariRider nearbyRider))
+                {
+                    GripDamageSource fallbackSource = nearbyRider.ulakRole == UlakRole.TrapSetter
+                        ? GripDamageSource.TrapSetterContact
+                        : nearbyRider.ulakRole == UlakRole.Guard
+                            ? GripDamageSource.GuardContact
+                            : GripDamageSource.OtherRiderContact;
+                    ApplyGripDamage(fallbackSource, nearbyRider.transform.root.gameObject);
+                }
+            }
+
+            yield return checkWait;
+        }
+
+        gripContactCoroutine = null;
+    }
+
     private void HandleNpcGripBreakDamage(BoostersContainer.DebuffState damageType)
     {
         if (!hasLamb)
             return;
 
-        bool shouldDrop = (damageType == BoostersContainer.DebuffState.WalkZone && dropOnWalkZone) ||
-                          (damageType == BoostersContainer.DebuffState.WebSnare && dropOnWebSnare);
-        if (shouldDrop)
+        if (damageType == BoostersContainer.DebuffState.WalkZone && dropOnWalkZone)
+        {
+            ApplyGripDamage(GripDamageSource.WalkTrap);
+            return;
+        }
+
+        if (damageType == BoostersContainer.DebuffState.WebSnare && dropOnWebSnare &&
+            Time.time >= gripProtectionUntil)
             DropOwnedUlak();
     }
 
     private void HandleObstacleTouched()
     {
-        if (hasLamb && dropOnObstacle)
+        if (hasLamb && dropOnObstacle && Time.time >= gripProtectionUntil)
             DropOwnedUlak();
     }
 
@@ -2536,6 +3644,9 @@ public class AIKopkariRider : MonoBehaviour
             return;
 
         hasLamb = false;
+        StopCarrierEscapeSpeedBoost();
+        StopGripContactMonitoring();
+        nextGripDamageTimes.Clear();
         CancelCarrierEscape();
         ApplyBaseNavigationAvoidance();
         CancelPickupFocus();
@@ -2545,7 +3656,10 @@ public class AIKopkariRider : MonoBehaviour
             pickUp.DropItem();
 
         KopkariManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
-        MoveToCurrentUlak();
+        if (ulakRole == UlakRole.Guard)
+            StartGuardingUlak();
+        else
+            MoveToCurrentUlak();
     }
 
     #endregion
@@ -2650,9 +3764,32 @@ public class AIKopkariRider : MonoBehaviour
         if (!isGameplayActive || ulakRole != UlakRole.Competitor)
             return;
 
-        if (hasLamb && IsCarrierEngagedByGuard(transform.root.gameObject))
+        if (hasLamb)
         {
-            DropOwnedUlak();
+            GameObject damager = boosterContainer != null ? boosterContainer.LastAttackDamager : null;
+            AIKopkariRider attackingRider = ResolveAttackingAIRider(damager);
+
+            if (attackingRider != null && attackingRider.ulakRole == UlakRole.Guard)
+            {
+                GripDamageSource guardSource = IsCarrierEngagedByGuard(transform.root.gameObject)
+                    ? GripDamageSource.GuardRiderMelee
+                    : GripDamageSource.GuardHorseAttack;
+                ApplyGripDamage(guardSource, attackingRider.gameObject);
+            }
+            else if (attackingRider != null && attackingRider.isMainRival)
+            {
+                ApplyGripDamage(GripDamageSource.MainRivalSideAttack, attackingRider.gameObject);
+            }
+            else if (damager != null && KopkariManager.Instance != null &&
+                     KopkariManager.Instance.IsLocalRiderTransform(damager.transform))
+            {
+                ApplyGripDamage(GripDamageSource.PlayerTouch, damager);
+            }
+            else if (IsCarrierEngagedByGuard(transform.root.gameObject))
+            {
+                // Fallback for an older Guard hitbox whose Malbers Owner is not configured.
+                ApplyGripDamage(GripDamageSource.GuardRiderMelee, damager);
+            }
             return;
         }
 
@@ -2668,13 +3805,32 @@ public class AIKopkariRider : MonoBehaviour
             waitCoroutine = StartCoroutine(WaitToPickUpLamb());
     }
 
+    private static AIKopkariRider ResolveAttackingAIRider(GameObject damager)
+    {
+        if (damager == null)
+            return null;
+
+        AIKopkariRider rider = damager.GetComponentInParent<AIKopkariRider>();
+        if (rider != null)
+            return rider;
+
+        Transform root = damager.transform.root;
+        return root != null ? root.GetComponentInChildren<AIKopkariRider>(true) : null;
+    }
+
     public void CompleteRoundAtTarget()
     {
         if (wonCurrentRound)
             return;
 
         wonCurrentRound = true;
+        // Ownership is cleared before the manager's round-winner callback. Mark
+        // gameplay inactive now so that OnGoatOwnerChanged cannot assign the
+        // winner a fresh Uloq target during that short event-ordering window.
+        isGameplayActive = false;
         hasLamb = false;
+        StopCarrierEscapeSpeedBoost();
+        StopGripContactMonitoring();
         CancelCarrierEscape();
         ApplyBaseNavigationAvoidance();
         StopItemTimer();
@@ -2752,7 +3908,10 @@ public class AIKopkariRider : MonoBehaviour
         StopUlakRecovery();
         StopGuardRiderMeleeObject();
         StopGuardingUlak();
+        StopTrapSetterRole();
+        StopGripContactMonitoring();
         StopChaseObstacleSteering();
+        StopCarrierEscapeSpeedBoost();
         CancelCarrierEscape();
         CancelReturnToUlak();
         CancelPickupFocus();
@@ -2768,35 +3927,30 @@ public class AIKopkariRider : MonoBehaviour
         isMovingToRoundWarmup = false;
 
         if (roundWinnerRoutine != null)
-            StopCoroutine(roundWinnerRoutine);
-
-        if (wonCurrentRound)
-            roundWinnerRoutine = StartCoroutine(PlayWinnerNeighAndWaitForWarmup());
-        else
-            ai?.Stop();
-    }
-
-    private IEnumerator PlayWinnerNeighAndWaitForWarmup()
-    {
-        if (Animal != null)
         {
-            ai?.Stop();
-            Animal.StopMoving();
-            Animal.Reset_Movement();
-            Animal.State_Activate(StateEnum.Jump);
+            StopCoroutine(roundWinnerRoutine);
+            roundWinnerRoutine = null;
         }
 
-        if (roundWinnerNeighDuration > 0f)
-            yield return new WaitForSecondsRealtime(roundWinnerNeighDuration);
-
-        roundWinnerRoutine = null;
         ai?.Stop();
+        if (Animal != null)
+        {
+            Animal.StopMoving();
+            Animal.Reset_Movement();
+            Animal.Speed_CurrentIndex_Set(0);
+        }
+    }
+
+    public void StopForRoundEnd()
+    {
+        HandleFinish();
     }
 
     public void BeginRoundWarmupMovement()
     {
         KopkariManager manager = KopkariManager.Instance;
-        if (isEliminatedFromRounds || manager == null || !manager.HasPreparedNextRound)
+        if (isEliminatedFromRounds || manager == null || !manager.HasPreparedNextRound ||
+            !manager.IsRoundWarmupActive)
             return;
 
         if (roundWinnerRoutine != null)
@@ -2822,17 +3976,9 @@ public class AIKopkariRider : MonoBehaviour
 
     private void ApplyRoundWarmupSpeed()
     {
-        if (Animal == null)
-            return;
-
-        if (Animal.CurrentSpeedSet != null)
-            Animal.CurrentSpeedSet.LockSpeed = false;
-        Animal.Sprint = false;
-
-        int warmupSpeedIndex = isMainRival || ulakRole == UlakRole.Guard
-            ? mainRivalGameplaySpeedIndex
-            : normalGameplaySpeedIndex;
-        Animal.Speed_CurrentIndex_Set(warmupSpeedIndex);
+        StopCarrierEscapeSpeedBoost();
+        hasLamb = false;
+        ApplyConfiguredGameplaySpeed();
     }
 
     public void EliminateFromRounds()
@@ -2895,6 +4041,7 @@ public class AIKopkariRider : MonoBehaviour
         if (!hasLamb) return;
 
         hasLamb = false;
+        StopGripContactMonitoring();
         CancelCarrierEscape();
         ApplyBaseNavigationAvoidance();
         StopItemTimer();
@@ -2925,6 +4072,8 @@ public class AIKopkariRider : MonoBehaviour
         {
             // Uloq kimga o'tganidan qat’i nazar men endi egasi emasman
             hasLamb = false;
+            StopCarrierEscapeSpeedBoost();
+            StopGripContactMonitoring();
 
             StopItemTimer(); // agar timer ishlayotgan bo‘lsa
 
@@ -2945,7 +4094,10 @@ public class AIKopkariRider : MonoBehaviour
         timeFinishedProcessed = true;
         isGameplayActive = false;
         StopUlakRecovery();
+        StopTrapSetterRole();
+        StopGripContactMonitoring();
         StopChaseObstacleSteering();
+        StopCarrierEscapeSpeedBoost();
 
         // coroutinelarni to'xtatamiz
         CancelPickupFocus();
@@ -2977,6 +4129,7 @@ public class AIKopkariRider : MonoBehaviour
     }
     private void StopRiderAI()
     {
+        StopTrapSetterRole();
         isFinished = true;
         allCheckpointsDone = false;
         currentCheckpointIndex = -1;

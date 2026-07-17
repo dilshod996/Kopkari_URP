@@ -6,11 +6,19 @@ public class HoldInputForwarder : MonoBehaviour, IPointerDownHandler, IPointerUp
     [SerializeField] private UIGetLamp target;
 
 
-    public void OnPointerDown(PointerEventData eventData) => target?.BeginHold();
-    public void OnPointerUp(PointerEventData eventData) => target?.EndHold();
+    public void OnPointerDown(PointerEventData eventData) => target?.BeginHold(eventData.pointerId);
+    public void OnPointerUp(PointerEventData eventData) => target?.EndHold(eventData.pointerId);
+
+    private void OnEnable()
+    {
+        // Re-entering Malbers pickup focus re-enables this button. UIGetLamp
+        // decides whether the original pointer is still physically held.
+        target?.FocusReturned();
+    }
+
     private void OnDisable()
     {
-        // Tugma o¡®chganida (SetActive(false)) holatni to¡®xtatamiz
-        target?.EndHold();
+        // Malbers hides this button when the player loses pickup focus.
+        target?.FocusLost();
     }
 }
