@@ -99,6 +99,7 @@ public class DataManager : MonoBehaviour
                 { Constants.PlayerItems.WebSnare, 3 },
                 { Constants.PlayerItems.Whip, 0 },
                 { Constants.PlayerItems.Horsedust, 0 },
+                { Constants.PlayerItems.FakeUlak, 3 },
                 { TutorialDoneField, PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay) ? 1 : 0 },
                 { Constants.MapNames.RacingTraining, 1 },
                 { Constants.MapNames.Zarafshan, 1 },
@@ -139,6 +140,7 @@ public class DataManager : MonoBehaviour
         WebSnare = PlayerPrefs.GetInt(Constants.PlayerItems.WebSnare, 3);
         Whip = PlayerPrefs.GetInt(Constants.PlayerItems.Whip, 0);
         Horsedust = PlayerPrefs.GetInt(Constants.PlayerItems.Horsedust, 0);
+        FakeUlak = PlayerPrefs.GetInt(Constants.PlayerItems.FakeUlak, 3);
         LoadMapUnlocksFromLocal();
     }
     private void ApplyDefaultPlayerDataToLocal()
@@ -158,6 +160,7 @@ public class DataManager : MonoBehaviour
         WebSnare = 3;
         Whip = 0;
         Horsedust = 0;
+        FakeUlak = 3;
 
         PlayerPrefs.SetInt(Constants.Level.LevelAmount, LevelAmount);
         PlayerPrefs.SetInt(Constants.Level.XP, XP);
@@ -173,6 +176,7 @@ public class DataManager : MonoBehaviour
         PlayerPrefs.SetInt(Constants.PlayerItems.WebSnare, WebSnare);
         PlayerPrefs.SetInt(Constants.PlayerItems.Whip, Whip);
         PlayerPrefs.SetInt(Constants.PlayerItems.Horsedust, Horsedust);
+        PlayerPrefs.SetInt(Constants.PlayerItems.FakeUlak, FakeUlak);
         ApplyDefaultMapUnlocksToLocal();
 
         PlayerPrefs.Save();
@@ -871,6 +875,10 @@ public class DataManager : MonoBehaviour
         WebSnare = GetInt(snapshot, Constants.PlayerItems.WebSnare, 3);
         Whip = GetInt(snapshot, Constants.PlayerItems.Whip, 0);
         Horsedust = GetInt(snapshot, Constants.PlayerItems.Horsedust, 0);
+        FakeUlak = GetInt(
+            snapshot,
+            Constants.PlayerItems.FakeUlak,
+            PlayerPrefs.GetInt(Constants.PlayerItems.FakeUlak, 3));
 
         PlayerPrefs.SetInt(Constants.Level.LevelAmount, LevelAmount);
         PlayerPrefs.SetInt(Constants.Level.XP, XP);
@@ -890,6 +898,7 @@ public class DataManager : MonoBehaviour
         PlayerPrefs.SetInt(Constants.PlayerItems.WebSnare, WebSnare);
         PlayerPrefs.SetInt(Constants.PlayerItems.Whip, Whip);
         PlayerPrefs.SetInt(Constants.PlayerItems.Horsedust, Horsedust);
+        PlayerPrefs.SetInt(Constants.PlayerItems.FakeUlak, FakeUlak);
         LoadMapUnlocksFromSnapshot(snapshot);
         LoadTutorialStateFromSnapshot(snapshot);
 
@@ -1226,6 +1235,7 @@ public class DataManager : MonoBehaviour
     public int WebSnare { get; private set; }
     public int Whip { get; private set; }
     public int Horsedust { get; private set; }
+    public int FakeUlak { get; private set; }
     public int GetItemAmount(string itemKey)
     {
         if (itemKey == Constants.PlayerItems.Defense)
@@ -1242,6 +1252,9 @@ public class DataManager : MonoBehaviour
 
         if (itemKey == Constants.PlayerItems.Horsedust)
             return Horsedust;
+
+        if (itemKey == Constants.PlayerItems.FakeUlak)
+            return FakeUlak;
 
         return 0;
     }
@@ -1288,6 +1301,8 @@ public class DataManager : MonoBehaviour
             Whip = value;
         else if (itemKey == Constants.PlayerItems.Horsedust)
             Horsedust = value;
+        else if (itemKey == Constants.PlayerItems.FakeUlak)
+            FakeUlak = value;
         else
             return;
 
@@ -1338,6 +1353,7 @@ public class DataManager : MonoBehaviour
             { Constants.PlayerItems.WebSnare, WebSnare },
             { Constants.PlayerItems.Whip, Whip },
             { Constants.PlayerItems.Horsedust, Horsedust },
+            { Constants.PlayerItems.FakeUlak, FakeUlak },
             { Constants.Others.UpdatedAt, FieldValue.ServerTimestamp }
         };
 

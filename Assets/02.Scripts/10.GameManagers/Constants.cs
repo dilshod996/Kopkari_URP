@@ -117,6 +117,7 @@ public static class Constants
         public const string WebSnare = "websnare";
         public const string Whip = "whip";
         public const string Horsedust = "horsedust";
+        public const string FakeUlak = "fakeulak";
     }
     public static class DailyPrizes
     {

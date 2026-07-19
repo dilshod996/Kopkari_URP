@@ -14,7 +14,8 @@ public class PlayerResourse : MonoBehaviour
         Defender,
         WebSnare,
         Whiplash,
-        HorseDust
+        HorseDust,
+        FakeUlak
     }
     [SerializeField] private Resources playerResources = Resources.None;
     [SerializeField] private Button buyButton;
@@ -126,6 +127,8 @@ public class PlayerResourse : MonoBehaviour
                 return Constants.PlayerItems.Whip;
             case Resources.HorseDust:
                 return Constants.PlayerItems.Horsedust;
+            case Resources.FakeUlak:
+                return Constants.PlayerItems.FakeUlak;
             default:
                 return null;
         }
@@ -135,7 +138,7 @@ public class PlayerResourse : MonoBehaviour
     {
         int textId = GetResourceLanguageId(resource);
         if (textId == -1)
-            return resource.ToString();
+            return resource == Resources.FakeUlak ? "Fake Ulak" : resource.ToString();
 
         return LanguageManager.Instance != null ? LanguageManager.Instance.GetText(textId) : resource.ToString();
     }

@@ -293,6 +293,8 @@ public class AIKopkariRider : MonoBehaviour
     private bool gateReported;
     private bool isMainRival;
     private bool isGameplayActive;
+    private bool isFakeUlakDistracted;
+    private Transform fakeUlakDiversionTarget;
     private bool inspectionFacingHeld;
     private bool previousLockMovement;
     private bool previousRotateAtDirection;
@@ -483,6 +485,8 @@ public class AIKopkariRider : MonoBehaviour
         TargetReachEvent.OnRoundEnded += HandleFinish;
         KopkariManager.OnTimeFinished += HandleTimeFinished;
         KopkariManager.OnGoatOwnerChanged += HandleGoatOwnerChanged;
+        KopkariManager.OnFakeUlakDiversionStarted += HandleFakeUlakDiversionStarted;
+        KopkariManager.OnFakeUlakDiversionEnded += HandleFakeUlakDiversionEnded;
         if (ai != null)
             ai.OnTargetArrived.AddListener(HandleAiTargetArrived);
         if (pickUp != null)
@@ -526,6 +530,10 @@ public class AIKopkariRider : MonoBehaviour
         TargetReachEvent.OnRoundEnded -= HandleFinish;
         KopkariManager.OnTimeFinished -= HandleTimeFinished;
         KopkariManager.OnGoatOwnerChanged -= HandleGoatOwnerChanged;
+        KopkariManager.OnFakeUlakDiversionStarted -= HandleFakeUlakDiversionStarted;
+        KopkariManager.OnFakeUlakDiversionEnded -= HandleFakeUlakDiversionEnded;
+        isFakeUlakDistracted = false;
+        fakeUlakDiversionTarget = null;
         if (ai != null)
             ai.OnTargetArrived.RemoveListener(HandleAiTargetArrived);
         if (pickUp != null)
@@ -1379,6 +1387,8 @@ public class AIKopkariRider : MonoBehaviour
         timeFinishedProcessed = false;
         currentCheckpointIndex = -1;
         isGameplayActive = false;
+        isFakeUlakDistracted = false;
+        fakeUlakDiversionTarget = null;
         hasCarrierHistory = false;
         CancelCarrierEscape();
         CancelReturnToUlak();
@@ -1825,6 +1835,8 @@ public class AIKopkariRider : MonoBehaviour
 
         isGameplayActive = false;
         isFinished = false;
+        isFakeUlakDistracted = false;
+        fakeUlakDiversionTarget = null;
         timeFinishedProcessed = false;
         StopCarrierEscapeSpeedBoost();
         hasLamb = false;
@@ -1904,6 +1916,9 @@ public class AIKopkariRider : MonoBehaviour
     {
         CancelReturnToUlak();
 
+        if (isFakeUlakDistracted)
+            return;
+
         // allaqachon kutayotgan bo‘lsa yoki uloq bor bo‘lsa – qayta boshlama
         if (isFinished)
         {
@@ -1923,6 +1938,7 @@ public class AIKopkariRider : MonoBehaviour
     public void OnExitLambZone()
     {
         CancelPickupFocus();
+        if (isFakeUlakDistracted) return;
         if (ulakRole != UlakRole.Competitor) return;
         // ❗ NPC hali uloqni olmagan bo‘lsa – yana lambga qaytadi
         if (!hasLamb)
@@ -2165,6 +2181,12 @@ public class AIKopkariRider : MonoBehaviour
 
     private void HandleFocusedItemChanged(GameObject focusedObject)
     {
+        if (isFakeUlakDistracted)
+        {
+            CancelPickupFocus();
+            return;
+        }
+
         if (focusedObject == null)
         {
             CancelPickupFocus();
@@ -2751,10 +2773,86 @@ public class AIKopkariRider : MonoBehaviour
     }
     #endregion
 
+    private void HandleFakeUlakDiversionStarted(Transform finalTarget)
+    {
+        if (!isGameplayActive || isFinished || finalTarget == null || ai == null)
+            return;
+
+        KopkariManager manager = KopkariManager.Instance;
+        GameObject liveOwner = manager != null ? manager.currentGoatOwner : null;
+        bool isActualCarrier = hasLamb ||
+                               (liveOwner != null && liveOwner == transform.root.gameObject);
+        if (isActualCarrier)
+            return;
+
+        isFakeUlakDistracted = true;
+        fakeUlakDiversionTarget = finalTarget;
+
+        CancelPickupFocus();
+        CancelReturnToUlak();
+        StopUlakRecovery();
+        CancelCarrierEscape();
+        StopChaseObstacleSteering();
+        ClearGuardEngagement();
+        StopGuardRiderMeleeObject();
+        StopGuardingUlak();
+        StopTrapSetterRole();
+
+        if (orbitCoroutine != null)
+        {
+            StopCoroutine(orbitCoroutine);
+            orbitCoroutine = null;
+        }
+
+        ApplyConfiguredGameplaySpeed();
+        ApplyBaseNavigationAvoidance();
+        ai.StoppingDistance = Mathf.Max(0.1f, salymStoppingDistance);
+        ai.SetTarget(fakeUlakDiversionTarget, true);
+    }
+
+    private void HandleFakeUlakDiversionEnded()
+    {
+        if (!isFakeUlakDistracted)
+            return;
+
+        isFakeUlakDistracted = false;
+        fakeUlakDiversionTarget = null;
+
+        if (!isGameplayActive || isFinished)
+            return;
+
+        KopkariManager manager = KopkariManager.Instance;
+        GameObject liveOwner = manager != null ? manager.currentGoatOwner : null;
+        HandleGoatOwnerChanged(liveOwner);
+
+        if (ulakRole == UlakRole.Competitor && !hasLamb)
+            StartUlakRecovery();
+    }
+
     private void HandleGoatOwnerChanged(GameObject ownerRoot)
     {
         if (!isGameplayActive || isFinished)
             return;
+
+        KopkariManager diversionManager = KopkariManager.Instance;
+        bool isThisRiderNow = ownerRoot != null && ownerRoot == transform.root.gameObject;
+        if (!isFakeUlakDistracted && !isThisRiderNow &&
+            diversionManager != null && diversionManager.IsFakeUlakDiversionActive)
+        {
+            HandleFakeUlakDiversionStarted(diversionManager.CurrentTargetPosition);
+            return;
+        }
+
+        if (isFakeUlakDistracted)
+        {
+            bool becameActualCarrier = ownerRoot != null &&
+                                       ownerRoot == transform.root.gameObject;
+            if (!becameActualCarrier)
+                return;
+
+            isFakeUlakDistracted = false;
+            fakeUlakDiversionTarget = null;
+        }
 
         if (ulakRole == UlakRole.Guard)
         {
@@ -3295,6 +3393,9 @@ public class AIKopkariRider : MonoBehaviour
 
     private void MoveToCurrentUlak(bool returningAfterZoneExit = false)
     {
+        if (isFakeUlakDistracted)
+            return;
+
         isUsingChaseDetour = false;
 
         if (ai == null)
@@ -3323,6 +3424,9 @@ public class AIKopkariRider : MonoBehaviour
 
     private void MoveToCarrier(GameObject ownerRoot)
     {
+        if (isFakeUlakDistracted)
+            return;
+
         if (ai == null || ownerRoot == null)
             return;
 
@@ -3340,7 +3444,7 @@ public class AIKopkariRider : MonoBehaviour
 
     private void ScheduleReturnToUlak()
     {
-        if (!isGameplayActive || ulakRole != UlakRole.Competitor || hasLamb ||
+        if (isFakeUlakDistracted || !isGameplayActive || ulakRole != UlakRole.Competitor || hasLamb ||
             pickUp == null || pickUp.Has_Item)
             return;
 
@@ -3351,6 +3455,9 @@ public class AIKopkariRider : MonoBehaviour
 
     private void StartUlakRecovery()
     {
+        if (isFakeUlakDistracted)
+            return;
+
         StopUlakRecovery();
         ulakRecoveryCoroutine = StartCoroutine(UlakRecoveryRoutine());
     }
@@ -3905,6 +4012,8 @@ public class AIKopkariRider : MonoBehaviour
 
         isFinished = true;
         isGameplayActive = false;
+        isFakeUlakDistracted = false;
+        fakeUlakDiversionTarget = null;
         StopUlakRecovery();
         StopGuardRiderMeleeObject();
         StopGuardingUlak();
@@ -4093,6 +4202,8 @@ public class AIKopkariRider : MonoBehaviour
         if (timeFinishedProcessed) return;
         timeFinishedProcessed = true;
         isGameplayActive = false;
+        isFakeUlakDistracted = false;
+        fakeUlakDiversionTarget = null;
         StopUlakRecovery();
         StopTrapSetterRole();
         StopGripContactMonitoring();

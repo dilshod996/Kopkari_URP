@@ -293,7 +293,10 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
 
     private void UpdateScreenPresentation()
     {
-        if (screenIndicatorRoot == null || screenIndicator == null || canvasRect == null ||
+        RectTransform boundaryRect = screenIndicator != null
+            ? screenIndicator.parent as RectTransform
+            : null;
+        if (screenIndicatorRoot == null || screenIndicator == null || boundaryRect == null ||
             worldCamera == null || currentTarget == null)
         {
             SetScreenIndicatorActive(false);
@@ -318,16 +321,39 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
             direction = Vector2.up;
         direction.Normalize();
 
-        Vector2 halfSize = canvasRect.rect.size * 0.5f;
-        halfSize.x = Mathf.Max(1f, halfSize.x - screenEdgePadding);
-        halfSize.y = Mathf.Max(1f, halfSize.y - screenEdgePadding);
+        Rect parentRect = boundaryRect.rect;
+        Rect indicatorRect = screenIndicator.rect;
+        Vector2 indicatorScale = new Vector2(
+            Mathf.Abs(screenIndicator.localScale.x),
+            Mathf.Abs(screenIndicator.localScale.y));
+        Vector2 anchorReferenceNormalized = new Vector2(
+            Mathf.Lerp(screenIndicator.anchorMin.x, screenIndicator.anchorMax.x, screenIndicator.pivot.x),
+            Mathf.Lerp(screenIndicator.anchorMin.y, screenIndicator.anchorMax.y, screenIndicator.pivot.y));
+        Vector2 anchorReference = new Vector2(
+            Mathf.Lerp(parentRect.xMin, parentRect.xMax, anchorReferenceNormalized.x),
+            Mathf.Lerp(parentRect.yMin, parentRect.yMax, anchorReferenceNormalized.y));
+
+        float minX = parentRect.xMin + screenEdgePadding - indicatorRect.xMin * indicatorScale.x - anchorReference.x;
+        float maxX = parentRect.xMax - screenEdgePadding - indicatorRect.xMax * indicatorScale.x - anchorReference.x;
+        float minY = parentRect.yMin + screenEdgePadding - indicatorRect.yMin * indicatorScale.y - anchorReference.y;
+        float maxY = parentRect.yMax - screenEdgePadding - indicatorRect.yMax * indicatorScale.y - anchorReference.y;
+
+        // If the parent is smaller than the indicator plus padding, keep the
+        // indicator centered on that axis instead of allowing it outside.
+        if (minX > maxX)
+            minX = maxX = (minX + maxX) * 0.5f;
+        if (minY > maxY)
+            minY = maxY = (minY + maxY) * 0.5f;
+
+        Vector2 center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
+        Vector2 halfSize = new Vector2((maxX - minX) * 0.5f, (maxY - minY) * 0.5f);
         float xScale = Mathf.Abs(direction.x) > 0.0001f
             ? halfSize.x / Mathf.Abs(direction.x)
             : float.PositiveInfinity;
         float yScale = Mathf.Abs(direction.y) > 0.0001f
             ? halfSize.y / Mathf.Abs(direction.y)
             : float.PositiveInfinity;
-        screenIndicator.anchoredPosition = direction * Mathf.Min(xScale, yScale);
+        screenIndicator.anchoredPosition = center + direction * Mathf.Min(xScale, yScale);
 
     }
 

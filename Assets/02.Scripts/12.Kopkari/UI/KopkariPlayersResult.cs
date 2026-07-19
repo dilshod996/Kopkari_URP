@@ -23,8 +23,7 @@ public class KopkariPlayersResult : MonoBehaviour
         TMP_Text teamName,
         TMP_Text wins,
         TMP_Text pickups,
-        TMP_Text takeovers,
-        TMP_Text possession,
+        TMP_Text totalTime,
         TMP_Text bestWin)
     {
         rankText = rank;
@@ -32,8 +31,8 @@ public class KopkariPlayersResult : MonoBehaviour
         teamNameText = teamName;
         roundWinsText = wins;
         catchCountText = pickups;
-        carrierTakeoverCountText = takeovers;
-        catchTimingText = possession;
+        carrierTakeoverCountText = null;
+        catchTimingText = totalTime;
         winningTimeText = bestWin;
     }
 
@@ -53,11 +52,11 @@ public class KopkariPlayersResult : MonoBehaviour
         if (teamNameText) teamNameText.text = string.IsNullOrEmpty(stats.teamName) ? "-" : stats.teamName;
         if (catchCountText) catchCountText.text = stats.pickupTimes.ToString();
         if (triggerCountText) triggerCountText.text = stats.triggerPoints.ToString();
-        if (catchTimingText) catchTimingText.text = FormatTime(stats.totalCatchTime);
-        if (carrierTakeoverCountText) carrierTakeoverCountText.text = stats.carrierTakeovers.ToString();
+        if (catchTimingText) catchTimingText.text = FormatTime(stats.totalSpentTime);
+        if (carrierTakeoverCountText) carrierTakeoverCountText.gameObject.SetActive(false);
         if (roundWinsText) roundWinsText.text = stats.roundWins.ToString();
         if (winningTimeText)
-            winningTimeText.text = stats.roundWins > 0 ? FormatTime(stats.lastRoundFinishTime) : "--:--";
+            winningTimeText.text = stats.roundWins > 0 ? FormatTime(stats.bestRoundFinishTime) : "--:--";
     }
 
     private string FormatTime(float seconds)

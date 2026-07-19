@@ -5,6 +5,7 @@ using System.Collections.Generic;
 public class RiderRoundStats
 {
     public int roundNumber;
+    public float roundDuration;
     public int pickupTimes;
     public int carrierTakeovers;
     public int triggerPoints;
@@ -29,6 +30,7 @@ public class RiderRaceStats
     public int carrierTakeovers;
     public int triggerPoints;
     public int roundWins;
+    public float totalSpentTime;
     public float totalCatchTime;
     public float lastRoundFinishTime;
     public float bestRoundFinishTime;

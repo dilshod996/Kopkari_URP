@@ -80,5 +80,10 @@ MonoBehaviour:
     extensionCode: CROWD
     isUseOriginal: 0
     modifiedDate: 04/05/2026 21:01:18.909
+  - shaderName: Universal Render Pipeline/Unlit
+    replacementShaderName: GPUInstancerPro/Universal Render Pipeline/Unlit
+    extensionCode: 
+    isUseOriginal: 0
+    modifiedDate: 07/17/2026 23:10:25.396
   stripObjectMotionVectorVariants: 0
   stripPerInstanceLightProbeVariants: 0

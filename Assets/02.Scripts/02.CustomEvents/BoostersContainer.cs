@@ -37,6 +37,8 @@ public class BoostersContainer : MonoBehaviour
     public static event Action<int> OnDefendRemoved;
     public static event Action<int> OnWebSnareAdded;
     public static event Action<int> OnWebSnareRemoved;
+    public static event Action<int> OnFakeUlakAdded;
+    public static event Action<int> OnFakeUlakRemoved;
 
     public static event Action OnNormalState;
     public static event Action OnSlowState;
@@ -152,6 +154,16 @@ public class BoostersContainer : MonoBehaviour
             PlayerPrefs.SetInt(key, value);
             PlayerPrefs.Save();
         }
+    }
+
+    private int GetFakeUlakCount()
+    {
+        return GetPrefs(Constants.PlayerItems.FakeUlak);
+    }
+
+    private void SetFakeUlakCount(int value)
+    {
+        SetPlayerItemCount(Constants.PlayerItems.FakeUlak, value);
     }
 
     private void OnEnable()
@@ -307,6 +319,34 @@ public class BoostersContainer : MonoBehaviour
         // ✅ NEW: faqat kerak bo‘lsa, qoidaga ko‘ra tiklaymiz
         if (forceRestoreSpeed)
             RestoreSpeedAfterDebuffClear();
+    }
+    #endregion
+
+    #region ========================= Fake Uloq =========================
+    public void AddFakeUlak()
+    {
+        if (isNpc)
+            return;
+
+        int count = GetFakeUlakCount() + 1;
+        SetFakeUlakCount(count);
+        OnFakeUlakAdded?.Invoke(count);
+    }
+
+    public bool TryUseFakeUlak(float duration)
+    {
+        if (isNpc)
+            return false;
+
+        int count = GetFakeUlakCount();
+        KopkariManager manager = KopkariManager.Instance;
+        if (count <= 0 || manager == null || !manager.TryStartFakeUlakDiversion(duration))
+            return false;
+
+        count = Mathf.Max(0, count - 1);
+        SetFakeUlakCount(count);
+        OnFakeUlakRemoved?.Invoke(count);
+        return true;
     }
     #endregion
 

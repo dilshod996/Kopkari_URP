@@ -54,6 +54,7 @@ public class KopkariManager : MonoBehaviour
     [Header("Main Time Fallback")]
     public float mainTime = 0f;
     private float totalMainTime;
+    private int lastDisplayedMainTimeSeconds = int.MinValue;
 
     [Header("Lamp Realated")]
     public string LambOwner;
@@ -61,6 +62,8 @@ public class KopkariManager : MonoBehaviour
     [FormerlySerializedAs("targetPos"), FormerlySerializedAs("legacyTargetPosition")]
     [SerializeField] private GameObject targetObject;
     [SerializeField] private Transform ulakBottomObject;
+    [Tooltip("Delay before pickup/finish markers are hidden after their event.")]
+    [SerializeField, Min(0f)] private float roundMarkerHideDelay = 3f;
     [Header("Round Points")]
     [Tooltip("Each entry keeps one round's Warmup, Ulak and Target positions together.")]
     [SerializeField] private List<RoundPoints> rounds = new List<RoundPoints>();
@@ -92,6 +95,9 @@ public class KopkariManager : MonoBehaviour
     public GameObject currentGoatOwner;
     private GameObject lastReleasedGoatOwner;
     private float lastGoatOwnerReleaseTime = float.NegativeInfinity;
+    private bool firstUlakPickupHandled;
+    private Coroutine ulakBottomHideCoroutine;
+    private Coroutine targetHideCoroutine;
     private CapsuleCollider carrierRiderMainCollider;
     private bool carrierRiderMainColliderWasTrigger;
     public Transform UlakTransform => pickableObj != null
@@ -117,6 +123,15 @@ public class KopkariManager : MonoBehaviour
     public int CurrentComboPrize => CurrentRound != null ? CurrentRound.ComboPrize : 0;
     public bool HasPreparedNextRound => nextRoundPrepared;
     public bool IsRoundWarmupActive { get; private set; }
+    public bool IsFakeUlakDiversionActive => fakeUlakDiversionCoroutine != null;
+    public bool CanActivateFakeUlakDiversion =>
+        roomState == RoomState.GameStarted &&
+        !roundEnded &&
+        !timeFinishedHandled &&
+        !IsRoundWarmupActive &&
+        currentGoatOwner == null &&
+        CurrentTargetPosition != null &&
+        !IsFakeUlakDiversionActive;
     public IReadOnlyList<CheckpointTrigger> Checkpoints => checkpoints;
 
     [SerializeField] private bool isCatched;
@@ -176,6 +191,9 @@ public class KopkariManager : MonoBehaviour
     public static Action OnResetTarget;
     public static Action<bool> OnGoatPicked;
     public static Action<GameObject> OnGoatOwnerChanged;
+    public static Action<Transform> OnFakeUlakDiversionStarted;
+    public static Action OnFakeUlakDiversionEnded;
+    public static Action<bool> OnFakeUlakDiversionStateChanged;
     public static Action OnTimeFinished;
     public static Action OnSceneReady;
     public static bool IsSceneReady { get; private set; }
@@ -198,6 +216,7 @@ public class KopkariManager : MonoBehaviour
     private bool isCrowdedUloqWeatherActive;
     private BoostersContainer localPlayerBoosters;
     private bool localPlayerSprinting;
+    private Coroutine fakeUlakDiversionCoroutine;
 
     [Header("Room Resources")]
     public GameObject walkZonePrefab;
@@ -320,6 +339,8 @@ public class KopkariManager : MonoBehaviour
 
     private void OnDisable()
     {
+        CancelFakeUlakDiversion();
+        CancelRoundMarkerCoroutines();
         KopkariMainUI.OnSprintStart -= HorseSprint;
         KopkariMainUI.OnSprintEnd -= HorseDefaultSpeed;
 
@@ -371,18 +392,55 @@ public class KopkariManager : MonoBehaviour
     }
     private void StartMainGame()
     {
+        CancelFakeUlakDiversion();
         float selectedRoundTime = CurrentRound != null ? CurrentRound.RoundTime : configuredRoundTime;
         if (selectedRoundTime <= 0f)
             selectedRoundTime = configuredRoundTime > 0f ? configuredRoundTime : mainTime;
 
         mainTime = Mathf.Max(1f, selectedRoundTime);
         totalMainTime = mainTime;
+        lastDisplayedMainTimeSeconds = int.MinValue;
         roomState = RoomState.GameStarted;
         webSnareDamageTime = 0;
         StartUloqCrowdWeatherMonitoring();
-        KopkariMainUI.Instance?.UpdateMainTime(mainTime);
+        KopkariMainUI.Instance?.SetMatchStatusVisible(true);
+        RefreshMainTimeDisplay();
         KopkariMainUI.Instance?.UpdateRoundProgress(CurrentRoundNumber, TotalRoundCount);
         OnMainGameStarted?.Invoke();
+    }
+
+    public bool TryStartFakeUlakDiversion(float duration)
+    {
+        if (!CanActivateFakeUlakDiversion)
+            return false;
+
+        Transform target = CurrentTargetPosition;
+        fakeUlakDiversionCoroutine = StartCoroutine(
+            FakeUlakDiversionRoutine(target, Mathf.Max(0.1f, duration)));
+        return true;
+    }
+
+    private IEnumerator FakeUlakDiversionRoutine(Transform target, float duration)
+    {
+        OnFakeUlakDiversionStarted?.Invoke(target);
+        OnFakeUlakDiversionStateChanged?.Invoke(true);
+
+        yield return new WaitForSeconds(duration);
+
+        fakeUlakDiversionCoroutine = null;
+        OnFakeUlakDiversionEnded?.Invoke();
+        OnFakeUlakDiversionStateChanged?.Invoke(false);
+    }
+
+    private void CancelFakeUlakDiversion()
+    {
+        if (fakeUlakDiversionCoroutine == null)
+            return;
+
+        StopCoroutine(fakeUlakDiversionCoroutine);
+        fakeUlakDiversionCoroutine = null;
+        OnFakeUlakDiversionEnded?.Invoke();
+        OnFakeUlakDiversionStateChanged?.Invoke(false);
     }
 
     #region Game Starting
@@ -409,15 +467,26 @@ public class KopkariManager : MonoBehaviour
             if (mainTime < 0f)
                 mainTime = 0f;
 
-            KopkariMainUI.Instance?.UpdateMainTime(mainTime);
+            RefreshMainTimeDisplay();
             if (mainTime <= 0f)
                 HandleRoundTimeExpired();
         }
         else if (!timeFinishedHandled)
         {
-            KopkariMainUI.Instance?.UpdateMainTime(0f);
+            mainTime = 0f;
+            RefreshMainTimeDisplay();
             HandleRoundTimeExpired();
         }
+    }
+
+    private void RefreshMainTimeDisplay()
+    {
+        int displayedSeconds = Mathf.Max(0, Mathf.CeilToInt(mainTime));
+        if (displayedSeconds == lastDisplayedMainTimeSeconds)
+            return;
+
+        lastDisplayedMainTimeSeconds = displayedSeconds;
+        KopkariMainUI.Instance?.UpdateMainTime(displayedSeconds);
     }
     public float GetUsedMainTime()
     {
@@ -485,8 +554,64 @@ public class KopkariManager : MonoBehaviour
     public void FinalPosState(bool state)
     {
         GameObject target = targetObject;
-        if (target != null && !target.activeSelf)
-            target.SetActive(true);
+        if (target != null && target.activeSelf != state)
+            target.SetActive(state);
+    }
+
+    private void HandleFirstUlakPickupMarkers()
+    {
+        if (firstUlakPickupHandled)
+            return;
+
+        firstUlakPickupHandled = true;
+        FinalPosState(true);
+
+        if (ulakBottomHideCoroutine != null)
+            StopCoroutine(ulakBottomHideCoroutine);
+        ulakBottomHideCoroutine = StartCoroutine(HideUlakBottomAfterDelay());
+    }
+
+    private IEnumerator HideUlakBottomAfterDelay()
+    {
+        float delay = Mathf.Max(0f, roundMarkerHideDelay);
+        if (delay > 0f)
+            yield return new WaitForSecondsRealtime(delay);
+
+        if (ulakBottomObject != null)
+            ulakBottomObject.gameObject.SetActive(false);
+        ulakBottomHideCoroutine = null;
+    }
+
+    private void HideTargetAfterFinishDelay()
+    {
+        if (targetHideCoroutine != null)
+            StopCoroutine(targetHideCoroutine);
+        targetHideCoroutine = StartCoroutine(HideTargetAfterDelay());
+    }
+
+    private IEnumerator HideTargetAfterDelay()
+    {
+        float delay = Mathf.Max(0f, roundMarkerHideDelay);
+        if (delay > 0f)
+            yield return new WaitForSecondsRealtime(delay);
+
+        FinalPosState(false);
+        targetHideCoroutine = null;
+    }
+
+    private void CancelRoundMarkerCoroutines()
+    {
+        if (ulakBottomHideCoroutine != null)
+        {
+            StopCoroutine(ulakBottomHideCoroutine);
+            ulakBottomHideCoroutine = null;
+        }
+
+        if (targetHideCoroutine != null)
+        {
+            StopCoroutine(targetHideCoroutine);
+            targetHideCoroutine = null;
+        }
     }
 
 
@@ -620,9 +745,8 @@ public class KopkariManager : MonoBehaviour
             }
 
             SetCurrentGoatOwner(ownerRoot);
-            // Checkpoints are intentionally inactive for the current game rules.
-            // Every successful pickup immediately opens the selected round target.
-            FinalPosState(true);
+            // The finish marker opens once, on the first pickup of this round.
+            HandleFirstUlakPickupMarkers();
             lastReleasedGoatOwner = null;
             lastGoatOwnerReleaseTime = float.NegativeInfinity;
 
@@ -687,6 +811,8 @@ public class KopkariManager : MonoBehaviour
             return;
 
         currentGoatOwner = ownerRoot;
+        if (currentGoatOwner != null)
+            CancelFakeUlakDiversion();
         ApplyCarrierRiderMainCollider(ownerRoot);
         if (ownerRoot != null)
             SetCrowdedUloqWeather(false);
@@ -938,7 +1064,6 @@ public class KopkariManager : MonoBehaviour
         int poolIndex = UnityEngine.Random.Range(0, unusedRoundIndices.Count);
         currentRoundIndex = unusedRoundIndices[poolIndex];
         unusedRoundIndices.RemoveAt(poolIndex);
-        PositionCurrentRoundMarkers();
         return true;
     }
 
@@ -949,7 +1074,7 @@ public class KopkariManager : MonoBehaviour
         {
             if (targetPosition != null)
                 targetObject.transform.SetPositionAndRotation(targetPosition.position, targetPosition.rotation);
-            targetObject.SetActive(true);
+            targetObject.SetActive(false);
         }
 
         Transform ulakPosition = CurrentUlakPosition;
@@ -987,6 +1112,9 @@ public class KopkariManager : MonoBehaviour
 
     private void PrepareCurrentRoundForGameplay()
     {
+        CancelRoundMarkerCoroutines();
+        firstUlakPickupHandled = false;
+
         GameObject owner = currentGoatOwner;
         if (owner != null)
             NotifyGoatOwner(owner, false);
@@ -1025,7 +1153,9 @@ public class KopkariManager : MonoBehaviour
         if (roundEnded || roomState != RoomState.GameStarted)
             return;
 
+        CancelFakeUlakDiversion();
         roundEnded = true;
+        KopkariMainUI.Instance?.SetMatchStatusVisible(false);
         StopUloqCrowdWeatherMonitoring();
         bool comboCompleted = isPlayer && KopkariMainUI.Instance != null &&
                               KopkariMainUI.Instance.TryCompleteCombo();
@@ -1084,16 +1214,20 @@ public class KopkariManager : MonoBehaviour
         if (roundTransitionCoroutine != null)
             StopCoroutine(roundTransitionCoroutine);
         roundTransitionCoroutine = StartCoroutine(
-            OfferNextRoundPopup(winnerNeighHoldDuration, null));
+            OfferNextRoundPopup(
+                winnerNeighHoldDuration,
+                "Salym finished. Would you like to play the next Salym?"));
     }
 
     public void FinishMatch()
     {
+        CancelFakeUlakDiversion();
         StopUloqCrowdWeatherMonitoring();
         nextRoundPrepared = false;
         IsRoundWarmupActive = false;
         roundEnded = true;
         roomState = RoomState.GameFinished;
+        KopkariMainUI.Instance?.SetMatchStatusVisible(false);
         warmupTrigger?.Deactivate();
         EndLocalPlayerGrip();
         KopkariMainUI.Instance?.HidePickupForRoundTransition();
@@ -1138,10 +1272,12 @@ public class KopkariManager : MonoBehaviour
         if (timeFinishedHandled || roundEnded || roomState != RoomState.GameStarted)
             return;
 
+        CancelFakeUlakDiversion();
         timeFinishedHandled = true;
         roundEnded = true;
         StopUloqCrowdWeatherMonitoring();
         roomState = RoomState.GameFinished;
+        KopkariMainUI.Instance?.SetMatchStatusVisible(false);
         mainTime = 0f;
         IsRoundWarmupActive = false;
         KopkariMainUI.Instance?.UpdateMainTime(0f);
@@ -1187,7 +1323,7 @@ public class KopkariManager : MonoBehaviour
             StopCoroutine(roundTransitionCoroutine);
         roundTransitionCoroutine = StartCoroutine(OfferNextRoundPopup(
             0f,
-            "Round time is over. Continue to the next round."));
+            "Salym time finished. Would you like to play the next Salym?"));
     }
 
     public void BeginNextRoundWarmup()
@@ -1195,6 +1331,8 @@ public class KopkariManager : MonoBehaviour
         if (!nextRoundPrepared || !roundEnded || CurrentWarmupPosition == null ||
             roundTransitionCoroutine != null)
             return;
+
+        HideTargetAfterFinishDelay();
 
         // The round winner only prepares the next points. Movement begins when
         // the player explicitly accepts the next round, so no rider can leave
@@ -1290,6 +1428,7 @@ public class KopkariManager : MonoBehaviour
 
     private void FinishMatchAfterWarmupFailure()
     {
+        CancelFakeUlakDiversion();
         StopUloqCrowdWeatherMonitoring();
         roomState = RoomState.GameFinished;
         roundEnded = true;
@@ -1297,6 +1436,7 @@ public class KopkariManager : MonoBehaviour
         nextRoundPrepared = false;
         IsRoundWarmupActive = false;
         roundTransitionCoroutine = null;
+        KopkariMainUI.Instance?.SetMatchStatusVisible(false);
 
         warmupTrigger?.Deactivate();
         if (pickableObj != null)

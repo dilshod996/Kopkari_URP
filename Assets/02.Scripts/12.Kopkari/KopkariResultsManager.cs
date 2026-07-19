@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class KopkariResultsManager : MonoBehaviour
 {
+    public const int NoWinnerId = -1;
+
     public static KopkariResultsManager Instance { get; private set; }
 
     private readonly Dictionary<int, RiderRaceStats> stats = new Dictionary<int, RiderRaceStats>();
@@ -22,7 +24,7 @@ public class KopkariResultsManager : MonoBehaviour
     public float RaceDuration { get; private set; }
     public float LastRoundDuration => lastRoundDuration;
     public int CurrentRoundNumber => currentRoundNumber;
-    public int WinnerId { get; private set; }
+    public int WinnerId { get; private set; } = NoWinnerId;
     public string UloqOwner { get; private set; }
 
     private void Awake()
@@ -53,7 +55,7 @@ public class KopkariResultsManager : MonoBehaviour
         completedRoundDuration = 0f;
         currentRoundNumber = 0;
         RaceDuration = 0f;
-        WinnerId = 0;
+        WinnerId = NoWinnerId;
         UloqOwner = string.Empty;
         playerRewardSummary = null;
         playerRewardGranted = false;
@@ -83,7 +85,7 @@ public class KopkariResultsManager : MonoBehaviour
         currentRoundNumber = Mathf.Max(1, roundNumber);
         roundStartTime = Time.time;
         lastRoundDuration = 0f;
-        WinnerId = 0;
+        WinnerId = NoWinnerId;
         UloqOwner = string.Empty;
         roundStarted = true;
 
@@ -98,7 +100,7 @@ public class KopkariResultsManager : MonoBehaviour
             lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
             completedRoundDuration += lastRoundDuration;
             CloseAllActiveHolds();
-            SaveRoundSnapshots(0, 0f);
+            SaveRoundSnapshots(NoWinnerId, 0f);
         }
         else
         {
@@ -117,7 +119,7 @@ public class KopkariResultsManager : MonoBehaviour
         CloseAllActiveHolds();
         lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
         completedRoundDuration += lastRoundDuration;
-        SaveRoundSnapshots(0, 0f);
+        SaveRoundSnapshots(NoWinnerId, 0f);
         roundStarted = false;
         RaceDuration = completedRoundDuration;
     }
@@ -293,14 +295,17 @@ public class KopkariResultsManager : MonoBehaviour
 
     private void SaveRoundSnapshots(int winnerId, float finishTime)
     {
+        float roundDuration = Mathf.Max(0f, lastRoundDuration);
         foreach (RiderRaceStats rider in stats.Values)
         {
             if (rider.roundResults == null)
                 rider.roundResults = new List<RiderRoundStats>();
 
+            rider.totalSpentTime += roundDuration;
             rider.roundResults.Add(new RiderRoundStats
             {
                 roundNumber = currentRoundNumber,
+                roundDuration = roundDuration,
                 pickupTimes = rider.roundPickupTimes,
                 carrierTakeovers = rider.roundCarrierTakeovers,
                 triggerPoints = rider.roundTriggerPoints,
@@ -319,9 +324,7 @@ public class KopkariResultsManager : MonoBehaviour
         return stats.Values
             .OrderByDescending(rider => rider.roundWins)
             .ThenByDescending(rider => rider.pickupTimes)
-            .ThenByDescending(rider => rider.carrierTakeovers)
-            .ThenByDescending(rider => rider.totalCatchTime)
-            .ThenByDescending(rider => rider.triggerPoints)
+            .ThenBy(rider => rider.riderId)
             .ToList();
     }
 
@@ -415,11 +418,9 @@ public class KopkariResultsManager : MonoBehaviour
     {
         switch (rank)
         {
-            case 1: return 3400;
-            case 2: return 2600;
-            case 3: return 1800;
-            case 4: return 1000;
-            case 5: return 800;
+            case 1: return 500;
+            case 2: return 400;
+            case 3: return 300;
             default: return 200;
         }
     }
@@ -428,9 +429,8 @@ public class KopkariResultsManager : MonoBehaviour
     {
         switch (rank)
         {
-            case 1: return 7;
-            case 2: return 5;
-            case 3: return 3;
+            case 1: return 2;
+            case 2: return 1;
             default: return 0;
         }
     }
@@ -439,19 +439,16 @@ public class KopkariResultsManager : MonoBehaviour
     {
         switch (rank)
         {
-            case 1: return Random.Range(22, 26);
-            case 2: return Random.Range(15, 21);
-            case 3: return Random.Range(10, 15);
-            default: return Random.Range(7, 11);
+            case 1: return 18;
+            case 2: return 15;
+            case 3: return 10;
+            default: return 5;
         }
     }
 
     private static int GetPickupBonus(int pickupTimes)
     {
-        if (pickupTimes <= 0) return 0;
-        if (pickupTimes == 1) return 50;
-        if (pickupTimes == 2) return 150;
-        return 250;
+        return Mathf.Max(0, pickupTimes) * 100;
     }
 
     public void DebugLogLeaderboard()

@@ -152,3 +152,8 @@ ShaderVariantCollection:
         passType: 0
       - keywords: GPUI_CROWD_SKIN_WEIGHTS_2 _SURFACE_TYPE_TRANSPARENT
         passType: 0
+  - first: {fileID: 4800000, guid: fdc2acbe600b2f04e8b2a0f737296654, type: 3}
+    second:
+      variants:
+      - keywords: LOD_FADE_CROSSFADE _ALPHATEST_ON
+        passType: 0

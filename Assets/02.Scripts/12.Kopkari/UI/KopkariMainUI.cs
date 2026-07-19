@@ -19,9 +19,9 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private Button jumpBtn;
     [SerializeField] private Button defendBtn;
     [SerializeField] private Button walkZoneBtn;
-    [SerializeField] private Button hitBtn;
     [SerializeField] private Button shootWebBtn;
     [SerializeField] private Button chainContainerBtn;
+    [SerializeField] private Button fakeUlakBtn;
     [SerializeField] private Button pushButton;
     [SerializeField] private Button pauseButton;
     #endregion
@@ -39,8 +39,9 @@ public class KopkariMainUI : MonoBehaviour
     [Header("Buttons Data Texts")]
     [SerializeField] private TMP_Text defendCountText;
     [SerializeField] private TMP_Text walkZoneCountText;
-    [SerializeField] private TMP_Text hitCountText;
     [SerializeField] private TMP_Text webSnareCounter;
+    [SerializeField] private TMP_Text fakeUlakCountText;
+    [SerializeField, Min(0.1f)] private float fakeUlakCooldown = 3f;
     #endregion
 
     #region Effects / Sprint
@@ -83,6 +84,7 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private RectTransform bottomUI;
     [SerializeField] private GameObject matchStatusBackground;
     [SerializeField] private TMP_Text mainTimeText;
+    private int lastDisplayedMainTimeSeconds = int.MinValue;
     [SerializeField] private TMP_Text roundProgressText;
     [Header("Horse Health")]
     [SerializeField] private Slider horseHealthSlider;
@@ -136,6 +138,9 @@ public class KopkariMainUI : MonoBehaviour
     private bool isPointerHeld;
     private bool autoSprintBoostActive;
     private bool webSnareShotActive;
+    private bool fakeUlakCooldownActive;
+    private bool fakeUlakFocusAvailable;
+    private bool horseHealthDepletionHandled;
 
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
@@ -176,9 +181,11 @@ public class KopkariMainUI : MonoBehaviour
 
         KopkariManager.OnGameStartFinishState += CanvasEnable;
         KopkariManager.OnGoatOwnerChanged += HandleCarrierOwnerChanged;
+        KopkariManager.OnFakeUlakDiversionStateChanged += HandleFakeUlakDiversionStateChanged;
         AIKopkariRider.OnCarrierGripChanged += HandleAICarrierGripChanged;
         PlayerDataManager.OnRiderAndHorse += BindHorseHealth;
         OnBindRequested += Bind;
+        HoldInputForwarder.OnPickupFocusChanged += HandleFakeUlakPickupFocusChanged;
         Booster.OnSprintFull += HandleSprintFull;
 
         BoostersContainer.OnSprintEffectStart += ShowSprintEffectNoForce;
@@ -192,6 +199,8 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnDefendRemoved += UpdateDefendText;
 
         BoostersContainer.OnWebSnareAdded += UpdateWebCount;
+        BoostersContainer.OnFakeUlakAdded += UpdateFakeUlakText;
+        BoostersContainer.OnFakeUlakRemoved += UpdateFakeUlakText;
 
        // RacingController.OnRacingFinished += ShowResultPage;
         //KopkariManager.OnGameStarted += GetData;
@@ -210,9 +219,13 @@ public class KopkariMainUI : MonoBehaviour
 
         if (KopkariManager.Instance != null)
         {
+            fakeUlakCooldownActive = KopkariManager.Instance.IsFakeUlakDiversionActive;
             HandleCarrierOwnerChanged(KopkariManager.Instance.currentGoatOwner);
             BindHorseHealth(KopkariManager.Instance.horseAnimal, KopkariManager.Instance.LocalRiderAnimal);
         }
+
+        fakeUlakFocusAvailable = pickupButton != null && pickupButton.activeInHierarchy;
+        RefreshFakeUlakButtonState();
 
         RestoreSprintRefillAfterEnable();
     }
@@ -223,10 +236,12 @@ public class KopkariMainUI : MonoBehaviour
 
         KopkariManager.OnGameStartFinishState -= CanvasEnable;
         KopkariManager.OnGoatOwnerChanged -= HandleCarrierOwnerChanged;
+        KopkariManager.OnFakeUlakDiversionStateChanged -= HandleFakeUlakDiversionStateChanged;
         AIKopkariRider.OnCarrierGripChanged -= HandleAICarrierGripChanged;
         PlayerDataManager.OnRiderAndHorse -= BindHorseHealth;
         UnbindHorseHealth();
         OnBindRequested -= Bind;
+        HoldInputForwarder.OnPickupFocusChanged -= HandleFakeUlakPickupFocusChanged;
 
         Booster.OnSprintFull -= HandleSprintFull;
 
@@ -241,6 +256,8 @@ public class KopkariMainUI : MonoBehaviour
         BoostersContainer.OnDefendRemoved -= UpdateDefendText;
 
         BoostersContainer.OnWebSnareAdded -= UpdateWebCount;
+        BoostersContainer.OnFakeUlakAdded -= UpdateFakeUlakText;
+        BoostersContainer.OnFakeUlakRemoved -= UpdateFakeUlakText;
 
         //KopkariManager.OnRacingFinished -= ShowResultPage;
         //RacingController.OnRacingStarted -= GetData;
@@ -258,7 +275,10 @@ public class KopkariMainUI : MonoBehaviour
             walkZoneBtn.onClick.RemoveListener(HandleWalkZoneClicked);
         if (defendBtn != null)
             defendBtn.onClick.RemoveListener(HandleDefendClicked);
+        if (fakeUlakBtn != null)
+            fakeUlakBtn.onClick.RemoveListener(HandleFakeUlakClicked);
         ReleaseSprintForUIInterruption();
+        StopIfRunning(ref refillRoutine);
         StopCarrierGripFeedback();
         StopAllCoroutines();
         canvasRoutine = null;
@@ -282,13 +302,6 @@ public class KopkariMainUI : MonoBehaviour
         SetWalkZoneState(count > 0);
     }
 
-    public void UpdateHitText(int count)
-    {
-        if (hitCountText != null)
-            hitCountText.text = count.ToString();
-        SetHitState(count > 0);
-    }
-
     public void UpdateWebCount(int count)
     {
         if (webSnareCounter != null)
@@ -296,9 +309,17 @@ public class KopkariMainUI : MonoBehaviour
         SetWebState(count > 0);
     }
 
+    public void UpdateFakeUlakText(int count)
+    {
+        if (fakeUlakCountText != null)
+            fakeUlakCountText.SetText("{0}", Mathf.Max(0, count));
+        RefreshFakeUlakButtonState(count);
+    }
+
     private void BindHorseHealth(MAnimal horse, MAnimal rider)
     {
         UnbindHorseHealth();
+        horseHealthDepletionHandled = false;
         if (horse == null)
             return;
 
@@ -353,6 +374,16 @@ public class KopkariMainUI : MonoBehaviour
     private void HandleHorseHealthChanged(float value)
     {
         RefreshHorseHealthUI();
+
+        if (value > 0f || horseHealthDepletionHandled)
+            return;
+
+        KopkariManager manager = KopkariManager.Instance;
+        if (manager != null && manager.roomState != KopkariManager.RoomState.GameStarted)
+            return;
+
+        horseHealthDepletionHandled = true;
+        ShowResult();
     }
 
     private void HandleHorseHealthMaxChanged(float value)
@@ -421,6 +452,17 @@ public class KopkariMainUI : MonoBehaviour
         refillRoutine = StartCoroutine(RefillDelayedCoroutine());
     }
 
+    private void EnsureSprintRefillRunning()
+    {
+        if (!isActiveAndEnabled || sprintSlider == null || sprintSlider.value >= 1f ||
+            refillRoutine != null)
+        {
+            return;
+        }
+
+        refillRoutine = StartCoroutine(RefillDelayedCoroutine());
+    }
+
     public void SetJumpState(bool state)
     {
         if (jumpBtn != null)
@@ -443,12 +485,6 @@ public class KopkariMainUI : MonoBehaviour
             walkZoneBtn.interactable = state;
     }
 
-    public void SetHitState(bool state)
-    {
-        if (hitBtn != null)
-            hitBtn.interactable = state;
-    }
-
     public void SetWebState(bool state)
     {
         if (shootWebBtn != null)
@@ -462,16 +498,16 @@ public class KopkariMainUI : MonoBehaviour
         int defCount = GetItemAmount(Constants.PlayerItems.Defense);
         int slowCount = GetItemAmount(Constants.PlayerItems.SlowDown);
         int webCount = GetItemAmount(Constants.PlayerItems.WebSnare);
-        int whipCount = GetItemAmount(Constants.PlayerItems.Whip);
+        int fakeUlakCount = GetItemAmount(Constants.PlayerItems.FakeUlak);
 
-        InitializeData(defCount, slowCount, whipCount, webCount);
+        InitializeData(defCount, slowCount, webCount);
+        UpdateFakeUlakText(fakeUlakCount);
     }
 
-    public void InitializeData(int defendCount, int walkZoneCount, int hitCount, int webCount)
+    public void InitializeData(int defendCount, int walkZoneCount, int webCount)
     {
         UpdateDefendText(defendCount);
         UpdateWalkZoneText(walkZoneCount);
-        UpdateHitText(hitCount);
         UpdateWebCount(webCount);
     }
 
@@ -480,7 +516,8 @@ public class KopkariMainUI : MonoBehaviour
         if (DataManager.Instance != null)
             return DataManager.Instance.GetItemAmount(itemKey);
 
-        return PlayerPrefs.GetInt(itemKey, 0);
+        int defaultAmount = itemKey == Constants.PlayerItems.FakeUlak ? 3 : 0;
+        return PlayerPrefs.GetInt(itemKey, defaultAmount);
     }
 
     #endregion
@@ -505,7 +542,14 @@ public class KopkariMainUI : MonoBehaviour
             defendBtn.onClick.AddListener(HandleDefendClicked);
         }
 
+        if (fakeUlakBtn != null)
+        {
+            fakeUlakBtn.onClick.RemoveListener(HandleFakeUlakClicked);
+            fakeUlakBtn.onClick.AddListener(HandleFakeUlakClicked);
+        }
+
         RefreshDefendButtonState();
+        RefreshFakeUlakButtonState();
     }
 
     private void HandleWalkZoneClicked() => boundBoosters?.DropWalkTrap();
@@ -544,6 +588,46 @@ public class KopkariMainUI : MonoBehaviour
         return boundBoosters != null &&
                (boundBoosters.isDefend ||
                 (boundBoosters.defendQobiq != null && boundBoosters.defendQobiq.activeSelf));
+    }
+
+    private void HandleFakeUlakClicked()
+    {
+        if (boundBoosters == null || fakeUlakCooldownActive || !fakeUlakFocusAvailable)
+            return;
+
+        boundBoosters.TryUseFakeUlak(fakeUlakCooldown);
+        RefreshFakeUlakButtonState();
+    }
+
+    private void HandleFakeUlakDiversionStateChanged(bool active)
+    {
+        fakeUlakCooldownActive = active;
+        RefreshFakeUlakButtonState();
+    }
+
+    private void HandleFakeUlakPickupFocusChanged(bool focused)
+    {
+        fakeUlakFocusAvailable = focused;
+        RefreshFakeUlakButtonState();
+    }
+
+    private void RefreshFakeUlakButtonState(int? countOverride = null)
+    {
+        if (fakeUlakBtn == null)
+            return;
+
+        int count = countOverride ?? GetItemAmount(Constants.PlayerItems.FakeUlak);
+        KopkariManager manager = KopkariManager.Instance;
+        bool managerReady = manager != null &&
+                            manager.currentGoatOwner == null &&
+                            manager.CanActivateFakeUlakDiversion;
+        bool pickupFocused = fakeUlakFocusAvailable &&
+                             pickupButton != null &&
+                             pickupButton.activeInHierarchy;
+        fakeUlakBtn.interactable = count > 0 &&
+                                   !fakeUlakCooldownActive &&
+                                   pickupFocused &&
+                                   managerReady;
     }
     #endregion
 
@@ -878,9 +962,13 @@ public class KopkariMainUI : MonoBehaviour
     public void ShowRoundChange(string details)
     {
         ReleaseSprintForUIInterruption();
+        if (kopkariRoundChangeUI == null)
+            return;
+
         bool canStartNextRound = KopkariManager.Instance != null &&
                                  KopkariManager.Instance.HasPreparedNextRound;
-        kopkariRoundChangeUI?.ShowRoundChange(canStartNextRound, details);
+        ShowUI(kopkariRoundChangeUI);
+        kopkariRoundChangeUI.ShowRoundChange(canStartNextRound, details);
     }
 
     public void HideRoundChange()
@@ -891,7 +979,15 @@ public class KopkariMainUI : MonoBehaviour
     public void ShowRoundWarmupCountdown(int seconds)
     {
         ReleaseSprintForUIInterruption();
-        kopkariRoundChangeUI?.ShowWarmupCountdown(seconds);
+        if (kopkariRoundChangeUI == null)
+            return;
+
+        // The countdown updates once per second. Animate only when its root is
+        // first activated, not every time the displayed number changes.
+        if (!kopkariRoundChangeUI.gameObject.activeSelf)
+            ShowUI(kopkariRoundChangeUI);
+
+        kopkariRoundChangeUI.ShowWarmupCountdown(seconds);
     }
 
     public void HideRoundWarmupCountdown()
@@ -933,21 +1029,33 @@ public class KopkariMainUI : MonoBehaviour
             return;
 
         int totalSeconds = Mathf.Max(0, Mathf.CeilToInt(remainingTime));
+        if (totalSeconds == lastDisplayedMainTimeSeconds)
+            return;
+
+        lastDisplayedMainTimeSeconds = totalSeconds;
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
-        mainTimeText.text = $"{minutes:00}:{seconds:00}";
+        mainTimeText.SetText("{0:00}:{1:00}", minutes, seconds);
     }
 
     public void SetMobileCanvasVisible(bool visible)
     {
         if (mobileCanvas != null)
             mobileCanvas.SetActive(visible);
+
+        if (visible)
+            EnsureSprintRefillRunning();
     }
 
     public void SetMatchStatusVisible(bool visible)
     {
-        if (matchStatusBackground != null)
-            matchStatusBackground.SetActive(visible);
+        if (matchStatusBackground == null)
+            return;
+
+        bool isBecomingVisible = visible && !matchStatusBackground.activeSelf;
+        matchStatusBackground.SetActive(visible);
+        if (isBecomingVisible)
+            lastDisplayedMainTimeSeconds = int.MinValue;
     }
 
     public void UpdateRoundProgress(int roundNumber, int totalRounds)
@@ -1057,6 +1165,8 @@ public class KopkariMainUI : MonoBehaviour
 
     private void HandleCarrierOwnerChanged(GameObject ownerRoot)
     {
+        RefreshFakeUlakButtonState();
+
         if (ownerRoot == null)
         {
             HideCarrierGrip();
@@ -1199,6 +1309,7 @@ public class KopkariMainUI : MonoBehaviour
     public void MoveUP()
     {
         MoveBottomUI(28, 1f);
+        RefreshFakeUlakButtonState();
         PlayerDataRegister();
         int roundNumber = KopkariManager.Instance != null
             ? KopkariManager.Instance.CurrentRoundNumber
@@ -1309,7 +1420,6 @@ public class KopkariMainUI : MonoBehaviour
         isPressing = false;
         autoSprintBoostActive = false;
         StopIfRunning(ref drainRoutine);
-        StopIfRunning(ref refillRoutine);
 
         if (sprintImg != null)
             sprintImg.gameObject.SetActive(false);
@@ -1319,6 +1429,7 @@ public class KopkariMainUI : MonoBehaviour
 
         FinishActiveWebSnare();
         SetSprintState(!isDamaged);
+        EnsureSprintRefillRunning();
     }
 
     private void OnObstacleDamageHandler(bool isDamaged)

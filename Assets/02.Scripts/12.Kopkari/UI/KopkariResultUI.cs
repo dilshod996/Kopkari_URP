@@ -54,6 +54,9 @@ public class KopkariResultUI : MonoBehaviour
 
     private void Awake()
     {
+        if (playerTakeoversText != null && playerTakeoversText.transform.parent != null)
+            playerTakeoversText.transform.parent.gameObject.SetActive(false);
+
         if (headerText == null)
             BuildRuntimeFallback();
     }
@@ -148,8 +151,7 @@ public class KopkariResultUI : MonoBehaviour
         SetText(playerRankText, $"#{playerIndex + 1}");
         SetText(playerWinsText, player.roundWins.ToString());
         SetText(playerPickupsText, player.pickupTimes.ToString());
-        SetText(playerTakeoversText, player.carrierTakeovers.ToString());
-        SetText(playerPossessionText, FormatTime(player.totalCatchTime));
+        SetText(playerPossessionText, FormatTime(player.totalSpentTime));
         SetText(playerComboText, player.comboWins.ToString());
         SetText(playerBestWinText, player.roundWins > 0 ? FormatTime(player.bestRoundFinishTime) : "--:--");
         SetText(playerLastWinText, player.roundWins > 0 ? FormatTime(player.lastRoundFinishTime) : "--:--");
@@ -270,8 +272,8 @@ public class KopkariResultUI : MonoBehaviour
         playerRankText = AddRuntimeStat(left, "Rank", "-");
         playerWinsText = AddRuntimeStat(left, "Round Wins", "0");
         playerPickupsText = AddRuntimeStat(left, "Ulak Pickups", "0");
-        playerTakeoversText = AddRuntimeStat(left, "Takeovers", "0");
-        playerPossessionText = AddRuntimeStat(left, "Possession", "00:00");
+        playerTakeoversText = null;
+        playerPossessionText = AddRuntimeStat(left, "Total Time", "00:00");
         playerComboText = AddRuntimeStat(left, "Combos", "0");
         playerBestWinText = AddRuntimeStat(left, "Best Win", "--:--");
         playerLastWinText = AddRuntimeStat(left, "Last Win", "--:--");
@@ -373,7 +375,7 @@ public class KopkariResultUI : MonoBehaviour
     private static void CreateRuntimeLeaderboardHeader(Transform parent)
     {
         KopkariPlayersResult unused = CreateRuntimeLeaderboardRow("ColumnHeaders", parent, true);
-        string[] titles = { "#", "PLAYER", "TEAM", "WINS", "PICKUPS", "TAKEOVERS", "POSSESSION", "BEST WIN" };
+        string[] titles = { "#", "PLAYER", "TEAM", "WINS", "PICKUPS", "TOTAL TIME", "BEST WIN" };
         for (int i = 0; i < titles.Length; i++)
             unused.transform.GetChild(i).GetComponent<TMP_Text>().text = titles[i];
         Object.Destroy(unused);
@@ -387,7 +389,7 @@ public class KopkariResultUI : MonoBehaviour
         HorizontalLayoutGroup layout = row.AddComponent<HorizontalLayoutGroup>();
         layout.padding = new RectOffset(4, 4, 2, 2);
         layout.spacing = 2f;
-        float[] widths = { .35f, 1.35f, 1f, .55f, .7f, .8f, .9f, .8f };
+        float[] widths = { .35f, 1.35f, 1f, .55f, .7f, .9f, .8f };
         TMP_Text[] fields = new TMP_Text[widths.Length];
         for (int i = 0; i < widths.Length; i++)
         {
@@ -395,7 +397,7 @@ public class KopkariResultUI : MonoBehaviour
             fields[i].gameObject.AddComponent<LayoutElement>().flexibleWidth = widths[i];
         }
         KopkariPlayersResult result = row.AddComponent<KopkariPlayersResult>();
-        result.Configure(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
+        result.Configure(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6]);
         return result;
     }
 
