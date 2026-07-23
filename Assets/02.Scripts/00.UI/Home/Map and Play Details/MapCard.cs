@@ -40,7 +40,6 @@ public class MapCard : MonoBehaviour
         public MapWeather Weather;
         public Color BackgroundColor;
         public bool IsUnlocked;
-        public int RewardAdAmount;
     }
 
     public static event Action<MapCard, MapDetailsData> OnMapSelected;
@@ -61,7 +60,6 @@ public class MapCard : MonoBehaviour
     [SerializeField] private int distance;
     [SerializeField] private int ridersAmount;
     [SerializeField] private MapWeather weather = MapWeather.Clear;
-    [SerializeField] private int amountWatch = 500;
 
     [Header("Card UI")]
     [SerializeField] private TMP_Text mapNameText;
@@ -130,8 +128,7 @@ public class MapCard : MonoBehaviour
             RidersAmount = ridersAmount,
             Weather = weather,
             BackgroundColor = GetPopupBackgroundColor(),
-            IsUnlocked = isUnlocked,
-            RewardAdAmount = amountWatch
+            IsUnlocked = isUnlocked
         };
 
         return !string.IsNullOrWhiteSpace(mapLangName);

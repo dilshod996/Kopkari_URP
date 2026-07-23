@@ -1,4 +1,5 @@
 ﻿using Michsky.UI.ModernUIPack;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -30,6 +31,12 @@ namespace Kopkari
         private bool introContentReady;
         private bool lobbyLoadStarted;
         private Coroutine homePreloadReadyRoutine;
+        private Coroutine videoStartupTimeoutRoutine;
+        private bool videoStarted;
+        private bool introRetryPopupVisible;
+        private bool homeRetryPopupVisible;
+
+        private const float VideoStartupTimeoutSeconds = 15f;
 
         [Header("User Details")]
         // private const string UsernameKey = "username";
@@ -57,43 +64,69 @@ namespace Kopkari
             {
                 SceneLoadManager.Instance.CurrentSceneType = SceneLoadManager.SceneType.Intro;
             }
-            if (LanguageManager.Instance != null)
-            {
-                await LanguageManager.Instance.InitializeAsync();
-            }
 
             if (notificationManager != null)
-            {
-                notificationManager.onConfirm.AddListener(() =>
-                {
-                    RetryIntroContentLoad();
-                });
-            }
+                notificationManager.onConfirm.AddListener(RetryIntroContentLoad);
 
             if (videoPlayer != null)
+            {
                 videoPlayer.loopPointReached += OnVideoFinished;
+                videoPlayer.prepareCompleted += OnVideoPrepared;
+                videoPlayer.started += OnVideoStarted;
+                videoPlayer.errorReceived += OnVideoError;
+                videoPlayer.audioOutputMode = VideoAudioOutputMode.None;
+            }
 
             //PlayerPrefs.DeleteAll();
 
             //PlayerMaterialsData();
             Debug.Log("System Language: " + Application.systemLanguage.ToString());
-            SetInitialLanguage();
             if (skipButton != null)
-            {
-                skipButton.onClick.AddListener(() =>
-                {
-                    LoadLobbyScene();
-                });
-            }
+                skipButton.onClick.AddListener(LoadLobbyScene);
+
             SetSkipAvailable(false);
 
             InitializePlayerPrefs();
             homePreloadAddresses = GetPreloadMaterialAddresses();
+
+            Task<bool> languageInitializationTask = null;
+            if (LanguageManager.Instance != null)
+                languageInitializationTask = LanguageManager.Instance.InitializeAsync();
+
+            // Localization and intro media do not need to block one another.
             GetAddressableData();
 
+            if (languageInitializationTask != null)
+            {
+                try
+                {
+                    await languageInitializationTask;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }
+
+            if (this != null)
+                SetInitialLanguage();
         }
         private void OnDestroy()
         {
+            if (notificationManager != null)
+                notificationManager.onConfirm.RemoveListener(RetryIntroContentLoad);
+
+            if (skipButton != null)
+                skipButton.onClick.RemoveListener(LoadLobbyScene);
+
+            if (videoPlayer != null)
+            {
+                videoPlayer.loopPointReached -= OnVideoFinished;
+                videoPlayer.prepareCompleted -= OnVideoPrepared;
+                videoPlayer.started -= OnVideoStarted;
+                videoPlayer.errorReceived -= OnVideoError;
+            }
+
             if (Instance == this)
             {
                 Instance = null;
@@ -101,6 +134,9 @@ namespace Kopkari
         }
         public void SetInitialLanguage()
         {
+            if (LanguageManager.Instance == null)
+                return;
+
             if (!PlayerPrefs.HasKey(Constants.GameSettings.LanguageKey))
             {
                 SystemLanguage deviceLang = Application.systemLanguage;
@@ -139,11 +175,21 @@ namespace Kopkari
 
 
         #region Get Intro Video
-        public void SoundEffect(AudioClip clip)
-        {
-            SoundManager.Instance?.PlayRoom(clip);
-        }
         public async void GetAddressableData()
+        {
+            try
+            {
+                await GetAddressableDataAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                if (this != null && !lobbyLoadStarted)
+                    FailIntroContentLoad();
+            }
+        }
+
+        private async Task GetAddressableDataAsync()
         {
             if (introContentLoading || introContentReady)
                 return;
@@ -167,7 +213,8 @@ namespace Kopkari
                         progressBar.UpdateUI();
                     }
                 },
-                fakeDurationIfCached: 2f
+                fakeDurationIfCached: 0f,
+                showErrorPopup: false
             );
             introContentLoading = false;
 
@@ -182,42 +229,38 @@ namespace Kopkari
             }
 
             // 2) Keylar bo‘yicha assetlarni load qilib ishlatamiz
-            var video = await AddressablesService.Instance.LoadAssetAsync<VideoClip>(Constants.VideoClips.IntroVideo);
+            var video = await AddressablesService.Instance.LoadAssetAsync<VideoClip>(
+                Constants.VideoClips.IntroVideo,
+                showErrorPopup: false);
             if (lobbyLoadStarted || this == null)
                 return;
 
-            if (video != null)
+            if (video == null || videoPlayer == null)
             {
-                if (videoPlayer != null)
-                {
-                    videoPlayer.clip = video;
-                    videoPlayer.Play();
-                }
-                if (startingPage != null && startingPage.activeSelf)
-                    startingPage.SetActive(false);
-
-                introContentReady = true;
-                Debug.Log($"▶️ Video played: {Constants.VideoClips.IntroVideo}");
-
-            }
-            else
-            {
-                ShowIntroRetryPopup();
+                FailIntroContentLoad();
                 return;
             }
 
-            var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(Constants.RoomSound.IntroSound);
+            var audio = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(
+                Constants.RoomSound.IntroSound,
+                showErrorPopup: false);
             if (lobbyLoadStarted || this == null)
                 return;
 
-            if (audio != null)
+            if (audio == null)
             {
-                SoundEffect(audio);
-                StartHomePreloadDuringVideo();
-                Debug.Log($"🔊 Audio played: {Constants.RoomSound.IntroSound}");
-
+                FailIntroContentLoad();
+                return;
             }
 
+            SoundManager.Instance?.PlayRoom(audio);
+
+            videoStarted = false;
+            videoPlayer.clip = video;
+            videoPlayer.Prepare();
+            StartVideoStartupTimeout();
+            StartHomePreloadDuringVideo();
+            Debug.Log($"Preparing intro video: {Constants.VideoClips.IntroVideo}");
         }
         public void GetIntroVideo()
         {
@@ -231,27 +274,6 @@ namespace Kopkari
             RetryIntroContentLoad();
         }
 
-        IEnumerator EnsureInitRoutine()
-        {
-            Task<bool> initTask = AddressablesManager.Instance.EnsureInitialized();
-
-            // Task tugaguncha kut
-            while (!initTask.IsCompleted)
-                yield return null;
-
-            if (!initTask.Result)
-            {
-                Debug.Log("❌ Still no internet. Showing popup again");
-                notificationManager.UpdateUICustom("Internetda xatolik", "Internet mavjud emas. Iltimos internetni yoqilganiga ishonch hosil qiling");
-            }
-            else
-            {
-                Debug.Log("✅ Addressables re-initialized from confirm!");
-                RetryIntroContentLoad();
-                // Optional: asset loading yoki sahifani qayta yuklash
-            }
-        }
-
         public void ShowPopup()
         {
             ShowIntroRetryPopup();
@@ -262,21 +284,27 @@ namespace Kopkari
             if (lobbyLoadStarted)
                 return;
 
+            introRetryPopupVisible = false;
             introContentReady = false;
+            videoStarted = false;
+            SetSkipAvailable(false);
             GetAddressableData();
         }
 
         private void ShowIntroRetryPopup()
         {
+            if (introRetryPopupVisible || lobbyLoadStarted)
+                return;
+
+            introRetryPopupVisible = true;
+
             if (UIOverlayRoot.I != null)
             {
-                UIOverlayRoot.I.Confirm(
+                UIOverlayRoot.I.Done(
                     "Download failed",
                     "Could not download required intro content. Please check your internet connection and try again.",
                     "Retry",
-                    "Close",
-                    RetryIntroContentLoad,
-                    null
+                    RetryIntroContentLoad
                 );
                 return;
             }
@@ -288,6 +316,25 @@ namespace Kopkari
                     "Internet mavjud emas. Iltimos internetni yoqilganiga ishonch hosil qiling"
                 );
             }
+        }
+
+        private void FailIntroContentLoad()
+        {
+            introContentLoading = false;
+            introContentReady = false;
+            videoStarted = false;
+            SetSkipAvailable(false);
+            StopVideoStartupTimeout();
+
+            if (videoPlayer != null)
+                videoPlayer.Stop();
+
+            SoundManager.Instance?.StopRoom();
+
+            if (startingPage != null)
+                startingPage.SetActive(true);
+
+            ShowIntroRetryPopup();
         }
 
         private void StartHomePreloadDuringVideo()
@@ -354,8 +401,13 @@ namespace Kopkari
         {
             if (skipButton != null)
             {
-                skipButton.interactable = available;
-                skipButton.gameObject.SetActive(available);
+                bool canSkip = available
+                    && introContentReady
+                    && !lobbyLoadStarted
+                    && IsSuccessful(homePreloadTask);
+
+                skipButton.interactable = canSkip;
+                skipButton.gameObject.SetActive(canSkip);
             }
         }
 
@@ -368,7 +420,40 @@ namespace Kopkari
             if (lobbyLoadStarted)
                 return;
 
+            homePreloadAddresses ??= GetPreloadMaterialAddresses();
+
+            if (SceneLoadManager.Instance == null)
+            {
+                HandleHomeLoadFailed("The scene loader is unavailable.");
+                return;
+            }
+
             lobbyLoadStarted = true;
+            SetSkipAvailable(false);
+
+            bool loadStarted = SceneLoadManager.Instance.LoadHomeFromIntro(
+                SceneLoadManager.SceneType.Home,
+                homePreloadAddresses,
+                GetReusableHomePreloadTask()
+            );
+
+            if (!loadStarted)
+            {
+                lobbyLoadStarted = false;
+                HandleHomeLoadFailed("Another scene transition is already in progress.");
+                return;
+            }
+
+            if (videoPlayer != null)
+            {
+                videoPlayer.loopPointReached -= OnVideoFinished;
+                videoPlayer.Stop();
+            }
+        }
+
+        public void HandleHomeLoadFailed(string reason)
+        {
+            lobbyLoadStarted = false;
             SetSkipAvailable(false);
 
             if (videoPlayer != null)
@@ -377,16 +462,28 @@ namespace Kopkari
                 videoPlayer.Stop();
             }
 
-            homePreloadAddresses ??= GetPreloadMaterialAddresses();
+            if (startingPage != null)
+                startingPage.SetActive(true);
 
-            if (SceneLoadManager.Instance == null)
+            if (homeRetryPopupVisible)
                 return;
 
-            SceneLoadManager.Instance.LoadHomeFromIntro(
-                SceneLoadManager.SceneType.Home,
-                homePreloadAddresses,
-                GetReusableHomePreloadTask()
-            );
+            homeRetryPopupVisible = true;
+            Debug.LogError($"Home loading failed from Intro: {reason}");
+
+            if (UIOverlayRoot.I != null)
+            {
+                UIOverlayRoot.I.Done(
+                    "Home loading failed",
+                    "Could not load required Home content. Please check your connection and try again.",
+                    "Retry",
+                    () =>
+                    {
+                        homeRetryPopupVisible = false;
+                        LoadLobbyScene();
+                    }
+                );
+            }
         }
         #endregion
 
@@ -395,12 +492,73 @@ namespace Kopkari
             LoadLobbyScene();
         }
 
+        private void OnVideoPrepared(VideoPlayer vp)
+        {
+            if (!lobbyLoadStarted)
+                vp.Play();
+        }
+
+        private void OnVideoStarted(VideoPlayer vp)
+        {
+            if (lobbyLoadStarted)
+                return;
+
+            videoStarted = true;
+            introContentReady = true;
+            StopVideoStartupTimeout();
+
+            if (startingPage != null)
+                startingPage.SetActive(false);
+
+            if (IsSuccessful(homePreloadTask))
+                SetSkipAvailable(true);
+
+            Debug.Log($"Intro video started: {Constants.VideoClips.IntroVideo}");
+        }
+
+        private void OnVideoError(VideoPlayer vp, string message)
+        {
+            if (lobbyLoadStarted)
+                return;
+
+            Debug.LogError($"Intro video playback failed: {message}");
+            FailIntroContentLoad();
+        }
+
+        private void StartVideoStartupTimeout()
+        {
+            StopVideoStartupTimeout();
+            videoStartupTimeoutRoutine = StartCoroutine(VideoStartupTimeoutRoutine());
+        }
+
+        private void StopVideoStartupTimeout()
+        {
+            if (videoStartupTimeoutRoutine == null)
+                return;
+
+            StopCoroutine(videoStartupTimeoutRoutine);
+            videoStartupTimeoutRoutine = null;
+        }
+
+        private IEnumerator VideoStartupTimeoutRoutine()
+        {
+            float deadline = Time.realtimeSinceStartup + VideoStartupTimeoutSeconds;
+            while (!videoStarted && !lobbyLoadStarted && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            videoStartupTimeoutRoutine = null;
+
+            if (!videoStarted && !lobbyLoadStarted)
+            {
+                Debug.LogError($"Intro video did not start within {VideoStartupTimeoutSeconds:0} seconds.");
+                FailIntroContentLoad();
+            }
+        }
+
         private void OnDisable()
         {
-            if(SoundManager.Instance != null)
-            {
-                SoundManager.Instance.StopRoomSmooth(force: true);
-            }
+            StopVideoStartupTimeout();
+
             if (AddressablesService.Instance != null)
             {
                 foreach (var addr in myAddresses)

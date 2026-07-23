@@ -214,7 +214,10 @@ public class SoundManager : MonoBehaviour
             await System.Threading.Tasks.Task.Yield();
         }
 
-        AudioClip clip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(address);
+        // Scene flow owns retry UI; room audio reports through its warning below.
+        AudioClip clip = await AddressablesService.Instance.LoadAssetAsync<AudioClip>(
+            address,
+            showErrorPopup: false);
 
         if (this == null ||
             requestVersion != _sceneSoundRequestVersion ||

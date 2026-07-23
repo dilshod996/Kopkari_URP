@@ -86,72 +86,80 @@ public class LobbyManager : MonoBehaviour
     {
         SceneLoadManager.Instance?.SetAssetInstantiationFinished(false);
 
-        _currentEnvAddress = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
-        if (string.IsNullOrEmpty(_currentEnvAddress))
+        try
         {
-            _currentEnvAddress = Constants.MapNames.Zarafshan;
-            PlayerPrefs.SetString(Constants.HomeEnivronments.SelectedEnvironment, _currentEnvAddress);
-        }
+            _currentEnvAddress = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
+            if (string.IsNullOrEmpty(_currentEnvAddress))
+            {
+                _currentEnvAddress = Constants.MapNames.Zarafshan;
+                PlayerPrefs.SetString(Constants.HomeEnivronments.SelectedEnvironment, _currentEnvAddress);
+            }
 
-        if (AddressablesService.Instance == null)
-        {
-            Debug.LogError("LobbyManager: AddressablesService is missing. Home environment cannot be loaded.");
+            if (AddressablesService.Instance == null)
+            {
+                Debug.LogError("LobbyManager: AddressablesService is missing. Home environment cannot be loaded.");
+                SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
+                return;
+            }
+
+            _currentEnvInstance = await AddressablesService.Instance.InstantiateAsync(
+                _currentEnvAddress,
+                Vector3.zero,
+                Quaternion.identity,
+                environmentRoot
+            );
+
+            if (_currentEnvInstance == null)
+            {
+                Debug.LogWarning($"LobbyManager: Failed to load home environment '{_currentEnvAddress}'.");
+                SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
+                return;
+            }
+            // 2) Skybox material load + apply
+            await ApplySkyboxByEnvironment(_currentEnvAddress);
+
+            // 3) Directional light color/intensity/rotation apply
+            ApplyLightByEnvironment(_currentEnvAddress);
+            // 2️⃣ Player spawn
+            playerInstance = Instantiate(
+                playerPrefab,
+                playerSpawnPos.position,
+                playerSpawnPos.rotation,
+                PlayerParent.transform
+            );
+
+            var skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
+            if (skinLoader != null)
+                await skinLoader.ApplyAllSkins();
+
+            // 3️⃣ Horse spawn
+            horseInstance = Instantiate(
+                horsePrefab,
+                horseSpawnPos.position,
+                horseSpawnPos.rotation,
+                HorseParent.transform
+            );
+
+            var horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
+            if (horseSkinLoader != null)
+                await horseSkinLoader.ApplyAllSkins();
+            RegisterEnvPrefabs(_currentEnvInstance.transform);
+
+            // 4️⃣ Scene ready
             SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
-            return;
+
+            //HomeMainUI.Instance.RemoveInitialImage();
+            HorseAnimGet();
+            GetPlayerAnimator();
+
+            UIOverlayRoot.I?.HidePanel(UIPanelType.Home, instant: false);
+            SetWeather();
         }
-
-        _currentEnvInstance = await AddressablesService.Instance.InstantiateAsync(
-            _currentEnvAddress,
-            Vector3.zero,
-            Quaternion.identity,
-            environmentRoot
-        );
-
-        if (_currentEnvInstance == null)
+        catch (Exception ex)
         {
-            Debug.LogWarning($"LobbyManager: Failed to load home environment '{_currentEnvAddress}'.");
-            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
-            return;
+            Debug.LogException(ex);
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
         }
-        // 2) Skybox material load + apply
-        await ApplySkyboxByEnvironment(_currentEnvAddress);
-
-        // 3) Directional light color/intensity/rotation apply
-        ApplyLightByEnvironment(_currentEnvAddress);
-        // 2️⃣ Player spawn
-        playerInstance = Instantiate(
-            playerPrefab,
-            playerSpawnPos.position,
-            playerSpawnPos.rotation,
-            PlayerParent.transform
-        );
-
-        var skinLoader = playerInstance.GetComponentInChildren<PlayerSkinLoader>();
-        if (skinLoader != null)
-            await skinLoader.ApplyAllSkins();
-
-        // 3️⃣ Horse spawn
-        horseInstance = Instantiate(
-            horsePrefab,
-            horseSpawnPos.position,
-            horseSpawnPos.rotation,
-            HorseParent.transform
-        );
-
-        var horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
-        if (horseSkinLoader != null)
-            await horseSkinLoader.ApplyAllSkins();
-        RegisterEnvPrefabs(_currentEnvInstance.transform);
-
-        // 4️⃣ Scene ready
-        SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
-
-        //HomeMainUI.Instance.RemoveInitialImage();
-        HorseAnimGet();
-        GetPlayerAnimator();
-
-        UIOverlayRoot.I.HidePanel(UIPanelType.Home, instant: false);
-        SetWeather();
     }
 
     private void OnEnable()

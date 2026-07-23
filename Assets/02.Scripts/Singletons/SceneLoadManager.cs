@@ -13,7 +13,9 @@ public class SceneLoadManager : MonoBehaviour
 
 
     public bool AssetInstantiationFinished { get; set; } = false;
+    public bool AssetInstantiationSucceeded { get; private set; }
     private static bool _introInitDone;
+    private const float HomeInstantiationTimeoutSeconds = 45f;
     public enum SceneType
     {
         None,
@@ -126,9 +128,9 @@ public class SceneLoadManager : MonoBehaviour
 
     public void LoadSmartScene(SceneType scene, List<string> preloadKeys)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = scene;
-        OnSceneLoaded?.Invoke(); // Notify that the scene has been loaded
+        if (scene == SceneType.Loading || IsSceneLoading)
+            return;
+
         if (!assetAlreadyInstantiated.Contains(scene))
         {
             LoadSceneWithAddressables(scene, preloadKeys);
@@ -144,9 +146,9 @@ public class SceneLoadManager : MonoBehaviour
     }
     public void LoadSmartSceneWithoutAdditive(SceneType scene, List<string> preloadKeys)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = scene;
-        OnSceneLoaded?.Invoke(); // Notify that the scene has been loaded
+        if (scene == SceneType.Loading || IsSceneLoading)
+            return;
+
         if (!assetAlreadyInstantiated.Contains(scene))
         {
             LoadSceneWIthAddressableWithoutAdditive(scene, preloadKeys);
@@ -160,10 +162,16 @@ public class SceneLoadManager : MonoBehaviour
     }
     public void LoadSceneWithAddressables(SceneType targetScene, List<string> preloadAddresses)
     {
+        if (!TryBeginSceneMove(targetScene))
+            return;
+
         StartCoroutine(HandleSceneLoad(targetScene, preloadAddresses));
     }
     public void LoadSceneWIthAddressableWithoutAdditive(SceneType targetScene, List<string> preloadAddresses)
     {
+        if (!TryBeginSceneMove(targetScene))
+            return;
+
         StartCoroutine(HandleSceneLoadWithoutAdditive(targetScene, preloadAddresses));
     }
     private IEnumerator HandleSceneLoad(SceneType targetScene, List<string> preloadAddresses)
@@ -178,8 +186,6 @@ public class SceneLoadManager : MonoBehaviour
         yield return null;
 
         // 1) Addressables preload (cached bo‘lsa fake progress)
-        bool preloadOK = true;
-
         var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
             preloadAddresses,
             p => loadingTime = p * 100f,
@@ -187,13 +193,13 @@ public class SceneLoadManager : MonoBehaviour
         );
 
         yield return WaitTask(preloadTask);
-        preloadOK = preloadTask.Result;
 
-        if (!preloadOK)
+        if (!IsSuccessful(preloadTask))
         {
             // internet yo‘q (download kerak bo‘lsa) yoki download failed
             // shu yerda popup ko‘rsatib qaytib ketasan
             //IntroManager.Instance?.ShowPopup();
+            CancelSceneMove();
             yield break;
         }
 
@@ -220,6 +226,7 @@ public class SceneLoadManager : MonoBehaviour
             yield return null;
 
         SetAssetInstantiationFinished(false);
+        CompleteSceneMove();
     }
 
     //private IEnumerator HandleSceneLoad(SceneType targetScene, List<string> preloadAddresses)
@@ -273,9 +280,8 @@ public class SceneLoadManager : MonoBehaviour
     #region Introdan Lobby ga
     public void LoadSmartSceneIntro(SceneType scene, List<string> preloadKeys)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = scene;
-        OnSceneLoaded?.Invoke(); // Notify that the scene has been loaded
+        if (scene == SceneType.Loading || IsSceneLoading)
+            return;
         if (!assetAlreadyInstantiated.Contains(scene))
         {
             LoadSceneWithAddressablesIntro(scene, preloadKeys);
@@ -291,6 +297,9 @@ public class SceneLoadManager : MonoBehaviour
     }
     public void LoadSceneWithAddressablesIntro(SceneType targetScene, List<string> preloadAddresses)
     {
+        if (!TryBeginSceneMove(targetScene))
+            return;
+
         StartCoroutine(HandleSceneLoadIntro(targetScene, preloadAddresses));
     }
     private IEnumerator HandleSceneLoadIntro(SceneType targetScene, List<string> preloadAddresses)
@@ -305,8 +314,11 @@ public class SceneLoadManager : MonoBehaviour
 
         yield return WaitTask(preloadTask);
 
-        if (!preloadTask.Result)
+        if (!IsSuccessful(preloadTask))
+        {
+            CancelSceneMove();
             yield break;
+        }
 
         var uiPairs = new (string address, UISoundType type)[]
           {
@@ -348,6 +360,7 @@ public class SceneLoadManager : MonoBehaviour
             yield return null;
 
         SetAssetInstantiationFinished(false);
+        CompleteSceneMove();
     }
 
 
@@ -397,14 +410,14 @@ public class SceneLoadManager : MonoBehaviour
     //}
     public void LoadSceneIntro(SceneType newScene)
     {
+        if (!TryBeginSceneMove(newScene))
+            return;
+
         StartCoroutine(LoadSceneDirect(newScene));
     }
 
     private IEnumerator LoadSceneDirect(SceneType newScene)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = newScene;
-
         // Fake progress bar uchun
         //AddressablesManager.Instance.loadingTime = 0f;
         StartCoroutine(FakeLoadingTimeProgress());
@@ -414,6 +427,7 @@ public class SceneLoadManager : MonoBehaviour
 
         // To'g'ridan-to'g'ri sahnani yuklaymiz
         SceneManager.LoadScene(GetUnitySceneName(newScene), LoadSceneMode.Single);
+        CompleteSceneMove();
     }
 
     #endregion
@@ -438,8 +452,11 @@ public class SceneLoadManager : MonoBehaviour
 
         yield return WaitTask(preloadTask);
 
-        if (!preloadTask.Result)
+        if (!IsSuccessful(preloadTask))
+        {
+            CancelSceneMove();
             yield break;
+        }
 
         // 2.5) AvatarCustom bo'lsa — active player barcha skin keys preload
         if (targetScene == SceneType.AvatarCustom)
@@ -464,8 +481,11 @@ public class SceneLoadManager : MonoBehaviour
                  includeIcons: true);
             yield return WaitTask(horsePreloadTask);
 
-            if (!playerPreloadTask.Result)
+            if (!IsSuccessful(playerPreloadTask) || !IsSuccessful(horsePreloadTask))
+            {
+                CancelSceneMove();
                 yield break;
+            }
         }
         if (targetScene == SceneType.SecondRacing || targetScene == SceneType.EgyptRacing)
         {
@@ -490,8 +510,11 @@ public class SceneLoadManager : MonoBehaviour
             );
 
             yield return WaitTask(aiHorsePoolTask);
-            if (!aiHorsePoolTask.Result)
+            if (!IsSuccessful(aiHorsePoolTask))
+            {
+                CancelSceneMove();
                 yield break;
+            }
         }
 
 
@@ -516,6 +539,8 @@ public class SceneLoadManager : MonoBehaviour
             yield return null;
 
         CurrentSceneType = targetScene;
+        SetAssetInstantiationFinished(false);
+        CompleteSceneMove();
     }
 
 
@@ -523,22 +548,22 @@ public class SceneLoadManager : MonoBehaviour
 
 
 
-    public void SetAssetInstantiationFinished(bool status)
+    public void SetAssetInstantiationFinished(bool status, bool succeeded = true)
     {
         AssetInstantiationFinished = status;
+        AssetInstantiationSucceeded = status && succeeded;
     }
 
     public void LoadScene(SceneType newScene)
     {
-        if (newScene == SceneType.Loading) return;
+        if (!TryBeginSceneMove(newScene))
+            return;
+
         StartCoroutine(LoadSceneWithTransition(newScene));
     }
 
     private IEnumerator LoadSceneWithTransition(SceneType newScene)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = newScene;
-
         loadingTime = 0f;
 
         // Loading scene
@@ -550,6 +575,7 @@ public class SceneLoadManager : MonoBehaviour
         yield return new WaitForSeconds(fakeDurationIfCached);
 
         SceneManager.LoadScene(GetUnitySceneName(newScene), LoadSceneMode.Single);
+        CompleteSceneMove();
     }
 
     private IEnumerator FakeLoadingTimeProgress()
@@ -599,6 +625,22 @@ public class SceneLoadManager : MonoBehaviour
         SoundManager.Instance?.PrepareForSceneChange();
     }
 
+    private bool TryBeginSceneMove(SceneType targetScene)
+    {
+        if (targetScene == SceneType.Loading || IsSceneLoading)
+        {
+            if (IsSceneLoading)
+                Debug.LogWarning($"Ignored scene load request for {targetScene}: another scene is already loading.");
+
+            return false;
+        }
+
+        PreviousSceneType = CurrentSceneType;
+        CurrentSceneType = targetScene;
+        BeginSceneMove();
+        return true;
+    }
+
     private void CompleteSceneMove()
     {
         LastSceneMoveTime = CurrentSceneMoveTime;
@@ -613,9 +655,13 @@ public class SceneLoadManager : MonoBehaviour
     }
 
     #region new Inro Load
-    public void LoadHomeFromIntro(SceneType homeScene, List<string> preloadKeys, Task<bool> existingPreloadTask = null)
+    public bool LoadHomeFromIntro(SceneType homeScene, List<string> preloadKeys, Task<bool> existingPreloadTask = null)
     {
+        if (!TryBeginSceneMove(homeScene))
+            return false;
+
         StartCoroutine(HandleSceneLoadIntro_ToHome(homeScene, preloadKeys, existingPreloadTask));
+        return true;
     }
 
     private IEnumerator HandleSceneLoadIntro_ToHome(SceneType targetScene, List<string> preloadAddresses, Task<bool> existingPreloadTask = null)
@@ -624,7 +670,17 @@ public class SceneLoadManager : MonoBehaviour
         preloadAddresses ??= new List<string>();
 
         // ✅ 0) Loading panel show (DontDestroy)
-        UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(192), instant: false, exclusive: true);
+        string loadingMessage = LanguageManager.Instance != null
+            ? LanguageManager.Instance.GetText(192)
+            : "Loading Home...";
+        UIOverlayRoot.I?.ShowPanel(UIPanelType.Home, loadingMessage, instant: false, exclusive: true);
+
+        if (AddressablesService.Instance == null)
+        {
+            CancelSceneMove();
+            Kopkari.IntroManager.Instance?.HandleHomeLoadFailed("AddressablesService is unavailable.");
+            yield break;
+        }
 
 
         // ✅ 1) Preload (intro paytida)
@@ -634,22 +690,24 @@ public class SceneLoadManager : MonoBehaviour
             preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
                 preloadAddresses,
                 p => loadingTime = p * 100f,
-                fakeDurationIfCached
+                fakeDurationIfCached,
+                showErrorPopup: false
             );
         }
 
         yield return WaitTask(preloadTask);
         if (!IsSuccessful(preloadTask))
         {
-            UIOverlayRoot.I.HidePanel(UIPanelType.Home, false);
+            UIOverlayRoot.I?.HidePanel(UIPanelType.Home, false);
+            CancelSceneMove();
+            Kopkari.IntroManager.Instance?.HandleHomeLoadFailed(
+                "One or more required Home Addressables could not be loaded.");
             yield break;
         }
 
         // ✅ 2) UI Sounds register — faqat 1 marta
         if (!_introInitDone)
         {
-            _introInitDone = true;
-
             var uiPairs = new (string address, UISoundType type)[]
             {
                 (Constants.UISounds.Click, UISoundType.Click),
@@ -660,6 +718,7 @@ public class SceneLoadManager : MonoBehaviour
                 (Constants.UISounds.PopupClose, UISoundType.PopupClose),
             };
 
+            bool allUiSoundsLoaded = SoundManager.Instance != null;
             for (int i = 0; i < uiPairs.Length; i++)
             {
                 var (address, type) = uiPairs[i];
@@ -670,25 +729,60 @@ public class SceneLoadManager : MonoBehaviour
                 var clip = clipTask.Result;
                 if (clip != null && SoundManager.Instance != null)
                     SoundManager.Instance.RegisterUIClip(type, clip);
+                else
+                    allUiSoundsLoaded = false;
             }
+
+            _introInitDone = allUiSoundsLoaded;
         }
 
         // ✅ 3) Home scene load (Single)
+        SetAssetInstantiationFinished(false);
         var sceneOp = SceneManager.LoadSceneAsync(GetUnitySceneName(targetScene), LoadSceneMode.Single);
+        if (sceneOp == null)
+        {
+            CancelSceneMove();
+            Kopkari.IntroManager.Instance?.HandleHomeLoadFailed("The Home scene could not be opened.");
+            yield break;
+        }
+
         while (!sceneOp.isDone)
             yield return null;
 
         // ✅ 4) Scene ichidagi addressable instantiate'lar tugaguncha kutamiz
-        while (!AssetInstantiationFinished)
+        float homeReadyDeadline = Time.realtimeSinceStartup + HomeInstantiationTimeoutSeconds;
+        while (!AssetInstantiationFinished && Time.realtimeSinceStartup < homeReadyDeadline)
             yield return null;
+
+        if (!AssetInstantiationFinished || !AssetInstantiationSucceeded)
+        {
+            string reason = !AssetInstantiationFinished
+                ? $"Home initialization timed out after {HomeInstantiationTimeoutSeconds:0} seconds."
+                : "Home reported that required content failed to initialize.";
+
+            Debug.LogError(reason);
+            UIOverlayRoot.I?.HidePanel(UIPanelType.Home, false);
+            CancelSceneMove();
+            SetAssetInstantiationFinished(false);
+
+            // Intro was unloaded by the Single-mode Home load, so return to a known recoverable scene.
+            var recoveryOp = SceneManager.LoadSceneAsync(SceneType.Intro.ToString(), LoadSceneMode.Single);
+            if (recoveryOp != null)
+            {
+                while (!recoveryOp.isDone)
+                    yield return null;
+            }
+
+            yield break;
+        }
 
         // ✅ 5) Panel hide + flag reset
         //UIOverlayRoot.I.HidePanel(UIPanelType.Home, false);
 
         SetAssetInstantiationFinished(false);
 
-        // ✅ 6) Endi real loaded bo'ldi deb event chaqirsangiz shu yerda
-        OnSceneLoaded?.Invoke();
+        // ✅ 6) Endi real loaded bo'ldi
+        CompleteSceneMove();
     }
     #endregion
 
@@ -696,9 +790,8 @@ public class SceneLoadManager : MonoBehaviour
 
     public void LoadSceneNew(SceneType scene, List<string> preloadKeys)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = scene;
-        BeginSceneMove();
+        if (!TryBeginSceneMove(scene))
+            return;
 
         // ❌ bu yerda OnSceneLoaded chaqirilmaydi (hali yuklanmadi)
 
@@ -748,7 +841,7 @@ public class SceneLoadManager : MonoBehaviour
         );
 
         yield return WaitTask(preloadTask);
-        if (!preloadTask.Result)
+        if (!IsSuccessful(preloadTask))
         {
            // UIOverlayRoot.I.HideLoading();
             CancelSceneMove();
@@ -781,7 +874,7 @@ public class SceneLoadManager : MonoBehaviour
 
             yield return WaitTask(horsePreloadTask);
 
-            if (!playerPreloadTask.Result || !horsePreloadTask.Result)
+            if (!IsSuccessful(playerPreloadTask) || !IsSuccessful(horsePreloadTask))
             {
                 //UIOverlayRoot.I.HideLoading();
                 CancelSceneMove();
@@ -805,7 +898,7 @@ public class SceneLoadManager : MonoBehaviour
 
             yield return WaitTask(aiHorsePoolTask);
 
-            if (!aiHorsePoolTask.Result)
+            if (!IsSuccessful(aiHorsePoolTask))
             {
                 CancelSceneMove();
                 UIOverlayRoot.I.HideLoading();
@@ -838,16 +931,14 @@ public class SceneLoadManager : MonoBehaviour
     #region Back Scene or Scene Reload again
     public void ReloadOrBackScene(SceneType newScene)
     {
+        if (!TryBeginSceneMove(newScene))
+            return;
+
         StartCoroutine(LoadSceneWithPanel(newScene));
     }
 
     private IEnumerator LoadSceneWithPanel(SceneType newScene)
     {
-        PreviousSceneType = CurrentSceneType;
-        CurrentSceneType = newScene;
-
-        BeginSceneMove();
-
         // ✅ Home'ga qaytayotganda HomePanel ko'rsatamiz (yoki Loading panel)
         //UIOverlayRoot.I.ShowPanel(UIPanelType.Home, instant: false, exclusive: true, message: "Home loading...");
 

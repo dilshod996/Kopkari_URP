@@ -435,7 +435,7 @@ public class AIGameRoom : MonoBehaviour
     /// </summary>
     public void PopupAppear()
     {
-        SceneLoadMangager.Instance.LoadScene(SceneLoadMangager.SceneType.Lobby);
+        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Lobby);
         //Popup.UpdateUICustom(null,"O'yindan chiqayapsizmi?", "Hali o'yin tugagani yo'qku davom etdirmaysizmi?");
     }
 }

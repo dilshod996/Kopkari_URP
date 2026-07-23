@@ -32,7 +32,7 @@ public class PracticeRoomManager : BaseManager
     }
     public void BackToLobby()
     {
-        SceneLoadMangager.Instance.LoadScene(SceneLoadMangager.SceneType.Lobby);
+        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Lobby);
         if (Time.timeScale == 0)
         {
             Debug.Log("Timescale: 0");

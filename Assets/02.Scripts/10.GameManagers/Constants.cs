@@ -202,7 +202,7 @@ public static class Constants
     {
         public const float GoodCondition = 50f;
         public const float Power = 20f;
-        public const float Cool = 10f;
+        public const float Cool = 20f;
         public const float Stamina = 30f;
     }
     public static class Level

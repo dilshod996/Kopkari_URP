@@ -17,6 +17,8 @@ public class UIPauseGame : MonoBehaviour
     [SerializeField] private TMP_Text resumeText;
     [SerializeField] private TMP_Text backLobbyText;
     [SerializeField] private TMP_Text settingsText;
+    [SerializeField] private int racingSettingsTextId = 26;
+    [SerializeField] private int kopkariHowToPlayTextId = -1;
     [SerializeField] private GameObject detailsBg;
     [SerializeField] private GameObject countBg;
     [SerializeField] private TMP_Text countText;
@@ -148,11 +150,34 @@ public class UIPauseGame : MonoBehaviour
     void BackLobby()
     {
         Time.timeScale = 1f;
-        GetGameFinishedTime();
-        GetOverallPenaltyTimeAndBoost();
-        HorseStats();
+
+        if (KopkariManager.Instance != null)
+        {
+            ApplyKopkariHorseConditionBeforeLeaving();
+        }
+        else
+        {
+            GetGameFinishedTime();
+            GetOverallPenaltyTimeAndBoost();
+            HorseStats();
+        }
+
         UIOverlayRoot.I.ShowPanel(UIPanelType.Home, LanguageManager.Instance.GetText(191));
         SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Home);
+    }
+
+    private void ApplyKopkariHorseConditionBeforeLeaving()
+    {
+        KopkariManager.Instance.FinishMatch();
+
+        KopkariResultsManager results = KopkariResultsManager.Instance;
+        if (results == null)
+        {
+            Debug.LogWarning("[UIPauseGame] Kopkari results manager is missing; horse condition was not applied.");
+            return;
+        }
+
+        results.GetOrApplyHorseCondition();
     }
 
     private void UpdateTexts()
@@ -162,7 +187,14 @@ public class UIPauseGame : MonoBehaviour
             titlePause.text = LanguageManager.Instance.GetText(301);
             resumeText.text = LanguageManager.Instance.GetText(253);
             backLobbyText.text = LanguageManager.Instance.GetText(302);
-            settingsText.text = LanguageManager.Instance.GetText(26);
+            if (settingsText != null)
+            {
+                int textId = KopkariMainUI.Instance != null
+                    ? kopkariHowToPlayTextId
+                    : racingSettingsTextId;
+                if (textId >= 0)
+                    settingsText.text = LanguageManager.Instance.GetText(textId);
+            }
         }
     }
     private IEnumerator PauseNextFrame()
@@ -173,7 +205,13 @@ public class UIPauseGame : MonoBehaviour
     }
     private void OpenSettingsPanel()
     {
-         if (UIButtonActions.Instance != null)
+        if (KopkariMainUI.Instance != null)
+        {
+            KopkariMainUI.Instance.ShowHowToPlayPage();
+            return;
+        }
+
+        if (UIButtonActions.Instance != null)
             UIButtonActions.Instance.OpenInGameSettingsPanel();
     }
 

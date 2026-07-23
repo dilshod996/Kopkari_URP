@@ -230,7 +230,6 @@ public class AIKopkariRider : MonoBehaviour
 
     private int currentCheckpointIndex = -1;
     public bool hasLamb = false;
-    private bool timeFinishedProcessed = false;
     // ⏱ coroutinelar
     private Coroutine waitCoroutine;
     private Coroutine itemTimerCoroutine;
@@ -483,7 +482,6 @@ public class AIKopkariRider : MonoBehaviour
         }
         KopkariManager.OnMainGameStarted += BeginGameplay;
         TargetReachEvent.OnRoundEnded += HandleFinish;
-        KopkariManager.OnTimeFinished += HandleTimeFinished;
         KopkariManager.OnGoatOwnerChanged += HandleGoatOwnerChanged;
         KopkariManager.OnFakeUlakDiversionStarted += HandleFakeUlakDiversionStarted;
         KopkariManager.OnFakeUlakDiversionEnded += HandleFakeUlakDiversionEnded;
@@ -528,7 +526,6 @@ public class AIKopkariRider : MonoBehaviour
         ReleaseInspectionFacingHold();
         KopkariManager.OnMainGameStarted -= BeginGameplay;
         TargetReachEvent.OnRoundEnded -= HandleFinish;
-        KopkariManager.OnTimeFinished -= HandleTimeFinished;
         KopkariManager.OnGoatOwnerChanged -= HandleGoatOwnerChanged;
         KopkariManager.OnFakeUlakDiversionStarted -= HandleFakeUlakDiversionStarted;
         KopkariManager.OnFakeUlakDiversionEnded -= HandleFakeUlakDiversionEnded;
@@ -1384,7 +1381,6 @@ public class AIKopkariRider : MonoBehaviour
         ResetCarrierGrip(clearProtection: true);
         hasLamb = false;
         isFinished = false;
-        timeFinishedProcessed = false;
         currentCheckpointIndex = -1;
         isGameplayActive = false;
         isFakeUlakDistracted = false;
@@ -1837,7 +1833,6 @@ public class AIKopkariRider : MonoBehaviour
         isFinished = false;
         isFakeUlakDistracted = false;
         fakeUlakDiversionTarget = null;
-        timeFinishedProcessed = false;
         StopCarrierEscapeSpeedBoost();
         hasLamb = false;
         hasCarrierHistory = false;
@@ -4196,48 +4191,7 @@ public class AIKopkariRider : MonoBehaviour
     }
     #endregion
 
-    #region Time finished Stop Rider
-    private void HandleTimeFinished()
-    {
-        if (timeFinishedProcessed) return;
-        timeFinishedProcessed = true;
-        isGameplayActive = false;
-        isFakeUlakDistracted = false;
-        fakeUlakDiversionTarget = null;
-        StopUlakRecovery();
-        StopTrapSetterRole();
-        StopGripContactMonitoring();
-        StopChaseObstacleSteering();
-        StopCarrierEscapeSpeedBoost();
-
-        // coroutinelarni to'xtatamiz
-        CancelPickupFocus();
-
-        if (orbitCoroutine != null)
-        {
-            StopCoroutine(orbitCoroutine);
-            orbitCoroutine = null;
-        }
-
-        StopItemTimer();
-
-        // agar uloq NPCda bo'lsa drop qilamiz
-        if (hasLamb)
-        {
-            hasLamb = false;
-            CancelCarrierEscape();
-            ApplyBaseNavigationAvoidance();
-
-            if (pickUp != null && pickUp.Has_Item)
-            {
-                pickUp.DropItem();
-            }
-
-            KopkariManager.Instance?.NotifyGoatOwner(transform.root.gameObject, false);
-        }
-
-        StopRiderAI();
-    }
+    #region Stop Rider
     private void StopRiderAI()
     {
         StopTrapSetterRole();

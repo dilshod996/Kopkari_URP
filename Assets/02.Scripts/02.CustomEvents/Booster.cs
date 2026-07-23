@@ -68,6 +68,7 @@ public class Booster : MonoBehaviour
 
     private bool walkZoneActive;
     private bool walkZoneTimeAdded;
+    private bool walkZoneAffectsLocalPlayer;
     public static float TotalWalkZoneDamagedTime { get; private set; }
     public static event Action<float> OnWalkZoneDamagedTime;
 
@@ -280,6 +281,7 @@ public class Booster : MonoBehaviour
         walkZoneFinishTime = 0f;
         walkZoneActive = true;
         walkZoneTimeAdded = false;
+        walkZoneAffectsLocalPlayer = !boosters.isNpc;
 
         void CancelZone(bool despawn)
         {
@@ -349,6 +351,9 @@ public class Booster : MonoBehaviour
 
         walkZoneTimeAdded = true;
 
+        if (!walkZoneAffectsLocalPlayer)
+            return;
+
         walkZoneFinishTime = Time.time;
 
         float damagedTime = walkZoneFinishTime - walkZoneStartTime;
@@ -367,6 +372,8 @@ public class Booster : MonoBehaviour
     }
     private void ClearZoneSubscriptions()
     {
+        AddWalkZoneDamagedTimeOnce();
+
         if (walkZoneTarget != null)
         {
             if (defendHandlerCached != null)
@@ -376,6 +383,8 @@ public class Booster : MonoBehaviour
 
         defendHandlerCached = null;
         walkZoneTarget = null;
+        walkZoneActive = false;
+        walkZoneAffectsLocalPlayer = false;
 
         if (walkZoneCo != null)
         {

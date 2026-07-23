@@ -469,10 +469,14 @@ public class MapShowPopup : MonoBehaviour
 
     private void WatchAdds()
     {
+        int rewardAmount = Mathf.Max(0, currentMapData.PlayCost - CurrencyManager.Instance.Nyufiy);
+        if (rewardAmount <= 0)
+            return;
+
         GameAnalyticsEvents.RewardedAdClicked(
             placement: "coin_shop",
             rewardType: "nyufiy",
-            rewardAmount: currentMapData.RewardAdAmount
+            rewardAmount: rewardAmount
         );
 
         if (AdsManager.Instance == null)
@@ -483,17 +487,17 @@ public class MapShowPopup : MonoBehaviour
 
         AdsManager.Instance.ShowRewarded(() =>
         {
-            CurrencyManager.Instance.AddNyufiy(currentMapData.RewardAdAmount, true);
+            CurrencyManager.Instance.AddNyufiy(rewardAmount, true);
 
             GameAnalyticsEvents.RewardedAdCompleted(
                 placement: "coin_shop",
                 rewardType: "nyufiy",
-                rewardAmount: currentMapData.RewardAdAmount
+                rewardAmount: rewardAmount
             );
 
             GameAnalyticsEvents.CoinRewardClaimed(
                 source: "rewarded_ad_coin_shop",
-                amount: currentMapData.RewardAdAmount
+                amount: rewardAmount
             );
         },
         () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));

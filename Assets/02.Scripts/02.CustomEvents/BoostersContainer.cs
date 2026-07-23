@@ -286,7 +286,7 @@ public class BoostersContainer : MonoBehaviour
         {
             boostTime += actual;
             Debug.Log("[BOOSTER ACTUAL END]" + boostTime + $" (added {actual:0.00}s)");
-            OnBoostTime?.Invoke(boostTime);
+            OnBoostTime?.Invoke(actual);
         }
 
         // restore speed
@@ -734,7 +734,7 @@ public class BoostersContainer : MonoBehaviour
         if (!isNpc)
         {
             penaltyTime += actualSlow;
-            OnPenaltyTime?.Invoke(penaltyTime);
+            OnPenaltyTime?.Invoke(actualSlow);
             OnNormalState?.Invoke();
         }
 
@@ -765,6 +765,12 @@ public class BoostersContainer : MonoBehaviour
     }
 
     #endregion
+
+    public void ResetTrackedEffectTimes()
+    {
+        boostTime = 0f;
+        penaltyTime = 0f;
+    }
 
     #region ========================= Obstacle Penalty =========================
     public void NotifyObstacleTouched()

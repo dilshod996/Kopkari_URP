@@ -94,6 +94,27 @@ public class CurrencyManager : MonoBehaviour
             SyncCurrencyFieldToFirestore(Constants.Coins.Coin, Coin);
     }
 
+    public void AddCurrencyBundle(int nyufiyAmount, int coinAmount, bool syncNow = false)
+    {
+        if (nyufiyAmount <= 0 && coinAmount <= 0)
+            return;
+
+        if (nyufiyAmount > 0)
+            Nyufiy += nyufiyAmount;
+        if (coinAmount > 0)
+            Coin += coinAmount;
+
+        SaveLocal();
+
+        if (nyufiyAmount > 0)
+            OnNyufiyChanged?.Invoke(Nyufiy);
+        if (coinAmount > 0)
+            OnCoinChanged?.Invoke(Coin);
+
+        if (syncNow)
+            SyncToFirestore();
+    }
+
     public bool SpendNyufiy(int amount, bool syncNow = false)
     {
         if (amount <= 0)

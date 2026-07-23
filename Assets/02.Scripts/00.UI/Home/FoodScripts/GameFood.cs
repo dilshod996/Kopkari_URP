@@ -5,6 +5,12 @@ using UnityEngine.UI;
 
 public class GameFood : MonoBehaviour
 {
+    public enum FoodPageMode
+    {
+        Normal,
+        KopkariRoundChange
+    }
+
     [Header("Top")]
     [SerializeField] private TMP_Text coinText;
     [SerializeField] private TMP_Text nyufiyText;
@@ -17,6 +23,8 @@ public class GameFood : MonoBehaviour
     [SerializeField] private TMP_Text adsAmount;
     [SerializeField] private Button replayBtn;
     [SerializeField] private TMP_Text replayText;
+    [SerializeField] private int replayTextLanguageId = -1;
+    [SerializeField] private int continueTextLanguageId = -1;
 
     [Header("Sliders")]
     [SerializeField] private TMP_Text conditionTitleText;
@@ -24,6 +32,10 @@ public class GameFood : MonoBehaviour
     [SerializeField] private RectTransform notEnoughPowerBg, notEnoughCoolingBg, notEnoughStaminaBg;
     [SerializeField] private TMP_Text notEnoughPowerText, notEnoughCoolingText, notEnoughStaminaText;
     [SerializeField] private TMP_Text powerText, coolingText, staminaText;
+
+    [Header("Entry Requirement")]
+    [SerializeField] private int requiredPrefixLanguageId = -1;
+    [SerializeField, Range(0f, 100f)] private float roundRequiredPercent = 15f;
 
     [Header("Bottom Field")]
     [SerializeField] private GameObject bottomAlarmObj;
@@ -37,10 +49,12 @@ public class GameFood : MonoBehaviour
     private float mCooling;
     private float mStamina;
     private bool resourceUpdated=false;
+    private FoodPageMode pageMode = FoodPageMode.Normal;
 
     public int amountWatch = 300;
     private int coin = 0;
     private int nyufiy = 0;
+    private int currentAdReward;
 
 
     [SerializeField] private GameObject adsPanel;
@@ -52,6 +66,7 @@ public class GameFood : MonoBehaviour
     private void OnEnable()
     {
         GetCoins();
+        currentAdReward = amountWatch;
         UITransilation();
         GetResources();
         EnableAdsPanel(false);
@@ -62,8 +77,7 @@ public class GameFood : MonoBehaviour
         CurrencyManager.Instance.OnNyufiyChanged += UpdateOnlyNyufiy;
         FoodInfo.OnFoodAddToHorse += ApplyFoodBuffs;
         FoodInfo.OnMoneyNotEnough += AdsPanel;
-        if(adsAmount != null)
-            adsAmount.text = $"+{amountWatch:N0}";
+        UpdateAdsRewardText();
         if(watchBtn != null)
             watchBtn.onClick.AddListener(OnAdsButtonAction);
     }
@@ -79,6 +93,9 @@ public class GameFood : MonoBehaviour
         CurrencyManager.Instance.OnNyufiyChanged -= UpdateOnlyNyufiy;
         FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
         FoodInfo.OnMoneyNotEnough -= AdsPanel;
+        pageMode = FoodPageMode.Normal;
+        if (backButton != null)
+            backButton.gameObject.SetActive(true);
     }
     private void OnDestroy()
     {
@@ -86,6 +103,13 @@ public class GameFood : MonoBehaviour
     }
     private void BackHome()
     {
+        if (pageMode == FoodPageMode.KopkariRoundChange)
+        {
+            SetData();
+            KopkariMainUI.Instance?.HideRoundFoodPanel();
+            return;
+        }
+
         if (SceneLoadManager.Instance.CurrentSceneType==SceneLoadManager.SceneType.Home)
         {
             HomeMainUI.Instance.HideUI(this);
@@ -106,7 +130,7 @@ public class GameFood : MonoBehaviour
             }
             else
             {
-                backText.text = lang.GetText(302);
+                backText.text = lang.GetText(362);
             }
             powerText.text = lang.GetText(326);
             coolingText.text = lang.GetText(327);
@@ -118,6 +142,17 @@ public class GameFood : MonoBehaviour
             if(feedHorseDescription != null)
             {
                 feedHorseDescription.text = lang.GetText(560);
+            }
+
+            if (backButton != null)
+                backButton.gameObject.SetActive(pageMode != FoodPageMode.KopkariRoundChange);
+            if (replayText != null)
+            {
+                int textId = pageMode == FoodPageMode.KopkariRoundChange
+                    ? continueTextLanguageId
+                    : replayTextLanguageId;
+                if (textId >= 0)
+                    replayText.text = lang.GetText(textId);
             }
 
         }
@@ -173,15 +208,43 @@ public class GameFood : MonoBehaviour
             adsPanel.SetActive(true);
             adsText.text = LanguageManager.Instance?.GetText(363);
         }
-        else 
+        else
+        {
             adsPanel.SetActive(false);
+            RefreshEntryRequirementUI();
+        }
 
     }
     #endregion
 
     #region Replay Section
+    public void ShowForKopkariRoundChange(float requiredPercent = 15f)
+    {
+        pageMode = FoodPageMode.KopkariRoundChange;
+        roundRequiredPercent = Mathf.Clamp(requiredPercent, 0f, 100f);
+
+        if (isActiveAndEnabled)
+        {
+            UITransilation();
+            GetResources();
+        }
+    }
+
     public void PlayMore()
     {
+        if (pageMode == FoodPageMode.KopkariRoundChange)
+        {
+            if (!MeetsCurrentEntryRequirement())
+            {
+                PlayResourceAnim();
+                return;
+            }
+
+            SetData();
+            KopkariMainUI.Instance?.HideRoundFoodPanel();
+            return;
+        }
+
         CheckResources();    
     }
 
@@ -202,15 +265,17 @@ public class GameFood : MonoBehaviour
     }
     private void PlayResourceAnim()
     {
-        if (mPower < Constants.HorseConditionNum.Power)
+        GetEntryRequirements(out float requiredPower, out float requiredCooling, out float requiredStamina);
+
+        if (mPower < requiredPower)
         {
             PlayScaleAnim(notEnoughPowerBg);
         }
-        if (mCooling < Constants.HorseConditionNum.Cool)
+        if (mCooling < requiredCooling)
         {
             PlayScaleAnim(notEnoughCoolingBg);
         }
-        if (mStamina < Constants.HorseConditionNum.Stamina)
+        if (mStamina < requiredStamina)
         {
             PlayScaleAnim(notEnoughStaminaBg);
         }
@@ -237,16 +302,14 @@ public class GameFood : MonoBehaviour
         powerSlider.UpdateUI();
         coolingSlider.UpdateUI();
         staminaSlider.UpdateUI();
-        SetText(notEnoughPowerText, powerValue, Constants.HorseConditionNum.Power);
-        SetText(notEnoughCoolingText, coolingValue, Constants.HorseConditionNum.Cool);
-        SetText(notEnoughStaminaText, staminValue, Constants.HorseConditionNum.Stamina);
+        RefreshEntryRequirementUI();
 
     }
     private void ApplyFoodBuffs(float powerPercent, float coolingPercent, float staminaPercent)
     {
         resourceUpdated = true;
 
-        // 2) Bufflarni qo¡®shamiz
+        // Apply the selected food buffs.
         HorseConditionStats current = new HorseConditionStats(mPower, mCooling, mStamina);
         HorseConditionStats updated = HorseConditionStatsService.AddFood(
             powerPercent,
@@ -273,13 +336,99 @@ public class GameFood : MonoBehaviour
     #endregion
 
     #region Conditions
+    private void RefreshEntryRequirementUI()
+    {
+        GetEntryRequirements(out float requiredPower, out float requiredCooling, out float requiredStamina);
+
+        bool powerRequired = mPower < requiredPower;
+        bool coolingRequired = mCooling < requiredCooling;
+        bool staminaRequired = mStamina < requiredStamina;
+
+        SetRequirementText(notEnoughPowerBg, notEnoughPowerText, powerRequired, mPower, requiredPower,
+            HorseConditionStatsService.GetCachedMaxOrDefault().Power);
+        SetRequirementText(notEnoughCoolingBg, notEnoughCoolingText, coolingRequired, mCooling, requiredCooling,
+            HorseConditionStatsService.GetCachedMaxOrDefault().Cooling);
+        SetRequirementText(notEnoughStaminaBg, notEnoughStaminaText, staminaRequired, mStamina, requiredStamina,
+            HorseConditionStatsService.GetCachedMaxOrDefault().Stamina);
+    }
+
+    private void SetRequirementText(
+        RectTransform background,
+        TMP_Text detailText,
+        bool isRequired,
+        float current,
+        float required,
+        float maximum)
+    {
+        if (background != null)
+            background.gameObject.SetActive(true);
+
+        if (detailText == null)
+            return;
+
+        if (!isRequired)
+        {
+            SetText(detailText, current, required);
+            return;
+        }
+
+        detailText.color = badConditionColor;
+        if (pageMode == FoodPageMode.KopkariRoundChange)
+        {
+            float currentPercent = maximum > 0f ? Mathf.Clamp01(current / maximum) * 100f : 0f;
+            float missingPercent = Mathf.Max(0f, roundRequiredPercent - currentPercent);
+            detailText.text = $"{GetRequiredPrefix()}: {Mathf.CeilToInt(missingPercent)}%";
+        }
+        else
+        {
+            float missingAmount = Mathf.Max(0f, required - current);
+            detailText.text = $"{GetRequiredPrefix()}: {Mathf.CeilToInt(missingAmount)}";
+        }
+    }
+
+    private string GetRequiredPrefix()
+    {
+        LanguageManager language = LanguageManager.Instance;
+        if (requiredPrefixLanguageId >= 0 && language != null && language.IsReady)
+        {
+            string localized = language.GetText(requiredPrefixLanguageId);
+            if (!string.IsNullOrWhiteSpace(localized))
+                return localized.Trim().TrimEnd(':');
+        }
+
+        return "Required";
+    }
+
+    private bool MeetsCurrentEntryRequirement()
+    {
+        GetEntryRequirements(out float requiredPower, out float requiredCooling, out float requiredStamina);
+        return mPower >= requiredPower && mCooling >= requiredCooling && mStamina >= requiredStamina;
+    }
+
+    private void GetEntryRequirements(out float power, out float cooling, out float stamina)
+    {
+        if (pageMode == FoodPageMode.KopkariRoundChange)
+        {
+            HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
+            float multiplier = roundRequiredPercent / 100f;
+            power = max.Power * multiplier;
+            cooling = max.Cooling * multiplier;
+            stamina = max.Stamina * multiplier;
+            return;
+        }
+
+        power = Constants.HorseConditionNum.Power;
+        cooling = Constants.HorseConditionNum.Cool;
+        stamina = Constants.HorseConditionNum.Stamina;
+    }
+
     private void SetText(TMP_Text detailText, float num, float limitNum)
     {
         if (num >= Constants.HorseConditionNum.GoodCondition)
         {
             GoodCondition(detailText);
         }
-        else if(num<Constants.HorseConditionNum.GoodCondition && num>limitNum)
+        else if(num<Constants.HorseConditionNum.GoodCondition && num>=limitNum)
         {
             StableCondition(detailText);
         }
@@ -318,6 +467,12 @@ public class GameFood : MonoBehaviour
     }
     private void AdsPanel()
     {
+        int currentNyufiy = CurrencyManager.Instance != null
+            ? CurrencyManager.Instance.Nyufiy
+            : 0;
+        int missingNyufiy = Mathf.Max(0, FoodInfo.LastFailedFoodCost - currentNyufiy);
+        currentAdReward = Mathf.Max(amountWatch, missingNyufiy);
+        UpdateAdsRewardText();
         //UIButtonActions.Instance?.ShowUI(checkCondition);
         EnableAdsPanel(true);
         //notEnoughResourceText.gameObject.SetActive(true);
@@ -332,6 +487,12 @@ public class GameFood : MonoBehaviour
             bottomAlarmText.text = LanguageManager.Instance.GetText(200);
         }
     }
+
+    private void UpdateAdsRewardText()
+    {
+        if (adsAmount != null)
+            adsAmount.text = $"+{currentAdReward:N0}";
+    }
     #endregion
 
     #region Ads Section
@@ -340,7 +501,7 @@ public class GameFood : MonoBehaviour
         GameAnalyticsEvents.RewardedAdClicked(
             placement: "coin_shop",
             rewardType: "nyufiy",
-            rewardAmount: amountWatch
+            rewardAmount: currentAdReward
         );
 
         if (AdsManager.Instance == null)
@@ -351,7 +512,7 @@ public class GameFood : MonoBehaviour
 
         AdsManager.Instance.ShowRewarded(() =>
         {
-            CurrencyManager.Instance.AddNyufiy(amountWatch, true);
+            CurrencyManager.Instance.AddNyufiy(currentAdReward, true);
 
             UpdateTexts(
                 CurrencyManager.Instance.Nyufiy,
@@ -361,12 +522,12 @@ public class GameFood : MonoBehaviour
             GameAnalyticsEvents.RewardedAdCompleted(
                 placement: "coin_shop",
                 rewardType: "nyufiy",
-                rewardAmount: amountWatch
+                rewardAmount: currentAdReward
             );
 
             GameAnalyticsEvents.CoinRewardClaimed(
                 source: "rewarded_ad_coin_shop",
-                amount: amountWatch
+                amount: currentAdReward
             );
 
             EnableAdsPanel(false);

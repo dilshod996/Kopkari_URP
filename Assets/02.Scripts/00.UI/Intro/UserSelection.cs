@@ -108,6 +108,6 @@ public class UserSelection : MonoBehaviour
         {
             Debug.Log("Foydalanuvchi allaqachon mavjud!");
         }
-        SceneLoadMangager.Instance.LoadScene(SceneLoadMangager.SceneType.Lobby);       
+        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Lobby);
     }
 }

@@ -21,6 +21,7 @@ public class KopkariManager : MonoBehaviour
         [SerializeField, Min(1f)] private float warmupDuration = 10f;
         [SerializeField, Min(0)] private int coinAmount;
         [SerializeField, Min(0)] private int nyufiyAmount;
+        [SerializeField, Min(0)] private int xpAmount;
         [SerializeField, Min(0f)] private float comboTime = 10f;
         [SerializeField, Min(0)] private int comboPrize;
 
@@ -31,6 +32,7 @@ public class KopkariManager : MonoBehaviour
         public float WarmupDuration => warmupDuration;
         public int CoinAmount => coinAmount;
         public int NyufiyAmount => nyufiyAmount;
+        public int XpAmount => xpAmount;
         public float ComboTime => comboTime;
         public int ComboPrize => comboPrize;
         public bool IsValid => warmupPosition != null && ulakPosition != null && targetPosition != null;
@@ -45,6 +47,7 @@ public class KopkariManager : MonoBehaviour
     [Header("Gameplay Cameras")]
     [SerializeField] private ThirdPersonFollowTarget mainCam;
     [SerializeField] private ThirdPersonFollowTarget sprintCam;
+    [SerializeField] private ThirdPersonFollowTarget firstPersonCam;
     public ThirdPersonFollowTarget GameplayFollowTarget => mainCam;
 
     [Header("Mobile Performance")]
@@ -121,6 +124,9 @@ public class KopkariManager : MonoBehaviour
     public float CurrentWarmupDuration => CurrentRound != null ? CurrentRound.WarmupDuration : 10f;
     public float CurrentComboTime => CurrentRound != null ? CurrentRound.ComboTime : 0f;
     public int CurrentComboPrize => CurrentRound != null ? CurrentRound.ComboPrize : 0;
+    public int CurrentRoundCoinAmount => CurrentRound != null ? CurrentRound.CoinAmount : 0;
+    public int CurrentRoundNyufiyAmount => CurrentRound != null ? CurrentRound.NyufiyAmount : 0;
+    public int CurrentRoundXpAmount => CurrentRound != null ? CurrentRound.XpAmount : 0;
     public bool HasPreparedNextRound => nextRoundPrepared;
     public bool IsRoundWarmupActive { get; private set; }
     public bool IsFakeUlakDiversionActive => fakeUlakDiversionCoroutine != null;
@@ -142,7 +148,6 @@ public class KopkariManager : MonoBehaviour
         None = 0,
         GameStarted = 2,
         WaterDropped = 3,
-        TimeFinished = 4,
         HorseStamenaFinished = 5,
         RiderStamenaFinished = 6,
         LambReachTarget = 7,
@@ -179,9 +184,28 @@ public class KopkariManager : MonoBehaviour
     public PlayerCondition currentCondition = PlayerCondition.None;
 
     #region Camera Details
+    public enum CameraTypes
+    {
+        ThirdMain,
+        Sprint,
+        First
+    }
+
+    public CameraTypes cameraTypes = CameraTypes.ThirdMain;
+    public bool IsFirstPersonCameraActive => cameraTypes == CameraTypes.First;
+
     [SerializeField] private float frontDistance = 6f;
     [SerializeField] private float backDistance = 3f;
     [SerializeField] private float backOffsetY = 0.4f;
+    [SerializeField] private float firstPersonFrontDistance = -0.5f;
+    [SerializeField] private float firstPersonFrontOffsetY = -0.1f;
+    [SerializeField] private float firstPersonBackDistance = 0.5f;
+    [SerializeField] private float firstPersonBackOffsetY;
+    [SerializeField, Min(0f)] private float firstPersonCullDelay = 0.85f;
+
+    private Coroutine firstPersonCullCoroutine;
+    private int firstPersonHiddenLayer = -1;
+    private Camera unityMainCamera;
     #endregion
 
     #region Events
@@ -194,8 +218,8 @@ public class KopkariManager : MonoBehaviour
     public static Action<Transform> OnFakeUlakDiversionStarted;
     public static Action OnFakeUlakDiversionEnded;
     public static Action<bool> OnFakeUlakDiversionStateChanged;
-    public static Action OnTimeFinished;
     public static Action OnSceneReady;
+    public static Action<bool> OnFirstPersonCamera;
     public static bool IsSceneReady { get; private set; }
     #endregion
 
@@ -270,6 +294,8 @@ public class KopkariManager : MonoBehaviour
 #endif
         QualitySettings.vSyncCount = 0;
         configuredRoundTime = mainTime;
+        firstPersonHiddenLayer = LayerMask.NameToLayer("FP_Hide");
+        unityMainCamera = Camera.main;
 
         if (modalWindowPopup != null)
             modalWindowPopup.onConfirm.AddListener(MoveLobby);
@@ -307,9 +333,6 @@ public class KopkariManager : MonoBehaviour
             case RoomState.GameStarted:
                 MainGameTimeTick();
                 break;
-            case RoomState.TimeFinished:
-                GameOverAction();
-                break;
             case RoomState.GameFinished:
                 break;
         }
@@ -339,6 +362,7 @@ public class KopkariManager : MonoBehaviour
 
     private void OnDisable()
     {
+        ResetFirstPersonCameraState();
         CancelFakeUlakDiversion();
         CancelRoundMarkerCoroutines();
         KopkariMainUI.OnSprintStart -= HorseSprint;
@@ -401,7 +425,6 @@ public class KopkariManager : MonoBehaviour
         totalMainTime = mainTime;
         lastDisplayedMainTimeSeconds = int.MinValue;
         roomState = RoomState.GameStarted;
-        webSnareDamageTime = 0;
         StartUloqCrowdWeatherMonitoring();
         KopkariMainUI.Instance?.SetMatchStatusVisible(true);
         RefreshMainTimeDisplay();
@@ -1162,7 +1185,8 @@ public class KopkariManager : MonoBehaviour
         KopkariResultsManager.Instance?.AwardRoundPrize(
             riderId,
             CurrentRound != null ? CurrentRound.CoinAmount : 0,
-            CurrentRound != null ? CurrentRound.NyufiyAmount : 0);
+            CurrentRound != null ? CurrentRound.NyufiyAmount : 0,
+            CurrentRound != null ? CurrentRound.XpAmount : 0);
         if (comboCompleted)
             KopkariResultsManager.Instance?.AwardComboPrize(riderId, CurrentComboPrize);
 
@@ -1204,23 +1228,18 @@ public class KopkariManager : MonoBehaviour
             if (pickableObj != null)
                 pickableObj.gameObject.SetActive(false);
 
-            if (KopkariMainUI.Instance != null)
-                KopkariMainUI.Instance.ShowResult();
-            else
-                FinishMatch();
-            return;
         }
 
         if (roundTransitionCoroutine != null)
             StopCoroutine(roundTransitionCoroutine);
         roundTransitionCoroutine = StartCoroutine(
-            OfferNextRoundPopup(
-                winnerNeighHoldDuration,
-                "Salym finished. Would you like to play the next Salym?"));
+            OfferNextRoundPopup(winnerNeighHoldDuration));
     }
 
     public void FinishMatch()
     {
+        if (IsFirstPersonCameraActive)
+            ThirdPersonEnable();
         CancelFakeUlakDiversion();
         StopUloqCrowdWeatherMonitoring();
         nextRoundPrepared = false;
@@ -1252,7 +1271,7 @@ public class KopkariManager : MonoBehaviour
         KopkariResultsManager.Instance?.EndRace();
     }
 
-    private IEnumerator OfferNextRoundPopup(float delay, string details)
+    private IEnumerator OfferNextRoundPopup(float delay)
     {
         yield return null;
         if (pickableObj != null)
@@ -1263,7 +1282,10 @@ public class KopkariManager : MonoBehaviour
         if (delay > 0f)
             yield return new WaitForSecondsRealtime(delay);
 
-        KopkariMainUI.Instance?.ShowRoundChange(details);
+        if (KopkariMainUI.Instance != null)
+            KopkariMainUI.Instance.ShowRoundChange();
+        else
+            FinishMatch();
         roundTransitionCoroutine = null;
     }
 
@@ -1312,18 +1334,11 @@ public class KopkariManager : MonoBehaviour
             if (pickableObj != null)
                 pickableObj.gameObject.SetActive(false);
 
-            if (KopkariMainUI.Instance != null)
-                KopkariMainUI.Instance.ShowResult();
-            else
-                FinishMatch();
-            return;
         }
 
         if (roundTransitionCoroutine != null)
             StopCoroutine(roundTransitionCoroutine);
-        roundTransitionCoroutine = StartCoroutine(OfferNextRoundPopup(
-            0f,
-            "Salym time finished. Would you like to play the next Salym?"));
+        roundTransitionCoroutine = StartCoroutine(OfferNextRoundPopup(0f));
     }
 
     public void BeginNextRoundWarmup()
@@ -1382,7 +1397,9 @@ public class KopkariManager : MonoBehaviour
             if (nextValue != displayedValue)
             {
                 displayedValue = nextValue;
-                KopkariMainUI.Instance?.ShowRoundWarmupCountdown(displayedValue);
+                KopkariMainUI.Instance?.ShowRoundWarmupCountdown(
+                    displayedValue,
+                    KopkariRoundChangePopup.WarmupPhase.ReachWarmupPoint);
             }
 
             yield return null;
@@ -1391,7 +1408,9 @@ public class KopkariManager : MonoBehaviour
         localPlayerWarmupQualified |= IsLocalPlayerAtWarmup();
         if (!localPlayerWarmupQualified && Time.unscaledTime >= deadline)
         {
-            KopkariMainUI.Instance?.ShowRoundWarmupCountdown(0);
+            KopkariMainUI.Instance?.ShowRoundWarmupCountdown(
+                0,
+                KopkariRoundChangePopup.WarmupPhase.ReachWarmupPoint);
             yield return null;
         }
 
@@ -1416,7 +1435,9 @@ public class KopkariManager : MonoBehaviour
             if (nextValue != displayedValue)
             {
                 displayedValue = nextValue;
-                KopkariMainUI.Instance?.ShowRoundWarmupCountdown(displayedValue);
+                KopkariMainUI.Instance?.ShowRoundWarmupCountdown(
+                    displayedValue,
+                    KopkariRoundChangePopup.WarmupPhase.RoundStart);
             }
             yield return null;
         }
@@ -1459,10 +1480,62 @@ public class KopkariManager : MonoBehaviour
         for (int i = 0; i < roundRiders.Count; i++)
             roundRiders[i]?.StopForRoundEnd();
 
+        SimulateRemainingRoundsForMainRival();
+
         if (KopkariMainUI.Instance != null)
-            KopkariMainUI.Instance.ShowResult();
+            KopkariMainUI.Instance.ShowRoundChange(
+                KopkariRoundChangePopup.DisplayReason.WarmupNotReached);
         else
             FinishMatch();
+    }
+
+    private void SimulateRemainingRoundsForMainRival()
+    {
+        KopkariResultsManager results = KopkariResultsManager.Instance;
+        if (results == null)
+            return;
+
+        AIKopkariRider mainRival = null;
+        AIKopkariRider[] allRiders = FindObjectsOfType<AIKopkariRider>(true);
+        for (int i = 0; i < allRiders.Length; i++)
+        {
+            if (allRiders[i] != null && allRiders[i].IsMainRival)
+            {
+                mainRival = allRiders[i];
+                break;
+            }
+        }
+
+        if (mainRival == null)
+        {
+            Debug.LogWarning($"[{nameof(KopkariManager)}] Main Rival was not found; unfinished rounds were not simulated.", this);
+            return;
+        }
+
+        results.Register(mainRival.Id, mainRival.RiderName, mainRival.TeamName);
+
+        List<float> remainingRoundTimes = new List<float>();
+        if (CurrentRound != null && CurrentRound.IsValid)
+            remainingRoundTimes.Add(CurrentRound.RoundTime);
+
+        for (int i = 0; i < unusedRoundIndices.Count; i++)
+        {
+            int roundIndex = unusedRoundIndices[i];
+            if (roundIndex < 0 || roundIndex >= rounds.Count)
+                continue;
+
+            RoundPoints round = rounds[roundIndex];
+            if (round != null && round.IsValid)
+                remainingRoundTimes.Add(round.RoundTime);
+        }
+
+        int remainingRoundCount = Mathf.Max(0, TotalRoundCount - completedRoundCount);
+        if (remainingRoundTimes.Count > remainingRoundCount)
+            remainingRoundTimes.RemoveRange(remainingRoundCount, remainingRoundTimes.Count - remainingRoundCount);
+
+        int simulatedRounds = results.SimulateRemainingRounds(mainRival.Id, remainingRoundTimes);
+        completedRoundCount += simulatedRounds;
+        KopkariMainUI.Instance?.UpdateRoundProgress(completedRoundCount, TotalRoundCount);
     }
 
     private bool IsLocalPlayerAtWarmup()
@@ -1502,7 +1575,14 @@ public class KopkariManager : MonoBehaviour
 
         roundEnded = false;
         timeFinishedHandled = false;
-        Booster.ResetWalkZoneDamagedTime();
+        if (completedRoundCount == 0)
+        {
+            boostTime = 0f;
+            webSnareDamageTime = 0f;
+            Booster.ResetWalkZoneDamagedTime();
+            FindLocalPlayerBoosters()?.ResetTrackedEffectTimes();
+            KopkariMainUI.Instance?.ResetMatchUsageTimes();
+        }
         localPlayerSprinting = false;
         ApplyLocalPlayerSpeed(false);
 
@@ -1832,6 +1912,97 @@ public class KopkariManager : MonoBehaviour
     }
 
     #region Camera Section
+    public void ToggleCameraView()
+    {
+        SetFirstPersonCamera(!IsFirstPersonCameraActive);
+    }
+
+    public void SetFirstPersonCamera(bool firstPersonActive)
+    {
+        if (firstPersonActive)
+            FirstPersonEnable();
+        else
+            ThirdPersonEnable();
+    }
+
+    public void FirstPersonEnable()
+    {
+        if (firstPersonCam == null)
+            return;
+
+        firstPersonCam.SetPriority(true);
+        mainCam?.SetPriority(false);
+        sprintCam?.SetPriority(false);
+        cameraTypes = CameraTypes.First;
+
+        if (firstPersonCullCoroutine != null)
+            StopCoroutine(firstPersonCullCoroutine);
+        firstPersonCullCoroutine = StartCoroutine(DelayFirstPersonCulling());
+    }
+
+    public void FirstPersonDisable()
+    {
+        ThirdPersonEnable();
+    }
+
+    public void ThirdPersonEnable()
+    {
+        if (firstPersonCullCoroutine != null)
+        {
+            StopCoroutine(firstPersonCullCoroutine);
+            firstPersonCullCoroutine = null;
+        }
+
+        SetFirstPersonCulling(false);
+        firstPersonCam?.SetPriority(false);
+        mainCam?.SetPriority(true);
+        cameraTypes = CameraTypes.ThirdMain;
+    }
+
+    private void ResetFirstPersonCameraState()
+    {
+        if (firstPersonCullCoroutine != null)
+        {
+            StopCoroutine(firstPersonCullCoroutine);
+            firstPersonCullCoroutine = null;
+        }
+
+        if (!IsFirstPersonCameraActive)
+            return;
+
+        SetFirstPersonCulling(false);
+        firstPersonCam?.SetPriority(false);
+        mainCam?.SetPriority(true);
+        cameraTypes = CameraTypes.ThirdMain;
+    }
+
+    private IEnumerator DelayFirstPersonCulling()
+    {
+        yield return new WaitForSecondsRealtime(firstPersonCullDelay);
+
+        if (cameraTypes == CameraTypes.First)
+            SetFirstPersonCulling(true);
+
+        firstPersonCullCoroutine = null;
+    }
+
+    private void SetFirstPersonCulling(bool firstPersonActive)
+    {
+        if (unityMainCamera == null)
+            unityMainCamera = Camera.main;
+
+        if (unityMainCamera != null && firstPersonHiddenLayer >= 0)
+        {
+            int layerMask = 1 << firstPersonHiddenLayer;
+            if (firstPersonActive)
+                unityMainCamera.cullingMask &= ~layerMask;
+            else
+                unityMainCamera.cullingMask |= layerMask;
+        }
+
+        OnFirstPersonCamera?.Invoke(firstPersonActive);
+    }
+
     public void CameraBackState(bool state)
     {
         if (state) LookBack();
@@ -1840,21 +2011,39 @@ public class KopkariManager : MonoBehaviour
 
     public void LookBack()
     {
-        if (mainCam == null) return;
+        if (mainCam == null && firstPersonCam == null) return;
         if (horseAnimal != null) horseAnimal.UseCameraInput = false;
 
-        mainCam.SetCameraDistance(backDistance);
-        mainCam.AddVerticalOffset(backOffsetY);
-        mainCam.SetLookBackMode(true);
+        if (cameraTypes == CameraTypes.First && firstPersonCam != null)
+        {
+            firstPersonCam.SetCameraDistance(firstPersonBackDistance);
+            firstPersonCam.AddVerticalOffset(firstPersonBackOffsetY);
+            firstPersonCam.SetLookBackMode(true);
+        }
+        else if (mainCam != null)
+        {
+            mainCam.SetCameraDistance(backDistance);
+            mainCam.AddVerticalOffset(backOffsetY);
+            mainCam.SetLookBackMode(true);
+        }
     }
 
     public void MainCam()
     {
-        if (mainCam == null) return;
+        if (mainCam == null && firstPersonCam == null) return;
 
-        mainCam.SetCameraDistance(frontDistance);
-        mainCam.AddVerticalOffset(0f);
-        mainCam.SetLookBackMode(false);
+        if (cameraTypes == CameraTypes.First && firstPersonCam != null)
+        {
+            firstPersonCam.SetCameraDistance(firstPersonFrontDistance);
+            firstPersonCam.AddVerticalOffset(firstPersonFrontOffsetY);
+            firstPersonCam.SetLookBackMode(false);
+        }
+        else if (mainCam != null)
+        {
+            mainCam.SetCameraDistance(frontDistance);
+            mainCam.AddVerticalOffset(0f);
+            mainCam.SetLookBackMode(false);
+        }
 
         StartCoroutine(EnableHorseInputDelayed());
     }
@@ -1867,12 +2056,18 @@ public class KopkariManager : MonoBehaviour
 
     private void SprintCameraEnable()
     {
+        if (cameraTypes == CameraTypes.First)
+            return;
+
+        cameraTypes = CameraTypes.Sprint;
         if (sprintCam != null) sprintCam.SetPriority(true);
     }
 
     private void SprintCameraDisable()
     {
         if (sprintCam != null) sprintCam.SetPriority(false);
+        if (cameraTypes == CameraTypes.Sprint)
+            cameraTypes = CameraTypes.ThirdMain;
     }
     #endregion
 
@@ -1896,23 +2091,6 @@ public class KopkariManager : MonoBehaviour
         localPlayerSprinting = false;
         ApplyLocalPlayerSpeed(IsLocalPlayerCurrentCarrier);
         SprintCameraDisable();
-    }
-    #endregion
-
-    #region Game Over Actions
-    private void GameOverAction()
-    {
-        if (timeFinishedHandled) return;
-        timeFinishedHandled = true;
-
-        OnTimeFinished?.Invoke();     // NPC, boshqa riderlar shu eventni ushlaydi
-
-        //HandleLose();
-    }
-    public void OffsideAction()
-    {
-        gameOverTypes = GameOverTypes.Offside;
-        GameOverAction();
     }
     #endregion
 

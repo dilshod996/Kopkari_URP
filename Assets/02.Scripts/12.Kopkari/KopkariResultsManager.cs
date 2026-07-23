@@ -124,6 +124,125 @@ public class KopkariResultsManager : MonoBehaviour
         RaceDuration = completedRoundDuration;
     }
 
+    public int SimulateRemainingRounds(int winnerId, IReadOnlyList<float> roundTimeLimits)
+    {
+        if (roundTimeLimits == null || roundTimeLimits.Count == 0)
+            return 0;
+
+        if (roundStarted || playerRewardSummary != null || playerRewardGranted)
+        {
+            Debug.LogWarning("[KopkariResultsManager] Remaining rounds cannot be simulated after results are finalized or while a round is active.");
+            return 0;
+        }
+
+        RiderRaceStats winner = Get(winnerId);
+        if (winner == null || winner.isPlayer)
+        {
+            Debug.LogWarning($"[KopkariResultsManager] Simulated winner ID {winnerId} is not a registered AI rider.");
+            return 0;
+        }
+
+        int simulatedRoundCount = 0;
+        for (int i = 0; i < roundTimeLimits.Count; i++)
+        {
+            float roundTimeLimit = Mathf.Max(1f, roundTimeLimits[i]);
+            int roundNumber = currentRoundNumber + 1;
+            float finishTime = GetSimulatedFinishTime(winnerId, roundNumber, roundTimeLimit);
+            float winnerCatchTime = GetSimulatedWinnerCatchTime(winnerId, roundNumber, finishTime);
+            float nonWinnerCatchPool = finishTime * 0.35f;
+            float nonWinnerWeightTotal = 0f;
+
+            foreach (RiderRaceStats rider in stats.Values)
+            {
+                if (!rider.isPlayer && rider.riderId != winnerId)
+                    nonWinnerWeightTotal += GetSimulatedActivityWeight(rider.riderId, roundNumber);
+            }
+
+            currentRoundNumber = roundNumber;
+            lastRoundDuration = finishTime;
+            completedRoundDuration += finishTime;
+
+            winner.roundWins++;
+            winner.lastRoundFinishTime = finishTime;
+            winner.totalWinningTime += finishTime;
+            if (winner.bestRoundFinishTime <= 0f || finishTime < winner.bestRoundFinishTime)
+                winner.bestRoundFinishTime = finishTime;
+
+            foreach (RiderRaceStats rider in stats.Values)
+            {
+                if (rider.roundResults == null)
+                    rider.roundResults = new List<RiderRoundStats>();
+
+                bool isWinner = rider.riderId == winnerId;
+                uint activityHash = GetSimulatedActivityHash(rider.riderId, roundNumber);
+                int pickups = rider.isPlayer ? 0 : 1 + (activityHash % 5u == 0u ? 1 : 0);
+                int takeovers = rider.isPlayer ? 0 : (activityHash % 3u == 0u ? 1 : 0);
+                int triggerPoints = isWinner ? 1 : 0;
+                float catchTime = rider.isPlayer
+                    ? 0f
+                    : isWinner
+                        ? winnerCatchTime
+                        : nonWinnerWeightTotal > 0f
+                            ? nonWinnerCatchPool *
+                              (GetSimulatedActivityWeight(rider.riderId, roundNumber) / nonWinnerWeightTotal)
+                            : 0f;
+
+                rider.pickupTimes += pickups;
+                rider.carrierTakeovers += takeovers;
+                rider.triggerPoints += triggerPoints;
+                rider.totalCatchTime += catchTime;
+                if (!rider.isPlayer)
+                    rider.totalSpentTime += finishTime;
+                rider.roundResults.Add(new RiderRoundStats
+                {
+                    roundNumber = roundNumber,
+                    roundDuration = finishTime,
+                    pickupTimes = pickups,
+                    carrierTakeovers = takeovers,
+                    triggerPoints = triggerPoints,
+                    totalCatchTime = catchTime,
+                    isWinner = isWinner,
+                    finishTime = isWinner ? finishTime : 0f
+                });
+            }
+
+            simulatedRoundCount++;
+        }
+
+        WinnerId = winnerId;
+        UloqOwner = string.Empty;
+        RaceDuration = completedRoundDuration;
+        roundStarted = false;
+        sessionStarted = false;
+        return simulatedRoundCount;
+    }
+
+    private static float GetSimulatedFinishTime(int winnerId, int roundNumber, float roundTimeLimit)
+    {
+        uint hash = unchecked((uint)(winnerId * 397) ^ (uint)(roundNumber * 7919));
+        float variation = (hash % 1000u) / 999f;
+        float finishTime = Mathf.Lerp(roundTimeLimit * 0.55f, roundTimeLimit * 0.85f, variation);
+        return Mathf.Clamp(finishTime, Mathf.Min(1f, roundTimeLimit), roundTimeLimit);
+    }
+
+    private static float GetSimulatedWinnerCatchTime(int winnerId, int roundNumber, float finishTime)
+    {
+        uint hash = unchecked((uint)(winnerId * 613) ^ (uint)(roundNumber * 3571));
+        float variation = (hash % 1000u) / 999f;
+        return finishTime * Mathf.Lerp(0.3f, 0.45f, variation);
+    }
+
+    private static uint GetSimulatedActivityHash(int riderId, int roundNumber)
+    {
+        return unchecked((uint)(riderId * 941) ^ (uint)(roundNumber * 5233));
+    }
+
+    private static float GetSimulatedActivityWeight(int riderId, int roundNumber)
+    {
+        uint hash = GetSimulatedActivityHash(riderId, roundNumber);
+        return 0.75f + (hash % 501u) / 1000f;
+    }
+
     private static void ResetRoundFields(RiderRaceStats rider)
     {
         rider.isHolding = false;
@@ -135,6 +254,7 @@ public class KopkariResultsManager : MonoBehaviour
         rider.roundCatchTime = 0f;
         rider.roundCoinPrize = 0;
         rider.roundNyufiyPrize = 0;
+        rider.roundXpPrize = 0;
         rider.roundComboPrize = 0;
     }
 
@@ -156,6 +276,20 @@ public class KopkariResultsManager : MonoBehaviour
     public RiderRaceStats Get(int riderId)
     {
         return stats.TryGetValue(riderId, out RiderRaceStats rider) ? rider : null;
+    }
+
+    public RiderRaceStats GetPlayerStats()
+    {
+        return stats.Values.FirstOrDefault(rider => rider != null && rider.isPlayer);
+    }
+
+    public RiderRoundStats GetLatestPlayerRound()
+    {
+        RiderRaceStats player = GetPlayerStats();
+        if (player == null || player.roundResults == null || player.roundResults.Count == 0)
+            return null;
+
+        return player.roundResults[player.roundResults.Count - 1];
     }
 
     public void OnLambPicked(int riderId, bool takenFromCarrier = false)
@@ -217,7 +351,7 @@ public class KopkariResultsManager : MonoBehaviour
         rider.roundTriggerPoints++;
     }
 
-    public void AwardRoundPrize(int riderId, int coinAmount, int nyufiyAmount)
+    public void AwardRoundPrize(int riderId, int coinAmount, int nyufiyAmount, int xpAmount)
     {
         RiderRaceStats rider = Get(riderId);
         if (rider == null)
@@ -225,16 +359,20 @@ public class KopkariResultsManager : MonoBehaviour
 
         int coins = Mathf.Max(0, coinAmount);
         int nyufiy = Mathf.Max(0, nyufiyAmount);
+        int xp = Mathf.Max(0, xpAmount);
         rider.coinPrize += coins;
         rider.nyufiyPrize += nyufiy;
+        rider.xpPrize += xp;
         rider.roundCoinPrize += coins;
         rider.roundNyufiyPrize += nyufiy;
+        rider.roundXpPrize += xp;
 
         RiderRoundStats snapshot = GetCurrentRoundSnapshot(rider);
         if (snapshot != null)
         {
             snapshot.coinPrize += coins;
             snapshot.nyufiyPrize += nyufiy;
+            snapshot.xpPrize += xp;
         }
     }
 
@@ -314,6 +452,7 @@ public class KopkariResultsManager : MonoBehaviour
                 finishTime = rider.riderId == winnerId ? finishTime : 0f,
                 coinPrize = rider.roundCoinPrize,
                 nyufiyPrize = rider.roundNyufiyPrize,
+                xpPrize = rider.roundXpPrize,
                 comboPrize = rider.roundComboPrize
             });
         }
@@ -357,13 +496,15 @@ public class KopkariResultsManager : MonoBehaviour
             pickupBonus = pickupBonus,
             rankCoin = GetCoinByRank(rank),
             roundCoin = player.coinPrize,
-            xp = GetXpByRank(rank)
+            rankXp = GetXpByRank(rank),
+            roundXp = player.xpPrize
         };
         playerRewardSummary.totalNyufiy = playerRewardSummary.rankNyufiy +
                                           playerRewardSummary.roundNyufiy +
                                           playerRewardSummary.comboNyufiy +
                                           playerRewardSummary.pickupBonus;
         playerRewardSummary.totalCoin = playerRewardSummary.rankCoin + playerRewardSummary.roundCoin;
+        playerRewardSummary.xp = playerRewardSummary.rankXp + playerRewardSummary.roundXp;
 
         GrantPlayerMatchReward(player, playerRewardSummary);
         return playerRewardSummary;
@@ -439,10 +580,10 @@ public class KopkariResultsManager : MonoBehaviour
     {
         switch (rank)
         {
-            case 1: return 18;
-            case 2: return 15;
-            case 3: return 10;
-            default: return 5;
+            case 1: return 7;
+            case 2: return 5;
+            case 3: return 3;
+            default: return 3;
         }
     }
 
@@ -470,7 +611,9 @@ public class KopkariResultsManager : MonoBehaviour
                 $"Wins:{rider.roundWins} Pickups:{rider.pickupTimes} " +
                 $"Takeovers:{rider.carrierTakeovers} Catch:{rider.totalCatchTime:F2}s " +
                 $"LastWin:{rider.lastRoundFinishTime:F2}s BestWin:{rider.bestRoundFinishTime:F2}s " +
-                $"Coin:{rider.coinPrize} Nyufiy:{rider.nyufiyPrize} Combo:{rider.comboPrize}");
+                $"Coin:{rider.coinPrize} Nyufiy:{rider.nyufiyPrize} " +
+                $"XP:{rider.xpPrize + GetXpByRank(i + 1)} " +
+                $"(Round:{rider.xpPrize} Rank:{GetXpByRank(i + 1)}) Combo:{rider.comboPrize}");
         }
 
         Debug.Log(text.ToString());

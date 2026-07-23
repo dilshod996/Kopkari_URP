@@ -42,6 +42,8 @@ public class KopkariIntroPlayersList : MonoBehaviour
     }
 
     [Header("UI Items")]
+    [SerializeField] private TMP_Text titleText;
+    [SerializeField] private int titleLanguageId = -1;
     [SerializeField] private List<PlayerItemView> itemViews = new List<PlayerItemView>();
 
     [Header("Local Player Fallback")]
@@ -69,8 +71,9 @@ public class KopkariIntroPlayersList : MonoBehaviour
     [SerializeField] private Vector2Int npcWinningsRange = new Vector2Int(3, 45);
 
     [SerializeField] private List<CountryOption> countries = new List<CountryOption>();
-    [SerializeField] private string readyLabel = "READY";
-    [SerializeField] private string movingLabel = "MOVING";
+    [Header("Status Language IDs")]
+    [SerializeField] private int readyLabelLanguageId = -1;
+    [SerializeField] private int movingLabelLanguageId = -1;
 
     private readonly List<int> riderNamePool = new List<int>();
     private readonly List<int> teamNamePool = new List<int>();
@@ -90,6 +93,7 @@ public class KopkariIntroPlayersList : MonoBehaviour
 
     public void BuildList(IReadOnlyList<AIKopkariRider> riders)
     {
+        SetLocalizedText(titleText, titleLanguageId);
         ResetPools();
         riderViews.Clear();
 
@@ -130,6 +134,19 @@ public class KopkariIntroPlayersList : MonoBehaviour
 
     public void RefreshReadiness()
     {
+        SetLocalizedText(titleText, titleLanguageId);
+        string readyLabel = GetLocalizedText(readyLabelLanguageId);
+        string movingLabel = GetLocalizedText(movingLabelLanguageId);
+
+        if (itemViews.Count > 0 && itemViews[0] != null)
+        {
+            PlayerItemView localPlayerView = itemViews[0];
+            if (localPlayerView.readyIndicator != null)
+                localPlayerView.readyIndicator.SetActive(true);
+            if (localPlayerView.readyText != null)
+                localPlayerView.readyText.text = readyLabel;
+        }
+
         foreach (KeyValuePair<AIKopkariRider, PlayerItemView> entry in riderViews)
         {
             AIKopkariRider rider = entry.Key;
@@ -204,7 +221,7 @@ public class KopkariIntroPlayersList : MonoBehaviour
             if (view.readyIndicator != null)
                 view.readyIndicator.SetActive(true);
             if (view.readyText != null)
-                view.readyText.text = readyLabel;
+                view.readyText.text = GetLocalizedText(readyLabelLanguageId);
         }
     }
 
@@ -325,5 +342,18 @@ public class KopkariIntroPlayersList : MonoBehaviour
     {
         string value = PlayerPrefs.GetString(key, fallback);
         return string.IsNullOrWhiteSpace(value) ? fallback : value;
+    }
+
+    private static void SetLocalizedText(TMP_Text target, int languageId)
+    {
+        if (target != null)
+            target.text = GetLocalizedText(languageId);
+    }
+
+    private static string GetLocalizedText(int languageId)
+    {
+        return languageId >= 0 && LanguageManager.Instance != null
+            ? LanguageManager.Instance.GetText(languageId)
+            : string.Empty;
     }
 }

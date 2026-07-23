@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using Cinemachine;
 using MalbersAnimations;
 using MalbersAnimations.Controller;
-using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -95,13 +94,8 @@ public class KopkariIntroFlowController : MonoBehaviour
     [SerializeField] private bool teleportUnreadyRidersOnTimeout = true;
 
     [Header("UI")]
-    [SerializeField] private KopkariMainUI mainUI;
-    [SerializeField] private KopkariIntroPlayersList playersList;
+    [SerializeField] private KopkariIntro introPage;
     [SerializeField] private KopkariObjectCharacteristics objectCharacteristics;
-
-    [Header("Gameplay Countdown UI")]
-    [SerializeField] private GameObject countBackground;
-    [SerializeField] private TMP_Text countText;
 
     [Header("Gate Shake")]
     [Tooltip("Multiplier applied to the gate impulse. Lower values produce a softer camera shake.")]
@@ -147,8 +141,6 @@ public class KopkariIntroFlowController : MonoBehaviour
 
     private void Awake()
     {
-        if (mainUI == null)
-            mainUI = KopkariMainUI.Instance;
         if (cinemachineBrain == null && Camera.main != null)
             cinemachineBrain = Camera.main.GetComponent<CinemachineBrain>();
 
@@ -164,8 +156,6 @@ public class KopkariIntroFlowController : MonoBehaviour
         AIKopkariRider.OnRiderReady += HandleRiderReady;
         AIKopkariRider.OnRiderPassedGate += HandleRiderPassedGate;
 
-        if (mainUI != null && mainUI.IntroSkipButton != null)
-            mainUI.IntroSkipButton.onClick.AddListener(RequestSkip);
     }
 
     private void OnDisable()
@@ -173,8 +163,6 @@ public class KopkariIntroFlowController : MonoBehaviour
         AIKopkariRider.OnRiderReady -= HandleRiderReady;
         AIKopkariRider.OnRiderPassedGate -= HandleRiderPassedGate;
 
-        if (mainUI != null && mainUI.IntroSkipButton != null)
-            mainUI.IntroSkipButton.onClick.RemoveListener(RequestSkip);
 
         if (introRoutine != null)
         {
@@ -204,6 +192,11 @@ public class KopkariIntroFlowController : MonoBehaviour
         introRoutine = StartCoroutine(PlayIntroRoutine());
     }
 
+    public void SetIntroPage(KopkariIntro page)
+    {
+        introPage = page;
+    }
+
     public void RequestSkip()
     {
         if (!isPlaying || !AreAllRidersReady())
@@ -213,8 +206,7 @@ public class KopkariIntroFlowController : MonoBehaviour
         StopGateShake();
         StopLocalPlayerPresentation();
         HideObjectCharacteristics();
-        if (mainUI != null)
-            mainUI.SetIntroSkipVisible(false);
+        introPage?.SetSkipVisible(false);
     }
 
     private IEnumerator PlayIntroRoutine()
@@ -227,7 +219,7 @@ public class KopkariIntroFlowController : MonoBehaviour
         CacheCameraState();
         PrepareCameraState();
 
-        playersList?.BuildList(riders);
+        introPage?.BuildPlayerList(riders);
         SetIntroUiVisible(false);
         HideObjectCharacteristics();
         SetCountdownVisible(false);
@@ -235,7 +227,9 @@ public class KopkariIntroFlowController : MonoBehaviour
         Transform openingSpectatorCamera = SelectRandomCameraPosition();
         bool hasOpeningSpectatorShot = openingSpectatorCamera != null;
         state = hasOpeningSpectatorShot ? IntroState.RandomShot : IntroState.GateShot;
-        if (!hasOpeningSpectatorShot)
+        if (hasOpeningSpectatorShot)
+            ShowRandomLocationDescription();
+        else
             ShowGateCharacteristics();
         MoveIntroCamera(hasOpeningSpectatorShot ? openingSpectatorCamera : aiGateCameraPosition);
         if (!hasOpeningSpectatorShot)
@@ -654,7 +648,7 @@ public class KopkariIntroFlowController : MonoBehaviour
             cameraPosition = playerCameraPosition;
 
         yield return BlinkClosed();
-        HideObjectCharacteristics();
+        ShowPlayerListDescription();
         MoveIntroCamera(cameraPosition);
         SetIntroUiVisible(true);
         RefreshIntroReadinessUi();
@@ -719,6 +713,7 @@ public class KopkariIntroFlowController : MonoBehaviour
         SetIntroUiVisible(false);
         HideObjectCharacteristics();
         RestoreCameraState();
+        ShowLocalPlayerDescription();
         PrepareGameplayCameraStartView();
         yield return null;
         PrepareGameplayCameraStartView();
@@ -752,8 +747,7 @@ public class KopkariIntroFlowController : MonoBehaviour
             if (nextValue != displayedValue)
             {
                 displayedValue = nextValue;
-                if (countText != null)
-                    countText.text = displayedValue.ToString();
+                introPage?.SetCountdownValue(displayedValue);
             }
 
             yield return null;
@@ -764,11 +758,7 @@ public class KopkariIntroFlowController : MonoBehaviour
 
     private void SetCountdownVisible(bool visible)
     {
-        if (countBackground != null)
-            countBackground.SetActive(visible);
-
-        if (!visible && countText != null)
-            countText.text = string.Empty;
+        introPage?.SetCountdownVisible(visible);
     }
 
     private static void ShuffleRiders(List<AIKopkariRider> source)
@@ -817,6 +807,7 @@ public class KopkariIntroFlowController : MonoBehaviour
     private void CompleteIntro()
     {
         RestoreAIRiderCollisions();
+        HideObjectCharacteristics();
         state = IntroState.Complete;
         isPlaying = false;
         introRoutine = null;
@@ -932,13 +923,31 @@ public class KopkariIntroFlowController : MonoBehaviour
     private void ShowLocalPlayerCharacteristics()
     {
         SetObjectCharacteristicsActive(true);
-        objectCharacteristics?.ShowLocalPlayer(playersList);
+        objectCharacteristics?.ShowLocalPlayer(introPage != null ? introPage.PlayersList : null);
     }
 
     private void ShowRiderCharacteristics(AIKopkariRider rider)
     {
         SetObjectCharacteristicsActive(true);
         objectCharacteristics?.ShowRider(rider);
+    }
+
+    private void ShowRandomLocationDescription()
+    {
+        SetObjectCharacteristicsActive(true);
+        objectCharacteristics?.ShowRandomLocationDescription();
+    }
+
+    private void ShowLocalPlayerDescription()
+    {
+        SetObjectCharacteristicsActive(true);
+        objectCharacteristics?.ShowLocalPlayerDescription();
+    }
+
+    private void ShowPlayerListDescription()
+    {
+        SetObjectCharacteristicsActive(true);
+        objectCharacteristics?.ShowPlayerListDescription();
     }
 
     private void HideObjectCharacteristics()
@@ -1257,29 +1266,22 @@ public class KopkariIntroFlowController : MonoBehaviour
     {
         introPlayerListVisible = visible;
         allowSkipDisplay = visible;
-        if (mainUI == null)
-            return;
-
-        mainUI.SetIntroPlayerListVisible(visible);
-        mainUI.SetIntroSkipVisible(visible && AreAllRidersReady());
+        introPage?.SetPlayerListVisible(visible);
+        introPage?.SetSkipVisible(visible && AreAllRidersReady());
     }
 
     private void HidePlayerListKeepSkip()
     {
         introPlayerListVisible = false;
         allowSkipDisplay = true;
-        if (mainUI == null)
-            return;
-
-        mainUI.SetIntroPlayerListVisible(false);
-        mainUI.SetIntroSkipVisible(isPlaying && AreAllRidersReady());
+        introPage?.SetPlayerListVisible(false);
+        introPage?.SetSkipVisible(isPlaying && AreAllRidersReady());
     }
 
     private void RefreshIntroReadinessUi()
     {
-        playersList?.RefreshReadiness();
-        if (mainUI != null)
-            mainUI.SetIntroSkipVisible(isPlaying && allowSkipDisplay && AreAllRidersReady());
+        introPage?.RefreshPlayerList();
+        introPage?.SetSkipVisible(isPlaying && allowSkipDisplay && AreAllRidersReady());
     }
 
     private static float RandomDuration(Vector2 range)

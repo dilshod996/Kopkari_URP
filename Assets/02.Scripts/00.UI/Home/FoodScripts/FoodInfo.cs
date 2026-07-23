@@ -20,6 +20,7 @@ public class FoodInfo : MonoBehaviour
 
     public static event Action<float, float, float> OnFoodAddToHorse;
     public static event Action OnMoneyNotEnough;
+    public static int LastFailedFoodCost { get; private set; }
     private static event Action OnFoodButtonsRefreshRequested;
 
     public enum HorseFood
@@ -127,7 +128,10 @@ public class FoodInfo : MonoBehaviour
             if (popup != null)
                 popup.ShowNotEnoughNyufiy();
             else
+            {
+                LastFailedFoodCost = details.Cost;
                 OnMoneyNotEnough?.Invoke();
+            }
 
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             SoundManager.Instance?.PlayUI(UISoundType.Error);

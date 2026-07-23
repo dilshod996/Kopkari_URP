@@ -25,6 +25,7 @@ public class PlayerResourse : MonoBehaviour
     [SerializeField] private int resourseTransilationId;
     [SerializeField] private int costOfResource;
     public static event Action OnMoneyNotEnough;
+    public static int LastFailedResourceCost { get; private set; }
     public static event Action OnNyufiyUpdated;
 
 
@@ -84,7 +85,10 @@ public class PlayerResourse : MonoBehaviour
         {
             HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
             if (notifyNotEnough)
+            {
+                LastFailedResourceCost = cost;
                 OnMoneyNotEnough?.Invoke();
+            }
             SoundManager.Instance?.PlayUI(UISoundType.Error);
             return false;
         }

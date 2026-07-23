@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class UIStore : MonoBehaviour
 {
+    private const int MarketPageCount = 4;
+
     public enum MarketPages
     {
         Currencies,
@@ -61,8 +63,12 @@ public class UIStore : MonoBehaviour
 
     private int _currentIndex = 0;
     private bool _isAnimating;
+    private Tween _packTween;
+
     private void OnEnable()
     {
+        ValidateConfiguration();
+
         AddButtonListener(backButton, BackAction);
 
         AddButtonListener(currencyBtn, SelectCurrencies);
@@ -92,6 +98,11 @@ public class UIStore : MonoBehaviour
     private void SelectPage(MarketPages page)
     {
         int idx = (int)page;
+        if (idx < 0 || idx >= MarketPageCount)
+        {
+            Debug.LogWarning($"Cannot select invalid market page index {idx}.", this);
+            return;
+        }
 
         _currentIndexPage = idx;
 
@@ -150,7 +161,13 @@ public class UIStore : MonoBehaviour
     private void BackAction()
     {
         if (HomeMainUI.Instance != null)
+        {
             HomeMainUI.Instance.HideUI(this);
+            return;
+        }
+
+        // The store may also be previewed or loaded without the Home controller.
+        gameObject.SetActive(false);
     }
 
     #region Nomadic Packs
@@ -170,65 +187,71 @@ public class UIStore : MonoBehaviour
     private void Next()
     {
         if (_isAnimating) return;
-        if (packs == null || _currentIndex >= packs.Length - 1) return;
 
-        AnimateTo(_currentIndex + 1, dir: +1);
+        int nextIndex = FindPackIndex(_currentIndex + 1, 1);
+        if (nextIndex >= 0)
+            AnimateTo(nextIndex, dir: +1);
     }
 
     private void Prev()
     {
         if (_isAnimating) return;
-        if (packs == null) return;
-        if (_currentIndex <= 0) return;
 
-        AnimateTo(_currentIndex - 1, dir: -1);
+        int previousIndex = FindPackIndex(_currentIndex - 1, -1);
+        if (previousIndex >= 0)
+            AnimateTo(previousIndex, dir: -1);
     }
 
     private void AnimateTo(int newIndex, int dir)
     {
-        if (packs == null || newIndex < 0 || newIndex >= packs.Length) return;
-        if (_currentIndex < 0 || _currentIndex >= packs.Length) return;
-        if (packs[_currentIndex] == null || packs[newIndex] == null) return;
+        if (!IsValidPackIndex(newIndex) || !IsValidPackIndex(_currentIndex))
+        {
+            _isAnimating = false;
+            RefreshButtons();
+            return;
+        }
 
         _isAnimating = true;
         SetButtons(false);
 
-        packs[_currentIndex].DOKill();
-        packs[_currentIndex].gameObject.SetActive(false);
+        RectTransform current = packs[_currentIndex];
+        current.DOKill();
+        current.gameObject.SetActive(false);
 
         RectTransform next = packs[newIndex];
         next.DOKill();
         next.gameObject.SetActive(true);
 
-        // start pos
-        next.anchoredPosition = new Vector2(dir * moveX, 0f);
+        float targetY = next.anchoredPosition.y;
+        next.anchoredPosition = new Vector2(dir * Mathf.Abs(moveX), targetY);
 
-        // faqat yangi pack animatsiya qilinadi
-        next.DOAnchorPosX(0f, duration)
+        _packTween = next.DOAnchorPosX(0f, Mathf.Max(0f, duration))
             .SetEase(ease)
             .OnComplete(() =>
             {
                 _currentIndex = newIndex;
                 _isAnimating = false;
+                _packTween = null;
                 RefreshButtons();
-                SetButtons(true);
             });
     }
 
     private void ShowImmediate(int index)
     {
-        if (packs == null || packs.Length == 0)
+        int validIndex = FindNearestPackIndex(index);
+        if (validIndex < 0)
         {
             _currentIndex = 0;
+            _isAnimating = false;
+            RefreshButtons();
             return;
         }
 
-        index = Mathf.Clamp(index, 0, packs.Length - 1);
         for (int i = 0; i < packs.Length; i++)
         {
             if (packs[i] == null) continue;
 
-            bool on = (i == index);
+            bool on = (i == validIndex);
             packs[i].gameObject.SetActive(on);
 
             if (on)
@@ -238,29 +261,31 @@ public class UIStore : MonoBehaviour
             }
         }
 
-        _currentIndex = index;
+        _currentIndex = validIndex;
+        _isAnimating = false;
     }
 
     private void RefreshButtons()
     {
-        bool hasPacks = packs != null && packs.Length > 0;
         if (prevButton != null)
-            prevButton.interactable = hasPacks && _currentIndex > 0;
+            prevButton.interactable = !_isAnimating && FindPackIndex(_currentIndex - 1, -1) >= 0;
         if (nextButton != null)
-            nextButton.interactable = hasPacks && _currentIndex < packs.Length - 1;
+            nextButton.interactable = !_isAnimating && FindPackIndex(_currentIndex + 1, 1) >= 0;
     }
 
     private void SetButtons(bool value)
     {
-        bool hasPacks = packs != null && packs.Length > 0;
         if (prevButton != null)
-            prevButton.interactable = value && hasPacks && _currentIndex > 0;
+            prevButton.interactable = value && FindPackIndex(_currentIndex - 1, -1) >= 0;
         if (nextButton != null)
-            nextButton.interactable = value && hasPacks && _currentIndex < packs.Length - 1;
+            nextButton.interactable = value && FindPackIndex(_currentIndex + 1, 1) >= 0;
     }
 
     private void KillPackTweens()
     {
+        _packTween?.Kill();
+        _packTween = null;
+
         if (packs == null) return;
 
         foreach (var pack in packs)
@@ -269,7 +294,91 @@ public class UIStore : MonoBehaviour
                 pack.DOKill();
         }
     }
+
+    private bool IsValidPackIndex(int index)
+    {
+        return packs != null
+            && index >= 0
+            && index < packs.Length
+            && packs[index] != null;
+    }
+
+    private int FindPackIndex(int startIndex, int step)
+    {
+        if (packs == null || packs.Length == 0 || step == 0)
+            return -1;
+
+        for (int i = startIndex; i >= 0 && i < packs.Length; i += step)
+        {
+            if (packs[i] != null)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private int FindNearestPackIndex(int preferredIndex)
+    {
+        if (packs == null || packs.Length == 0)
+            return -1;
+
+        int clampedIndex = Mathf.Clamp(preferredIndex, 0, packs.Length - 1);
+        if (packs[clampedIndex] != null)
+            return clampedIndex;
+
+        int nextIndex = FindPackIndex(clampedIndex + 1, 1);
+        return nextIndex >= 0 ? nextIndex : FindPackIndex(clampedIndex - 1, -1);
+    }
     #endregion
+
+    private void ValidateConfiguration()
+    {
+        WarnIfMissing(titleText, nameof(titleText));
+        WarnIfMissing(backBtnText, nameof(backBtnText));
+        WarnIfMissing(currencyText, nameof(currencyText));
+        WarnIfMissing(playerItemsText, nameof(playerItemsText));
+        WarnIfMissing(mapText, nameof(mapText));
+        WarnIfMissing(skinText, nameof(skinText));
+
+        WarnIfMissing(backButton, nameof(backButton));
+        WarnIfMissing(currencyBtn, nameof(currencyBtn));
+        WarnIfMissing(playerItemsBtn, nameof(playerItemsBtn));
+        WarnIfMissing(mapBtn, nameof(mapBtn));
+        WarnIfMissing(skinBtn, nameof(skinBtn));
+        WarnIfMissing(prevButton, nameof(prevButton));
+        WarnIfMissing(nextButton, nameof(nextButton));
+
+        if (pages == null || pages.Length < MarketPageCount)
+            Debug.LogWarning($"{nameof(UIStore)} requires {MarketPageCount} page entries.", this);
+        else
+            WarnAboutNullEntries(pages, nameof(pages), MarketPageCount);
+
+        if (clickedObjs == null || clickedObjs.Length < MarketPageCount)
+            Debug.LogWarning($"{nameof(UIStore)} requires {MarketPageCount} selected-tab objects.", this);
+        else
+            WarnAboutNullEntries(clickedObjs, nameof(clickedObjs), MarketPageCount);
+
+        if (packs == null || packs.Length == 0)
+            Debug.LogWarning($"{nameof(UIStore)} has no nomadic packs assigned.", this);
+        else
+            WarnAboutNullEntries(packs, nameof(packs), packs.Length);
+    }
+
+    private void WarnIfMissing(Object reference, string fieldName)
+    {
+        if (reference == null)
+            Debug.LogWarning($"{nameof(UIStore)} is missing the '{fieldName}' reference.", this);
+    }
+
+    private void WarnAboutNullEntries<T>(T[] items, string fieldName, int count) where T : Object
+    {
+        int checkedCount = Mathf.Min(items.Length, count);
+        for (int i = 0; i < checkedCount; i++)
+        {
+            if (items[i] == null)
+                Debug.LogWarning($"{nameof(UIStore)} has an empty '{fieldName}' entry at index {i}.", this);
+        }
+    }
 
     private static GameObject GetItem(GameObject[] items, int index)
     {
@@ -296,8 +405,11 @@ public class UIStore : MonoBehaviour
 
     private static void AddButtonListener(Button button, UnityEngine.Events.UnityAction action)
     {
-        if (button != null)
-            button.onClick.AddListener(action);
+        if (button == null || action == null) return;
+
+        // Protect against duplicate subscriptions if the object is toggled unusually.
+        button.onClick.RemoveListener(action);
+        button.onClick.AddListener(action);
     }
 
     private static void RemoveButtonListener(Button button, UnityEngine.Events.UnityAction action)

@@ -14,6 +14,7 @@ public class RiderRoundStats
     public float finishTime;
     public int coinPrize;
     public int nyufiyPrize;
+    public int xpPrize;
     public int comboPrize;
 }
 
@@ -37,6 +38,7 @@ public class RiderRaceStats
     public float totalWinningTime;
     public int coinPrize;
     public int nyufiyPrize;
+    public int xpPrize;
     public int comboPrize;
     public int comboWins;
     public List<RiderRoundStats> roundResults = new List<RiderRoundStats>();
@@ -51,6 +53,7 @@ public class RiderRaceStats
     public float roundCatchTime;
     public int roundCoinPrize;
     public int roundNyufiyPrize;
+    public int roundXpPrize;
     public int roundComboPrize;
 }
 
@@ -66,5 +69,7 @@ public class KopkariMatchRewardSummary
     public int rankCoin;
     public int roundCoin;
     public int totalCoin;
+    public int rankXp;
+    public int roundXp;
     public int xp;
 }

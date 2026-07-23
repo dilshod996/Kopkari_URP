@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
 
 public sealed class AddressablesService : MonoBehaviour
 {
@@ -18,6 +19,7 @@ public sealed class AddressablesService : MonoBehaviour
     // Asset handle cache (LoadAssetAsync uchun)
     private readonly Dictionary<string, AsyncOperationHandle> _assetHandles = new();
     private readonly Dictionary<string, object> _assetListCache = new();
+    private readonly Dictionary<string, Task<UnityEngine.Object>> _assetLoadTasks = new();
 
     // Instance handle cache (InstantiateAsync uchun) - key: instanceId
     private readonly Dictionary<int, AsyncOperationHandle<GameObject>> _instanceHandles = new();
@@ -137,6 +139,16 @@ public sealed class AddressablesService : MonoBehaviour
         {
             await EnsureInitializedAsync();
 
+            List<string> missingKeys = await FindMissingKeysAsync(keys);
+            if (missingKeys.Count > 0)
+            {
+                ReportAddressablesError(
+                    $"Required Addressables keys were not found: {FormatKeys(missingKeys)}",
+                    showPopup: showErrorPopup);
+                onProgress?.Invoke(0f);
+                return false;
+            }
+
             sizeHandle = Addressables.GetDownloadSizeAsync(keys);
             long size = await sizeHandle.Task;
 
@@ -205,6 +217,42 @@ public sealed class AddressablesService : MonoBehaviour
         }
     }
 
+    private async Task<List<string>> FindMissingKeysAsync(IList<string> keys)
+    {
+        var missingKeys = new List<string>();
+
+        for (int i = 0; i < keys.Count; i++)
+        {
+            string key = keys[i];
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                missingKeys.Add("<empty>");
+                continue;
+            }
+
+            AsyncOperationHandle<IList<IResourceLocation>> locationsHandle = default;
+            try
+            {
+                locationsHandle = Addressables.LoadResourceLocationsAsync(key);
+                IList<IResourceLocation> locations = await locationsHandle.Task;
+
+                if (!IsSucceeded(locationsHandle) || locations == null || locations.Count == 0)
+                    missingKeys.Add(key);
+            }
+            catch
+            {
+                missingKeys.Add(key);
+            }
+            finally
+            {
+                if (locationsHandle.IsValid())
+                    Addressables.Release(locationsHandle);
+            }
+        }
+
+        return missingKeys;
+    }
+
     /// <summary>
     /// Bitta address/label uchun preload.
     /// </summary>
@@ -233,7 +281,7 @@ public sealed class AddressablesService : MonoBehaviour
     // ----------------------------
     // 2) LOAD ASSET (no instantiate) + CACHE
     // ----------------------------
-    public async Task<T> LoadAssetAsync<T>(string addressOrLabel) where T : UnityEngine.Object
+    public async Task<T> LoadAssetAsync<T>(string addressOrLabel, bool showErrorPopup = true) where T : UnityEngine.Object
     {
         try
         {
@@ -245,29 +293,61 @@ public sealed class AddressablesService : MonoBehaviour
                 return cachedHandle.Result as T;
             }
 
-            var handle = Addressables.LoadAssetAsync<T>(addressOrLabel);
+            // Share one operation when multiple startup systems ask for the same address concurrently.
+            if (_assetLoadTasks.TryGetValue(addressOrLabel, out Task<UnityEngine.Object> existingLoadTask))
+                return await existingLoadTask as T;
+
+            Task<UnityEngine.Object> loadTask = LoadAssetInternalAsync<T>(addressOrLabel);
+            _assetLoadTasks[addressOrLabel] = loadTask;
+
+            try
+            {
+                return await loadTask as T;
+            }
+            finally
+            {
+                if (_assetLoadTasks.TryGetValue(addressOrLabel, out Task<UnityEngine.Object> currentTask)
+                    && ReferenceEquals(currentTask, loadTask))
+                {
+                    _assetLoadTasks.Remove(addressOrLabel);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!WasInitializationFailureAlreadyReported())
+                ReportAddressablesError($"Exception while loading Addressables asset: {addressOrLabel}", ex, showErrorPopup);
+
+            return null;
+        }
+    }
+
+    private async Task<UnityEngine.Object> LoadAssetInternalAsync<T>(string addressOrLabel) where T : UnityEngine.Object
+    {
+        AsyncOperationHandle<T> handle = Addressables.LoadAssetAsync<T>(addressOrLabel);
+        try
+        {
             await handle.Task;
 
             if (!IsSucceeded(handle))
             {
-                ReportAddressablesError(BuildHandleError($"Failed to load Addressables asset: {addressOrLabel}", handle),
-                    GetOperationException(handle));
-
+                string error = BuildHandleError($"Failed to load Addressables asset: {addressOrLabel}", handle);
+                Exception operationException = GetOperationException(handle);
                 if (handle.IsValid())
                     Addressables.Release(handle);
 
-                return null;
+                throw new InvalidOperationException(error, operationException);
             }
 
             _assetHandles[addressOrLabel] = handle;
             return handle.Result;
         }
-        catch (Exception ex)
+        catch
         {
-            if (!WasInitializationFailureAlreadyReported())
-                ReportAddressablesError($"Exception while loading Addressables asset: {addressOrLabel}", ex);
+            if (handle.IsValid() && !_assetHandles.ContainsKey(addressOrLabel))
+                Addressables.Release(handle);
 
-            return null;
+            throw;
         }
     }
 

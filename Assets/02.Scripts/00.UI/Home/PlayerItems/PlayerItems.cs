@@ -15,7 +15,7 @@ public class PlayerItems : MonoBehaviour
     [SerializeField] private TMP_Text backText;
     //[SerializeField] private TMP_Text horseNutritionText;
     [SerializeField] private GameObject bottomMoneyNotEnoughtObj;
-    public int amountWatch = 500;
+    [SerializeField] private TMP_Text watchAmountText;
     private void OnEnable()
     {
         UIText();
@@ -49,16 +49,12 @@ public class PlayerItems : MonoBehaviour
     {
         HomeMainUI.Instance.HideUI(this);
     }
-    private void OpenHorseNutritionPage()
-    {
-        HomeMainUI.Instance.SHowFoodPanel();
-        if (this.gameObject.activeSelf)
-        {
-            ClosePage();
-        }
-    }
     private void MoneyNotEnoughText()
     {
+        int rewardAmount = Mathf.Max(0, PlayerResourse.LastFailedResourceCost - CurrencyManager.Instance.Nyufiy);
+        if (watchAmountText != null)
+            watchAmountText.text = $"+{rewardAmount:N0}";
+
         if(!bottomMoneyNotEnoughtObj.activeSelf)
         {
             bottomMoneyNotEnoughtObj.SetActive(true);
@@ -67,10 +63,17 @@ public class PlayerItems : MonoBehaviour
     }
     private void WatchAdds()
     {
+        int rewardAmount = Mathf.Max(0, PlayerResourse.LastFailedResourceCost - CurrencyManager.Instance.Nyufiy);
+        if (rewardAmount <= 0)
+            return;
+
+        if (watchAmountText != null)
+            watchAmountText.text = $"+{rewardAmount:N0}";
+
         GameAnalyticsEvents.RewardedAdClicked(
             placement: "coin_shop",
             rewardType: "nyufiy",
-            rewardAmount: amountWatch
+            rewardAmount: rewardAmount
         );
 
         if (AdsManager.Instance == null)
@@ -81,17 +84,17 @@ public class PlayerItems : MonoBehaviour
 
         AdsManager.Instance.ShowRewarded(() =>
         {
-            CurrencyManager.Instance.AddNyufiy(amountWatch, true);
+            CurrencyManager.Instance.AddNyufiy(rewardAmount, true);
 
             GameAnalyticsEvents.RewardedAdCompleted(
                 placement: "coin_shop",
                 rewardType: "nyufiy",
-                rewardAmount: amountWatch
+                rewardAmount: rewardAmount
             );
 
             GameAnalyticsEvents.CoinRewardClaimed(
                 source: "rewarded_ad_coin_shop",
-                amount: amountWatch
+                amount: rewardAmount
             );
 
         },

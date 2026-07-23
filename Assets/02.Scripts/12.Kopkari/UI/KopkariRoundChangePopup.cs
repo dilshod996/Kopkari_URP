@@ -1,43 +1,84 @@
-using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public sealed class KopkariRoundChangePopup : MonoBehaviour
 {
+    public enum WarmupPhase
+    {
+        ReachWarmupPoint,
+        RoundStart
+    }
+
+    public enum DisplayReason
+    {
+        RoundFinished,
+        WarmupNotReached
+    }
+
     private enum RoundOutcome
     {
         None,
         Winner,
         Loser,
-        TimeExpired
+        TimeExpired,
+        WarmupNotReached
     }
-
-    [Header("Round Outcome")]
-    [SerializeField] private GameObject winnerBackground;
-    [SerializeField] private TMP_Text winnerText;
-    [SerializeField] private GameObject loserBackground;
-    [SerializeField] private TMP_Text loserText;
-    [SerializeField, Min(0f)] private float outcomeDisplayDuration = 1.5f;
-    [SerializeField] private string winnerMessage = "Winner";
-    [SerializeField] private string loserMessage = "Lost";
-    [SerializeField] private string timeExpiredMessage = "Lost\nTime expired";
 
     [Header("Round Change")]
     [SerializeField] private GameObject roundChangePanel;
+    [SerializeField] private TMP_Text roundChangeTitle;
     [SerializeField] private TMP_Text roundDetailsText;
+
+    [Header("Outcome Language IDs")]
+    [SerializeField] private int playerWonTitleLanguageId = -1;
+    [SerializeField] private int playerLostTitleLanguageId = -1;
+    [SerializeField] private int timeExpiredTitleLanguageId = -1;
+    [SerializeField] private int playerWonDetailsLanguageId = -1;
+    [SerializeField] private int playerLostDetailsLanguageId = -1;
+    [SerializeField] private int timeExpiredDetailsLanguageId = -1;
+    private const int WarmupNotReachedTitleLanguageId = 504;
+    private const int WarmupNotReachedDetailsLanguageId = 621;
+
+    [Header("Rewards")]
+    [SerializeField] private GameObject rewardsBackground;
+    [SerializeField] private TMP_Text rewardInfoText;
+    [SerializeField] private TMP_Text nyufiyAmountText;
+    [SerializeField] private TMP_Text coinAmountText;
+    [SerializeField] private TMP_Text xpAmountText;
+    [SerializeField] private int wonRewardInfoLanguageId = -1;
+    [SerializeField] private int lostRewardInfoLanguageId = -1;
+
+    [Header("Buttons")]
     [SerializeField] private Button nextRoundButton;
+    [SerializeField] private TMP_Text nextRoundButtonText;
+    [SerializeField] private int nextRoundButtonLanguageId = -1;
     [SerializeField] private Button finishHereButton;
+    [SerializeField] private TMP_Text finishHereButtonText;
+    [SerializeField] private int finishHereButtonLanguageId = -1;
+    [SerializeField] private Button viewResultsButton;
+    [SerializeField] private TMP_Text viewResultsButtonText;
+    [SerializeField] private int viewResultsButtonLanguageId = -1;
+    [SerializeField] private Button horseConditionButton;
+    [SerializeField] private TMP_Text horseConditionButtonText;
+    [SerializeField] private int horseConditionButtonLanguageId = -1;
+    [SerializeField, Range(0f, 100f)] private float criticalConditionPercent = 15f;
+    [SerializeField, Min(1f)] private float horseConditionPulseScale = 1.08f;
+    [SerializeField, Min(0.1f)] private float horseConditionPulseDuration = 0.65f;
+
+    public float CriticalConditionPercent => criticalConditionPercent;
 
     [Header("Warmup Countdown")]
     [SerializeField] private GameObject warmupBackground;
-    [SerializeField] private TMP_Text warmupText;
-
-    private Coroutine outcomeRoutine;
-    private bool outcomeTransitionPending;
-    private float outcomeTransitionEndTime;
-    private bool pendingCanStartNextRound;
-    private string pendingRoundDetails;
+    [FormerlySerializedAs("warmupText")]
+    [SerializeField] private TMP_Text warmupTimeText;
+    [SerializeField] private TMP_Text warmupTitleText;
+    [SerializeField] private TMP_Text warmupDetailsText;
+    [SerializeField] private int reachWarmupTitleLanguageId = -1;
+    [SerializeField] private int reachWarmupDetailsLanguageId = -1;
+    [SerializeField] private int roundStartTitleLanguageId = -1;
+    [SerializeField] private int roundStartDetailsLanguageId = -1;
 
     private void Awake()
     {
@@ -50,114 +91,106 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
             nextRoundButton.onClick.AddListener(HandleNextRoundClicked);
         if (finishHereButton != null)
             finishHereButton.onClick.AddListener(HandleFinishHereClicked);
-
-        ResumeOutcomeRoutineIfNeeded();
+        if (viewResultsButton != null)
+            viewResultsButton.onClick.AddListener(HandleViewResultsClicked);
+        if (horseConditionButton != null)
+            horseConditionButton.onClick.AddListener(HandleHorseConditionClicked);
     }
 
     private void OnDisable()
     {
-        StopOutcomeRoutine(false);
-
         if (nextRoundButton != null)
             nextRoundButton.onClick.RemoveListener(HandleNextRoundClicked);
         if (finishHereButton != null)
             finishHereButton.onClick.RemoveListener(HandleFinishHereClicked);
+        if (viewResultsButton != null)
+            viewResultsButton.onClick.RemoveListener(HandleViewResultsClicked);
+        if (horseConditionButton != null)
+            horseConditionButton.onClick.RemoveListener(HandleHorseConditionClicked);
+        StopHorseConditionPulse();
     }
 
     public void ShowRoundChange(bool canStartNextRound)
     {
-        ShowRoundChange(canStartNextRound, null);
+        ShowRoundChange(canStartNextRound, DisplayReason.RoundFinished);
     }
 
-    public void ShowRoundChange(bool canStartNextRound, string details)
+    public void ShowRoundChange(bool canStartNextRound, string unusedDetails)
     {
-        StopOutcomeRoutine();
+        ShowRoundChange(canStartNextRound, DisplayReason.RoundFinished);
+    }
+
+    public void ShowRoundChange(bool canStartNextRound, DisplayReason reason)
+    {
         HideWarmupCountdown();
-        SetRoundChangeVisible(false);
-        HideRoundOutcome();
-
-        RoundOutcome outcome = ResolveRoundOutcome(details);
-        if (!ShowRoundOutcome(outcome))
-        {
-            ShowRoundChangePanel(canStartNextRound, details);
-            return;
-        }
-
-        outcomeTransitionPending = true;
-        outcomeTransitionEndTime = Time.realtimeSinceStartup + outcomeDisplayDuration;
-        pendingCanStartNextRound = canStartNextRound;
-        pendingRoundDetails = details;
-        ResumeOutcomeRoutineIfNeeded();
-    }
-
-    private IEnumerator ShowRoundChangeAfterOutcome()
-    {
-        while (Time.realtimeSinceStartup < outcomeTransitionEndTime)
-            yield return null;
-
-        outcomeRoutine = null;
-        outcomeTransitionPending = false;
-        HideRoundOutcome();
-        ShowRoundChangePanel(pendingCanStartNextRound, pendingRoundDetails);
-        pendingRoundDetails = null;
-    }
-
-    private void ShowRoundChangePanel(bool canStartNextRound, string details)
-    {
         SetRoundChangeVisible(true);
 
-        if (roundDetailsText != null)
-            roundDetailsText.text = details ?? string.Empty;
+        RoundOutcome outcome = ResolveRoundOutcome(reason);
+        ApplyOutcomeText(outcome);
+        ApplyButtonLabels();
 
         SetButtonState(nextRoundButton, canStartNextRound);
-        SetButtonState(finishHereButton, true);
+        SetButtonState(finishHereButton, canStartNextRound);
+        SetButtonState(viewResultsButton, !canStartNextRound);
+        SetButtonState(horseConditionButton, false);
+        ShowRewardInformation(outcome, canStartNextRound);
     }
 
     public void HideRoundChange()
     {
-        StopOutcomeRoutine();
-        HideRoundOutcome();
         SetRoundChangeVisible(false);
-        if (roundDetailsText != null)
-            roundDetailsText.text = string.Empty;
-
+        ClearText(roundChangeTitle);
+        ClearText(roundDetailsText);
+        HideRewardInformation();
         SetButtonState(nextRoundButton, false);
         SetButtonState(finishHereButton, false);
+        SetButtonState(viewResultsButton, false);
+        SetButtonState(horseConditionButton, false);
+        StopHorseConditionPulse();
     }
 
     public void ShowWarmupCountdown(int seconds)
+    {
+        ShowWarmupCountdown(seconds, WarmupPhase.ReachWarmupPoint);
+    }
+
+    public void ShowWarmupCountdown(int seconds, WarmupPhase phase)
     {
         HideRoundChange();
 
         if (warmupBackground != null)
             warmupBackground.SetActive(true);
-        if (warmupText != null)
-            warmupText.text = Mathf.Max(0, seconds).ToString();
+        if (warmupTimeText != null)
+            warmupTimeText.text = Mathf.Max(0, seconds).ToString();
+
+        bool isRoundStart = phase == WarmupPhase.RoundStart;
+        SetLocalizedText(
+            warmupTitleText,
+            isRoundStart ? roundStartTitleLanguageId : reachWarmupTitleLanguageId);
+        SetLocalizedText(
+            warmupDetailsText,
+            isRoundStart ? roundStartDetailsLanguageId : reachWarmupDetailsLanguageId);
     }
 
     public void HideWarmupCountdown()
     {
         if (warmupBackground != null)
             warmupBackground.SetActive(false);
-        if (warmupText != null)
-            warmupText.text = string.Empty;
+        ClearText(warmupTimeText);
+        ClearText(warmupTitleText);
+        ClearText(warmupDetailsText);
     }
 
     public void HideAll()
     {
-        StopOutcomeRoutine();
-        HideRoundOutcome();
         HideRoundChange();
         HideWarmupCountdown();
     }
 
-    private RoundOutcome ResolveRoundOutcome(string details)
+    private RoundOutcome ResolveRoundOutcome(DisplayReason reason)
     {
-        if (!string.IsNullOrEmpty(details) &&
-            details.IndexOf("time finished", System.StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return RoundOutcome.TimeExpired;
-        }
+        if (reason == DisplayReason.WarmupNotReached)
+            return RoundOutcome.WarmupNotReached;
 
         KopkariResultsManager results = KopkariResultsManager.Instance;
         if (results == null)
@@ -166,48 +199,178 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
             return RoundOutcome.TimeExpired;
 
         RiderRaceStats winner = results.Get(results.WinnerId);
-        if (winner == null)
-            return RoundOutcome.Loser;
-
-        return winner.isPlayer ? RoundOutcome.Winner : RoundOutcome.Loser;
+        return winner != null && winner.isPlayer ? RoundOutcome.Winner : RoundOutcome.Loser;
     }
 
-    private bool ShowRoundOutcome(RoundOutcome outcome)
+    private void ApplyOutcomeText(RoundOutcome outcome)
     {
+        int titleId = -1;
+        int detailsId = -1;
+
         switch (outcome)
         {
             case RoundOutcome.Winner:
-                if (winnerText != null)
-                    winnerText.text = winnerMessage;
-                if (winnerBackground != null)
-                    winnerBackground.SetActive(true);
-                return winnerBackground != null;
-
+                titleId = playerWonTitleLanguageId;
+                detailsId = playerWonDetailsLanguageId;
+                break;
             case RoundOutcome.Loser:
-                if (loserText != null)
-                    loserText.text = loserMessage;
-                if (loserBackground != null)
-                    loserBackground.SetActive(true);
-                return loserBackground != null;
-
+                titleId = playerLostTitleLanguageId;
+                detailsId = playerLostDetailsLanguageId;
+                break;
             case RoundOutcome.TimeExpired:
-                if (loserText != null)
-                    loserText.text = timeExpiredMessage;
-                if (loserBackground != null)
-                    loserBackground.SetActive(true);
-                return loserBackground != null;
-
-            default:
-                return false;
+                titleId = timeExpiredTitleLanguageId;
+                detailsId = timeExpiredDetailsLanguageId;
+                break;
+            case RoundOutcome.WarmupNotReached:
+                titleId = WarmupNotReachedTitleLanguageId;
+                detailsId = WarmupNotReachedDetailsLanguageId;
+                break;
         }
+
+        SetLocalizedText(roundChangeTitle, titleId);
+        SetLocalizedText(roundDetailsText, detailsId);
     }
 
-    private void HideRoundOutcome()
+    private void ShowRewardInformation(RoundOutcome outcome, bool hasNextRound)
     {
-        if (winnerBackground != null)
-            winnerBackground.SetActive(false);
-        if (loserBackground != null)
-            loserBackground.SetActive(false);
+        if (!hasNextRound)
+        {
+            HideRewardInformation();
+            return;
+        }
+
+        int coinAmount = 0;
+        int nyufiyAmount = 0;
+        int xpAmount = 0;
+        int rewardInfoLanguageId = lostRewardInfoLanguageId;
+
+        if (outcome == RoundOutcome.Winner)
+        {
+            RiderRoundStats latestRound = KopkariResultsManager.Instance?.GetLatestPlayerRound();
+            if (latestRound != null)
+            {
+                coinAmount = latestRound.coinPrize;
+                nyufiyAmount = latestRound.nyufiyPrize;
+                xpAmount = latestRound.xpPrize;
+            }
+            rewardInfoLanguageId = wonRewardInfoLanguageId;
+        }
+        else
+        {
+            KopkariManager manager = KopkariManager.Instance;
+            if (manager != null)
+            {
+                coinAmount = manager.CurrentRoundCoinAmount;
+                nyufiyAmount = manager.CurrentRoundNyufiyAmount;
+                xpAmount = manager.CurrentRoundXpAmount;
+            }
+        }
+
+        if (rewardsBackground != null)
+            rewardsBackground.SetActive(true);
+        SetLocalizedText(rewardInfoText, rewardInfoLanguageId);
+        SetAmountText(coinAmountText, coinAmount);
+        SetAmountText(nyufiyAmountText, nyufiyAmount);
+        SetAmountText(xpAmountText, xpAmount);
+    }
+
+    private void HideRewardInformation()
+    {
+        if (rewardsBackground != null)
+            rewardsBackground.SetActive(false);
+        ClearText(rewardInfoText);
+        ClearText(coinAmountText);
+        ClearText(nyufiyAmountText);
+        ClearText(xpAmountText);
+    }
+
+    private void ApplyButtonLabels()
+    {
+        SetLocalizedText(nextRoundButtonText, nextRoundButtonLanguageId);
+        SetLocalizedText(finishHereButtonText, finishHereButtonLanguageId);
+        SetLocalizedText(viewResultsButtonText, viewResultsButtonLanguageId);
+        SetLocalizedText(horseConditionButtonText, horseConditionButtonLanguageId);
+    }
+
+    private void HandleNextRoundClicked()
+    {
+        if (horseConditionButton != null && IsHorseConditionCritical())
+        {
+            SetButtonState(horseConditionButton, true);
+            StartHorseConditionPulse();
+            return;
+        }
+
+        HideRoundChange();
+        KopkariManager.Instance?.BeginNextRoundWarmup();
+    }
+
+    private void HandleHorseConditionClicked()
+    {
+        StopHorseConditionPulse();
+        KopkariMainUI.Instance?.ShowRoundFoodPanel();
+    }
+
+    public void RefreshHorseConditionAttention()
+    {
+        if (horseConditionButton == null)
+            return;
+
+        bool isCritical = IsHorseConditionCritical();
+        SetButtonState(horseConditionButton, isCritical);
+        if (isCritical)
+            StartHorseConditionPulse();
+        else
+            StopHorseConditionPulse();
+    }
+
+    private void HandleFinishHereClicked()
+    {
+        HideAll();
+        KopkariMainUI.Instance?.ShowResult();
+    }
+
+    private void HandleViewResultsClicked()
+    {
+        HideAll();
+        KopkariMainUI.Instance?.ShowResult();
+    }
+
+    private bool IsHorseConditionCritical()
+    {
+        HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
+        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
+        return GetPercent(current.Power, max.Power) < criticalConditionPercent ||
+               GetPercent(current.Cooling, max.Cooling) < criticalConditionPercent ||
+               GetPercent(current.Stamina, max.Stamina) < criticalConditionPercent;
+    }
+
+    private static float GetPercent(float current, float maximum)
+    {
+        return maximum > 0f ? Mathf.Clamp01(current / maximum) * 100f : 0f;
+    }
+
+    private void StartHorseConditionPulse()
+    {
+        if (horseConditionButton == null)
+            return;
+
+        GameObject target = horseConditionButton.gameObject;
+        LeanTween.cancel(target);
+        target.transform.localScale = Vector3.one;
+        LeanTween.scale(target, Vector3.one * horseConditionPulseScale, horseConditionPulseDuration)
+            .setIgnoreTimeScale(true)
+            .setEase(LeanTweenType.easeInOutSine)
+            .setLoopPingPong();
+    }
+
+    private void StopHorseConditionPulse()
+    {
+        if (horseConditionButton == null)
+            return;
+
+        LeanTween.cancel(horseConditionButton.gameObject);
+        horseConditionButton.transform.localScale = Vector3.one;
     }
 
     private void SetRoundChangeVisible(bool visible)
@@ -216,39 +379,26 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
             roundChangePanel.SetActive(visible);
     }
 
-    private void ResumeOutcomeRoutineIfNeeded()
+    private static void SetLocalizedText(TMP_Text text, int languageId)
     {
-        if (!outcomeTransitionPending || outcomeRoutine != null || !isActiveAndEnabled)
+        if (text == null)
             return;
 
-        outcomeRoutine = StartCoroutine(ShowRoundChangeAfterOutcome());
+        text.text = languageId >= 0 && LanguageManager.Instance != null
+            ? LanguageManager.Instance.GetText(languageId)
+            : string.Empty;
     }
 
-    private void StopOutcomeRoutine(bool clearPending = true)
+    private static void SetAmountText(TMP_Text text, int amount)
     {
-        if (outcomeRoutine != null)
-        {
-            StopCoroutine(outcomeRoutine);
-            outcomeRoutine = null;
-        }
-
-        if (!clearPending)
-            return;
-
-        outcomeTransitionPending = false;
-        pendingRoundDetails = null;
+        if (text != null)
+            text.text = Mathf.Max(0, amount).ToString();
     }
 
-    private void HandleNextRoundClicked()
+    private static void ClearText(TMP_Text text)
     {
-        HideRoundChange();
-        KopkariManager.Instance?.BeginNextRoundWarmup();
-    }
-
-    private void HandleFinishHereClicked()
-    {
-        HideAll();
-        KopkariMainUI.Instance?.ShowResult();
+        if (text != null)
+            text.text = string.Empty;
     }
 
     private static void SetButtonState(Button button, bool visible)

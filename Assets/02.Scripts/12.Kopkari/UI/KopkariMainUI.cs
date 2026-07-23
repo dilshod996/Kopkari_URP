@@ -24,15 +24,12 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private Button fakeUlakBtn;
     [SerializeField] private Button pushButton;
     [SerializeField] private Button pauseButton;
+    [SerializeField] private Button cameraSwitchButton;
     #endregion
 
     #region Kopkari Intro
     [Header("Kopkari Intro")]
-    [SerializeField] private KopkariIntroFlowController introFlowController;
-    [SerializeField] private GameObject introPlayerListPanel;
-    [SerializeField] private Button introSkipButton;
-
-    public Button IntroSkipButton => introSkipButton;
+    [SerializeField] private KopkariIntro introPage;
     #endregion
 
     #region Inspector - Texts
@@ -66,8 +63,8 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private KopkariRoundChangePopup kopkariRoundChangeUI;
     [SerializeField] private ComboPrize comboPrizeUI;
     [SerializeField] private UIPauseGame pauseMenu;
+    [SerializeField] private HowToPlay howToPlayPage;
     [SerializeField] private GameObject foodPanel;
-    [SerializeField] private GameOver gameOverPage;
 
     [Header("Scale Settings")]
     [SerializeField] private float startScale = 0.8f;
@@ -162,6 +159,7 @@ public class KopkariMainUI : MonoBehaviour
         else
             Destroy(gameObject);
 
+        introPage?.PrepareHidden();
         kopkariRoundChangeUI?.HideAll();
         comboPrizeUI?.Hide();
         if (carrierInfoBackground != null)
@@ -214,8 +212,8 @@ public class KopkariMainUI : MonoBehaviour
             pushButton.onClick.AddListener(PushEffectStart);
         if (pauseButton != null)
             pauseButton.onClick.AddListener(PauseMenu);
-
-        KopkariManager.OnTimeFinished += GameOverShow;
+        if (cameraSwitchButton != null)
+            cameraSwitchButton.onClick.AddListener(ToggleCameraView);
 
         if (KopkariManager.Instance != null)
         {
@@ -261,7 +259,6 @@ public class KopkariMainUI : MonoBehaviour
 
         //KopkariManager.OnRacingFinished -= ShowResultPage;
         //RacingController.OnRacingStarted -= GetData;
-        KopkariManager.OnTimeFinished -= GameOverShow;
         BoostersContainer.OnDefendState -= HandleDefendStateChanged;
         BoostersContainer.OnWalkZoneDamaged -= EnableSprint;
         BoostersContainer.OnWebSnareDamaged -= EnableSprint;
@@ -271,6 +268,8 @@ public class KopkariMainUI : MonoBehaviour
             pushButton.onClick.RemoveListener(PushEffectStart);
         if (pauseButton != null)
             pauseButton.onClick.RemoveListener(PauseMenu);
+        if (cameraSwitchButton != null)
+            cameraSwitchButton.onClick.RemoveListener(ToggleCameraView);
         if (walkZoneBtn != null)
             walkZoneBtn.onClick.RemoveListener(HandleWalkZoneClicked);
         if (defendBtn != null)
@@ -924,9 +923,10 @@ public class KopkariMainUI : MonoBehaviour
 
         GetData();
 
-        if (introFlowController != null && introFlowController.isActiveAndEnabled)
+        if (introPage != null)
         {
-            introFlowController.PlayIntro(StartMatchAfterIntro);
+            introPage.gameObject.SetActive(true);
+            introPage.Play(StartMatchAfterIntro);
         }
         else
         {
@@ -939,36 +939,26 @@ public class KopkariMainUI : MonoBehaviour
         OnEverythingReadyStart?.Invoke();
     }
 
-    public void SetIntroPlayerListVisible(bool visible)
-    {
-        if (introPlayerListPanel != null)
-            introPlayerListPanel.SetActive(visible);
-    }
-
-    public void SetIntroSkipVisible(bool visible)
-    {
-        if (introSkipButton == null)
-            return;
-
-        introSkipButton.gameObject.SetActive(visible);
-        introSkipButton.interactable = visible;
-    }
-
     public void ShowRoundChange()
     {
-        ShowRoundChange(null);
+        ShowRoundChange(KopkariRoundChangePopup.DisplayReason.RoundFinished);
     }
 
-    public void ShowRoundChange(string details)
+    public void ShowRoundChange(string unusedDetails)
+    {
+        ShowRoundChange(KopkariRoundChangePopup.DisplayReason.RoundFinished);
+    }
+
+    public void ShowRoundChange(KopkariRoundChangePopup.DisplayReason reason)
     {
         ReleaseSprintForUIInterruption();
         if (kopkariRoundChangeUI == null)
             return;
 
         bool canStartNextRound = KopkariManager.Instance != null &&
-                                 KopkariManager.Instance.HasPreparedNextRound;
+                                  KopkariManager.Instance.HasPreparedNextRound;
         ShowUI(kopkariRoundChangeUI);
-        kopkariRoundChangeUI.ShowRoundChange(canStartNextRound, details);
+        kopkariRoundChangeUI.ShowRoundChange(canStartNextRound, reason);
     }
 
     public void HideRoundChange()
@@ -976,7 +966,53 @@ public class KopkariMainUI : MonoBehaviour
         kopkariRoundChangeUI?.HideRoundChange();
     }
 
+    public void ShowRoundFoodPanel()
+    {
+        if (foodPanel == null)
+            return;
+
+        GameFood gameFood = foodPanel.GetComponent<GameFood>();
+        if (gameFood == null)
+            gameFood = foodPanel.GetComponentInChildren<GameFood>(true);
+        gameFood?.ShowForKopkariRoundChange(
+            kopkariRoundChangeUI != null ? kopkariRoundChangeUI.CriticalConditionPercent : 15f);
+        ShowUI(foodPanel);
+    }
+
+    public void ShowHowToPlayPage()
+    {
+        if (howToPlayPage == null)
+            return;
+
+       // HideUI(pauseMenu);
+        ShowUI(howToPlayPage);
+    }
+
+    public void HideHowToPlayPage()
+    {
+        if (howToPlayPage == null)
+            return;
+
+        HideUI(howToPlayPage);
+        ShowUI(pauseMenu);
+    }
+
+    public void HideRoundFoodPanel()
+    {
+        HideUI(foodPanel);
+        kopkariRoundChangeUI?.RefreshHorseConditionAttention();
+    }
+
     public void ShowRoundWarmupCountdown(int seconds)
+    {
+        ShowRoundWarmupCountdown(
+            seconds,
+            KopkariRoundChangePopup.WarmupPhase.ReachWarmupPoint);
+    }
+
+    public void ShowRoundWarmupCountdown(
+        int seconds,
+        KopkariRoundChangePopup.WarmupPhase phase)
     {
         ReleaseSprintForUIInterruption();
         if (kopkariRoundChangeUI == null)
@@ -987,7 +1023,7 @@ public class KopkariMainUI : MonoBehaviour
         if (!kopkariRoundChangeUI.gameObject.activeSelf)
             ShowUI(kopkariRoundChangeUI);
 
-        kopkariRoundChangeUI.ShowWarmupCountdown(seconds);
+        kopkariRoundChangeUI.ShowWarmupCountdown(seconds, phase);
     }
 
     public void HideRoundWarmupCountdown()
@@ -1365,6 +1401,11 @@ public class KopkariMainUI : MonoBehaviour
     {
         ShowUI(pauseMenu);
     }
+
+    private void ToggleCameraView()
+    {
+        KopkariManager.Instance?.ToggleCameraView();
+    }
     #endregion
 
     #region Utils
@@ -1445,7 +1486,6 @@ public class KopkariMainUI : MonoBehaviour
         HideCarrierGrip();
         SetMobileCanvasVisible(false);
         SetMatchStatusVisible(false);
-        ShowUI(gameOverPage);
     }
     #endregion
 
@@ -1460,6 +1500,12 @@ public class KopkariMainUI : MonoBehaviour
     {
         float webSnareTime = KopkariManager.Instance != null ? KopkariManager.Instance.GetWebSnareDamageTime() : 0f;
         return totalWebSnareTime + webSnareTime;
+    }
+
+    public void ResetMatchUsageTimes()
+    {
+        totalHoldTime = 0f;
+        totalWebSnareTime = 0f;
     }
     #endregion
 }

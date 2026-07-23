@@ -6,12 +6,10 @@ public class KopkariPlayersResult : MonoBehaviour
     [SerializeField] private TMP_Text rankText;
     [SerializeField] private TMP_Text playerNameText;
     [SerializeField] private TMP_Text teamNameText;
-    [SerializeField] private TMP_Text catchCountText;
-    [SerializeField] private TMP_Text catchTimingText;
-    [SerializeField] private TMP_Text triggerCountText;
-    [SerializeField] private TMP_Text carrierTakeoverCountText;
-    [SerializeField] private TMP_Text roundWinsText;
-    [SerializeField] private TMP_Text winningTimeText;
+    [SerializeField] private TMP_Text winsCountText;
+    [SerializeField] private TMP_Text pickUpsCountText;
+    [SerializeField] private TMP_Text totalTimeText;
+    [SerializeField] private TMP_Text bestWinText;
 
     [Header("Colors")]
     [SerializeField] private Color playerNameColor = new Color(1f, 0.84f, 0f, 1f); // gold
@@ -29,11 +27,10 @@ public class KopkariPlayersResult : MonoBehaviour
         rankText = rank;
         playerNameText = playerName;
         teamNameText = teamName;
-        roundWinsText = wins;
-        catchCountText = pickups;
-        carrierTakeoverCountText = null;
-        catchTimingText = totalTime;
-        winningTimeText = bestWin;
+        winsCountText = wins;
+        pickUpsCountText = pickups;
+        totalTimeText = totalTime;
+        bestWinText = bestWin;
     }
 
     public void BindData(RiderRaceStats stats, int rankIndex)
@@ -50,13 +47,11 @@ public class KopkariPlayersResult : MonoBehaviour
         }
 
         if (teamNameText) teamNameText.text = string.IsNullOrEmpty(stats.teamName) ? "-" : stats.teamName;
-        if (catchCountText) catchCountText.text = stats.pickupTimes.ToString();
-        if (triggerCountText) triggerCountText.text = stats.triggerPoints.ToString();
-        if (catchTimingText) catchTimingText.text = FormatTime(stats.totalSpentTime);
-        if (carrierTakeoverCountText) carrierTakeoverCountText.gameObject.SetActive(false);
-        if (roundWinsText) roundWinsText.text = stats.roundWins.ToString();
-        if (winningTimeText)
-            winningTimeText.text = stats.roundWins > 0 ? FormatTime(stats.bestRoundFinishTime) : "--:--";
+        if (pickUpsCountText) pickUpsCountText.text = stats.pickupTimes.ToString();
+        if (totalTimeText) totalTimeText.text = FormatTime(stats.totalSpentTime);
+        if (winsCountText) winsCountText.text = stats.roundWins.ToString();
+        if (bestWinText)
+            bestWinText.text = stats.roundWins > 0 ? FormatTime(stats.bestRoundFinishTime) : "--:--";
     }
 
     private string FormatTime(float seconds)
