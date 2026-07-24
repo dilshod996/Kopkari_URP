@@ -80,6 +80,9 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
     [SerializeField] private int roundStartTitleLanguageId = -1;
     [SerializeField] private int roundStartDetailsLanguageId = -1;
 
+    public RectTransform WarmupTutorialTarget =>
+        warmupBackground != null ? warmupBackground.transform as RectTransform : null;
+
     private void Awake()
     {
         HideAll();

@@ -79,6 +79,7 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
     private float nextDistanceRefresh;
     private float currentDistance;
     private bool visualsVisible;
+    private bool tutorialPreviewActive;
 
     public ObjectiveKind CurrentKind => currentKind;
     public Transform CurrentTarget => currentTarget;
@@ -129,12 +130,30 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
             return;
 
         ResolveCameraIfNeeded();
-        UpdateScreenPresentation();
+        UpdateScreenPresentation(tutorialPreviewActive);
         UpdateWarmupBeaconVisibility();
     }
 
     public void RefreshNow()
     {
+        RefreshObjective(true);
+    }
+
+    public void SetTutorialPreview(bool active)
+    {
+        tutorialPreviewActive = active;
+        if (active)
+        {
+            // Preview only overrides visibility. It must keep the real objective,
+            // distance and camera-relative positioning used by normal gameplay.
+            RefreshObjective(true);
+            if (currentKind != ObjectiveKind.None && currentTarget != null)
+                SetScreenIndicatorActive(true);
+            else
+                SetScreenIndicatorActive(false);
+            return;
+        }
+
         RefreshObjective(true);
     }
 
@@ -291,7 +310,7 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
             distanceText.text = Mathf.Max(0, Mathf.RoundToInt(currentDistance)) + " m";
     }
 
-    private void UpdateScreenPresentation()
+    private void UpdateScreenPresentation(bool forceVisible)
     {
         RectTransform boundaryRect = screenIndicator != null
             ? screenIndicator.parent as RectTransform
@@ -307,7 +326,7 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
         float margin = Mathf.Clamp(viewportMargin, 0f, 0.25f);
         bool onScreen = viewport.z > 0f && viewport.x >= margin && viewport.x <= 1f - margin &&
                         viewport.y >= margin && viewport.y <= 1f - margin;
-        if (onScreen)
+        if (onScreen && !forceVisible)
         {
             SetScreenIndicatorActive(false);
             return;

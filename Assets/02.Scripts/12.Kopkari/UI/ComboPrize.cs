@@ -10,13 +10,17 @@ public sealed class ComboPrize : MonoBehaviour
     private Coroutine countdownRoutine;
     private float remainingTime;
     private bool comboActive;
+    private bool showInProgress;
 
     public bool IsActive => comboActive && remainingTime > 0f;
     public int PrizeAmount { get; private set; }
 
     private void Awake()
     {
-        Hide();
+        // An inactive scene object receives Awake only when Show first activates
+        // it. Do not let that first activation immediately hide itself.
+        if (!showInProgress)
+            Hide();
     }
 
     private void OnDisable()
@@ -42,10 +46,12 @@ public sealed class ComboPrize : MonoBehaviour
         if (countdownRoutine != null)
             StopCoroutine(countdownRoutine);
 
+        showInProgress = true;
         remainingTime = duration;
         PrizeAmount = Mathf.Max(0, prizeAmount);
         comboActive = true;
         gameObject.SetActive(true);
+        showInProgress = false;
         UpdateTexts();
         countdownRoutine = StartCoroutine(Countdown());
     }

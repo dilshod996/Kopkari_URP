@@ -73,6 +73,19 @@ public class UIPauseGame : MonoBehaviour
         StopResumeCountdown();
     }
 
+    public void ApplyImmediatePause()
+    {
+        StopResumeCountdown();
+        SetPauseDetailsVisible(true);
+        SetCountdownVisible(false);
+
+        if (ResumeBtn != null)
+            ResumeBtn.interactable = true;
+
+        Time.timeScale = 0f;
+        _paused = true;
+    }
+
     void ResumeGame()
     {
         if (resumeCountdownRoutine != null)
@@ -99,15 +112,15 @@ public class UIPauseGame : MonoBehaviour
         }
 
         SetCountdownVisible(false);
-        Time.timeScale = 1f;
         _paused = false;
 
         if(KopkariMainUI.Instance != null)
         {
-            KopkariMainUI.Instance.HideUI(this);
+            KopkariMainUI.Instance.ResumeFromPause(this);
         }
         else
         {
+            Time.timeScale = 1f;
             UIButtonActions.Instance?.HideUI(this);
             RacingController.Instance?.ResumeRaceTime();
             UIButtonActions.Instance?.NotifyRaceResumedFromPause();
@@ -149,14 +162,14 @@ public class UIPauseGame : MonoBehaviour
     }
     void BackLobby()
     {
-        Time.timeScale = 1f;
-
         if (KopkariManager.Instance != null)
         {
+            KopkariMainUI.Instance?.ReleasePauseForSceneExit();
             ApplyKopkariHorseConditionBeforeLeaving();
         }
         else
         {
+            Time.timeScale = 1f;
             GetGameFinishedTime();
             GetOverallPenaltyTimeAndBoost();
             HorseStats();

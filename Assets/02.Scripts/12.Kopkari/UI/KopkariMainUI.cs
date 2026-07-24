@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using MalbersAnimations;
 using MalbersAnimations.Controller;
+using MalbersExtensions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -12,6 +13,10 @@ using UnityEngine.UI;
 public class KopkariMainUI : MonoBehaviour
 {
     public static KopkariMainUI Instance;
+    public static bool IsGameplayPaused =>
+        Instance != null &&
+        Instance.pauseMenu != null &&
+        Instance.pauseMenu.gameObject.activeInHierarchy;
 
     #region Inspector - Buttons
     [Header("Buttons")]
@@ -64,7 +69,7 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private ComboPrize comboPrizeUI;
     [SerializeField] private UIPauseGame pauseMenu;
     [SerializeField] private HowToPlay howToPlayPage;
-    [SerializeField] private GameObject foodPanel;
+    [SerializeField] private GameFood foodPanel;
 
     [Header("Scale Settings")]
     [SerializeField] private float startScale = 0.8f;
@@ -119,6 +124,10 @@ public class KopkariMainUI : MonoBehaviour
     public static Action OnSprintStart;   // ✅ QAYTDI
     public static Action OnSprintEnd;       // Speed restore
     public static Action<float> OnSprintHold;
+    public static event Action<bool> OnComboVisibilityChanged;
+    public static event Action<bool> OnCarrierVisibilityChanged;
+    public static event Action<float, float> OnHorseHealthDamaged;
+    public static event Action<bool> OnFakeUlakInteractableChanged;
 
     public static Action OnWebSnareBtnEnable;
     public static Action OnWebSnareStart;
@@ -138,6 +147,42 @@ public class KopkariMainUI : MonoBehaviour
     private bool fakeUlakCooldownActive;
     private bool fakeUlakFocusAvailable;
     private bool horseHealthDepletionHandled;
+    private float lastHorseHealthValue = float.NaN;
+    private bool lastFakeUlakInteractable;
+
+    public RectTransform CameraSwitchTutorialTarget =>
+        cameraSwitchButton != null ? cameraSwitchButton.transform as RectTransform : null;
+    public RectTransform PickupButtonTutorialTarget =>
+        pickupButton != null ? pickupButton.transform as RectTransform : null;
+    public RectTransform PickupProgressTutorialTarget =>
+        pickupProgress != null ? pickupProgress.transform as RectTransform : null;
+    public RectTransform ComboPrizeTutorialTarget =>
+        comboPrizeUI != null ? comboPrizeUI.transform as RectTransform : null;
+    public RectTransform CarrierTutorialTarget =>
+        carrierInfoBackground != null ? carrierInfoBackground.transform as RectTransform : null;
+    public RectTransform HorseHealthTutorialTarget =>
+        horseHealthSlider != null ? horseHealthSlider.transform as RectTransform : null;
+    public RectTransform DefendTutorialTarget =>
+        defendBtn != null ? defendBtn.transform as RectTransform : null;
+    public RectTransform WalkZoneTutorialTarget =>
+        walkZoneBtn != null ? walkZoneBtn.transform as RectTransform : null;
+    public RectTransform ShootWebTutorialTarget =>
+        shootWebBtn != null ? shootWebBtn.transform as RectTransform : null;
+    public RectTransform ChainContainerTutorialTarget =>
+        chainContainerBtn != null ? chainContainerBtn.transform as RectTransform : null;
+    public RectTransform FakeUlakTutorialTarget =>
+        fakeUlakBtn != null ? fakeUlakBtn.transform as RectTransform : null;
+    public RectTransform RoundChangeTutorialTarget =>
+        kopkariRoundChangeUI != null ? kopkariRoundChangeUI.transform as RectTransform : null;
+    public RectTransform WarmupTutorialTarget =>
+        kopkariRoundChangeUI != null ? kopkariRoundChangeUI.WarmupTutorialTarget : null;
+    public bool IsComboVisible => comboPrizeUI != null && comboPrizeUI.gameObject.activeInHierarchy;
+    public bool IsCarrierVisible =>
+        carrierInfoBackground != null && carrierInfoBackground.activeInHierarchy;
+    public bool IsFakeUlakInteractable => fakeUlakBtn != null && fakeUlakBtn.interactable;
+    public bool IsShootWebInteractable => shootWebBtn != null && shootWebBtn.interactable;
+    public bool IsChainContainerVisible =>
+        chainContainerBtn != null && chainContainerBtn.gameObject.activeInHierarchy;
 
     private Coroutine drainRoutine;
     private Coroutine refillRoutine;
@@ -149,6 +194,9 @@ public class KopkariMainUI : MonoBehaviour
     private bool loadingCompleted;
     private BoostersContainer boundBoosters;
     private MalbersAnimations.Stat boundHorseHealth;
+    private bool ownsPauseState;
+    private float timeScaleBeforePause = 1f;
+    private bool audioListenerPauseBeforePause;
     #region Awake/Start/OnEnable/OnDisable
     private void Awake()
     {
@@ -283,6 +331,24 @@ public class KopkariMainUI : MonoBehaviour
         canvasRoutine = null;
         moveBottomRoutine = null;
         autoSprintBoostActive = false;
+        ReleaseOwnedPauseState();
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused)
+            RequestPause();
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+#if UNITY_EDITOR
+        if (!hasFocus)
+            return;
+#endif
+
+        if (!hasFocus)
+            RequestPause();
     }
     #endregion
 
@@ -357,6 +423,7 @@ public class KopkariMainUI : MonoBehaviour
 
         boundHorseHealth.OnValueChange.AddListener(HandleHorseHealthChanged);
         boundHorseHealth.OnMaxValueChange.AddListener(HandleHorseHealthMaxChanged);
+        lastHorseHealthValue = boundHorseHealth.Value;
         RefreshHorseHealthUI();
     }
 
@@ -368,11 +435,20 @@ public class KopkariMainUI : MonoBehaviour
         boundHorseHealth.OnValueChange.RemoveListener(HandleHorseHealthChanged);
         boundHorseHealth.OnMaxValueChange.RemoveListener(HandleHorseHealthMaxChanged);
         boundHorseHealth = null;
+        lastHorseHealthValue = float.NaN;
     }
 
     private void HandleHorseHealthChanged(float value)
     {
+        float previousValue = lastHorseHealthValue;
+        lastHorseHealthValue = value;
         RefreshHorseHealthUI();
+
+        if (!float.IsNaN(previousValue) && value < previousValue - 0.001f &&
+            boundHorseHealth != null)
+        {
+            OnHorseHealthDamaged?.Invoke(value, boundHorseHealth.MaxValue);
+        }
 
         if (value > 0f || horseHealthDepletionHandled)
             return;
@@ -623,10 +699,16 @@ public class KopkariMainUI : MonoBehaviour
         bool pickupFocused = fakeUlakFocusAvailable &&
                              pickupButton != null &&
                              pickupButton.activeInHierarchy;
-        fakeUlakBtn.interactable = count > 0 &&
-                                   !fakeUlakCooldownActive &&
-                                   pickupFocused &&
-                                   managerReady;
+        bool interactable = count > 0 &&
+                            !fakeUlakCooldownActive &&
+                            pickupFocused &&
+                            managerReady;
+        fakeUlakBtn.interactable = interactable;
+        if (lastFakeUlakInteractable != interactable)
+        {
+            lastFakeUlakInteractable = interactable;
+            OnFakeUlakInteractableChanged?.Invoke(interactable);
+        }
     }
     #endregion
 
@@ -971,14 +1053,17 @@ public class KopkariMainUI : MonoBehaviour
         if (foodPanel == null)
             return;
 
-        GameFood gameFood = foodPanel.GetComponent<GameFood>();
-        if (gameFood == null)
-            gameFood = foodPanel.GetComponentInChildren<GameFood>(true);
-        gameFood?.ShowForKopkariRoundChange(
+        foodPanel.ShowForKopkariRoundChange(
             kopkariRoundChangeUI != null ? kopkariRoundChangeUI.CriticalConditionPercent : 15f);
         ShowUI(foodPanel);
     }
-
+    public void OpenFoodPanel()
+    {
+        if (foodPanel!=null)
+        {
+            ShowUI(foodPanel);
+        }
+    }
     public void ShowHowToPlayPage()
     {
         if (howToPlayPage == null)
@@ -1111,11 +1196,13 @@ public class KopkariMainUI : MonoBehaviour
             return;
 
         comboPrizeUI.Show(manager.CurrentComboTime, manager.CurrentComboPrize);
+        OnComboVisibilityChanged?.Invoke(comboPrizeUI.IsActive);
     }
 
     public void HideCombo()
     {
         comboPrizeUI?.Hide();
+        OnComboVisibilityChanged?.Invoke(false);
     }
 
     public bool TryCompleteCombo()
@@ -1130,6 +1217,8 @@ public class KopkariMainUI : MonoBehaviour
         UpdateCarrierGrip(currentGrip, maximumGrip);
         if (carrierInfoBackground != null)
             carrierInfoBackground.SetActive(true);
+        OnCarrierVisibilityChanged?.Invoke(
+            carrierInfoBackground != null && carrierInfoBackground.activeInHierarchy);
     }
 
     public void UpdateCarrierGrip(float currentGrip, float maximumGrip)
@@ -1197,6 +1286,7 @@ public class KopkariMainUI : MonoBehaviour
         StopCarrierGripFeedback();
         if (carrierInfoBackground != null)
             carrierInfoBackground.SetActive(false);
+        OnCarrierVisibilityChanged?.Invoke(false);
     }
 
     private void HandleCarrierOwnerChanged(GameObject ownerRoot)
@@ -1249,6 +1339,8 @@ public class KopkariMainUI : MonoBehaviour
             carrierNameText.text = carrierName;
         if (carrierInfoBackground != null)
             carrierInfoBackground.SetActive(true);
+        OnCarrierVisibilityChanged?.Invoke(
+            carrierInfoBackground != null && carrierInfoBackground.activeInHierarchy);
     }
     #endregion
 
@@ -1399,7 +1491,71 @@ public class KopkariMainUI : MonoBehaviour
     #region Other Button Actions
     private void PauseMenu()
     {
-        ShowUI(pauseMenu);
+        RequestPause();
+    }
+
+    private void RequestPause()
+    {
+        if (RegistanTutorialController.IsTutorialActive)
+            return;
+
+        if (pauseMenu == null)
+            return;
+
+        KopkariManager manager = KopkariManager.Instance;
+        if (manager == null ||
+            (manager.roomState != KopkariManager.RoomState.GameStarted &&
+             !manager.IsRoundWarmupActive))
+        {
+            return;
+        }
+
+        ReleaseKopkariHeldInput();
+        ApplyImmediatePauseState();
+        pauseMenu.ApplyImmediatePause();
+
+        if (!pauseMenu.gameObject.activeInHierarchy)
+            ShowUI(pauseMenu);
+    }
+
+    public void ResumeFromPause(UIPauseGame source)
+    {
+        ReleaseOwnedPauseState();
+        HideUI(source);
+    }
+
+    public void ReleasePauseForSceneExit()
+    {
+        ReleaseOwnedPauseState();
+    }
+
+    private void ApplyImmediatePauseState()
+    {
+        if (!ownsPauseState)
+        {
+            ownsPauseState = true;
+            timeScaleBeforePause = Time.timeScale;
+            audioListenerPauseBeforePause = AudioListener.pause;
+        }
+
+        Time.timeScale = 0f;
+        AudioListener.pause = true;
+    }
+
+    private void ReleaseOwnedPauseState()
+    {
+        if (!ownsPauseState)
+            return;
+
+        ownsPauseState = false;
+        Time.timeScale = timeScaleBeforePause;
+        AudioListener.pause = audioListenerPauseBeforePause;
+    }
+
+    private void ReleaseKopkariHeldInput()
+    {
+        ReleaseSprintForUIInterruption();
+        pickupProgress?.CancelImmediately();
     }
 
     private void ToggleCameraView()

@@ -290,22 +290,22 @@ public class KopkariResultUI : MonoBehaviour
             condition.Cooling < Constants.HorseConditionNum.Cool ||
             condition.Stamina < Constants.HorseConditionNum.Stamina)
         {
-            if (UIButtonActions.Instance == null)
+            if (KopkariMainUI.Instance == null)
             {
-                Debug.LogWarning("[KopkariResultUI] Cannot open the food page because UIButtonActions is missing.");
+                Debug.LogWarning("[KopkariResultUI] Cannot open the food page because KopkariMainUI is missing.");
                 return;
             }
 
             gameObject.SetActive(false);
-            UIButtonActions.Instance.OpenFoodPanel();
+            KopkariMainUI.Instance.OpenFoodPanel();
             return;
         }
 
         if (SceneLoadManager.Instance == null)
             return;
 
-        UIOverlayRoot.I?.ShowMovementPanelForScene(SceneLoadManager.SceneType.Beginer);
-        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Beginer);
+        UIOverlayRoot.I?.ShowMovementPanelForScene(SceneLoadManager.SceneType.Registan);
+        SceneLoadManager.Instance.ReloadOrBackScene(SceneLoadManager.SceneType.Registan);
     }
 
     public void BackLobby()

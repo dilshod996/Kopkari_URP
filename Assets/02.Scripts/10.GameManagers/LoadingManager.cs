@@ -53,6 +53,7 @@ public class LoadingManager : MonoBehaviour
                 break;
 
             case SceneLoadManager.SceneType.Beginer:
+            case SceneLoadManager.SceneType.Registan:
                 jomboyKopkariPanel.SetActive(true);
                 break;
 

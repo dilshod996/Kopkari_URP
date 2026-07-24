@@ -293,7 +293,7 @@ public class LobbyManager : MonoBehaviour
     public void TrainingRoom()
     {
         
-        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.Beginer, preloadAddresses);
+        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.Registan, preloadAddresses);
     }
     #endregion
 

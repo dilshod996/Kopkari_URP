@@ -14,6 +14,9 @@ public class AIKopkariRider : MonoBehaviour
     private static readonly int NeighAnimatorStateHash = Animator.StringToHash("Neigh");
     private static readonly List<AIKopkariRider> ActiveRiders = new List<AIKopkariRider>(16);
     private static readonly List<AIKopkariRider> ActiveGuards = new List<AIKopkariRider>(2);
+    private static bool tutorialRestrictionsActive;
+    private static bool tutorialMovementAllowed;
+    private static bool tutorialCompetitionAllowed;
 
     public enum UlakRole
     {
@@ -379,6 +382,28 @@ public class AIKopkariRider : MonoBehaviour
     public float CurrentGrip => currentGrip;
     public float MaximumGrip => Mathf.Max(1f, maximumGrip);
     public float GripNormalized => Mathf.Clamp01(currentGrip / MaximumGrip);
+
+    public static void SetRegistanTutorialRestrictions(
+        bool active,
+        bool allowMovementToUlak,
+        bool allowPickupAndCompetition)
+    {
+        tutorialRestrictionsActive = active;
+        tutorialMovementAllowed = !active || allowMovementToUlak;
+        tutorialCompetitionAllowed = !active || allowPickupAndCompetition;
+
+        for (int i = ActiveRiders.Count - 1; i >= 0; i--)
+        {
+            AIKopkariRider rider = ActiveRiders[i];
+            if (rider == null)
+            {
+                ActiveRiders.RemoveAt(i);
+                continue;
+            }
+
+            rider.ApplyRegistanTutorialRestrictions();
+        }
+    }
 
     /// <summary>
     /// Counts active gameplay AI near a point without allocations. Used by the
@@ -1793,6 +1818,13 @@ public class AIKopkariRider : MonoBehaviour
         ApplyBaseNavigationAvoidance();
         preparationState = PreparationState.Released;
         isGameplayActive = true;
+
+        if (tutorialRestrictionsActive)
+        {
+            ApplyRegistanTutorialRestrictions();
+            return;
+        }
+
         if (ulakRole == UlakRole.Competitor)
             StartUlakRecovery();
         ApplyConfiguredGameplaySpeed();
@@ -1871,6 +1903,13 @@ public class AIKopkariRider : MonoBehaviour
         if (pickUp == null)
             pickUp = GetComponentInChildren<MPickUp>(true);
 
+        if (tutorialRestrictionsActive && !tutorialCompetitionAllowed)
+        {
+            if (pickUp != null)
+                pickUp.enabled = false;
+            return;
+        }
+
         if (pickUp == null)
         {
             Debug.LogWarning(
@@ -1911,7 +1950,7 @@ public class AIKopkariRider : MonoBehaviour
     {
         CancelReturnToUlak();
 
-        if (isFakeUlakDistracted)
+        if (isFakeUlakDistracted || (tutorialRestrictionsActive && !tutorialCompetitionAllowed))
             return;
 
         // allaqachon kutayotgan bo‘lsa yoki uloq bor bo‘lsa – qayta boshlama
@@ -2150,7 +2189,8 @@ public class AIKopkariRider : MonoBehaviour
 
     private bool CanAttemptCarrierTakeover(GameObject ownerRoot)
     {
-        if (!isGameplayActive || hasLamb || ownerRoot == null ||
+        if ((tutorialRestrictionsActive && !tutorialCompetitionAllowed) ||
+            !isGameplayActive || hasLamb || ownerRoot == null ||
             ownerRoot == transform.root.gameObject || !CanTakeCarriedUlak)
         {
             return false;
@@ -2162,7 +2202,8 @@ public class AIKopkariRider : MonoBehaviour
 
     private bool CanContinuePickupFocus(Pickable focusedAtStart)
     {
-        return isGameplayActive &&
+        return (!tutorialRestrictionsActive || tutorialCompetitionAllowed) &&
+               isGameplayActive &&
                ulakRole == UlakRole.Competitor &&
                !hasLamb &&
                !pickupRequestPending &&
@@ -2176,6 +2217,12 @@ public class AIKopkariRider : MonoBehaviour
 
     private void HandleFocusedItemChanged(GameObject focusedObject)
     {
+        if (tutorialRestrictionsActive && !tutorialCompetitionAllowed)
+        {
+            CancelPickupFocus();
+            return;
+        }
+
         if (isFakeUlakDistracted)
         {
             CancelPickupFocus();
@@ -2829,6 +2876,17 @@ public class AIKopkariRider : MonoBehaviour
         if (!isGameplayActive || isFinished)
             return;
 
+        if (tutorialRestrictionsActive && !tutorialCompetitionAllowed)
+        {
+            CancelPickupFocus();
+            CancelCarrierEscape();
+            StopChaseObstacleSteering();
+            if (pickUp != null)
+                pickUp.enabled = false;
+            ai?.Stop();
+            return;
+        }
+
         KopkariManager diversionManager = KopkariManager.Instance;
         bool isThisRiderNow = ownerRoot != null && ownerRoot == transform.root.gameObject;
         if (!isFakeUlakDistracted && !isThisRiderNow &&
@@ -3388,7 +3446,8 @@ public class AIKopkariRider : MonoBehaviour
 
     private void MoveToCurrentUlak(bool returningAfterZoneExit = false)
     {
-        if (isFakeUlakDistracted)
+        if (isFakeUlakDistracted ||
+            (tutorialRestrictionsActive && !tutorialMovementAllowed))
             return;
 
         isUsingChaseDetour = false;
@@ -3419,7 +3478,8 @@ public class AIKopkariRider : MonoBehaviour
 
     private void MoveToCarrier(GameObject ownerRoot)
     {
-        if (isFakeUlakDistracted)
+        if (isFakeUlakDistracted ||
+            (tutorialRestrictionsActive && !tutorialCompetitionAllowed))
             return;
 
         if (ai == null || ownerRoot == null)
@@ -3450,7 +3510,8 @@ public class AIKopkariRider : MonoBehaviour
 
     private void StartUlakRecovery()
     {
-        if (isFakeUlakDistracted)
+        if (isFakeUlakDistracted ||
+            (tutorialRestrictionsActive && !tutorialMovementAllowed))
             return;
 
         StopUlakRecovery();
@@ -3530,6 +3591,46 @@ public class AIKopkariRider : MonoBehaviour
         return KopkariManager.Instance != null
             ? KopkariManager.Instance.UlakTransform
             : null;
+    }
+
+    private void ApplyRegistanTutorialRestrictions()
+    {
+        if (!isGameplayActive || isFinished)
+            return;
+
+        CancelPickupFocus();
+        CancelCarrierEscape();
+        CancelReturnToUlak();
+        StopUlakRecovery();
+        StopGuardingUlak();
+        StopTrapSetterRole();
+        StopChaseObstacleSteering();
+
+        if (orbitCoroutine != null)
+        {
+            StopCoroutine(orbitCoroutine);
+            orbitCoroutine = null;
+        }
+
+        if (pickUp != null)
+            pickUp.enabled = tutorialCompetitionAllowed;
+
+        if (!tutorialRestrictionsActive || tutorialCompetitionAllowed)
+        {
+            EnablePickupInteraction();
+            HandleGoatOwnerChanged(
+                KopkariManager.Instance != null
+                    ? KopkariManager.Instance.currentGoatOwner
+                    : null);
+            return;
+        }
+
+        ApplyConfiguredGameplaySpeed();
+        ApplyBaseNavigationAvoidance();
+        if (tutorialMovementAllowed)
+            MoveToCurrentUlak();
+        else
+            ai?.Stop();
     }
 
     private Transform GetFinishPoint()

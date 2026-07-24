@@ -129,6 +129,7 @@ public class KopkariManager : MonoBehaviour
     public int CurrentRoundXpAmount => CurrentRound != null ? CurrentRound.XpAmount : 0;
     public bool HasPreparedNextRound => nextRoundPrepared;
     public bool IsRoundWarmupActive { get; private set; }
+    public bool IsRoundStartCountdownActive { get; private set; }
     public bool IsFakeUlakDiversionActive => fakeUlakDiversionCoroutine != null;
     public bool CanActivateFakeUlakDiversion =>
         roomState == RoomState.GameStarted &&
@@ -220,6 +221,8 @@ public class KopkariManager : MonoBehaviour
     public static Action<bool> OnFakeUlakDiversionStateChanged;
     public static Action OnSceneReady;
     public static Action<bool> OnFirstPersonCamera;
+    public static event Action<float, float> OnLocalPlayerGripDamaged;
+    public static event Action OnLocalPlayerGripDepleted;
     public static bool IsSceneReady { get; private set; }
     #endregion
 
@@ -392,6 +395,7 @@ public class KopkariManager : MonoBehaviour
             StopCoroutine(roundTransitionCoroutine);
             roundTransitionCoroutine = null;
         }
+        IsRoundStartCountdownActive = false;
         KopkariMainUI.Instance?.HideRoundChange();
         KopkariMainUI.Instance?.HideRoundWarmupCountdown();
     }
@@ -483,6 +487,9 @@ public class KopkariManager : MonoBehaviour
     }
     private void MainGameTimeTick()
     {
+        if (RegistanTutorialController.ShouldPauseMainTime)
+            return;
+
         if (mainTime > 0f && !timeFinishedHandled)
         {
             mainTime -= Time.deltaTime;
@@ -1267,6 +1274,7 @@ public class KopkariManager : MonoBehaviour
             StopCoroutine(roundTransitionCoroutine);
             roundTransitionCoroutine = null;
         }
+        IsRoundStartCountdownActive = false;
 
         KopkariResultsManager.Instance?.EndRace();
     }
@@ -1353,6 +1361,7 @@ public class KopkariManager : MonoBehaviour
         // the player explicitly accepts the next round, so no rider can leave
         // while the round-change popup is still being shown.
         IsRoundWarmupActive = true;
+        IsRoundStartCountdownActive = false;
         localPlayerWarmupQualified = false;
         warmupTrigger?.Prepare(CurrentWarmupPosition, this);
         CacheRoundRiders();
@@ -1384,16 +1393,19 @@ public class KopkariManager : MonoBehaviour
     {
         localPlayerWarmupQualified = IsLocalPlayerAtWarmup();
 
-        float deadline = Time.unscaledTime + Mathf.Max(1f, CurrentWarmupDuration);
+        float warmupTimeRemaining = Mathf.Max(1f, CurrentWarmupDuration);
         int displayedValue = -1;
 
-        while (Time.unscaledTime < deadline)
+        while (warmupTimeRemaining > 0f)
         {
             localPlayerWarmupQualified |= IsLocalPlayerAtWarmup();
             if (localPlayerWarmupQualified)
                 break;
 
-            int nextValue = Mathf.Max(1, Mathf.CeilToInt(deadline - Time.unscaledTime));
+            if (!KopkariMainUI.IsGameplayPaused && !TutorialPauseController.IsPaused)
+                warmupTimeRemaining = Mathf.Max(0f, warmupTimeRemaining - Time.unscaledDeltaTime);
+
+            int nextValue = Mathf.Max(1, Mathf.CeilToInt(warmupTimeRemaining));
             if (nextValue != displayedValue)
             {
                 displayedValue = nextValue;
@@ -1406,7 +1418,7 @@ public class KopkariManager : MonoBehaviour
         }
 
         localPlayerWarmupQualified |= IsLocalPlayerAtWarmup();
-        if (!localPlayerWarmupQualified && Time.unscaledTime >= deadline)
+        if (!localPlayerWarmupQualified && warmupTimeRemaining <= 0f)
         {
             KopkariMainUI.Instance?.ShowRoundWarmupCountdown(
                 0,
@@ -1423,15 +1435,21 @@ public class KopkariManager : MonoBehaviour
         // Hide the warmup trigger and particle as soon as the player enters it.
         // The following countdown is the independent three-second round start.
         IsRoundWarmupActive = false;
+        IsRoundStartCountdownActive = true;
         warmupTrigger?.Deactivate();
         KopkariMainUI.Instance?.HideRoundWarmupCountdown();
         yield return null;
 
-        float startDeadline = Time.unscaledTime + Mathf.Max(0f, roundStartCountdown);
+        float roundStartTimeRemaining = Mathf.Max(0f, roundStartCountdown);
         displayedValue = -1;
-        while (Time.unscaledTime < startDeadline)
+        while (roundStartTimeRemaining > 0f)
         {
-            int nextValue = Mathf.Max(1, Mathf.CeilToInt(startDeadline - Time.unscaledTime));
+            if (!KopkariMainUI.IsGameplayPaused && !TutorialPauseController.IsPaused)
+                roundStartTimeRemaining = Mathf.Max(
+                    0f,
+                    roundStartTimeRemaining - Time.unscaledDeltaTime);
+
+            int nextValue = Mathf.Max(1, Mathf.CeilToInt(roundStartTimeRemaining));
             if (nextValue != displayedValue)
             {
                 displayedValue = nextValue;
@@ -1443,6 +1461,7 @@ public class KopkariManager : MonoBehaviour
         }
 
         KopkariMainUI.Instance?.HideRoundWarmupCountdown();
+        IsRoundStartCountdownActive = false;
         roundTransitionCoroutine = null;
         StartGame();
     }
@@ -1456,6 +1475,7 @@ public class KopkariManager : MonoBehaviour
         timeFinishedHandled = true;
         nextRoundPrepared = false;
         IsRoundWarmupActive = false;
+        IsRoundStartCountdownActive = false;
         roundTransitionCoroutine = null;
         KopkariMainUI.Instance?.SetMatchStatusVisible(false);
 
@@ -1775,13 +1795,27 @@ public class KopkariManager : MonoBehaviour
         KopkariMainUI mainUI = KopkariMainUI.Instance;
         mainUI?.ShowCarrierGrip(currentGrip, maximumGrip);
         if (gripWasLost)
+        {
             mainUI?.PlayLocalCarrierGripLossFeedback(currentGrip <= 0.001f);
+            OnLocalPlayerGripDamaged?.Invoke(currentGrip, maximumGrip);
+        }
     }
 
     private void HandleLocalPlayerGripDepleted()
     {
+        OnLocalPlayerGripDepleted?.Invoke();
         if (IsLocalPlayerCurrentCarrier)
             TriggerEvent();
+    }
+
+    public void SetRegistanTutorialUlakVisible(bool visible)
+    {
+        Transform ulak = UlakTransform;
+        if (ulak != null && ulak.gameObject.activeSelf != visible)
+            ulak.gameObject.SetActive(visible);
+
+        if (ulakBottomObject != null && ulakBottomObject.gameObject.activeSelf != visible)
+            ulakBottomObject.gameObject.SetActive(visible);
     }
 
     private void HandleLocalPlayerWalkZoneDamaged(bool damaged)

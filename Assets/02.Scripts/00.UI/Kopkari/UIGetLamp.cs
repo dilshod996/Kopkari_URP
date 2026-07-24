@@ -38,6 +38,11 @@ public class UIGetLamp : MonoBehaviour
 
 
     public static Action OnPlayerGotLamp;
+    public static event Action<bool> OnPlayerHoldChanged;
+    public static event Action<float> OnPlayerHoldProgressChanged;
+
+    public float Progress01 => progress01;
+    public bool IsHolding => isHolding;
     private void OnEnable()
     {
         buildRate = (holdTime > 0f) ? 1f / holdTime : 999f;
@@ -70,6 +75,7 @@ public class UIGetLamp : MonoBehaviour
     {
         KopkariMainUI.Instance?.DisableWebSnare();
         isHolding = true;
+        OnPlayerHoldChanged?.Invoke(true);
         RefreshCompetitiveHoldTime(true);
 
         if (fillImage)
@@ -102,6 +108,7 @@ public class UIGetLamp : MonoBehaviour
 
         ClearTrackedPointer();
         isHolding = false;
+        OnPlayerHoldChanged?.Invoke(false);
         StopRunning();
 
         if (decayRate > 0f && progress01 > 0f)
@@ -117,6 +124,7 @@ public class UIGetLamp : MonoBehaviour
     public void FocusLost()
     {
         isHolding = false;
+        OnPlayerHoldChanged?.Invoke(false);
         StopRunning();
 
         if (progress01 > 0f)
@@ -154,6 +162,8 @@ public class UIGetLamp : MonoBehaviour
         ClearTrackedPointer();
         StopRunning();
         progress01 = 0f;
+        OnPlayerHoldChanged?.Invoke(false);
+        OnPlayerHoldProgressChanged?.Invoke(0f);
 
         if (fillImage != null)
         {
@@ -175,6 +185,7 @@ public class UIGetLamp : MonoBehaviour
                 : buildRate;
             progress01 += activeBuildRate * Time.deltaTime;
             if (fillImage) fillImage.fillAmount = progress01;
+            OnPlayerHoldProgressChanged?.Invoke(Mathf.Clamp01(progress01));
             yield return null;
         }
 
@@ -185,6 +196,7 @@ public class UIGetLamp : MonoBehaviour
             if (resetAfterPerform)
             {
                 progress01 = 0f;
+                OnPlayerHoldProgressChanged?.Invoke(0f);
                 if (fillImage)
                 {
                     fillImage.fillAmount = 0f;
@@ -204,6 +216,7 @@ public class UIGetLamp : MonoBehaviour
         {
             progress01 -= decayRate * Time.deltaTime;
             if (fillImage) fillImage.fillAmount = progress01;
+            OnPlayerHoldProgressChanged?.Invoke(Mathf.Clamp01(progress01));
             yield return null;
         }
 
@@ -222,12 +235,14 @@ public class UIGetLamp : MonoBehaviour
             elapsed += Time.deltaTime;
             progress01 = Mathf.Lerp(startProgress, 0f, Mathf.Clamp01(elapsed / duration));
             if (fillImage) fillImage.fillAmount = progress01;
+            OnPlayerHoldProgressChanged?.Invoke(Mathf.Clamp01(progress01));
             yield return null;
         }
 
         if (!isHolding)
         {
             progress01 = 0f;
+            OnPlayerHoldProgressChanged?.Invoke(0f);
             if (fillImage) fillImage.fillAmount = 0f;
             TryHideWhenEmpty();
         }
@@ -309,6 +324,7 @@ public class UIGetLamp : MonoBehaviour
     private void OnDisable()
     {
         isHolding = false;
+        OnPlayerHoldChanged?.Invoke(false);
         ClearTrackedPointer();
         StopRunning();
     }

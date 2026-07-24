@@ -259,9 +259,30 @@ public class GameFood : MonoBehaviour
             Clear();
             //PlayAgainText();
             SetData();
-            UIOverlayRoot.I.ShowMovementPanelForScene(sceneType);
-            SceneLoadManager.Instance.ReloadOrBackScene(sceneType);
+            SceneLoadManager.SceneType replayScene = ResolveReplaySceneType();
+            if (replayScene == SceneLoadManager.SceneType.None)
+            {
+                Debug.LogWarning("[GameFood] Replay scene could not be resolved.");
+                return;
+            }
+
+            UIOverlayRoot.I?.ShowMovementPanelForScene(replayScene);
+            SceneLoadManager.Instance?.ReloadOrBackScene(replayScene);
         }
+    }
+
+    private SceneLoadManager.SceneType ResolveReplaySceneType()
+    {
+        if (sceneType != SceneLoadManager.SceneType.None)
+            return sceneType;
+
+        if (SceneLoadManager.Instance == null)
+            return SceneLoadManager.SceneType.None;
+
+        SceneLoadManager.SceneType currentScene = SceneLoadManager.Instance.CurrentSceneType;
+        return currentScene == SceneLoadManager.SceneType.Home
+            ? SceneLoadManager.SceneType.None
+            : currentScene;
     }
     private void PlayResourceAnim()
     {

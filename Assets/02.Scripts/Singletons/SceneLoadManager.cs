@@ -32,7 +32,8 @@ public class SceneLoadManager : MonoBehaviour
         SecondRacing, //Zarafshan
         EgyptRacing,
         Kansas,
-        Sibir
+        Sibir,
+        Registan
     }
 
     public SceneType CurrentSceneType  = SceneType.None;
@@ -112,14 +113,17 @@ public class SceneLoadManager : MonoBehaviour
 
     private static string GetUnitySceneName(SceneType sceneType)
     {
-        return sceneType == SceneType.Beginer ? RegistanSceneName : sceneType.ToString();
+        // Keep Beginer as a legacy alias for existing serialized references.
+        return sceneType == SceneType.Registan || sceneType == SceneType.Beginer
+            ? RegistanSceneName
+            : sceneType.ToString();
     }
 
     private static bool TryGetSceneType(string sceneName, out SceneType sceneType)
     {
         if (sceneName == RegistanSceneName || sceneName == "Registan")
         {
-            sceneType = SceneType.Beginer;
+            sceneType = SceneType.Registan;
             return true;
         }
 

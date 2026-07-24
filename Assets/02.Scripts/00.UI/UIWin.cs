@@ -139,6 +139,6 @@ public class UIWin : MonoBehaviour
 
     private void PlayAgain()
     {
-        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Beginer);
+        SceneLoadManager.Instance.LoadScene(SceneLoadManager.SceneType.Registan);
     }
 }
