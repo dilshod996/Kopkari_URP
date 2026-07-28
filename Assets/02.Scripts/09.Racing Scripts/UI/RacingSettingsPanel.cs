@@ -7,6 +7,8 @@ using UnityEngine.UI;
 
 public class RacingSettingsPanel : MonoBehaviour
 {
+    public static event Action<RacingControllerType> OnControllerApplied;
+
     public const string VibrationPrefsKey = "VibrationState";
     private const int TitleTextId = 26;
     private const int SoundTextId = 562;
@@ -52,7 +54,6 @@ public class RacingSettingsPanel : MonoBehaviour
 
     [Header("Runtime Controller")]
     [SerializeField] private JoystickTurnMixer joystickTurnMixer;
-    [SerializeField] private bool findJoystickTurnMixerIfMissing = true;
 
     private bool _ignoreUiEvents;
     private bool _pendingSoundOn;
@@ -64,8 +65,12 @@ public class RacingSettingsPanel : MonoBehaviour
         if (hapticReceiver == null)
             hapticReceiver = FindObjectOfType<HapticReceiver>();
 
-        if (joystickTurnMixer == null && findJoystickTurnMixerIfMissing)
-            joystickTurnMixer = FindObjectOfType<JoystickTurnMixer>();
+        if (joystickTurnMixer == null)
+        {
+            Debug.LogError(
+                $"{nameof(RacingSettingsPanel)} requires a {nameof(JoystickTurnMixer)} Inspector reference.",
+                this);
+        }
     }
 
     private void OnEnable()
@@ -151,20 +156,36 @@ public class RacingSettingsPanel : MonoBehaviour
 
     public void SaveAndClose()
     {
+        RacingControllerType savedController =
+            RacingControllerSelecterUI.GetSavedControllerOrDefault();
+        bool controllerChanged = savedController != _pendingControllerType;
+
         SetSoundState(_pendingSoundOn);
         ApplyVibrationState(_pendingVibrationOn);
-        PlayerPrefs.SetInt(RacingControllerSelecterUI.ControllerPrefsKey, (int)_pendingControllerType);
-        PlayerPrefs.Save();
-
-        SetControllerUi(_pendingControllerType);
-
-        if (joystickTurnMixer == null && findJoystickTurnMixerIfMissing)
-            joystickTurnMixer = FindObjectOfType<JoystickTurnMixer>();
 
         if (joystickTurnMixer != null)
+        {
             joystickTurnMixer.SetControllerType(_pendingControllerType);
+            PlayerPrefs.SetInt(
+                RacingControllerSelecterUI.ControllerPrefsKey,
+                (int)_pendingControllerType);
+        }
+        else
+        {
+            controllerChanged = false;
+            _pendingControllerType = savedController;
+        }
+
+        PlayerPrefs.Save();
+        SetControllerUi(_pendingControllerType);
 
         ClosePanel();
+
+        if (controllerChanged && joystickTurnMixer != null)
+        {
+            UIButtonActions.Instance?.ReleaseRacingPauseForTutorial();
+            OnControllerApplied?.Invoke(_pendingControllerType);
+        }
     }
 
     public void ClosePanel()

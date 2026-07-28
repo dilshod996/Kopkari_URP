@@ -111,8 +111,6 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private EnvironmentChangeUI environmentChangePanel;
     [SerializeField] private EnvironmentLoadingUI environmentLoadingUI;
     [SerializeField] private ConditionCheck conditionCheckObj;
-    [SerializeField] private GameObject tutorialPanels;
-    [SerializeField] private EsportUITutorial tutorial;
     [SerializeField] private LevelUPUI levelUPUI;
 
     #region Horse and Player Data
@@ -174,7 +172,15 @@ public class HomeMainUI : MonoBehaviour
     #endregion
 
     public event Action<bool> OnCoinsButtonPressed;
+    public event Action SettingsPanelShown;
+    public event Action SettingsPanelClosed;
+    public event Action UserDetailsPanelShown;
+    public event Action UserDetailsPanelClosed;
+    public event Action GameModePanelShown;
+    public event Action RacingMapsShown;
+    public event Action FoodPanelShown;
     private Coroutine levelUpCheckRoutine;
+    private Coroutine homeTutorialResumeRoutine;
     private void Awake()
     {
         if (Instance == null)
@@ -230,7 +236,6 @@ public class HomeMainUI : MonoBehaviour
         collectionBtn.onClick.AddListener(OpenCollectionPage);
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
-        NameTutorial();
         CheckTutorialRewardOnReturn();
     }
     private void OnDisable()
@@ -555,7 +560,10 @@ public class HomeMainUI : MonoBehaviour
     }
     public void SHowFoodPanel()
     {
-        MoveHomePanelCameraIn(GetHomePanelCameraPosition(FoodCameraPosition), FoodCameraRotation, () => ShowUI(foodPanel));
+        MoveHomePanelCameraIn(
+            GetHomePanelCameraPosition(FoodCameraPosition),
+            FoodCameraRotation,
+            () => ShowUI(foodPanel, () => FoodPanelShown?.Invoke()));
     }
     public void HideFoodPanel()
     {
@@ -709,7 +717,11 @@ public class HomeMainUI : MonoBehaviour
     #region Daily Reward
     public void DailyReward()
     {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
+        if (HomeTutorialController.IsTutorialActive)
+            return;
+
+        if (string.IsNullOrWhiteSpace(
+                PlayerPrefs.GetString(Constants.Player.UsernameKey, string.Empty)))
         {
             return;
         }
@@ -963,14 +975,14 @@ public class HomeMainUI : MonoBehaviour
     {
         ShowUI(playMode.gameObject, () =>
         {
-            //ShowGameModesTutorial();
+            GameModePanelShown?.Invoke();
         });
     }
     public void OpenRacingMaps()
     {
         ShowUI(racingMaps, () =>
         {
-            //ShowRacingRoomTutorial();
+            RacingMapsShown?.Invoke();
         });
     }
     public void OpenKopkariMaps()
@@ -989,35 +1001,27 @@ public class HomeMainUI : MonoBehaviour
     {
         ShowUI(settingsPanel, () =>
         {
-            ShowLanguageDropdown();
+            SettingsPanelShown?.Invoke();
         });
     }
     public void CloseSettingsPanel()
     {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Settings))
-        {
-            tutorialPanels.SetActive(false);
-            tutorial.Finish();
-            PlayerPrefs.SetInt(Constants.Tutorial.Settings, 1);
-            HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
-        }
         HideUI(settingsPanel, () =>
         {
-            ShowNameBtn();
+            SettingsPanelClosed?.Invoke();
         });
     }
     public void OpenUserDetailsPanel()
     {
         ShowUI(userDetailsPanel, () => {
-            ShowNameField();
+            UserDetailsPanelShown?.Invoke();
         });
-        CloseTutorialPanel();
     }
     public void CloseUserDetailsPanel()
     {
         HideUI(userDetailsPanel, () =>
         {
-            ShowOptionalPlayTutorial();
+            UserDetailsPanelClosed?.Invoke();
         });
     }
     public void OpenCollectionPage()
@@ -1079,42 +1083,18 @@ public class HomeMainUI : MonoBehaviour
     }
     #endregion
 
-    #region Tutorials
+    #region Home Tutorial Coordination
 
-    #region Name Tutorial
-    public void NameTutorial()
-    {
-
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Settings))
-        {
-            ShowSettingsBtn();
-        }
-        else if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
-        {
-            ShowNameBtn();
-        }
-        else if (!PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
-        {
-            //StartCoroutine(ShowPlayButtonDelay());
-        }
-
-    }
     private void HandlePlayerDataLoaded()
     {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
-        {
-            NameTutorial();
-            return;
-        }
-
-        if (tutorialPanels != null && tutorialPanels.activeSelf)
-            tutorialPanels.SetActive(false);
-
-        tutorial?.Finish();
-        TryOpenDailyRewardIfAvailable();
+        if (!HomeTutorialController.IsTutorialActive)
+            TryOpenDailyRewardIfAvailable();
     }
     private void CheckTutorialRewardOnReturn()
     {
+        if (HomeTutorialController.IsTutorialActive)
+            return;
+
         bool tutorialPlayed = PlayerPrefs.GetInt(Constants.Tutorial.TutorialPlay, 0) == 1;
         bool rewardGiven = PlayerPrefs.GetInt(Constants.Tutorial.TutorialReward, 0) == 1;
 
@@ -1127,148 +1107,33 @@ public class HomeMainUI : MonoBehaviour
         PlayerPrefs.SetInt(Constants.Tutorial.TutorialReward, 1);
         PlayerPrefs.Save();
     }
-    public void ShowNameBtn()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.Name))
-        {
-            return;
-        }
-        tutorial.ShowStep(0);
-        tutorialPanels.SetActive(true);
-    }
-    IEnumerator ShowPlayButtonDelay()
-    {
-        yield return new WaitForSeconds(0.6f);
-        ShowPlayButton();
-    }
-    public void ShowNameField()
-    {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
-        {
-            tutorial.ShowStep(1);
-            tutorialPanels.SetActive(true);
-        }
-    }
-    public void ShowSaveBtn()
-    {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
-        {
-            tutorial.ShowStep(2);
-            tutorialPanels.SetActive(true);
-        }
-    }
-    public void FinishNameTutorial()
-    {
-        if (!PlayerPrefs.HasKey(Constants.Tutorial.Name))
-        {
-            tutorialPanels.SetActive(false);
-            tutorial.Finish();
-            PlayerPrefs.SetInt(Constants.Tutorial.Name, 1);
-            HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
-        }
-        CloseUserDetailsPanel();
-    }
-    public void CloseTutorialPanel()
-    {
-        if (tutorialPanels.activeSelf)
-        {
-            tutorialPanels.SetActive(false);
-            //tutorial.Finish();
-        }
-    }
-    #endregion
 
-    #region Play Tutorial
-    public void ShowOptionalPlayTutorial()
+    public void OnHomeTutorialFinishedForTesting()
     {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.OptionalTutorial))
-            return;
-        PlayerPrefs.SetInt(Constants.Tutorial.OptionalTutorial, 1);
+        if (homeTutorialResumeRoutine != null)
+            StopCoroutine(homeTutorialResumeRoutine);
 
-        string title = GetLocalizedText(491, "Tutorial");
-        string description = $"{GetLocalizedText(492, "Would you like to play the tutorial?")}\n\nFirst ride gives 4000 Nyufiy + 100 XP.";
-        string okText = GetLocalizedText(1, "Yes");
-        string cancelText = GetLocalizedText(2, "No");
+        homeTutorialResumeRoutine = StartCoroutine(ResumeHomePopupsAfterTutorial());
+    }
 
-        UIOverlayRoot.I.Confirm(
-        title: title,
-        desc: description,
-        okText: okText,
-        cancelText: cancelText,
-        onOk: MoveTutorialRoom,
-        onCancel: null 
-    );
-    }
-    private string GetLocalizedText(int id, string fallback)
+    private IEnumerator ResumeHomePopupsAfterTutorial()
     {
-        return LanguageManager.Instance != null
-            ? LanguageManager.Instance.GetText(id)
-            : fallback;
-    }
-    public void MoveTutorialRoom()
-    {
-        List<string> preloadRacing = new List<string>() { Constants.RoomSound.RacingSound };
-        UIOverlayRoot.I.ShowPanel(UIPanelType.RacingTutorial, LanguageManager.Instance.GetText(486), instant: false, trackSceneProgress: true);
-        HomeHapticsManager.Instance.Play(HomeHapticId.Success);
-        SceneLoadManager.Instance.LoadSceneNew(SceneLoadManager.SceneType.TrainingRacing, preloadRacing);
-    }
-    public void ShowPlayButton()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
+        while ((settingsPanel != null && settingsPanel.activeInHierarchy) ||
+               (userDetailsPanel != null && userDetailsPanel.activeInHierarchy))
         {
-            return;
+            yield return null;
         }
-        tutorialPanels.SetActive(true);
-        tutorial.ShowStep(3);
-    }
-    public void ShowGameModesTutorial()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
-        {
-            return;
-        }
-        tutorialPanels.SetActive(true);
-        tutorial.ShowStep(4);
-    }
-    public void ShowRacingRoomTutorial()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.TutorialPlay))
-        {
-            return;
-        }
-        tutorial.ShowStep(5);
-    }
-    #endregion
 
-    #region Settings
-    public void ShowSettingsBtn()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.Settings))
-        {
-            return;
-        }
-        tutorialPanels.SetActive(true);
-        tutorial.ShowStep(6);
+        CheckTutorialRewardOnReturn();
+        while (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy)
+            yield return null;
+
+        DailyReward();
+        if (levelUpCheckRoutine != null)
+            StopCoroutine(levelUpCheckRoutine);
+        levelUpCheckRoutine = StartCoroutine(CheckLevelUpAfterDailyReward());
+        homeTutorialResumeRoutine = null;
     }
-    public void ShowLanguageDropdown()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.Settings))
-        {
-            return;
-        }
-        tutorialPanels.SetActive(true);
-        tutorial.ShowStep(7);
-    }
-    public void ShowSettingsSave()
-    {
-        if (PlayerPrefs.HasKey(Constants.Tutorial.Settings))
-        {
-            return;
-        }
-        tutorialPanels.SetActive(true);
-        tutorial.ShowStep(8);
-    }
-    #endregion
 
     #endregion
 
@@ -1278,7 +1143,8 @@ public class HomeMainUI : MonoBehaviour
         yield return null;
 
         while ((dailyRewardUI != null && dailyRewardUI.gameObject.activeInHierarchy) ||
-               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy))
+               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy) ||
+               HomeTutorialController.IsTutorialActive)
         {
             yield return null;
         }

@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using System.Collections.Generic;
 using TMPro;
@@ -6,6 +7,10 @@ using UnityEngine.UI;
 
 public class MapShowPopup : MonoBehaviour
 {
+    public event Action<MapCard.MapDetailsData> MapDetailsShown;
+    public event Action<MapCard.MapDetailsData> RacingRoomEntryRequested;
+    public event Action<HorseConditionStats> HorseConditionEntryBlocked;
+
     [SerializeField] private TMP_Text mapName;
     [SerializeField] private Image mapImage;
     [SerializeField] private Image popupBackgroundImage;
@@ -165,6 +170,7 @@ public class MapShowPopup : MonoBehaviour
         UpdateDetailsSections(isUnlocked);
         UpdateStatusText(isUnlocked);
         ConfigurePrimaryButton(isUnlocked);
+        MapDetailsShown?.Invoke(currentMapData);
     }
 
     public void ClosePopup()
@@ -406,6 +412,8 @@ public class MapShowPopup : MonoBehaviour
 
     private void EnterPlayRoom()
     {
+        RacingRoomEntryRequested?.Invoke(currentMapData);
+
         HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
             HorseConditionStatsService.GetCachedMaxOrDefault());
 
@@ -414,6 +422,7 @@ public class MapShowPopup : MonoBehaviour
             current.Stamina < Constants.HorseConditionNum.Stamina)
         {
             HomeHapticsManager.Instance.Play(HomeHapticId.LowCondition);
+            HorseConditionEntryBlocked?.Invoke(current);
             HomeMainUI.Instance?.SHowFoodPanel();
             CloseMapField();
             return;

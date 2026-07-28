@@ -1,0 +1,44 @@
+Add these objects inside the "translations" array in language.json:
+
+{
+  "Id": 794,
+  "english": "Horse Condition",
+  "russian": "Состояние лошади",
+  "uzbek": "Ot holati",
+  "kazak": "Аттың жағдайы"
+},
+{
+  "Id": 795,
+  "english": "Your horse needs enough Power, Cooling, and Stamina before entering a race.",
+  "russian": "Перед гонкой лошади нужны достаточные сила, охлаждение и выносливость.",
+  "uzbek": "Poygaga kirishdan oldin otingizda yetarli kuch, sovish va chidamlilik bo'lishi kerak.",
+  "kazak": "Жарысқа кіру үшін атыңыздың күші, салқындауы және төзімділігі жеткілікті болуы керек."
+},
+{
+  "Id": 796,
+  "english": "Restore Condition",
+  "russian": "Восстановите состояние",
+  "uzbek": "Holatni tiklang",
+  "kazak": "Жағдайын қалпына келтіріңіз"
+},
+{
+  "Id": 797,
+  "english": "Choose food that restores the condition your horse needs.",
+  "russian": "Выберите корм, который восстановит нужные показатели лошади.",
+  "uzbek": "Otingizga kerakli holatni tiklaydigan yemni tanlang.",
+  "kazak": "Атыңызға қажетті көрсеткішті қалпына келтіретін азықты таңдаңыз."
+},
+{
+  "Id": 798,
+  "english": "Feed Your Horse",
+  "russian": "Покормите лошадь",
+  "uzbek": "Otingizni boqing",
+  "kazak": "Атыңызды тамақтандырыңыз"
+},
+{
+  "Id": 799,
+  "english": "Confirm the food to restore your horse's condition.",
+  "russian": "Подтвердите корм, чтобы восстановить состояние лошади.",
+  "uzbek": "Ot holatini tiklash uchun yemni tasdiqlang.",
+  "kazak": "Аттың жағдайын қалпына келтіру үшін азықты растаңыз."
+}

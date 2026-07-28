@@ -804,6 +804,46 @@ public class LobbyManager : MonoBehaviour
         }
     }
     #endregion
+
+    public void DeleteRegistanTutorialProgressForTesting()
+    {
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.DeleteKopkariTutorialProgressForTesting();
+            return;
+        }
+
+        KopkariTutorialProgress.DeleteAllLocalProgress();
+        Debug.LogWarning(
+            "Registan tutorial PlayerPrefs were deleted, but DataManager was unavailable for Firebase deletion.");
+    }
+
+    public void DeleteRacingTutorialProgressForTesting()
+    {
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.DeleteRacingTutorialProgressForTesting();
+            return;
+        }
+
+        RacingTutorialProgress.DeleteAllLocalProgress();
+        Debug.LogWarning(
+            "Racing tutorial PlayerPrefs were deleted, but DataManager was unavailable for Firebase deletion.");
+    }
+
+    public void DeleteHomeTutorialProgressForTesting()
+    {
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.DeleteHomeTutorialProgressForTesting();
+            return;
+        }
+
+        HomeTutorialProgress.DeleteAllLocalProgress();
+        Debug.LogWarning(
+            "Home tutorial PlayerPrefs were deleted, but DataManager was unavailable for Firebase deletion.");
+    }
+
     private void OnDestroy()
     {
         if (_currentEnvInstance != null)

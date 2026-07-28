@@ -1,0 +1,70 @@
+public static class RacingTutorialTextIds
+{
+    public const int None = 0;
+
+    public const int TryIt = 706;
+    public const int Practice = 707;
+    public const int YourTurn = 708;
+    public const int Good = 709;
+    public const int Continue = 710;
+    public const int Ride = 711;
+    public const int Done = 712;
+
+    public const int StartBoost = 713;
+    public const int StartBoostDescription = 714;
+    public const int ReinsControl = 715;
+    public const int ReinsControlDescription = 716;
+    public const int TiltControl = 717;
+    public const int TiltControlDescription = 718;
+    public const int ButtonControl = 719;
+    public const int ButtonControlDescription = 720;
+    public const int PullLeftRein = 721;
+    public const int TiltLeft = 722;
+    public const int HoldLeftButton = 723;
+    public const int PullRightRein = 724;
+    public const int TiltRight = 725;
+    public const int HoldRightButton = 726;
+    public const int ChangeCamera = 727;
+    public const int ChangeCameraDescription = 728;
+    public const int FirstPerson = 729;
+    public const int FirstPersonDescription = 730;
+    public const int LookBehind = 731;
+    public const int LookBehindDescription = 732;
+    public const int LookingBack = 733;
+    public const int ReleaseLookBackDescription = 734;
+    public const int Sprint = 735;
+    public const int SprintDescription = 736;
+    public const int HoldSprint = 737;
+    public const int HoldSprintDescription = 738;
+    public const int SprintStamina = 739;
+    public const int SprintStaminaDescription = 740;
+
+    public const int ShieldAdded = 741;
+    public const int ShieldAddedDescription = 742;
+    public const int SlowTrapAdded = 743;
+    public const int SlowTrapAddedDescription = 744;
+    public const int WebSnareAdded = 745;
+    public const int WebSnareAddedDescription = 746;
+    public const int SprintRefilled = 747;
+    public const int SprintRefilledDescription = 748;
+    public const int AutoSprint = 749;
+    public const int AutoSprintDescription = 750;
+    public const int SlowingZone = 751;
+    public const int SlowingZoneDescription = 752;
+    public const int ObstacleDamage = 753;
+    public const int ObstacleDamageDescription = 754;
+    public const int RaceMap = 755;
+    public const int RaceMapDescription = 756;
+    public const int RaceLeaderboard = 757;
+    public const int RaceLeaderboardDescription = 758;
+    public const int RivalAttack = 759;
+    public const int RivalAttackDescription = 760;
+    public const int SpecialGate = 761;
+    public const int SpecialGateDescription = 762;
+    public const int RaceFinished = 763;
+    public const int RaceFinishedDescription = 764;
+    public const int Results = 765;
+    public const int ResultsDescription = 766;
+    public const int ThirdPerson = 767;
+    public const int ThirdPersonDescription = 768;
+}

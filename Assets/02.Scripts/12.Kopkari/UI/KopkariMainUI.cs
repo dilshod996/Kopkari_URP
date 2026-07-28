@@ -44,6 +44,9 @@ public class KopkariMainUI : MonoBehaviour
     [SerializeField] private TMP_Text webSnareCounter;
     [SerializeField] private TMP_Text fakeUlakCountText;
     [SerializeField, Min(0.1f)] private float fakeUlakCooldown = 3f;
+    [Header("Web Snare")]
+    [SerializeField, Min(0.1f)] private float webSnareEquipCooldown = 0.75f;
+    [SerializeField, Min(0.1f)] private float webSnareShotCooldown = 1f;
     #endregion
 
     #region Effects / Sprint
@@ -144,6 +147,9 @@ public class KopkariMainUI : MonoBehaviour
     private bool isPointerHeld;
     private bool autoSprintBoostActive;
     private bool webSnareShotActive;
+    private float nextWebSnareEquipTime;
+    private Coroutine webSnareEquipCooldownRoutine;
+    private Coroutine webSnareShotCooldownRoutine;
     private bool fakeUlakCooldownActive;
     private bool fakeUlakFocusAvailable;
     private bool horseHealthDepletionHandled;
@@ -330,6 +336,12 @@ public class KopkariMainUI : MonoBehaviour
         StopAllCoroutines();
         canvasRoutine = null;
         moveBottomRoutine = null;
+        webSnareEquipCooldownRoutine = null;
+        webSnareShotCooldownRoutine = null;
+        nextWebSnareEquipTime = 0f;
+        webSnareShotActive = false;
+        if (chainContainerBtn != null)
+            chainContainerBtn.interactable = true;
         autoSprintBoostActive = false;
         ReleaseOwnedPauseState();
     }
@@ -1349,11 +1361,23 @@ public class KopkariMainUI : MonoBehaviour
 
     public void OnWebSnoreButtonDown(BaseEventData data)
     {
+        if (!WeaponInHand ||
+            chainContainerBtn == null ||
+            !chainContainerBtn.gameObject.activeInHierarchy ||
+            !chainContainerBtn.interactable ||
+            webSnareShotActive)
+        {
+            return;
+        }
+
+        // Lock before spending inventory so multi-touch cannot enter twice.
+        chainContainerBtn.interactable = false;
         bool success = TrySpendItem(Constants.PlayerItems.WebSnare, 1);
 
         if (!success)
         {
             UpdateWebCount(GetItemAmount(Constants.PlayerItems.WebSnare));
+            chainContainerBtn.interactable = true;
             HomeHapticsManager.Instance?.Play(HomeHapticId.LowCondition);
             return;
         }
@@ -1363,16 +1387,20 @@ public class KopkariMainUI : MonoBehaviour
         UpdateWebCount(countSnare);
         webSnareShotActive = true;
         OnWebSnareStart?.Invoke();
-        StartCoroutine(OnShootCooling(countSnare));
+        if (webSnareShotCooldownRoutine != null)
+            StopCoroutine(webSnareShotCooldownRoutine);
+        webSnareShotCooldownRoutine = StartCoroutine(OnShootCooling(countSnare));
     }
 
     private IEnumerator OnShootCooling(int snareCount)
     {
-        chainContainerBtn.interactable = false;
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.1f, webSnareShotCooldown));
 
-        if (snareCount <= 0) OnClickChain();
-        else chainContainerBtn.interactable = true;
+        webSnareShotCooldownRoutine = null;
+        if (snareCount <= 0)
+            SetChainEquipped(false);
+        else if (chainContainerBtn != null && chainContainerBtn.gameObject.activeInHierarchy)
+            chainContainerBtn.interactable = true;
     }
 
     public void OnWebSnoreButtonUp(BaseEventData data)
@@ -1405,19 +1433,49 @@ public class KopkariMainUI : MonoBehaviour
 
     public void OnClickChain()
     {
-        bool newState = !chainContainerBtn.gameObject.activeSelf;
-        if (!chainContainerBtn.interactable) chainContainerBtn.interactable = true;
+        if (chainContainerBtn == null || Time.unscaledTime < nextWebSnareEquipTime)
+            return;
 
-        WeaponInHand = newState;
-        chainContainerBtn.gameObject.SetActive(newState);
+        nextWebSnareEquipTime =
+            Time.unscaledTime + Mathf.Max(0.1f, webSnareEquipCooldown);
+        SetChainEquipped(!chainContainerBtn.gameObject.activeSelf);
+
+        if (webSnareEquipCooldownRoutine != null)
+            StopCoroutine(webSnareEquipCooldownRoutine);
+        webSnareEquipCooldownRoutine = StartCoroutine(ReleaseWebSnareEquipCooldown());
+    }
+
+    private IEnumerator ReleaseWebSnareEquipCooldown()
+    {
+        if (shootWebBtn != null)
+            shootWebBtn.interactable = false;
+
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.1f, webSnareEquipCooldown));
+
+        webSnareEquipCooldownRoutine = null;
+        if (shootWebBtn != null)
+            shootWebBtn.interactable =
+                GetItemAmount(Constants.PlayerItems.WebSnare) > 0;
+    }
+
+    private void SetChainEquipped(bool equipped)
+    {
+        if (chainContainerBtn == null)
+            return;
+
+        WeaponInHand = equipped;
+        chainContainerBtn.gameObject.SetActive(equipped);
+        if (equipped)
+            chainContainerBtn.interactable = true;
+        else
+            FinishActiveWebSnare();
         OnWebSnareBtnEnable?.Invoke();
     }
+
     public void DisableWebSnare()
     {
         if (WeaponInHand)
-        {
-            OnClickChain();
-        }
+            SetChainEquipped(false);
     }
     #endregion
 

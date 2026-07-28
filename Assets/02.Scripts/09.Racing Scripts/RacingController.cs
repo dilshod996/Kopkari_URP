@@ -146,6 +146,7 @@ public class RacingController : MonoBehaviour
     private bool startupSetupFinished;
     private bool playerAndHorseReady;
     private bool racingLoadingCompleted;
+    private bool finishSequenceStarted;
     #region Starting Functions
     private void Awake()
     {
@@ -472,6 +473,11 @@ public class RacingController : MonoBehaviour
 
     public void StopHorseRun()
     {
+        if (finishSequenceStarted)
+            return;
+
+        finishSequenceStarted = true;
+
         if (mapType == RacingType.Training)
         {
             StartCoroutine(HorseStopAction(() =>

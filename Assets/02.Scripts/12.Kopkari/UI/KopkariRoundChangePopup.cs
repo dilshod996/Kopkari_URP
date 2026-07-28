@@ -135,7 +135,7 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
         SetButtonState(nextRoundButton, canStartNextRound);
         SetButtonState(finishHereButton, canStartNextRound);
         SetButtonState(viewResultsButton, !canStartNextRound);
-        SetButtonState(horseConditionButton, false);
+        RefreshHorseConditionAttention();
         ShowRewardInformation(outcome, canStartNextRound);
     }
 
@@ -341,8 +341,13 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
 
     private bool IsHorseConditionCritical()
     {
-        HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
-        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
+        KopkariResultsManager results = KopkariResultsManager.Instance;
+        HorseConditionStats max = results != null
+            ? results.GetLiveHorseConditionMax()
+            : HorseConditionStatsService.GetCachedMaxOrDefault();
+        HorseConditionStats current = results != null
+            ? results.GetLiveHorseCondition()
+            : HorseConditionStatsService.GetCurrentOrInitialize(max);
         return GetPercent(current.Power, max.Power) < criticalConditionPercent ||
                GetPercent(current.Cooling, max.Cooling) < criticalConditionPercent ||
                GetPercent(current.Stamina, max.Stamina) < criticalConditionPercent;

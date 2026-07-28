@@ -20,12 +20,16 @@ public class KopkariResultsManager : MonoBehaviour
     private bool playerRewardGranted;
     private bool horseConditionApplied;
     private HorseConditionStats finalHorseCondition;
+    private bool liveHorseConditionInitialized;
+    private HorseConditionStats liveHorseCondition;
+    private HorseConditionStats liveHorseMax;
 
     public float RaceDuration { get; private set; }
     public float LastRoundDuration => lastRoundDuration;
     public int CurrentRoundNumber => currentRoundNumber;
     public int WinnerId { get; private set; } = NoWinnerId;
     public string UloqOwner { get; private set; }
+    public bool IsLiveHorseConditionActive => liveHorseConditionInitialized && sessionStarted;
 
     private void Awake()
     {
@@ -40,8 +44,20 @@ public class KopkariResultsManager : MonoBehaviour
         if (Instance != this)
             return;
 
+        PersistActiveLiveHorseCondition();
         ResetAll();
         Instance = null;
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused)
+            PersistActiveLiveHorseCondition();
+    }
+
+    private void OnApplicationQuit()
+    {
+        PersistActiveLiveHorseCondition();
     }
 
     public void ResetAll()
@@ -61,6 +77,9 @@ public class KopkariResultsManager : MonoBehaviour
         playerRewardGranted = false;
         horseConditionApplied = false;
         finalHorseCondition = default;
+        liveHorseConditionInitialized = false;
+        liveHorseCondition = default;
+        liveHorseMax = default;
     }
 
     // Compatibility for older callers.
@@ -80,6 +99,8 @@ public class KopkariResultsManager : MonoBehaviour
             sessionStartTime = Time.time;
             completedRoundDuration = 0f;
             RaceDuration = 0f;
+            liveHorseConditionInitialized = false;
+            InitializeLiveHorseCondition();
         }
 
         currentRoundNumber = Mathf.Max(1, roundNumber);
@@ -100,6 +121,7 @@ public class KopkariResultsManager : MonoBehaviour
             lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
             completedRoundDuration += lastRoundDuration;
             CloseAllActiveHolds();
+            ApplyLiveHorseConditionDrain(lastRoundDuration, GetPlayerRoundCatchTime());
             SaveRoundSnapshots(NoWinnerId, 0f);
         }
         else
@@ -119,6 +141,7 @@ public class KopkariResultsManager : MonoBehaviour
         CloseAllActiveHolds();
         lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
         completedRoundDuration += lastRoundDuration;
+        ApplyLiveHorseConditionDrain(lastRoundDuration, GetPlayerRoundCatchTime());
         SaveRoundSnapshots(NoWinnerId, 0f);
         roundStarted = false;
         RaceDuration = completedRoundDuration;
@@ -206,6 +229,7 @@ public class KopkariResultsManager : MonoBehaviour
                 });
             }
 
+            ApplyLiveHorseConditionDrain(finishTime, 0f);
             simulatedRoundCount++;
         }
 
@@ -280,7 +304,13 @@ public class KopkariResultsManager : MonoBehaviour
 
     public RiderRaceStats GetPlayerStats()
     {
-        return stats.Values.FirstOrDefault(rider => rider != null && rider.isPlayer);
+        foreach (RiderRaceStats rider in stats.Values)
+        {
+            if (rider != null && rider.isPlayer)
+                return rider;
+        }
+
+        return null;
     }
 
     public RiderRoundStats GetLatestPlayerRound()
@@ -425,6 +455,7 @@ public class KopkariResultsManager : MonoBehaviour
         lastRoundDuration = finishTime;
         completedRoundDuration += finishTime;
         CloseAllActiveHolds();
+        ApplyLiveHorseConditionDrain(finishTime, GetPlayerRoundCatchTime());
         SaveRoundSnapshots(riderId, finishTime);
 
         roundStarted = false;
@@ -473,7 +504,7 @@ public class KopkariResultsManager : MonoBehaviour
         {
             if (!playerRewardGranted)
             {
-                RiderRaceStats cachedPlayer = stats.Values.FirstOrDefault(rider => rider != null && rider.isPlayer);
+                RiderRaceStats cachedPlayer = GetPlayerStats();
                 GrantPlayerMatchReward(cachedPlayer, playerRewardSummary);
             }
             return playerRewardSummary;
@@ -541,18 +572,74 @@ public class KopkariResultsManager : MonoBehaviour
         if (horseConditionApplied)
             return finalHorseCondition;
 
-        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
-            HorseConditionStatsService.GetCachedMaxOrDefault());
-        RiderRaceStats player = stats.Values.FirstOrDefault(rider => rider != null && rider.isPlayer);
-        float possession = player != null ? player.totalCatchTime : 0f;
-
+        InitializeLiveHorseCondition();
         finalHorseCondition = new HorseConditionStats(
-            Mathf.Max(0f, Mathf.Round(current.Power - RaceDuration * 0.2f)),
-            Mathf.Max(0f, Mathf.Round(current.Cooling - RaceDuration * 0.05f - possession * 0.4f)),
-            Mathf.Max(0f, Mathf.Round(current.Stamina - RaceDuration * 0.3f)));
+            Mathf.Round(liveHorseCondition.Power),
+            Mathf.Round(liveHorseCondition.Cooling),
+            Mathf.Round(liveHorseCondition.Stamina));
+        finalHorseCondition = HorseConditionStatsService.Clamp(finalHorseCondition, liveHorseMax);
         HorseConditionStatsService.SaveCurrent(finalHorseCondition);
         horseConditionApplied = true;
         return finalHorseCondition;
+    }
+
+    public HorseConditionStats GetLiveHorseCondition()
+    {
+        InitializeLiveHorseCondition();
+        return liveHorseCondition;
+    }
+
+    public HorseConditionStats GetLiveHorseConditionMax()
+    {
+        InitializeLiveHorseCondition();
+        return liveHorseMax;
+    }
+
+    public HorseConditionStats AddFoodToLiveHorseCondition(float power, float cooling, float stamina)
+    {
+        InitializeLiveHorseCondition();
+        liveHorseCondition = HorseConditionStatsService.Clamp(
+            new HorseConditionStats(
+                liveHorseCondition.Power + power,
+                liveHorseCondition.Cooling + cooling,
+                liveHorseCondition.Stamina + stamina),
+            liveHorseMax);
+        return liveHorseCondition;
+    }
+
+    private void InitializeLiveHorseCondition()
+    {
+        if (liveHorseConditionInitialized)
+            return;
+
+        liveHorseMax = HorseConditionStatsService.GetCachedMaxOrDefault();
+        liveHorseCondition = HorseConditionStatsService.GetCurrentOrInitialize(liveHorseMax);
+        liveHorseConditionInitialized = true;
+    }
+
+    private void ApplyLiveHorseConditionDrain(float duration, float possession)
+    {
+        InitializeLiveHorseCondition();
+        liveHorseCondition = HorseConditionStatsService.Clamp(
+            new HorseConditionStats(
+                liveHorseCondition.Power - Mathf.Max(0f, duration) * 0.2f,
+                liveHorseCondition.Cooling -
+                Mathf.Max(0f, duration) * 0.05f -
+                Mathf.Max(0f, possession) * 0.4f,
+                liveHorseCondition.Stamina - Mathf.Max(0f, duration) * 0.3f),
+            liveHorseMax);
+    }
+
+    private float GetPlayerRoundCatchTime()
+    {
+        RiderRaceStats player = GetPlayerStats();
+        return player != null ? Mathf.Max(0f, player.roundCatchTime) : 0f;
+    }
+
+    private void PersistActiveLiveHorseCondition()
+    {
+        if (liveHorseConditionInitialized && sessionStarted)
+            HorseConditionStatsService.SaveCurrent(liveHorseCondition);
     }
 
     private static int GetNyufiyByRank(int rank)

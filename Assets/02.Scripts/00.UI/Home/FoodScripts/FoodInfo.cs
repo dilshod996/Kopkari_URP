@@ -228,8 +228,14 @@ public class FoodInfo : MonoBehaviour
 
     private bool CanImproveHorse(FoodDetails details)
     {
-        HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
-        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
+        KopkariResultsManager results = KopkariResultsManager.Instance;
+        bool useLiveCondition = results != null && results.IsLiveHorseConditionActive;
+        HorseConditionStats max = useLiveCondition
+            ? results.GetLiveHorseConditionMax()
+            : HorseConditionStatsService.GetCachedMaxOrDefault();
+        HorseConditionStats current = useLiveCondition
+            ? results.GetLiveHorseCondition()
+            : HorseConditionStatsService.GetCurrentOrInitialize(max);
 
         return CanIncrease(details.Power, current.Power, max.Power) ||
                CanIncrease(details.Cooling, current.Cooling, max.Cooling) ||

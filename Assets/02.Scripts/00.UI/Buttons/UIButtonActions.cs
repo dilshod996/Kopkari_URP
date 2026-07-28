@@ -45,10 +45,6 @@ public class UIButtonActions : MonoBehaviour
 
     #region Inspector - UI Effects
 
-    [Header("Slow Effect")]
-    [SerializeField] private Image slowImg;
-    [SerializeField] private float slowLife = 10f;
-
     [Header("Sprint Effect")]
     [SerializeField] private Image sprintImg;
     [SerializeField] private Slider sprintSlider;
@@ -122,22 +118,6 @@ public class UIButtonActions : MonoBehaviour
     private BoostersContainer boundBoosters;
     #endregion
 
-    //#region Speed State UI
-    //[Header("Speed Icon & Text Details")]
-    //[SerializeField] private Image speedStateImage;
-    //[SerializeField] private Sprite runStateSprite;
-    //[SerializeField] private Sprite slowStateSprite;
-    //[SerializeField] private Sprite verySlowSprite;
-    //[SerializeField] private TMP_Text speedTitleText;
-
-    //public enum HorseSpeedState
-    //{
-    //    Run,
-    //    Slow,
-    //    VerySlow
-    //}
-    //public HorseSpeedState speedState = HorseSpeedState.Run;
-    //#endregion
 
     [Header("Popup Data")]
     [SerializeField] UISpeechBuble speechBubble;
@@ -298,6 +278,9 @@ public class UIButtonActions : MonoBehaviour
 
     private void PauseBySystem()
     {
+        if (RacingTutorialController.IsTutorialActive)
+            return;
+
         var racingController = RacingController.Instance;
         if (racingController == null)
             return;
@@ -829,11 +812,6 @@ public class UIButtonActions : MonoBehaviour
         }
     }
 
-    public void SprintEffect(bool value)
-    {
-        if (sprintImg != null) sprintImg.gameObject.SetActive(value);
-        if (value && slowImg != null) slowImg.gameObject.SetActive(false);
-    }
     #endregion
 
     #region Chain
@@ -900,6 +878,19 @@ public class UIButtonActions : MonoBehaviour
     {
         //ShowUI(inGameSettingsPanel);
         inGameSettingsPanel.gameObject.SetActive(true);
+    }
+
+    public void ReleaseRacingPauseForTutorial()
+    {
+        if (inGameSettingsPanel != null &&
+            inGameSettingsPanel.gameObject.activeSelf)
+        {
+            inGameSettingsPanel.gameObject.SetActive(false);
+        }
+
+        pauseMenu?.ReleaseForRacingTutorial();
+        RacingController.Instance?.ResumeRaceTime();
+        _pausedByApp = false;
     }
 
     public void ShowResultPage()
@@ -1019,6 +1010,9 @@ public class UIButtonActions : MonoBehaviour
     #region Other Button Actions
     private void PauseMenu()
     {
+        if (RacingTutorialController.IsTutorialActive)
+            return;
+
         var racingController = RacingController.Instance;
         if (racingController == null || (!racingController.HasStarted && racingController.mapType != RacingController.RacingType.Training) || racingController.HasFinished)
             return;

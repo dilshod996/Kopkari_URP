@@ -6,7 +6,7 @@ using Firebase.Extensions;
 using System;
 using System.Globalization;
 using System.Threading.Tasks;
-public class DataManager : MonoBehaviour
+public partial class DataManager : MonoBehaviour
 {
     public static DataManager Instance { get; private set; }
     public static event Action<string> OnMapUnlocked;

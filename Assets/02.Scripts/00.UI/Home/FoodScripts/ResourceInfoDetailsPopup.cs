@@ -7,6 +7,8 @@ using UnityEngine.UI;
 public class ResourceInfoDetailsPopup : MonoBehaviour
 {
     public static ResourceInfoDetailsPopup Instance { get; private set; }
+    public event Action<DetailsMode, bool> DetailsShown;
+    public event Action<DetailsMode> DetailsClosed;
 
     private const int BuyButtonTextId = 424;
     private const int CloseButtonTextId = 137;
@@ -76,6 +78,8 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
     private Action onBuy;
     private Action onClose;
+    private DetailsMode currentMode;
+    private bool hasOpenDetails;
     private Tween rewardAdsButtonTween;
     private Vector3 rewardAdsButtonBaseScale = Vector3.one;
     private bool hasRewardAdsButtonBaseScale;
@@ -194,6 +198,8 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     {
         onBuy = buyAction;
         onClose = closeAction;
+        currentMode = details.Mode;
+        hasOpenDetails = true;
 
         if (iconImage != null)
             iconImage.sprite = details.Icon;
@@ -216,6 +222,7 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
             buyButton.interactable = canBuy;
 
         root.SetActive(true);
+        DetailsShown?.Invoke(details.Mode, canBuy);
     }
 
     public void ShowNotEnoughNyufiy()
@@ -233,8 +240,13 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
     public void Close()
     {
+        bool notifyClosed = hasOpenDetails;
+        DetailsMode closedMode = currentMode;
         onClose?.Invoke();
         CloseImmediate();
+
+        if (notifyClosed)
+            DetailsClosed?.Invoke(closedMode);
     }
 
     private void HandleBuy()
@@ -298,6 +310,7 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     private void CloseImmediate()
     {
         HideNotEnoughNyufiy();
+        hasOpenDetails = false;
 
         if (root != null)
             root.SetActive(false);

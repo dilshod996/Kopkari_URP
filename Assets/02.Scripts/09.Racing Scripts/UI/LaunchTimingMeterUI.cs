@@ -15,7 +15,7 @@ public class LaunchTimingMeterUI : MonoBehaviour
     }
 
     [Header("Main UI")]
-    [SerializeField] private CanvasGroup meterContainer;
+    [SerializeField] public CanvasGroup meterContainer;
     [SerializeField] private CanvasGroup gameUIGroup;
 
     [Header("Meter")]
@@ -153,6 +153,23 @@ public class LaunchTimingMeterUI : MonoBehaviour
         StartCountdown();
         StartLifetimeTimer();
         OnLaunchMeterStarted?.Invoke();
+    }
+
+    public void SetTutorialPaused(bool paused)
+    {
+        if (paused)
+        {
+            markerTween?.Pause();
+            countdownTween?.Pause();
+            lifetimeTween?.Pause();
+            flowSequence?.Pause();
+            return;
+        }
+
+        markerTween?.Play();
+        countdownTween?.Play();
+        lifetimeTween?.Play();
+        flowSequence?.Play();
     }
 
     private void EnsureTimingDefaults()

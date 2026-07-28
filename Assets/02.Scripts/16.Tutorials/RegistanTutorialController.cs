@@ -72,8 +72,16 @@ public sealed class RegistanTutorialController : MonoBehaviour
     [SerializeField] private RectTransform sprintSliderTarget;
     [SerializeField] private RectTransform matchStatusTarget;
     [SerializeField] private KopkariObjectiveIndicator objectiveIndicator;
-    [SerializeField] private GameObject objectiveIndicatorRoot;
     [SerializeField] private RectTransform objectiveIndicatorTarget;
+    [SerializeField] private RegistanTutorialPresentation presentationPrefab;
+
+    [Header("Highlight Hosts")]
+    [Tooltip("First-sibling highlight host under the main UICanvas.")]
+    [SerializeField] private RectTransform mainHighlightHost;
+    [Tooltip("First-sibling highlight host under MobileUICanvas.")]
+    [SerializeField] private RectTransform mobileHighlightHost;
+    [Tooltip("MobileUICanvas root used to select the mobile highlight host.")]
+    [SerializeField] private RectTransform mobileCanvasRoot;
 
     [Header("Input")]
     [SerializeField, Range(0.1f, 1f)] private float joystickCompletionThreshold = 0.35f;
@@ -81,6 +89,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
     [SerializeField, Range(0.5f, 4f)] private float cameraPracticeDuration = 1.5f;
     [SerializeField, Range(0.25f, 2f)] private float thirdPersonSettleDuration = 1f;
     [SerializeField, Range(1f, 6f)] private float sliderPreviewDuration = 3f;
+    [SerializeField, Range(3f, 8f)] private float walkZoneTutorialDelay = 4.5f;
+    [SerializeField, Range(0.25f, 3f)] private float webSnareShootTutorialDelay = 1f;
+    [SerializeField, Range(2f, 10f)] private float cloudProgressWaitTimeout = 6f;
 
     [Header("Popup Placement")]
     [SerializeField] private UITargetPlacementSettings joystickPlacement = new UITargetPlacementSettings
@@ -136,41 +147,50 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private Coroutine startRoutine;
     private Coroutine sliderPreviewRoutine;
     private Coroutine cameraTransitionRoutine;
+    private Coroutine walkZoneDelayRoutine;
+    private Coroutine webSnareTutorialDelayRoutine;
     private GameObject tutorialCanvasObject;
     private GameObject presentationRoot;
     private Image blocker;
     private RectTransform highlight;
+    private RectTransform defaultHighlightParent;
+    private int defaultHighlightSiblingIndex;
     private RectTransform popup;
     private TMP_Text titleText;
     private TMP_Text descriptionText;
     private Button nextButton;
     private TMP_Text nextButtonText;
+    private RegistanTutorialPresentation presentation;
+    private bool ownsPresentationInstance;
     private bool presentationHiddenForPauseMenu;
     private bool pickupFocusAvailable;
     private float cameraPracticeElapsed;
     private bool pendingGripDamageTutorial;
+    private bool pendingWalkZoneTutorial;
     private bool pendingHorseHealthTutorial;
     private bool gripDepletionObserved;
     private bool pendingLostUlakTutorial;
     private bool pendingOpponentCarrierTutorial;
     private bool pendingFakeUlakTutorial;
     private bool gripDamageTutorialShown;
+    private bool walkZoneTutorialShown;
+    private bool walkZoneTutorialUnlocked;
     private bool horseHealthTutorialShown;
     private bool fakeUlakTutorialShown;
     private bool lostUlakTutorialShown;
     private bool opponentCarrierTutorialShown;
     private bool localPlayerHadUlak;
+    private float nextProgressCompletionCheck;
+    private KopkariTutorialProgress.CoreCheckpoint savedCheckpoint;
     private TutorialState contextReturnState = TutorialState.Finished;
 
     private static readonly Color BackdropColor = new Color(0.015f, 0.025f, 0.05f, 0.72f);
-    private static readonly Color PanelColor = new Color(0.035f, 0.07f, 0.13f, 0.97f);
-    private static readonly Color AccentColor = new Color(1f, 0.72f, 0.12f, 1f);
 
     private void Awake()
     {
         if (mainUI == null)
             mainUI = GetComponent<KopkariMainUI>();
-        BuildRuntimeUI();
+        CreatePresentation();
         HidePresentation();
     }
 
@@ -221,7 +241,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (tutorialCanvasObject != null)
+        RestoreHighlightParent();
+        if (ownsPresentationInstance && tutorialCanvasObject != null)
             Destroy(tutorialCanvasObject);
     }
 
@@ -230,9 +251,25 @@ public sealed class RegistanTutorialController : MonoBehaviour
         if (presentationRoot == null)
             return;
 
+        if (state != TutorialState.None &&
+            state != TutorialState.Finished &&
+            Time.unscaledTime >= nextProgressCompletionCheck)
+        {
+            nextProgressCompletionCheck = Time.unscaledTime + 1f;
+            if (KopkariTutorialProgress.LoadLocal().Completed)
+            {
+                FinishCompletedTutorialSetup();
+                return;
+            }
+        }
+
+        RefreshTutorialObjectivePreview();
+
         if (gripDepletionObserved && !fakeUlakTutorialShown &&
             mainUI != null && mainUI.IsFakeUlakInteractable)
             pendingFakeUlakTutorial = true;
+
+        RefreshPendingOpponentCarrier();
 
         if (TryShowPendingContextTutorial())
             return;
@@ -243,6 +280,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
         bool pauseMenuActive = KopkariMainUI.IsGameplayPaused;
         if (pauseMenuActive && presentationRoot.activeSelf)
         {
+            if (highlight != null)
+                highlight.gameObject.SetActive(false);
             presentationRoot.SetActive(false);
             presentationHiddenForPauseMenu = true;
         }
@@ -261,6 +300,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
             cameraPracticeElapsed += Time.unscaledDeltaTime;
             if (cameraPracticeElapsed >= Mathf.Max(0.5f, cameraPracticeDuration))
             {
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.CameraJoystick,
+                    KopkariTutorialProgress.CoreCheckpoint.MatchStatus);
                 ShowMatchStatusExplanation();
                 return;
             }
@@ -287,7 +329,14 @@ public sealed class RegistanTutorialController : MonoBehaviour
         else if (state == TutorialState.WaitingForNextRoundWarmup &&
                  manager != null && manager.IsRoundWarmupActive)
         {
-            ShowWarmupBackgroundExplanation();
+            savedCheckpoint = KopkariTutorialProgress.LoadLocal().Checkpoint;
+            if (savedCheckpoint >= KopkariTutorialProgress.CoreCheckpoint.WarmupArrival)
+                WaitForWarmupArrival();
+            else if (savedCheckpoint >=
+                     KopkariTutorialProgress.CoreCheckpoint.WarmupIndicator)
+                ShowWarmupIndicatorExplanation();
+            else
+                ShowWarmupBackgroundExplanation();
         }
         else if (state == TutorialState.WaitingForWarmupArrival &&
                  manager != null && manager.IsRoundStartCountdownActive)
@@ -314,6 +363,13 @@ public sealed class RegistanTutorialController : MonoBehaviour
         if (state != TutorialState.None)
             return;
 
+        KopkariTutorialProgress.State localProgress = KopkariTutorialProgress.LoadLocal();
+        if (localProgress.Completed)
+        {
+            FinishCompletedTutorialSetup();
+            return;
+        }
+
         AIKopkariRider.SetRegistanTutorialRestrictions(true, false, false);
         ShouldPauseMainTime = true;
         KopkariManager.Instance?.SetRegistanTutorialUlakVisible(false);
@@ -324,6 +380,30 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private IEnumerator StartAfterGameplayUIIsReady()
     {
+        if (!KopkariTutorialProgress.HasAnyLocalData &&
+            DataManager.Instance != null)
+        {
+            DataManager.Instance.EnsureKopkariTutorialStateLoaded();
+            float deadline = Time.realtimeSinceStartup +
+                             Mathf.Max(2f, cloudProgressWaitTimeout);
+            while (!DataManager.Instance.IsKopkariTutorialStateLoaded &&
+                   Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+        }
+
+        KopkariTutorialProgress.State progress = KopkariTutorialProgress.LoadLocal();
+        if (progress.Completed)
+        {
+            startRoutine = null;
+            FinishCompletedTutorialSetup();
+            yield break;
+        }
+
+        savedCheckpoint = progress.Checkpoint;
+        ApplySavedContextProgress(progress.Context);
+
         // CanvasEnable is invoked from the same game-start event. Waiting one
         // frame makes this independent of subscriber order and lets UI layout settle.
         yield return null;
@@ -337,7 +417,7 @@ public sealed class RegistanTutorialController : MonoBehaviour
             sprintButton == null || sprintButtonTarget == null ||
             sprintSlider == null || sprintSliderTarget == null ||
             matchStatusTarget == null || objectiveIndicator == null ||
-            objectiveIndicatorRoot == null || objectiveIndicatorTarget == null ||
+            objectiveIndicatorTarget == null || presentation == null ||
             mainUI.PickupButtonTutorialTarget == null ||
             mainUI.PickupProgressTutorialTarget == null ||
             mainUI.ComboPrizeTutorialTarget == null ||
@@ -356,7 +436,85 @@ public sealed class RegistanTutorialController : MonoBehaviour
             yield break;
         }
 
-        ShowJoystickExplanation();
+        StartFromSavedCheckpoint();
+    }
+
+    private void StartFromSavedCheckpoint()
+    {
+        switch (savedCheckpoint)
+        {
+            case KopkariTutorialProgress.CoreCheckpoint.Joystick:
+                ShowJoystickExplanation();
+                break;
+            case KopkariTutorialProgress.CoreCheckpoint.CameraJoystick:
+                ShowCameraExplanation();
+                break;
+            case KopkariTutorialProgress.CoreCheckpoint.MatchStatus:
+                ShowMatchStatusExplanation();
+                break;
+            case KopkariTutorialProgress.CoreCheckpoint.CameraView:
+                ShowCameraViewExplanation();
+                break;
+            case KopkariTutorialProgress.CoreCheckpoint.BackCamera:
+                ShowLookBackExplanation();
+                break;
+            case KopkariTutorialProgress.CoreCheckpoint.Sprint:
+                ConfigureUloqPracticePhase();
+                state = TutorialState.WaitingForMovementBeforeSprint;
+                TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                HidePresentation();
+                break;
+            case KopkariTutorialProgress.CoreCheckpoint.UloqIndicator:
+                ConfigureUloqPracticePhase();
+                ShowUloqIndicatorExplanation();
+                break;
+            default:
+                ConfigureUloqPracticePhase();
+                WaitForPickupAvailability();
+                break;
+        }
+    }
+
+    private void ConfigureUloqPracticePhase()
+    {
+        KopkariManager.Instance?.SetRegistanTutorialUlakVisible(true);
+        ShouldPauseMainTime = false;
+        AIKopkariRider.SetRegistanTutorialRestrictions(true, true, false);
+        IsTutorialActive = true;
+    }
+
+    private void FinishCompletedTutorialSetup()
+    {
+        KopkariTutorialProgress.State progress = KopkariTutorialProgress.LoadLocal();
+        savedCheckpoint = progress.Checkpoint;
+        ApplySavedContextProgress(progress.Context);
+        StopOwnedCoroutines();
+        HidePresentation();
+        HideTutorialObjectivePreview();
+        AIKopkariRider.SetRegistanTutorialRestrictions(false, true, true);
+        KopkariManager.Instance?.SetRegistanTutorialUlakVisible(true);
+        ShouldPauseMainTime = false;
+        TutorialPauseController.ResumeAll();
+        state = TutorialState.Finished;
+        IsTutorialActive = false;
+    }
+
+    private void ApplySavedContextProgress(KopkariTutorialProgress.ContextLesson context)
+    {
+        walkZoneTutorialShown =
+            (context & KopkariTutorialProgress.ContextLesson.WalkZone) != 0;
+        gripDamageTutorialShown =
+            (context & KopkariTutorialProgress.ContextLesson.Defend) != 0;
+        lostUlakTutorialShown =
+            (context & KopkariTutorialProgress.ContextLesson.LostUloq) != 0;
+        fakeUlakTutorialShown =
+            (context & KopkariTutorialProgress.ContextLesson.FakeUloq) != 0;
+        opponentCarrierTutorialShown =
+            (context & KopkariTutorialProgress.ContextLesson.OpponentCarrier) != 0;
+        horseHealthTutorialShown =
+            (context & KopkariTutorialProgress.ContextLesson.HorseHealth) != 0;
+        walkZoneTutorialUnlocked =
+            savedCheckpoint >= KopkariTutorialProgress.CoreCheckpoint.NextRound;
     }
 
     private void ShowJoystickExplanation()
@@ -368,9 +526,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             movementJoystickTarget,
             joystickPlacement,
-            "MOVE YOUR HORSE",
-            "Use the movement joystick to ride in any direction.",
-            "TRY IT",
+            RegistanTutorialTextIds.MoveYourHorse,
+            RegistanTutorialTextIds.UseMovementJoystick,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
@@ -383,9 +541,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             movementJoystickTarget,
             joystickPlacement,
-            "YOUR TURN",
-            "Drag the joystick to move your horse.",
-            string.Empty,
+            RegistanTutorialTextIds.YourTurn,
+            RegistanTutorialTextIds.DragJoystick,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -396,7 +554,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
             return;
 
         if (state == TutorialState.WaitingForJoystickInput)
+        {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.Joystick,
+                KopkariTutorialProgress.CoreCheckpoint.CameraJoystick);
             ShowCameraExplanation();
+        }
         else if (state == TutorialState.WaitingForMovementBeforeSprint)
             ShowSprintExplanation();
     }
@@ -409,9 +572,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             cameraJoystickTarget,
             cameraPlacement,
-            "LOOK AROUND",
-            "Drag this area to rotate the camera and look around the field.",
-            "TRY IT",
+            RegistanTutorialTextIds.LookAround,
+            RegistanTutorialTextIds.DragCameraArea,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
@@ -425,9 +588,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             cameraJoystickTarget,
             cameraPlacement,
-            "YOUR TURN",
-            "Keep dragging the camera area and look around the field for a moment.",
-            string.Empty,
+            RegistanTutorialTextIds.YourTurn,
+            RegistanTutorialTextIds.KeepDraggingCamera,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -439,9 +602,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             matchStatusTarget,
             matchStatusPlacement,
-            "MATCH STATUS",
-            "This panel shows the main time and your round progress.",
-            "NEXT",
+            RegistanTutorialTextIds.MatchStatus,
+            RegistanTutorialTextIds.MatchStatusDescription,
+            RegistanTutorialTextIds.Next,
             true,
             true);
     }
@@ -453,9 +616,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.CameraSwitchTutorialTarget,
             cameraPlacement,
-            "CHANGE CAMERA",
-            "Tap once for first-person view, then tap again to return to third-person.",
-            "TRY IT",
+            RegistanTutorialTextIds.ChangeCamera,
+            RegistanTutorialTextIds.ChangeCameraDescription,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
@@ -467,9 +630,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.CameraSwitchTutorialTarget,
             cameraPlacement,
-            "FIRST-PERSON",
-            "Tap the camera button to switch to first-person view.",
-            string.Empty,
+            RegistanTutorialTextIds.FirstPerson,
+            RegistanTutorialTextIds.FirstPersonDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -478,18 +641,24 @@ public sealed class RegistanTutorialController : MonoBehaviour
     {
         if (state == TutorialState.WaitingForFirstPerson && firstPerson)
         {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.CameraFirstPerson,
+                KopkariTutorialProgress.CoreCheckpoint.CameraView);
             state = TutorialState.WaitingForThirdPerson;
             ShowPresentation(
                 mainUI.CameraSwitchTutorialTarget,
                 cameraPlacement,
-                "THIRD-PERSON",
-                "Good. Tap the same button again to return to third-person view.",
-                string.Empty,
+                RegistanTutorialTextIds.ThirdPerson,
+                RegistanTutorialTextIds.ThirdPersonDescription,
+                RegistanTutorialTextIds.None,
                 false,
                 false);
         }
         else if (state == TutorialState.WaitingForThirdPerson && !firstPerson)
         {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.CameraThirdPerson,
+                KopkariTutorialProgress.CoreCheckpoint.BackCamera);
             state = TutorialState.WaitingForThirdPersonTransition;
             TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
             HidePresentation();
@@ -516,9 +685,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             lookBackTarget,
             cameraPlacement,
-            "LOOK BEHIND",
-            "Hold this button to see behind your rider. Release it to look forward.",
-            "TRY IT",
+            RegistanTutorialTextIds.LookBehind,
+            RegistanTutorialTextIds.LookBehindDescription,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
@@ -530,9 +699,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             lookBackTarget,
             cameraPlacement,
-            "HOLD LOOK BACK",
-            "Press and hold the back-camera button.",
-            string.Empty,
+            RegistanTutorialTextIds.HoldLookBack,
+            RegistanTutorialTextIds.HoldLookBackDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -545,14 +714,17 @@ public sealed class RegistanTutorialController : MonoBehaviour
             ShowPresentation(
                 lookBackTarget,
                 cameraPlacement,
-                "RELEASE",
-                "Now release the button to return to the forward view.",
-                string.Empty,
+                RegistanTutorialTextIds.Release,
+                RegistanTutorialTextIds.ReleaseLookBackDescription,
+                RegistanTutorialTextIds.None,
                 false,
                 false);
         }
         else if (state == TutorialState.WaitingForLookBackRelease && !pressed)
         {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.BackCamera,
+                KopkariTutorialProgress.CoreCheckpoint.Sprint);
             KopkariManager.Instance?.SetRegistanTutorialUlakVisible(true);
             ShouldPauseMainTime = false;
             AIKopkariRider.SetRegistanTutorialRestrictions(true, true, false);
@@ -570,9 +742,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             sprintButtonTarget,
             sprintPlacement,
-            "SPRINT",
-            "Use Sprint while your horse is moving to ride faster.",
-            "TRY IT",
+            RegistanTutorialTextIds.Sprint,
+            RegistanTutorialTextIds.SprintDescription,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
@@ -585,9 +757,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             sprintButtonTarget,
             sprintPlacement,
-            "HOLD SPRINT",
-            "Keep moving and hold the Sprint button.",
-            string.Empty,
+            RegistanTutorialTextIds.HoldSprint,
+            RegistanTutorialTextIds.HoldSprintDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -595,7 +767,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private void HandleSprintStarted()
     {
         if (state == TutorialState.WaitingForSprintUse)
+        {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.SprintButton,
+                KopkariTutorialProgress.CoreCheckpoint.Sprint);
             ShowSprintSliderPreview();
+        }
     }
 
     private void ShowSprintSliderPreview()
@@ -606,9 +783,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             sprintSliderTarget,
             sliderPlacement,
-            "SPRINT STAMINA",
-            "Sprint drains this slider. It refills after you release Sprint.",
-            string.Empty,
+            RegistanTutorialTextIds.SprintStamina,
+            RegistanTutorialTextIds.SprintStaminaDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
 
@@ -623,39 +800,41 @@ public sealed class RegistanTutorialController : MonoBehaviour
         sliderPreviewRoutine = null;
 
         if (state == TutorialState.SprintSliderPreview)
+        {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.SprintSlider,
+                KopkariTutorialProgress.CoreCheckpoint.UloqIndicator);
             ShowUloqIndicatorExplanation();
+        }
     }
 
     private void ShowUloqIndicatorExplanation()
     {
         state = TutorialState.UloqIndicatorExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
-        objectiveIndicator?.RefreshNow();
-        objectiveIndicator?.SetTutorialPreview(true);
-        if (objectiveIndicatorRoot != null)
-            objectiveIndicatorRoot.SetActive(true);
+        ShowTutorialObjectivePreview();
 
         ShowPresentation(
-            objectiveIndicatorTarget,
+            GetObjectiveTutorialTarget(),
             indicatorPlacement,
-            "FIND THE ULOQ",
-            "The indicator and meter show your distance to the Uloq.",
-            "GO TO ULOQ",
+            RegistanTutorialTextIds.FindUloq,
+            RegistanTutorialTextIds.FindUloqDescription,
+            RegistanTutorialTextIds.GoToUloq,
             true,
             true);
     }
 
     private void WaitForPickupAvailability()
     {
-        objectiveIndicator?.SetTutorialPreview(false);
+        ShowTutorialObjectivePreview();
         state = TutorialState.WaitingForPickupAvailability;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
         ShowPresentation(
-            objectiveIndicatorTarget,
+            GetObjectiveTutorialTarget(),
             indicatorPlacement,
-            "GET CLOSER",
-            "Follow the Uloq indicator. The pickup button appears when you are close enough.",
-            string.Empty,
+            RegistanTutorialTextIds.GetCloser,
+            RegistanTutorialTextIds.GetCloserDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -673,28 +852,32 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void ShowPickupButtonExplanation()
     {
+        HideTutorialObjectivePreview();
         state = TutorialState.PickupButtonExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
         ShowPresentation(
             mainUI.PickupButtonTutorialTarget,
             sprintPlacement,
-            "PICK UP THE ULOQ",
-            "You are close enough. Press and hold this button to pick up the Uloq.",
-            "TRY IT",
+            RegistanTutorialTextIds.PickUpUloq,
+            RegistanTutorialTextIds.PickUpUloqDescription,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
 
     private void BeginPickupPractice()
     {
+        CompleteCoreStep(
+            Constants.KopkariTutorial.PickupButton,
+            KopkariTutorialProgress.LoadLocal().Checkpoint);
         state = TutorialState.WaitingForPickupPress;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
         ShowPresentation(
             mainUI.PickupButtonTutorialTarget,
             sprintPlacement,
-            "HOLD TO PICK UP",
-            "Keep the button held while you remain close to the Uloq.",
-            string.Empty,
+            RegistanTutorialTextIds.HoldToPickUp,
+            RegistanTutorialTextIds.HoldToPickUpDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -708,9 +891,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
             ShowPresentation(
                 mainUI.PickupProgressTutorialTarget,
                 sliderPlacement,
-                "PICKUP PROGRESS",
-                "Keep holding. When this slider becomes full, you get the Uloq.",
-                string.Empty,
+                RegistanTutorialTextIds.PickupProgress,
+                RegistanTutorialTextIds.PickupProgressDescription,
+                RegistanTutorialTextIds.None,
                 false,
                 false);
             state = TutorialState.WaitingForPlayerPickup;
@@ -723,9 +906,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
             ShowPresentation(
                 mainUI.PickupButtonTutorialTarget,
                 sprintPlacement,
-                "KEEP HOLDING",
-                "The slider was not full. Hold the pickup button again.",
-                string.Empty,
+                RegistanTutorialTextIds.KeepHolding,
+                RegistanTutorialTextIds.KeepHoldingDescription,
+                RegistanTutorialTextIds.None,
                 false,
                 false);
         }
@@ -741,6 +924,13 @@ public sealed class RegistanTutorialController : MonoBehaviour
                                    manager.IsLocalRiderTransform(ownerRoot.transform);
         if (!localPlayerOwnsUlak)
         {
+            if (walkZoneDelayRoutine != null)
+            {
+                StopCoroutine(walkZoneDelayRoutine);
+                walkZoneDelayRoutine = null;
+            }
+            pendingWalkZoneTutorial = false;
+
             if (localPlayerHadUlak &&
                 manager.roomState == KopkariManager.RoomState.GameStarted &&
                 !lostUlakTutorialShown)
@@ -761,31 +951,60 @@ public sealed class RegistanTutorialController : MonoBehaviour
         }
 
         localPlayerHadUlak = true;
+        if (walkZoneTutorialUnlocked && !walkZoneTutorialShown)
+            ScheduleWalkZoneTutorial();
         if (state == TutorialState.WaitingForPlayerPickup ||
             state == TutorialState.WaitingForPickupPress ||
-            state == TutorialState.PickupSliderExplanation)
+            state == TutorialState.PickupSliderExplanation ||
+            state == TutorialState.WaitingForPickupAvailability)
+        {
+            ContinueAfterLocalPlayerPickup();
+        }
+    }
+
+    private void ContinueAfterLocalPlayerPickup()
+    {
+        CompleteCoreStep(
+            Constants.KopkariTutorial.PickupProgress,
+            KopkariTutorialProgress.CoreCheckpoint.TargetIndicator);
+        savedCheckpoint = KopkariTutorialProgress.LoadLocal().Checkpoint;
+
+        if (savedCheckpoint <= KopkariTutorialProgress.CoreCheckpoint.TargetIndicator)
+        {
             ShowTargetIndicatorExplanation();
+        }
+        else if (savedCheckpoint == KopkariTutorialProgress.CoreCheckpoint.ComboPrize)
+        {
+            WaitForCombo();
+        }
+        else if (savedCheckpoint == KopkariTutorialProgress.CoreCheckpoint.Carrier)
+        {
+            WaitForCarrier();
+        }
+        else
+        {
+            ReleaseCompetitionAndScheduleWalkZone();
+        }
     }
 
     private void ShowTargetIndicatorExplanation()
     {
         state = TutorialState.TargetIndicatorExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
-        objectiveIndicator?.RefreshNow();
-        objectiveIndicator?.SetTutorialPreview(true);
+        ShowTutorialObjectivePreview();
         ShowPresentation(
-            objectiveIndicatorTarget,
+            GetObjectiveTutorialTarget(),
             indicatorPlacement,
-            "RIDE TO SALYM",
-            "You have the Uloq. The indicator and meter now point to the target.",
-            "NEXT",
+            RegistanTutorialTextIds.RideToSalym,
+            RegistanTutorialTextIds.RideToSalymDescription,
+            RegistanTutorialTextIds.Next,
             true,
             true);
     }
 
     private void WaitForCombo()
     {
-        objectiveIndicator?.SetTutorialPreview(false);
+        HideTutorialObjectivePreview();
         if (mainUI.IsComboVisible)
         {
             ShowComboExplanation();
@@ -810,9 +1029,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.ComboPrizeTutorialTarget,
             matchStatusPlacement,
-            "COMBO PRIZE",
-            "Reach Salym before this timer ends to earn the extra Nyufiy shown here.",
-            "NEXT",
+            RegistanTutorialTextIds.ComboPrize,
+            RegistanTutorialTextIds.ComboPrizeDescription,
+            RegistanTutorialTextIds.Next,
             true,
             true);
     }
@@ -843,9 +1062,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.CarrierTutorialTarget,
             matchStatusPlacement,
-            "CARRIER GRIP",
-            "This shows the carrier name and grip. If your grip reaches 0%, you lose the Uloq.",
-            "CONTINUE",
+            RegistanTutorialTextIds.CarrierGrip,
+            RegistanTutorialTextIds.CarrierGripDescription,
+            RegistanTutorialTextIds.Continue,
             true,
             true);
     }
@@ -853,7 +1072,7 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private void ReleaseCompetitionAndWaitForNextRound()
     {
         AIKopkariRider.SetRegistanTutorialRestrictions(false, true, true);
-        objectiveIndicator?.SetTutorialPreview(false);
+        HideTutorialObjectivePreview();
         state = TutorialState.WaitingForNextRoundWarmup;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
         HidePresentation();
@@ -900,6 +1119,22 @@ public sealed class RegistanTutorialController : MonoBehaviour
             return true;
         }
 
+        if (pendingWalkZoneTutorial && !walkZoneTutorialShown)
+        {
+            if (!DoesLocalPlayerOwnUlak())
+            {
+                pendingWalkZoneTutorial = false;
+            }
+            else
+            {
+                contextReturnState = state;
+                pendingWalkZoneTutorial = false;
+                walkZoneTutorialShown = true;
+                ShowWalkZoneExplanation();
+                return true;
+            }
+        }
+
         if (pendingLostUlakTutorial && !lostUlakTutorialShown)
         {
             contextReturnState = state;
@@ -929,7 +1164,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
         // Horse health is deliberately last, but a silent waiting state is an
         // available slot; it does not need to wait for the next round to start.
-        if (pendingHorseHealthTutorial && !horseHealthTutorialShown)
+        if (pendingHorseHealthTutorial &&
+            !horseHealthTutorialShown &&
+            IsCoreFlowReadyForHorseHealth())
         {
             contextReturnState = state;
             pendingHorseHealthTutorial = false;
@@ -941,14 +1178,48 @@ public sealed class RegistanTutorialController : MonoBehaviour
         return false;
     }
 
+    private bool IsCoreFlowReadyForHorseHealth()
+    {
+        return savedCheckpoint >= KopkariTutorialProgress.CoreCheckpoint.NextRound ||
+               state == TutorialState.WaitingForNextRoundWarmup ||
+               state == TutorialState.WaitingForWarmupArrival ||
+               state == TutorialState.Finished;
+    }
+
+    private void RefreshPendingOpponentCarrier()
+    {
+        if (opponentCarrierTutorialShown ||
+            pendingOpponentCarrierTutorial ||
+            mainUI == null ||
+            !mainUI.IsCarrierVisible)
+        {
+            return;
+        }
+
+        KopkariManager manager = KopkariManager.Instance;
+        GameObject ownerRoot = manager != null ? manager.currentGoatOwner : null;
+        if (manager == null ||
+            ownerRoot == null ||
+            manager.roomState != KopkariManager.RoomState.GameStarted ||
+            manager.IsLocalRiderTransform(ownerRoot.transform))
+        {
+            return;
+        }
+
+        // Ownership can already be established when a saved tutorial resumes,
+        // so do not depend only on receiving a fresh owner-change event.
+        pendingOpponentCarrierTutorial = true;
+    }
+
     private bool IsContextTutorialSlotAvailable()
     {
         if (presentationRoot != null && presentationRoot.activeSelf)
             return false;
 
-        return state == TutorialState.WaitingForNextRoundWarmup ||
-               state == TutorialState.WaitingForWarmupArrival ||
-               state == TutorialState.Finished;
+        // Any silent tutorial state can be safely interrupted and restored.
+        // Limiting this to late-round waits left damage and carrier lessons
+        // queued forever after resuming at pickup/combo/practice checkpoints.
+        return state != TutorialState.None;
     }
 
     private void ShowGripDamageExplanation()
@@ -959,9 +1230,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.CarrierTutorialTarget,
             matchStatusPlacement,
-            "YOUR GRIP IS DROPPING",
-            "Rivals are damaging your grip. Be careful - at 0% you lose the Uloq.",
-            "HOW TO DEFEND",
+            RegistanTutorialTextIds.GripDropping,
+            RegistanTutorialTextIds.GripDroppingDescription,
+            RegistanTutorialTextIds.HowToDefend,
             true,
             true);
     }
@@ -973,9 +1244,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.DefendTutorialTarget,
             sprintPlacement,
-            "DEFEND THE ULOQ",
-            "Use the Defend button to protect your grip and keep control of the Uloq.",
-            "GOT IT",
+            RegistanTutorialTextIds.DefendUloq,
+            RegistanTutorialTextIds.DefendUloqDescription,
+            RegistanTutorialTextIds.GotIt,
             true,
             true);
     }
@@ -988,9 +1259,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.FakeUlakTutorialTarget,
             sprintPlacement,
-            "FAKE ULOQ",
-            "After losing the Uloq, use this when you are near it to distract rival riders.",
-            "GOT IT",
+            RegistanTutorialTextIds.FakeUloq,
+            RegistanTutorialTextIds.FakeUloqDescription,
+            RegistanTutorialTextIds.GotIt,
             true,
             true);
     }
@@ -1003,9 +1274,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.CarrierTutorialTarget,
             matchStatusPlacement,
-            "ANOTHER RIDER HAS THE ULOQ",
-            "Chase the carrier and take the Uloq, or reduce the carrier's grip to 0%.",
-            "NEXT",
+            RegistanTutorialTextIds.OpponentHasUloq,
+            RegistanTutorialTextIds.OpponentHasUloqDescription,
+            RegistanTutorialTextIds.Next,
             true,
             true);
     }
@@ -1017,9 +1288,11 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.ShootWebTutorialTarget,
             sprintPlacement,
-            "WEB SNARE",
-            "Hit the Uloq carrier with Web Snare to make that rider lose the Uloq.",
-            mainUI.IsShootWebInteractable ? "TRY IT" : "GOT IT",
+            RegistanTutorialTextIds.WebSnare,
+            RegistanTutorialTextIds.WebSnareDescription,
+            mainUI.IsShootWebInteractable
+                ? RegistanTutorialTextIds.TryIt
+                : RegistanTutorialTextIds.GotIt,
             true,
             true);
     }
@@ -1028,6 +1301,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
     {
         if (!mainUI.IsShootWebInteractable)
         {
+            CompleteContextStep(
+                Constants.KopkariTutorial.OpponentCarrier,
+                KopkariTutorialProgress.ContextLesson.OpponentCarrier);
+            CompleteContextStep(
+                Constants.KopkariTutorial.WebSnare,
+                KopkariTutorialProgress.ContextLesson.WebSnare);
             RestoreContextTutorialState();
             return;
         }
@@ -1037,19 +1316,49 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.ShootWebTutorialTarget,
             sprintPlacement,
-            "EQUIP WEB SNARE",
-            "Press this button to open the Web Snare shooting control.",
-            string.Empty,
+            RegistanTutorialTextIds.EquipWebSnare,
+            RegistanTutorialTextIds.EquipWebSnareDescription,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
 
     private void HandleWebSnareButtonEnabled()
     {
-        if (state != TutorialState.WaitingForWebSnareButtonClick ||
-            mainUI == null || !mainUI.IsChainContainerVisible)
+        if (state != TutorialState.WaitingForWebSnareButtonClick || mainUI == null)
             return;
 
+        if (webSnareTutorialDelayRoutine != null)
+            StopCoroutine(webSnareTutorialDelayRoutine);
+        webSnareTutorialDelayRoutine = StartCoroutine(
+            WaitForWebSnareShootingButton());
+    }
+
+    private IEnumerator WaitForWebSnareShootingButton()
+    {
+        yield return new WaitForSecondsRealtime(
+            Mathf.Max(0.25f, webSnareShootTutorialDelay));
+
+        float readyDeadline = Time.realtimeSinceStartup + 2f;
+        while (state == TutorialState.WaitingForWebSnareButtonClick &&
+               mainUI != null &&
+               !mainUI.IsChainContainerVisible &&
+               Time.realtimeSinceStartup < readyDeadline)
+        {
+            yield return null;
+        }
+
+        if (state != TutorialState.WaitingForWebSnareButtonClick ||
+            mainUI == null ||
+            !mainUI.IsChainContainerVisible)
+        {
+            webSnareTutorialDelayRoutine = null;
+            yield break;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        yield return null;
+        webSnareTutorialDelayRoutine = null;
         ShowChainContainerExplanation();
     }
 
@@ -1060,9 +1369,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.ChainContainerTutorialTarget,
             sprintPlacement,
-            "SHOOT WEB SNARE",
-            "Press and hold this button to aim and shoot Web Snare at the Uloq carrier.",
-            "TRY IT",
+            RegistanTutorialTextIds.ShootWebSnare,
+            RegistanTutorialTextIds.ShootWebSnareDescription,
+            RegistanTutorialTextIds.TryIt,
             true,
             true);
     }
@@ -1074,9 +1383,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.ChainContainerTutorialTarget,
             sprintPlacement,
-            "YOUR TURN",
-            "Press and hold to shoot Web Snare.",
-            string.Empty,
+            RegistanTutorialTextIds.YourTurn,
+            RegistanTutorialTextIds.ShootWebSnarePractice,
+            RegistanTutorialTextIds.None,
             false,
             false);
     }
@@ -1084,7 +1393,18 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private void HandleWebSnareStarted()
     {
         if (state == TutorialState.WaitingForChainContainerPress)
+        {
+            CompleteContextStep(
+                Constants.KopkariTutorial.OpponentCarrier,
+                KopkariTutorialProgress.ContextLesson.OpponentCarrier);
+            CompleteContextStep(
+                Constants.KopkariTutorial.WebSnare,
+                KopkariTutorialProgress.ContextLesson.WebSnare);
+            CompleteContextStep(
+                Constants.KopkariTutorial.ChainContainer,
+                KopkariTutorialProgress.ContextLesson.ChainContainer);
             RestoreContextTutorialState();
+        }
     }
 
     private void ShowLostUlakExplanation()
@@ -1092,14 +1412,13 @@ public sealed class RegistanTutorialController : MonoBehaviour
         IsTutorialActive = true;
         state = TutorialState.LostUlakExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
-        objectiveIndicator?.RefreshNow();
-        objectiveIndicator?.SetTutorialPreview(true);
+        ShowTutorialObjectivePreview();
         ShowPresentation(
-            objectiveIndicatorTarget,
+            GetObjectiveTutorialTarget(),
             indicatorPlacement,
-            "YOU LOST THE ULOQ",
-            "Go back to the Uloq. Follow this indicator and distance meter.",
-            "GO BACK",
+            RegistanTutorialTextIds.LostUloq,
+            RegistanTutorialTextIds.LostUloqDescription,
+            RegistanTutorialTextIds.GoBack,
             true,
             true);
     }
@@ -1112,9 +1431,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.HorseHealthTutorialTarget,
             matchStatusPlacement,
-            "HORSE HEALTH",
-            "Damage lowers your horse's health. If it reaches zero, your match ends.",
-            "GOT IT",
+            RegistanTutorialTextIds.HorseHealth,
+            RegistanTutorialTextIds.HorseHealthDescription,
+            RegistanTutorialTextIds.GotIt,
             true,
             true);
     }
@@ -1134,9 +1453,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         ShowPresentation(
             mainUI.WarmupTutorialTarget,
             matchStatusPlacement,
-            "NEXT ROUND WARMUP",
-            "Reach the warmup point before this time expires.",
-            "SHOW THE WAY",
+            RegistanTutorialTextIds.NextRoundWarmup,
+            RegistanTutorialTextIds.NextRoundWarmupDescription,
+            RegistanTutorialTextIds.ShowTheWay,
             true,
             true);
     }
@@ -1145,21 +1464,20 @@ public sealed class RegistanTutorialController : MonoBehaviour
     {
         state = TutorialState.WarmupIndicatorExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
-        objectiveIndicator?.RefreshNow();
-        objectiveIndicator?.SetTutorialPreview(true);
+        ShowTutorialObjectivePreview();
         ShowPresentation(
-            objectiveIndicatorTarget,
+            GetObjectiveTutorialTarget(),
             indicatorPlacement,
-            "WARMUP POINT",
-            "Follow this indicator and meter to reach the warmup point.",
-            "GO",
+            RegistanTutorialTextIds.WarmupPoint,
+            RegistanTutorialTextIds.WarmupPointDescription,
+            RegistanTutorialTextIds.Go,
             false,
             true);
     }
 
     private void WaitForWarmupArrival()
     {
-        objectiveIndicator?.SetTutorialPreview(false);
+        HideTutorialObjectivePreview();
         state = TutorialState.WaitingForWarmupArrival;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
         HidePresentation();
@@ -1169,29 +1487,63 @@ public sealed class RegistanTutorialController : MonoBehaviour
     {
         state = TutorialState.RoundStartExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
-        objectiveIndicator?.SetTutorialPreview(false);
+        HideTutorialObjectivePreview();
         ShowPresentation(
             mainUI.WarmupTutorialTarget,
             matchStatusPlacement,
-            "READY FOR THE NEXT ROUND",
-            "You reached the warmup point. The new round starts when this countdown finishes.",
-            "GOT IT",
+            RegistanTutorialTextIds.ReadyNextRound,
+            RegistanTutorialTextIds.ReadyNextRoundDescription,
+            RegistanTutorialTextIds.GotIt,
             true,
             true);
     }
 
     private void ShowWalkZoneExplanation()
     {
+        IsTutorialActive = true;
         state = TutorialState.WalkZoneExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
         ShowPresentation(
             mainUI.WalkZoneTutorialTarget,
             sprintPlacement,
-            "WALK ZONE",
-            "Use Walk Zone while carrying the Uloq. Chasers entering it are slowed down.",
-            "CONTINUE",
+            RegistanTutorialTextIds.WalkZone,
+            RegistanTutorialTextIds.WalkZoneDescription,
+            RegistanTutorialTextIds.Continue,
             true,
             true);
+    }
+
+    private void ReleaseCompetitionAndScheduleWalkZone()
+    {
+        walkZoneTutorialUnlocked = true;
+        ReleaseCompetitionAndWaitForNextRound();
+        ScheduleWalkZoneTutorial();
+    }
+
+    private void ScheduleWalkZoneTutorial()
+    {
+        if (walkZoneTutorialShown || walkZoneDelayRoutine != null ||
+            !DoesLocalPlayerOwnUlak())
+            return;
+
+        walkZoneDelayRoutine = StartCoroutine(WaitToOfferWalkZoneTutorial());
+    }
+
+    private IEnumerator WaitToOfferWalkZoneTutorial()
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(3f, walkZoneTutorialDelay));
+        walkZoneDelayRoutine = null;
+
+        if (!walkZoneTutorialShown && DoesLocalPlayerOwnUlak())
+            pendingWalkZoneTutorial = true;
+    }
+
+    private static bool DoesLocalPlayerOwnUlak()
+    {
+        KopkariManager manager = KopkariManager.Instance;
+        return manager != null &&
+               manager.currentGoatOwner != null &&
+               manager.IsLocalRiderTransform(manager.currentGoatOwner.transform);
     }
 
     private void HandleNextClicked()
@@ -1205,6 +1557,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
                 BeginCameraPractice();
                 break;
             case TutorialState.MatchStatusExplanation:
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.MatchStatus,
+                    KopkariTutorialProgress.CoreCheckpoint.CameraView);
                 ShowCameraViewExplanation();
                 break;
             case TutorialState.CameraViewExplanation:
@@ -1217,27 +1572,48 @@ public sealed class RegistanTutorialController : MonoBehaviour
                 BeginSprintPractice();
                 break;
             case TutorialState.UloqIndicatorExplanation:
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.UloqIndicator,
+                    KopkariTutorialProgress.CoreCheckpoint.Pickup);
                 WaitForPickupAvailability();
                 break;
             case TutorialState.PickupButtonExplanation:
                 BeginPickupPractice();
                 break;
             case TutorialState.TargetIndicatorExplanation:
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.TargetIndicator,
+                    KopkariTutorialProgress.CoreCheckpoint.ComboPrize);
                 WaitForCombo();
                 break;
             case TutorialState.ComboExplanation:
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.ComboPrize,
+                    KopkariTutorialProgress.CoreCheckpoint.Carrier);
                 WaitForCarrier();
                 break;
             case TutorialState.CarrierExplanation:
-                ShowWalkZoneExplanation();
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.Carrier,
+                    KopkariTutorialProgress.CoreCheckpoint.NextRound);
+                ReleaseCompetitionAndScheduleWalkZone();
                 break;
             case TutorialState.WalkZoneExplanation:
-                ReleaseCompetitionAndWaitForNextRound();
+                CompleteContextStep(
+                    Constants.KopkariTutorial.WalkZone,
+                    KopkariTutorialProgress.ContextLesson.WalkZone);
+                RestoreContextTutorialState();
                 break;
             case TutorialState.WarmupBackgroundExplanation:
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.WarmupBackground,
+                    KopkariTutorialProgress.CoreCheckpoint.WarmupIndicator);
                 ShowWarmupIndicatorExplanation();
                 break;
             case TutorialState.WarmupIndicatorExplanation:
+                CompleteCoreStep(
+                    Constants.KopkariTutorial.WarmupIndicator,
+                    KopkariTutorialProgress.CoreCheckpoint.WarmupArrival);
                 WaitForWarmupArrival();
                 break;
             case TutorialState.RoundStartExplanation:
@@ -1257,11 +1633,31 @@ public sealed class RegistanTutorialController : MonoBehaviour
                 BeginChainContainerPractice();
                 break;
             case TutorialState.DefendExplanation:
+                CompleteContextStep(
+                    Constants.KopkariTutorial.GripDamage,
+                    KopkariTutorialProgress.ContextLesson.GripDamage);
+                CompleteContextStep(
+                    Constants.KopkariTutorial.Defend,
+                    KopkariTutorialProgress.ContextLesson.Defend);
+                RestoreContextTutorialState();
+                break;
             case TutorialState.LostUlakExplanation:
+                CompleteContextStep(
+                    Constants.KopkariTutorial.LostUloq,
+                    KopkariTutorialProgress.ContextLesson.LostUloq);
+                HideTutorialObjectivePreview();
+                RestoreContextTutorialState();
+                break;
             case TutorialState.FakeUlakExplanation:
+                CompleteContextStep(
+                    Constants.KopkariTutorial.FakeUloq,
+                    KopkariTutorialProgress.ContextLesson.FakeUloq);
+                RestoreContextTutorialState();
+                break;
             case TutorialState.HorseHealthExplanation:
-                if (state == TutorialState.LostUlakExplanation)
-                    objectiveIndicator?.SetTutorialPreview(false);
+                CompleteContextStep(
+                    Constants.KopkariTutorial.HorseHealth,
+                    KopkariTutorialProgress.ContextLesson.HorseHealth);
                 RestoreContextTutorialState();
                 break;
         }
@@ -1274,13 +1670,30 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
         StopOwnedCoroutines();
         HidePresentation();
-        objectiveIndicator?.SetTutorialPreview(false);
+        HideTutorialObjectivePreview();
         AIKopkariRider.SetRegistanTutorialRestrictions(false, true, true);
         KopkariManager.Instance?.SetRegistanTutorialUlakVisible(true);
         ShouldPauseMainTime = false;
         TutorialPauseController.ResumeAll();
+        if (completed)
+            KopkariTutorialProgress.CompleteTutorial();
         state = completed ? TutorialState.Finished : TutorialState.None;
         IsTutorialActive = false;
+    }
+
+    private void CompleteCoreStep(
+        string stepKey,
+        KopkariTutorialProgress.CoreCheckpoint nextCheckpoint)
+    {
+        KopkariTutorialProgress.CompleteCoreStep(stepKey, nextCheckpoint);
+        savedCheckpoint = KopkariTutorialProgress.LoadLocal().Checkpoint;
+    }
+
+    private static void CompleteContextStep(
+        string stepKey,
+        KopkariTutorialProgress.ContextLesson lesson)
+    {
+        KopkariTutorialProgress.CompleteContextStep(stepKey, lesson);
     }
 
     private void StopOwnedCoroutines()
@@ -1303,14 +1716,26 @@ public sealed class RegistanTutorialController : MonoBehaviour
             cameraTransitionRoutine = null;
         }
 
+        if (walkZoneDelayRoutine != null)
+        {
+            StopCoroutine(walkZoneDelayRoutine);
+            walkZoneDelayRoutine = null;
+        }
+
+        if (webSnareTutorialDelayRoutine != null)
+        {
+            StopCoroutine(webSnareTutorialDelayRoutine);
+            webSnareTutorialDelayRoutine = null;
+        }
+
     }
 
     private void ShowPresentation(
         RectTransform target,
         UITargetPlacementSettings placement,
-        string title,
-        string description,
-        string buttonLabel,
+        int titleId,
+        int descriptionId,
+        int buttonLabelId,
         bool blockInput,
         bool showButton)
     {
@@ -1318,9 +1743,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
             target,
             null,
             placement,
-            title,
-            description,
-            buttonLabel,
+            titleId,
+            descriptionId,
+            buttonLabelId,
             blockInput,
             showButton);
     }
@@ -1329,9 +1754,9 @@ public sealed class RegistanTutorialController : MonoBehaviour
         RectTransform target,
         RectTransform secondaryTarget,
         UITargetPlacementSettings placement,
-        string title,
-        string description,
-        string buttonLabel,
+        int titleId,
+        int descriptionId,
+        int buttonLabelId,
         bool blockInput,
         bool showButton)
     {
@@ -1342,18 +1767,31 @@ public sealed class RegistanTutorialController : MonoBehaviour
         presentationRoot.SetActive(true);
         blocker.color = blockInput ? BackdropColor : new Color(0f, 0f, 0f, 0.18f);
         blocker.raycastTarget = blockInput;
-        titleText.text = title;
-        descriptionText.text = description;
+        titleText.text = GetTutorialText(titleId);
+        descriptionText.text = GetTutorialText(descriptionId);
         nextButton.gameObject.SetActive(showButton);
-        nextButtonText.text = buttonLabel;
+        nextButtonText.text = GetTutorialText(buttonLabelId);
 
         FitHighlightToTargets(target, secondaryTarget, 22f);
         UITargetRelativePlacer.Place(popup, target, tutorialCanvasObject.transform as RectTransform, placement);
     }
 
+    private static string GetTutorialText(int languageId)
+    {
+        if (languageId <= 0)
+            return string.Empty;
+
+        LanguageManager languageManager = LanguageManager.Instance;
+        return languageManager != null
+            ? languageManager.GetText(languageId)
+            : $"#{languageId}";
+    }
+
     private void HidePresentation()
     {
         presentationHiddenForPauseMenu = false;
+        if (highlight != null)
+            highlight.gameObject.SetActive(false);
         if (presentationRoot != null)
             presentationRoot.SetActive(false);
     }
@@ -1411,10 +1849,13 @@ public sealed class RegistanTutorialController : MonoBehaviour
                     sliderPlacement);
                 break;
             case TutorialState.UloqIndicatorExplanation:
-            case TutorialState.WaitingForPickupAvailability:
             case TutorialState.TargetIndicatorExplanation:
             case TutorialState.WarmupIndicatorExplanation:
-                PlaceAt(objectiveIndicatorTarget, indicatorPlacement);
+            case TutorialState.LostUlakExplanation:
+                PlaceAt(GetObjectiveTutorialTarget(), indicatorPlacement);
+                break;
+            case TutorialState.WaitingForPickupAvailability:
+                PlaceAt(GetObjectiveTutorialTarget(), indicatorPlacement);
                 break;
             case TutorialState.PickupButtonExplanation:
             case TutorialState.WaitingForPickupPress:
@@ -1440,9 +1881,6 @@ public sealed class RegistanTutorialController : MonoBehaviour
                 break;
             case TutorialState.FakeUlakExplanation:
                 PlaceAt(mainUI != null ? mainUI.FakeUlakTutorialTarget : null, sprintPlacement);
-                break;
-            case TutorialState.LostUlakExplanation:
-                PlaceAt(objectiveIndicatorTarget, indicatorPlacement);
                 break;
             case TutorialState.WebSnareButtonExplanation:
             case TutorialState.WaitingForWebSnareButtonClick:
@@ -1479,162 +1917,224 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void FitHighlightToTargets(RectTransform target, RectTransform secondaryTarget, float padding)
     {
-        if (highlight == null || target == null || tutorialCanvasObject == null)
+        if (highlight == null)
             return;
 
-        GetTargetBounds(target, out Vector2 min, out Vector2 max);
+        if (target == null)
+        {
+            highlight.gameObject.SetActive(false);
+            return;
+        }
+
+        RectTransform highlightHost = ResolveHighlightHost(target);
+        if (highlightHost == null)
+        {
+            highlight.gameObject.SetActive(false);
+            return;
+        }
+
+        if (highlight.parent != highlightHost)
+            highlight.SetParent(highlightHost, false);
+
+        highlight.gameObject.SetActive(true);
+        GetTargetBounds(target, highlightHost, out Vector2 min, out Vector2 max);
         if (secondaryTarget != null)
         {
-            GetTargetBounds(secondaryTarget, out Vector2 secondaryMin, out Vector2 secondaryMax);
+            GetTargetBounds(
+                secondaryTarget,
+                highlightHost,
+                out Vector2 secondaryMin,
+                out Vector2 secondaryMax);
             min = Vector2.Min(min, secondaryMin);
             max = Vector2.Max(max, secondaryMax);
         }
 
+        highlight.anchorMin = new Vector2(0.5f, 0.5f);
+        highlight.anchorMax = new Vector2(0.5f, 0.5f);
+        highlight.pivot = new Vector2(0.5f, 0.5f);
         highlight.anchoredPosition = (min + max) * 0.5f;
         highlight.sizeDelta = max - min + Vector2.one * (padding * 2f);
     }
 
-    private void GetTargetBounds(RectTransform target, out Vector2 min, out Vector2 max)
+    private static void GetTargetBounds(
+        RectTransform target,
+        RectTransform highlightHost,
+        out Vector2 min,
+        out Vector2 max)
     {
-        RectTransform canvasRect = tutorialCanvasObject.transform as RectTransform;
         Vector3[] corners = new Vector3[4];
         target.GetWorldCorners(corners);
 
-        Camera targetCamera = null;
-        Canvas targetCanvas = target.GetComponentInParent<Canvas>();
-        if (targetCanvas != null && targetCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
-            targetCamera = targetCanvas.worldCamera;
+        Camera targetCamera = GetCanvasCamera(target);
+        Camera hostCamera = GetCanvasCamera(highlightHost);
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            canvasRect,
+            highlightHost,
             RectTransformUtility.WorldToScreenPoint(targetCamera, corners[0]),
-            null,
+            hostCamera,
             out min);
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            canvasRect,
+            highlightHost,
             RectTransformUtility.WorldToScreenPoint(targetCamera, corners[2]),
-            null,
+            hostCamera,
             out max);
     }
 
-    private void BuildRuntimeUI()
+    private RectTransform ResolveHighlightHost(RectTransform target)
     {
-        tutorialCanvasObject = new GameObject(
-            "Registan Tutorial Canvas",
-            typeof(RectTransform),
-            typeof(Canvas),
-            typeof(CanvasScaler),
-            typeof(GraphicRaycaster));
+        if (target != null &&
+            presentation != null &&
+            target.IsChildOf(presentation.transform))
+        {
+            return defaultHighlightParent;
+        }
 
-        Canvas canvas = tutorialCanvasObject.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.overrideSorting = true;
-        canvas.sortingOrder = 5000;
+        if (target != null &&
+            mobileCanvasRoot != null &&
+            mobileHighlightHost != null &&
+            target.IsChildOf(mobileCanvasRoot))
+        {
+            return mobileHighlightHost;
+        }
 
-        CanvasScaler scaler = tutorialCanvasObject.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
+        if (mainHighlightHost != null)
+            return mainHighlightHost;
 
-        presentationRoot = CreateUIObject("Presentation", tutorialCanvasObject.transform).gameObject;
-        StretchToParent(presentationRoot.transform as RectTransform);
+        return defaultHighlightParent;
+    }
 
-        blocker = CreateImage("Backdrop", presentationRoot.transform, BackdropColor);
-        StretchToParent(blocker.rectTransform);
+    private void RestoreHighlightParent()
+    {
+        if (highlight == null ||
+            defaultHighlightParent == null ||
+            highlight.parent == defaultHighlightParent)
+        {
+            return;
+        }
 
-        Image highlightImage = CreateImage("Target Highlight", presentationRoot.transform, new Color(1f, 0.72f, 0.12f, 0.18f));
-        highlightImage.raycastTarget = false;
-        highlight = highlightImage.rectTransform;
-        highlight.anchorMin = highlight.anchorMax = new Vector2(0.5f, 0.5f);
-        highlight.pivot = new Vector2(0.5f, 0.5f);
-        Outline outline = highlightImage.gameObject.AddComponent<Outline>();
-        outline.effectColor = AccentColor;
-        outline.effectDistance = new Vector2(5f, -5f);
+        highlight.SetParent(defaultHighlightParent, false);
+        highlight.SetSiblingIndex(
+            Mathf.Clamp(
+                defaultHighlightSiblingIndex,
+                0,
+                Mathf.Max(0, defaultHighlightParent.childCount - 1)));
+    }
 
-        Image panelImage = CreateImage("Popup", presentationRoot.transform, PanelColor);
-        panelImage.raycastTarget = false;
-        popup = panelImage.rectTransform;
-        popup.sizeDelta = new Vector2(620f, 260f);
+    private static Camera GetCanvasCamera(RectTransform target)
+    {
+        Canvas canvas = target != null ? target.GetComponentInParent<Canvas>() : null;
+        if (canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            return null;
 
-        Outline panelOutline = panelImage.gameObject.AddComponent<Outline>();
-        panelOutline.effectColor = new Color(1f, 0.72f, 0.12f, 0.7f);
-        panelOutline.effectDistance = new Vector2(3f, -3f);
+        return canvas.worldCamera;
+    }
 
-        titleText = CreateText("Title", popup, 38f, FontStyles.Bold, TextAlignmentOptions.TopLeft);
-        SetRect(titleText.rectTransform, new Vector2(34f, -26f), new Vector2(-34f, -82f), true);
-        titleText.color = AccentColor;
+    private RectTransform GetObjectiveTutorialTarget()
+    {
+        return presentation != null && presentation.ObjectivePreviewTarget != null
+            ? presentation.ObjectivePreviewTarget
+            : objectiveIndicatorTarget;
+    }
 
-        descriptionText = CreateText("Description", popup, 28f, FontStyles.Normal, TextAlignmentOptions.TopLeft);
-        SetRect(descriptionText.rectTransform, new Vector2(34f, -88f), new Vector2(-34f, -165f), true);
-        descriptionText.color = Color.white;
+    private void ShowTutorialObjectivePreview()
+    {
+        RefreshTutorialObjectivePreview(true);
+    }
 
-        Image buttonImage = CreateImage("Next Button", popup, AccentColor);
-        RectTransform buttonRect = buttonImage.rectTransform;
-        buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(1f, 0f);
-        buttonRect.pivot = new Vector2(1f, 0f);
-        buttonRect.anchoredPosition = new Vector2(-30f, 24f);
-        buttonRect.sizeDelta = new Vector2(210f, 62f);
+    private void HideTutorialObjectivePreview()
+    {
+        presentation?.SetObjectivePreview(false);
+    }
 
-        nextButton = buttonImage.gameObject.AddComponent<Button>();
-        nextButton.targetGraphic = buttonImage;
+    private void RefreshTutorialObjectivePreview(bool forceShow = false)
+    {
+        if (presentation == null)
+            return;
+
+        bool shouldShow = forceShow ||
+                          state == TutorialState.UloqIndicatorExplanation ||
+                          state == TutorialState.WaitingForPickupAvailability ||
+                          state == TutorialState.TargetIndicatorExplanation ||
+                          state == TutorialState.WarmupIndicatorExplanation ||
+                          state == TutorialState.LostUlakExplanation;
+        if (!shouldShow)
+            return;
+
+        if (objectiveIndicator != null &&
+            objectiveIndicator.TryGetTutorialSnapshot(
+                out KopkariObjectiveIndicator.ObjectiveKind objectiveKind,
+                out _,
+                out Sprite icon,
+                out Color color,
+                out int distanceMeters))
+        {
+            presentation.SetObjectivePreview(
+                true,
+                GetTutorialText(GetObjectiveLabelId(objectiveKind)),
+                distanceMeters + " m",
+                icon,
+                color);
+        }
+        else
+        {
+            presentation.SetObjectivePreview(false);
+        }
+    }
+
+    private static int GetObjectiveLabelId(KopkariObjectiveIndicator.ObjectiveKind objectiveKind)
+    {
+        switch (objectiveKind)
+        {
+            case KopkariObjectiveIndicator.ObjectiveKind.Warmup:
+                return RegistanTutorialTextIds.ObjectiveWarmup;
+            case KopkariObjectiveIndicator.ObjectiveKind.Target:
+                return RegistanTutorialTextIds.ObjectiveSalym;
+            case KopkariObjectiveIndicator.ObjectiveKind.Uloq:
+                return RegistanTutorialTextIds.ObjectiveUloq;
+            default:
+                return RegistanTutorialTextIds.None;
+        }
+    }
+
+    private void CreatePresentation()
+    {
+        if (presentationPrefab == null)
+        {
+            Debug.LogError(
+                $"[{nameof(RegistanTutorialController)}] Presentation prefab is not assigned.",
+                this);
+            return;
+        }
+
+        bool assignedFromScene = presentationPrefab.gameObject.scene.IsValid();
+        presentation = assignedFromScene
+            ? presentationPrefab
+            : Instantiate(presentationPrefab);
+        ownsPresentationInstance = !assignedFromScene;
+
+        if (!presentation.HasRequiredReferences)
+        {
+            Debug.LogError(
+                $"[{nameof(RegistanTutorialController)}] Presentation prefab has missing UI references.",
+                presentation);
+            if (ownsPresentationInstance)
+                Destroy(presentation.gameObject);
+            presentation = null;
+            ownsPresentationInstance = false;
+            return;
+        }
+
+        tutorialCanvasObject = presentation.gameObject;
+        presentationRoot = presentation.PresentationRoot;
+        blocker = presentation.Blocker;
+        highlight = presentation.Highlight;
+        defaultHighlightParent = highlight.parent as RectTransform;
+        defaultHighlightSiblingIndex = highlight.GetSiblingIndex();
+        popup = presentation.Popup;
+        titleText = presentation.TitleText;
+        descriptionText = presentation.DescriptionText;
+        nextButton = presentation.NextButton;
+        nextButtonText = presentation.NextButtonText;
         nextButton.onClick.AddListener(HandleNextClicked);
-
-        nextButtonText = CreateText("Label", buttonRect, 27f, FontStyles.Bold, TextAlignmentOptions.Center);
-        StretchToParent(nextButtonText.rectTransform);
-        nextButtonText.color = new Color(0.04f, 0.05f, 0.07f, 1f);
-        nextButtonText.raycastTarget = false;
-    }
-
-    private static RectTransform CreateUIObject(string name, Transform parent)
-    {
-        GameObject go = new GameObject(name, typeof(RectTransform));
-        RectTransform rect = go.GetComponent<RectTransform>();
-        rect.SetParent(parent, false);
-        return rect;
-    }
-
-    private static Image CreateImage(string name, Transform parent, Color color)
-    {
-        RectTransform rect = CreateUIObject(name, parent);
-        Image image = rect.gameObject.AddComponent<Image>();
-        image.color = color;
-        return image;
-    }
-
-    private static TMP_Text CreateText(
-        string name,
-        Transform parent,
-        float fontSize,
-        FontStyles style,
-        TextAlignmentOptions alignment)
-    {
-        RectTransform rect = CreateUIObject(name, parent);
-        TextMeshProUGUI text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-        text.font = TMP_Settings.defaultFontAsset;
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.alignment = alignment;
-        text.enableWordWrapping = true;
-        text.raycastTarget = false;
-        return text;
-    }
-
-    private static void StretchToParent(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = Vector2.zero;
-    }
-
-    private static void SetRect(RectTransform rect, Vector2 topLeft, Vector2 bottomRight, bool stretchHorizontal)
-    {
-        rect.anchorMin = stretchHorizontal ? new Vector2(0f, 1f) : new Vector2(0f, 0f);
-        rect.anchorMax = new Vector2(1f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.offsetMin = new Vector2(topLeft.x, bottomRight.y);
-        rect.offsetMax = new Vector2(bottomRight.x, topLeft.y);
     }
 }

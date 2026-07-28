@@ -1,4 +1,5 @@
 ﻿using Michsky.UI.ModernUIPack;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -7,6 +8,9 @@ using UnityEngine.UI;
 
 public class UserDetails : MonoBehaviour
 {
+    public event Action NameAndCountryReady;
+    public event Action ProfileSaved;
+
     [Header("UI Texts")]    
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_InputField nameInputField;
@@ -34,6 +38,9 @@ public class UserDetails : MonoBehaviour
     [Header("Level details")]
     [SerializeField] private TMP_Text levelCountText;
     [SerializeField] private ProgressBar levelProgress;
+    private bool previousSaveInteractable;
+    private bool previousCloseInteractable;
+
     void Start()
     {
         if (PlayerPrefs.HasKey(Constants.Player.UsernameKey))
@@ -52,7 +59,9 @@ public class UserDetails : MonoBehaviour
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            HomeMainUI.Instance.ShowSaveBtn(); // Save button tutorial
+            if (HomeTutorialController.IsTutorialActive && saveButton != null)
+                saveButton.interactable = true;
+            NameAndCountryReady?.Invoke();
         }
     }
     private void SaveUsername()
@@ -71,7 +80,8 @@ public class UserDetails : MonoBehaviour
             DataManager.Instance?.SavePlayerProfile(newUsername, selectedCountry, true);
 
             HomeMainUI.Instance.UpdatePlayerName(newUsername);
-            HomeMainUI.Instance.FinishNameTutorial();
+            ProfileSaved?.Invoke();
+            HomeMainUI.Instance.CloseUserDetailsPanel();
         }
         else
         {
@@ -82,9 +92,27 @@ public class UserDetails : MonoBehaviour
     }
     private void OnEnable()
     {
+        previousSaveInteractable = saveButton != null && saveButton.interactable;
+        previousCloseInteractable = closeButton != null && closeButton.interactable;
+        if (HomeTutorialController.IsTutorialActive)
+        {
+            if (saveButton != null)
+                saveButton.interactable = false;
+            if (closeButton != null)
+                closeButton.interactable = false;
+        }
+
         CountrySelection();
         UITransilations();
         RefreshLevelUI();
+    }
+
+    private void OnDisable()
+    {
+        if (saveButton != null)
+            saveButton.interactable = previousSaveInteractable;
+        if (closeButton != null)
+            closeButton.interactable = previousCloseInteractable;
     }
 
     private void CloseEvent()

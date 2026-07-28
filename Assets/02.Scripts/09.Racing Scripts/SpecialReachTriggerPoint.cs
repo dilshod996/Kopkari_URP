@@ -6,6 +6,8 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class SpecialReachTriggerPoint : MonoBehaviour
 {
+    public static event Action OnFirstAIRiderEntered;
+
     [Header("Trigger Filter")]
     [SerializeField] private string requiredTag = "RacingHead";
 
@@ -18,6 +20,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
     private readonly HashSet<RacingAgent> _passed = new HashSet<RacingAgent>();
     private readonly List<RacingAgent> _passedOrder = new List<RacingAgent>();
     private bool _timerStarted;
+    private bool _aiTutorialSignalSent;
     private Coroutine _routine;
 
 
@@ -34,6 +37,7 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         _passed.Clear();
         _passedOrder.Clear();
         _timerStarted = false;
+        _aiTutorialSignalSent = false;
 
         if (_routine != null)
         {
@@ -64,8 +68,17 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         // Birinchi o'tgan agent => timer start
         if (!_timerStarted && !controller.IsRaceOver)
         {
+            bool notifyTutorial = !agent.isPlayer && !_aiTutorialSignalSent;
             _timerStarted = true;
             _routine = StartCoroutine(GraceCountdown());
+
+            // StartCoroutine runs through ShowSpecialTrigger before its first
+            // yield, so listeners can safely highlight the visible panel.
+            if (notifyTutorial)
+            {
+                _aiTutorialSignalSent = true;
+                OnFirstAIRiderEntered?.Invoke();
+            }
         }
     }
 

@@ -84,6 +84,83 @@ public sealed class KopkariObjectiveIndicator : MonoBehaviour
     public ObjectiveKind CurrentKind => currentKind;
     public Transform CurrentTarget => currentTarget;
 
+    public bool TryGetTutorialSnapshot(
+        out ObjectiveKind kind,
+        out string label,
+        out Sprite icon,
+        out Color color,
+        out int distanceMeters)
+    {
+        KopkariManager activeManager = manager != null ? manager : KopkariManager.Instance;
+        Transform snapshotTarget = null;
+        kind = ObjectiveKind.None;
+        label = string.Empty;
+        icon = null;
+        color = Color.white;
+        distanceMeters = 0;
+
+        if (activeManager != null)
+        {
+            if (activeManager.roomState == KopkariManager.RoomState.GameStarted)
+            {
+                bool localPlayerOwnsUloq = activeManager.currentGoatOwner != null &&
+                                           activeManager.IsLocalRiderTransform(
+                                               activeManager.currentGoatOwner.transform);
+                if (localPlayerOwnsUloq && activeManager.CurrentTargetPosition != null)
+                {
+                    kind = ObjectiveKind.Target;
+                    snapshotTarget = activeManager.CurrentTargetPosition;
+                }
+                else if (activeManager.UlakTransform != null)
+                {
+                    kind = ObjectiveKind.Uloq;
+                    snapshotTarget = activeManager.UlakTransform;
+                }
+            }
+            else if (activeManager.IsRoundWarmupActive &&
+                     activeManager.CurrentWarmupPosition != null)
+            {
+                kind = ObjectiveKind.Warmup;
+                snapshotTarget = activeManager.CurrentWarmupPosition;
+            }
+        }
+
+        if (kind == ObjectiveKind.None || snapshotTarget == null)
+            return false;
+
+        ObjectiveStyle style = GetStyle(kind);
+        if (style != null)
+        {
+            label = style.label;
+            icon = style.icon;
+            color = style.color;
+        }
+
+        Transform snapshotPlayer = player;
+        if (snapshotPlayer == null && activeManager != null)
+        {
+            if (activeManager.horseAnimal != null)
+                snapshotPlayer = activeManager.horseAnimal.transform;
+            else if (activeManager.LocalRiderAnimal != null)
+                snapshotPlayer = activeManager.LocalRiderAnimal.transform;
+        }
+
+        if (snapshotPlayer != null)
+        {
+            Vector3 from = snapshotPlayer.position;
+            Vector3 to = snapshotTarget.position;
+            if (horizontalDistanceOnly)
+            {
+                from.y = 0f;
+                to.y = 0f;
+            }
+
+            distanceMeters = Mathf.Max(0, Mathf.RoundToInt(Vector3.Distance(from, to)));
+        }
+
+        return true;
+    }
+
     private void Awake()
     {
         ResolveReferences();

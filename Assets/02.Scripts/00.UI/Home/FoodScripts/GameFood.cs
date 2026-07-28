@@ -307,8 +307,11 @@ public class GameFood : MonoBehaviour
     }
     private void GetResources()
     {
-        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
-            HorseConditionStatsService.GetCachedMaxOrDefault());
+        KopkariResultsManager results = GetActiveLiveResults();
+        HorseConditionStats current = results != null
+            ? results.GetLiveHorseCondition()
+            : HorseConditionStatsService.GetCurrentOrInitialize(
+                HorseConditionStatsService.GetCachedMaxOrDefault());
 
         mPower = current.Power;
         mCooling = current.Cooling;
@@ -330,13 +333,24 @@ public class GameFood : MonoBehaviour
     {
         resourceUpdated = true;
 
-        // Apply the selected food buffs.
-        HorseConditionStats current = new HorseConditionStats(mPower, mCooling, mStamina);
-        HorseConditionStats updated = HorseConditionStatsService.AddFood(
-            powerPercent,
-            coolingPercent,
-            staminaPercent,
-            current);
+        KopkariResultsManager results = GetActiveLiveResults();
+        HorseConditionStats updated;
+        if (results != null)
+        {
+            updated = results.AddFoodToLiveHorseCondition(
+                powerPercent,
+                coolingPercent,
+                staminaPercent);
+        }
+        else
+        {
+            HorseConditionStats current = new HorseConditionStats(mPower, mCooling, mStamina);
+            updated = HorseConditionStatsService.AddFood(
+                powerPercent,
+                coolingPercent,
+                staminaPercent,
+                current);
+        }
 
         mPower = updated.Power;
         mCooling = updated.Cooling;
@@ -351,6 +365,9 @@ public class GameFood : MonoBehaviour
     {
         if(!resourceUpdated)
             return;
+        if (GetActiveLiveResults() != null)
+            return;
+
         // 3) Yangi qiymatlarni saqlaymiz
         HorseConditionStatsService.SaveCurrent(new HorseConditionStats(mPower, mCooling, mStamina));
     }
@@ -364,13 +381,14 @@ public class GameFood : MonoBehaviour
         bool powerRequired = mPower < requiredPower;
         bool coolingRequired = mCooling < requiredCooling;
         bool staminaRequired = mStamina < requiredStamina;
+        HorseConditionStats max = GetCurrentHorseConditionMax();
 
         SetRequirementText(notEnoughPowerBg, notEnoughPowerText, powerRequired, mPower, requiredPower,
-            HorseConditionStatsService.GetCachedMaxOrDefault().Power);
+            max.Power);
         SetRequirementText(notEnoughCoolingBg, notEnoughCoolingText, coolingRequired, mCooling, requiredCooling,
-            HorseConditionStatsService.GetCachedMaxOrDefault().Cooling);
+            max.Cooling);
         SetRequirementText(notEnoughStaminaBg, notEnoughStaminaText, staminaRequired, mStamina, requiredStamina,
-            HorseConditionStatsService.GetCachedMaxOrDefault().Stamina);
+            max.Stamina);
     }
 
     private void SetRequirementText(
@@ -430,7 +448,7 @@ public class GameFood : MonoBehaviour
     {
         if (pageMode == FoodPageMode.KopkariRoundChange)
         {
-            HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
+            HorseConditionStats max = GetCurrentHorseConditionMax();
             float multiplier = roundRequiredPercent / 100f;
             power = max.Power * multiplier;
             cooling = max.Cooling * multiplier;
@@ -441,6 +459,20 @@ public class GameFood : MonoBehaviour
         power = Constants.HorseConditionNum.Power;
         cooling = Constants.HorseConditionNum.Cool;
         stamina = Constants.HorseConditionNum.Stamina;
+    }
+
+    private HorseConditionStats GetCurrentHorseConditionMax()
+    {
+        KopkariResultsManager results = GetActiveLiveResults();
+        return results != null
+            ? results.GetLiveHorseConditionMax()
+            : HorseConditionStatsService.GetCachedMaxOrDefault();
+    }
+
+    private static KopkariResultsManager GetActiveLiveResults()
+    {
+        KopkariResultsManager results = KopkariResultsManager.Instance;
+        return results != null && results.IsLiveHorseConditionActive ? results : null;
     }
 
     private void SetText(TMP_Text detailText, float num, float limitNum)

@@ -1,12 +1,13 @@
+using System;
 using Michsky.UI.ModernUIPack;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class Settings : MonoBehaviour
 {
+    public event Action LanguageDropdownOpened;
+    public event Action<int> LanguageSelected;
 
     [Header("Settings Texts")]
     [SerializeField] private TMP_Text titleSettings;
@@ -46,8 +47,23 @@ public class Settings : MonoBehaviour
 
 
 
+    private bool dropdownWasOpen;
+    private bool previousSaveInteractable;
+    private bool previousCloseInteractable;
+
     private void OnEnable()
     {
+        dropdownWasOpen = languageDropdown != null && languageDropdown.isOn;
+        previousSaveInteractable = saveButton != null && saveButton.interactable;
+        previousCloseInteractable = closeButton != null && closeButton.interactable;
+        if (HomeTutorialController.IsTutorialActive)
+        {
+            if (saveButton != null)
+                saveButton.interactable = false;
+            if (closeButton != null)
+                closeButton.interactable = false;
+        }
+
         SettingsPanelText();
         saveButton.onClick.AddListener(GetSelectedItem);
         closeButton.onClick.AddListener(ClosePage);
@@ -58,6 +74,23 @@ public class Settings : MonoBehaviour
         saveButton.onClick.RemoveAllListeners();
         closeButton.onClick.RemoveAllListeners();
         languageDropdown.dropdownEvent.RemoveListener(OnDropdownSelected);
+        dropdownWasOpen = false;
+        if (saveButton != null)
+            saveButton.interactable = previousSaveInteractable;
+        if (closeButton != null)
+            closeButton.interactable = previousCloseInteractable;
+    }
+
+    private void Update()
+    {
+        if (languageDropdown == null)
+            return;
+
+        bool dropdownIsOpen = languageDropdown.isOn;
+        if (dropdownIsOpen && !dropdownWasOpen)
+            LanguageDropdownOpened?.Invoke();
+
+        dropdownWasOpen = dropdownIsOpen;
     }
     private void SettingsPanelText()
     {
@@ -141,7 +174,9 @@ public class Settings : MonoBehaviour
     private void OnDropdownSelected(int selectedIndex)
     {
         Debug.Log("selected event id" + selectedIndex);
-        HomeMainUI.Instance?.ShowSettingsSave();
+        if (HomeTutorialController.IsTutorialActive && saveButton != null)
+            saveButton.interactable = true;
+        LanguageSelected?.Invoke(selectedIndex);
     }
 }
 //[Header("UI Refs")]

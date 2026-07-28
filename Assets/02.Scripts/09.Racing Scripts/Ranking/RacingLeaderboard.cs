@@ -8,6 +8,7 @@ using UnityEngine.UI;
 public class RacingLeaderboard : MonoBehaviour
 {
     public static RacingLeaderboard Instance { get; private set; }
+    public static event System.Action OnLeaderboardShown;
     
     [Header("Refs")]
     [SerializeField] private RectTransform contentParent;
@@ -210,6 +211,7 @@ public class RacingLeaderboard : MonoBehaviour
             {
                 panelGroup.interactable = true;
                 panelGroup.blocksRaycasts = true;
+                OnLeaderboardShown?.Invoke();
             });
 
         if (autoHide)
