@@ -10,6 +10,8 @@ using UnityEngine.UI;
 public sealed class RacingTutorialController : MonoBehaviour
 {
     public static bool IsTutorialActive { get; private set; }
+    public static bool IsNormalPauseBlocked { get; private set; }
+    public static bool ShouldDelayResultPage { get; private set; }
 
     private enum TutorialState
     {
@@ -107,6 +109,11 @@ public sealed class RacingTutorialController : MonoBehaviour
     [SerializeField, Min(0f)] private float boosterFlySettleDelay = 0.8f;
     [SerializeField, Range(2f, 10f)] private float cloudProgressWaitTimeout = 6f;
 
+    [Header("Non-Pausing Sprint Reminder")]
+    [SerializeField, Range(1, 5)] private int maxSprintRemindersPerRace = 3;
+    [SerializeField, Range(1f, 5f)] private float sprintReminderDuration = 2.5f;
+    [SerializeField, Min(0f)] private float sprintReminderCooldown = 5f;
+
     private TutorialState state;
     private RacingControllerType selectedController;
     private RacingTutorialPresentation presentation;
@@ -122,6 +129,7 @@ public sealed class RacingTutorialController : MonoBehaviour
     private TMP_Text nextButtonText;
     private bool ownsPresentation;
     private bool tutorialStarted;
+    private bool normalPauseUnlockedForRace;
     private bool standaloneControlTutorial;
     private bool controllerChangeTutorialActive;
     private bool pendingSpecialTriggerDuringControl;
@@ -143,7 +151,12 @@ public sealed class RacingTutorialController : MonoBehaviour
     private Coroutine lookBackTransitionRoutine;
     private Coroutine specialUiRoutine;
     private Coroutine contextUiRoutine;
+    private Coroutine sprintReminderRoutine;
     private RacingTutorialProgress.CoreCheckpoint savedCheckpoint;
+    private int sprintReminderCount;
+    private float nextSprintReminderTime;
+    private bool sprintReminderPending;
+    private bool sprintReminderVisible;
 
     private static readonly Color BackdropColor =
         new Color(0.015f, 0.025f, 0.05f, 0.72f);
@@ -152,6 +165,7 @@ public sealed class RacingTutorialController : MonoBehaviour
 
     private void Awake()
     {
+        ShouldDelayResultPage = false;
         CreatePresentation();
         HidePresentation();
     }
@@ -166,8 +180,11 @@ public sealed class RacingTutorialController : MonoBehaviour
         UILookBackButton.OnCameraPressedState += HandleLookBackState;
         UIButtonActions.OnSprintStart += HandleSprintStarted;
         SpecialReachTriggerPoint.OnFirstAIRiderEntered += HandleFirstAIRiderEntered;
+        SpecialReachTriggerPoint.OnPlayerEntered +=
+            HandlePlayerEnteredSpecialTrigger;
         RacingController.OnRacingFinished += HandleRaceFinished;
         PlayerDataManager.OnShowFinalPage += HandleResultReady;
+        UIButtonActions.OnGameOverOpening += HandleGameOverOpening;
         ReinZone.OnLeftReinUsed += HandleLeftReinUsed;
         ReinZone.OnRightReinUsed += HandleRightReinUsed;
         BoostersContainer.OnDefendAdded += HandleDefenseAdded;
@@ -191,8 +208,11 @@ public sealed class RacingTutorialController : MonoBehaviour
         UILookBackButton.OnCameraPressedState -= HandleLookBackState;
         UIButtonActions.OnSprintStart -= HandleSprintStarted;
         SpecialReachTriggerPoint.OnFirstAIRiderEntered -= HandleFirstAIRiderEntered;
+        SpecialReachTriggerPoint.OnPlayerEntered -=
+            HandlePlayerEnteredSpecialTrigger;
         RacingController.OnRacingFinished -= HandleRaceFinished;
         PlayerDataManager.OnShowFinalPage -= HandleResultReady;
+        UIButtonActions.OnGameOverOpening -= HandleGameOverOpening;
         ReinZone.OnLeftReinUsed -= HandleLeftReinUsed;
         ReinZone.OnRightReinUsed -= HandleRightReinUsed;
         BoostersContainer.OnDefendAdded -= HandleDefenseAdded;
@@ -240,6 +260,7 @@ public sealed class RacingTutorialController : MonoBehaviour
             StopCoroutine(contextUiRoutine);
             contextUiRoutine = null;
         }
+        StopSprintReminder(false);
 
         FinishTutorial();
     }
@@ -456,6 +477,7 @@ public sealed class RacingTutorialController : MonoBehaviour
                     : TutorialState.WaitingForSpecialTrigger;
                 HidePresentation();
                 TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                UnlockNormalPauseForRace();
                 QueueContextLesson(ContextLesson.MiniMap);
                 TryShowNextContextLesson();
                 break;
@@ -588,6 +610,7 @@ public sealed class RacingTutorialController : MonoBehaviour
             }
 
             TryShowNextContextLesson();
+            TryShowSprintReminder();
             return;
         }
 
@@ -719,6 +742,8 @@ public sealed class RacingTutorialController : MonoBehaviour
 
     private void HandleSprintStarted()
     {
+        StopSprintReminder(true);
+
         if (!IsTutorialActive || state != TutorialState.WaitingForSprint)
             return;
 
@@ -815,6 +840,8 @@ public sealed class RacingTutorialController : MonoBehaviour
         contextInterruptedState = state;
         state = TutorialState.ContextExplanation;
 
+        StopSprintReminder(true);
+        SetNormalPauseBlocked(true);
         HidePresentation();
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
         contextUiRoutine = StartCoroutine(ShowContextAfterVisualSettles());
@@ -971,6 +998,7 @@ public sealed class RacingTutorialController : MonoBehaviour
         }
 
         specialTriggerExplained = true;
+        StopSprintReminder(true);
         if (contextUiRoutine != null)
         {
             StopCoroutine(contextUiRoutine);
@@ -988,6 +1016,7 @@ public sealed class RacingTutorialController : MonoBehaviour
         }
         interruptedState = state;
         state = TutorialState.SpecialTriggerExplanation;
+        SetNormalPauseBlocked(true);
         HidePresentation();
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
         specialUiRoutine = StartCoroutine(ShowSpecialTriggerAfterPanelSettles());
@@ -1008,8 +1037,90 @@ public sealed class RacingTutorialController : MonoBehaviour
             true);
     }
 
+    private void HandlePlayerEnteredSpecialTrigger()
+    {
+        if (!IsTutorialActive ||
+            standaloneControlTutorial ||
+            savedCheckpoint < RacingTutorialProgress.CoreCheckpoint.Racing ||
+            state >= TutorialState.FinishExplanation ||
+            sprintReminderCount >= maxSprintRemindersPerRace)
+        {
+            return;
+        }
+
+        sprintReminderPending = true;
+        TryShowSprintReminder();
+    }
+
+    private void TryShowSprintReminder()
+    {
+        bool isNormalRacingState =
+            state == TutorialState.WaitingForSpecialTrigger ||
+            state == TutorialState.WaitingForFinish;
+
+        if (!sprintReminderPending ||
+            sprintReminderVisible ||
+            Time.unscaledTime < nextSprintReminderTime ||
+            contextLessonActive ||
+            controllerChangeTutorialActive ||
+            !isNormalRacingState)
+        {
+            return;
+        }
+
+        sprintReminderPending = false;
+        sprintReminderVisible = true;
+        sprintReminderCount++;
+        nextSprintReminderTime =
+            Time.unscaledTime + Mathf.Max(0f, sprintReminderCooldown);
+
+        ShowPresentation(
+            sprintButton != null
+                ? sprintButton.transform as RectTransform
+                : null,
+            RacingTutorialTextIds.HoldSprint,
+            RacingTutorialTextIds.HoldSprintDescription,
+            RacingTutorialTextIds.None,
+            false,
+            false);
+        TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+
+        if (sprintReminderRoutine != null)
+            StopCoroutine(sprintReminderRoutine);
+        sprintReminderRoutine =
+            StartCoroutine(HideSprintReminderAfterDelay());
+    }
+
+    private IEnumerator HideSprintReminderAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(
+            Mathf.Max(0.1f, sprintReminderDuration));
+        sprintReminderRoutine = null;
+        StopSprintReminder(true);
+    }
+
+    private void StopSprintReminder(bool hidePresentation)
+    {
+        if (sprintReminderRoutine != null)
+        {
+            StopCoroutine(sprintReminderRoutine);
+            sprintReminderRoutine = null;
+        }
+
+        if (!sprintReminderVisible)
+            return;
+
+        sprintReminderVisible = false;
+        if (hidePresentation)
+            HidePresentation();
+    }
+
     private void HandleRaceFinished(int rank)
     {
+        ShouldDelayResultPage = false;
+        sprintReminderPending = false;
+        StopSprintReminder(true);
+
         if (standaloneControlTutorial)
         {
             FinishTutorial();
@@ -1030,12 +1141,14 @@ public sealed class RacingTutorialController : MonoBehaviour
             state = TutorialState.WaitingForResult;
             HidePresentation();
             TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+            UnlockNormalPauseForRace();
             if (resultPending)
                 ShowResultExplanation();
             return;
         }
 
         state = TutorialState.FinishExplanation;
+        ShouldDelayResultPage = true;
         ShowPausedStep(
             null,
             RacingTutorialTextIds.RaceFinished,
@@ -1048,6 +1161,8 @@ public sealed class RacingTutorialController : MonoBehaviour
         if (!IsTutorialActive)
             return;
 
+        sprintReminderPending = false;
+        StopSprintReminder(true);
         resultPending = true;
         if (state == TutorialState.WaitingForResult)
             ShowResultExplanation();
@@ -1055,6 +1170,7 @@ public sealed class RacingTutorialController : MonoBehaviour
 
     private void ShowResultExplanation()
     {
+        ShouldDelayResultPage = false;
         resultPending = false;
         state = TutorialState.ResultExplanation;
         ShowPausedStep(
@@ -1111,6 +1227,7 @@ public sealed class RacingTutorialController : MonoBehaviour
                     : TutorialState.WaitingForSpecialTrigger;
                 HidePresentation();
                 TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                UnlockNormalPauseForRace();
                 QueueContextLesson(ContextLesson.MiniMap);
                 break;
 
@@ -1128,10 +1245,15 @@ public sealed class RacingTutorialController : MonoBehaviour
                     Constants.RacingTutorial.Finish,
                     RacingTutorialProgress.CoreCheckpoint.Result);
                 state = TutorialState.WaitingForResult;
+                ShouldDelayResultPage = false;
                 HidePresentation();
                 TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                UnlockNormalPauseForRace();
                 if (resultPending)
+                {
+                    UIButtonActions.Instance?.ShowResultPage();
                     ShowResultExplanation();
+                }
                 break;
 
             case TutorialState.ResultExplanation:
@@ -1147,6 +1269,9 @@ public sealed class RacingTutorialController : MonoBehaviour
             return;
 
         IsTutorialActive = true;
+        normalPauseUnlockedForRace = false;
+        IsNormalPauseBlocked = true;
+        ShouldDelayResultPage = false;
         tutorialStarted = true;
         specialTriggerExplained = false;
         resultPending = false;
@@ -1155,6 +1280,10 @@ public sealed class RacingTutorialController : MonoBehaviour
         controllerChangeInterruptedState = TutorialState.None;
         controllerChangeTutorialActive = false;
         pendingSpecialTriggerDuringControl = false;
+        sprintReminderCount = 0;
+        nextSprintReminderTime = 0f;
+        sprintReminderPending = false;
+        sprintReminderVisible = false;
         contextLessonActive = false;
         contextLessonQueue.Clear();
         queuedContextLessons.Clear();
@@ -1168,8 +1297,13 @@ public sealed class RacingTutorialController : MonoBehaviour
 
     private void FinishTutorial()
     {
+        ShouldDelayResultPage = false;
+
         if (!tutorialStarted)
+        {
+            IsNormalPauseBlocked = false;
             return;
+        }
 
         TutorialPauseController.ResumeAll();
         launchMeter?.SetTutorialPaused(false);
@@ -1183,10 +1317,14 @@ public sealed class RacingTutorialController : MonoBehaviour
         contextLessonQueue.Clear();
         queuedContextLessons.Clear();
         contextLessonActive = false;
+        sprintReminderPending = false;
+        StopSprintReminder(true);
 
         if (pauseButton != null)
             pauseButton.interactable = previousPauseInteractable;
 
+        IsNormalPauseBlocked = false;
+        normalPauseUnlockedForRace = false;
         IsTutorialActive = false;
         tutorialStarted = false;
         standaloneControlTutorial = false;
@@ -1198,6 +1336,7 @@ public sealed class RacingTutorialController : MonoBehaviour
 
     private void FinishCompletedTutorialSetup()
     {
+        ShouldDelayResultPage = false;
         launchMeter?.SetTutorialPaused(false);
         TutorialPauseController.ResumeAll();
         HidePresentation();
@@ -1205,13 +1344,26 @@ public sealed class RacingTutorialController : MonoBehaviour
         if (pauseButton != null)
             pauseButton.interactable = previousPauseInteractable;
 
+        IsNormalPauseBlocked = false;
+        normalPauseUnlockedForRace = false;
         IsTutorialActive = false;
         tutorialStarted = false;
         standaloneControlTutorial = false;
         controllerChangeTutorialActive = false;
         controllerChangeInterruptedState = TutorialState.None;
         pendingSpecialTriggerDuringControl = false;
+        sprintReminderPending = false;
+        StopSprintReminder(true);
         state = TutorialState.Finished;
+    }
+
+    private void HandleGameOverOpening()
+    {
+        ShouldDelayResultPage = false;
+        resultPending = false;
+        sprintReminderPending = false;
+        StopSprintReminder(true);
+        FinishTutorial();
     }
 
     private void ApplySavedContextProgress(
@@ -1314,6 +1466,8 @@ public sealed class RacingTutorialController : MonoBehaviour
 
         if (resumeState != TutorialState.ContextExplanation)
             TryShowNextContextLesson();
+
+        TryShowSprintReminder();
     }
 
     private void CompleteCurrentContextLesson()
@@ -1327,6 +1481,7 @@ public sealed class RacingTutorialController : MonoBehaviour
         contextInterruptedState = TutorialState.None;
         RestoreTutorialState(resumeState);
         TryShowNextContextLesson();
+        TryShowSprintReminder();
     }
 
     private void RestoreTutorialState(TutorialState resumeState)
@@ -1417,16 +1572,19 @@ public sealed class RacingTutorialController : MonoBehaviour
                     : TutorialState.WaitingForSpecialTrigger;
                 HidePresentation();
                 TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                UnlockNormalPauseForRace();
                 break;
             case TutorialState.WaitingForFinish:
                 state = TutorialState.WaitingForFinish;
                 HidePresentation();
                 TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                UnlockNormalPauseForRace();
                 break;
             default:
                 state = resumeState;
                 HidePresentation();
                 TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
+                SetNormalPauseBlocked(false);
                 break;
         }
     }
@@ -1437,6 +1595,7 @@ public sealed class RacingTutorialController : MonoBehaviour
         int descriptionId,
         int buttonLabelId)
     {
+        SetNormalPauseBlocked(true);
         ShowPresentation(
             target,
             titleId,
@@ -1445,6 +1604,26 @@ public sealed class RacingTutorialController : MonoBehaviour
             true,
             true);
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
+    }
+
+    private void UnlockNormalPauseForRace()
+    {
+        normalPauseUnlockedForRace = true;
+        SetNormalPauseBlocked(false);
+    }
+
+    private void SetNormalPauseBlocked(bool blockedByVisibleTutorial)
+    {
+        bool shouldBlock =
+            !normalPauseUnlockedForRace || blockedByVisibleTutorial;
+        IsNormalPauseBlocked = shouldBlock;
+
+        if (pauseButton != null)
+        {
+            pauseButton.interactable = shouldBlock
+                ? false
+                : previousPauseInteractable;
+        }
     }
 
     private void ShowPractice(

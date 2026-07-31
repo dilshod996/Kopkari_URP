@@ -30,12 +30,25 @@ public sealed class KopkariWarmupTrigger : MonoBehaviour
         }
 
         transform.SetPositionAndRotation(warmupPoint.position, warmupPoint.rotation);
-        gameObject.SetActive(true);
+        SetActiveWithGPUI(true);
     }
 
     public void Deactivate()
     {
-        gameObject.SetActive(false);
+        SetActiveWithGPUI(false);
+    }
+
+    private void SetActiveWithGPUI(bool active)
+    {
+        KopkariManager activeManager = manager != null ? manager : KopkariManager.Instance;
+        if (activeManager != null)
+        {
+            activeManager.SetEnvironmentObjectActive(gameObject, active);
+            return;
+        }
+
+        if (gameObject.activeSelf != active)
+            gameObject.SetActive(active);
     }
 
     private void OnTriggerEnter(Collider other)

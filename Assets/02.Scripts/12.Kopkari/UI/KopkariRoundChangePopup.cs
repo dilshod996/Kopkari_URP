@@ -66,6 +66,7 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
     [SerializeField, Range(0f, 100f)] private float criticalConditionPercent = 15f;
     [SerializeField, Min(1f)] private float horseConditionPulseScale = 1.08f;
     [SerializeField, Min(0.1f)] private float horseConditionPulseDuration = 0.65f;
+    private bool horseConditionActionAllowed;
 
     public float CriticalConditionPercent => criticalConditionPercent;
 
@@ -131,11 +132,21 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
         RoundOutcome outcome = ResolveRoundOutcome(reason);
         ApplyOutcomeText(outcome);
         ApplyButtonLabels();
+        horseConditionActionAllowed =
+            canStartNextRound && reason == DisplayReason.RoundFinished;
 
         SetButtonState(nextRoundButton, canStartNextRound);
         SetButtonState(finishHereButton, canStartNextRound);
         SetButtonState(viewResultsButton, !canStartNextRound);
-        RefreshHorseConditionAttention();
+        if (horseConditionActionAllowed)
+        {
+            RefreshHorseConditionAttention();
+        }
+        else
+        {
+            SetButtonState(horseConditionButton, false);
+            StopHorseConditionPulse();
+        }
         ShowRewardInformation(outcome, canStartNextRound);
     }
 
@@ -149,6 +160,7 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
         SetButtonState(finishHereButton, false);
         SetButtonState(viewResultsButton, false);
         SetButtonState(horseConditionButton, false);
+        horseConditionActionAllowed = false;
         StopHorseConditionPulse();
     }
 
@@ -310,6 +322,9 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
 
     private void HandleHorseConditionClicked()
     {
+        if (!horseConditionActionAllowed)
+            return;
+
         StopHorseConditionPulse();
         KopkariMainUI.Instance?.ShowRoundFoodPanel();
     }
@@ -318,6 +333,13 @@ public sealed class KopkariRoundChangePopup : MonoBehaviour
     {
         if (horseConditionButton == null)
             return;
+
+        if (!horseConditionActionAllowed)
+        {
+            SetButtonState(horseConditionButton, false);
+            StopHorseConditionPulse();
+            return;
+        }
 
         bool isCritical = IsHorseConditionCritical();
         SetButtonState(horseConditionButton, isCritical);

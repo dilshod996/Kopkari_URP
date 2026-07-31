@@ -104,6 +104,7 @@ public class RacingSettingsPanel : MonoBehaviour
         if (vibrationSlider != null)
             vibrationSlider.SetValueWithoutNotify(vibrationOn ? 1f : 0f);
 
+        ApplyVibrationState(vibrationOn, save: false);
         SetControllerUi(controllerType);
 
         _ignoreUiEvents = false;
@@ -161,7 +162,7 @@ public class RacingSettingsPanel : MonoBehaviour
         bool controllerChanged = savedController != _pendingControllerType;
 
         SetSoundState(_pendingSoundOn);
-        ApplyVibrationState(_pendingVibrationOn);
+        ApplyVibrationState(_pendingVibrationOn, save: true);
 
         if (joystickTurnMixer != null)
         {
@@ -252,10 +253,14 @@ public class RacingSettingsPanel : MonoBehaviour
     {
         if (SoundManager.Instance != null)
         {
+            if (isOn && SoundManager.Instance.Volume01 <= 0f)
+                SoundManager.Instance.SetVolume100(100);
             SoundManager.Instance.SetSoundState(isOn);
             return;
         }
 
+        if (isOn && PlayerPrefs.GetInt(SoundManager.PREF_SOUND_VOL_100, 100) <= 0)
+            PlayerPrefs.SetInt(SoundManager.PREF_SOUND_VOL_100, 100);
         PlayerPrefs.SetInt(SoundManager.PREF_SOUND_STATE, isOn ? 1 : 0);
         PlayerPrefs.Save();
     }
@@ -268,12 +273,13 @@ public class RacingSettingsPanel : MonoBehaviour
         return hapticReceiver == null || hapticReceiver.hapticsEnabled;
     }
 
-    private void ApplyVibrationState(bool isOn)
+    private void ApplyVibrationState(bool isOn, bool save)
     {
         if (hapticReceiver != null)
             hapticReceiver.hapticsEnabled = isOn;
 
-        PlayerPrefs.SetInt(VibrationPrefsKey, isOn ? 1 : 0);
+        if (save)
+            PlayerPrefs.SetInt(VibrationPrefsKey, isOn ? 1 : 0);
     }
 
     private void SetControllerUi(RacingControllerType controllerType)

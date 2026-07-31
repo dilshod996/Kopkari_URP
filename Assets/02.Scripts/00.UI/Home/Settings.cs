@@ -1,4 +1,5 @@
 using System;
+using Lofelt.NiceVibrations;
 using Michsky.UI.ModernUIPack;
 using TMPro;
 using UnityEngine;
@@ -25,6 +26,8 @@ public class Settings : MonoBehaviour
     [Header("Settings Details")]
     [SerializeField] private CustomDropdown languageDropdown;
     [SerializeField] private SliderManager soundSlider;
+    [SerializeField] private Toggle vibrationToggle;
+    [SerializeField] private HapticReceiver hapticReceiver;
     [SerializeField] private Button saveButton;
     [SerializeField] private Button deleteButton;
     [SerializeField] private Button closeButton;
@@ -50,6 +53,14 @@ public class Settings : MonoBehaviour
     private bool dropdownWasOpen;
     private bool previousSaveInteractable;
     private bool previousCloseInteractable;
+    private bool ignoreSettingsEvents;
+    private bool isDeletingAccount;
+
+    private void Awake()
+    {
+        if (hapticReceiver == null)
+            hapticReceiver = FindObjectOfType<HapticReceiver>();
+    }
 
     private void OnEnable()
     {
@@ -65,15 +76,37 @@ public class Settings : MonoBehaviour
         }
 
         SettingsPanelText();
-        saveButton.onClick.AddListener(GetSelectedItem);
-        closeButton.onClick.AddListener(ClosePage);
-        languageDropdown.dropdownEvent.AddListener(OnDropdownSelected);
+        RefreshAudioAndVibrationSettings();
+
+        if (saveButton != null)
+            saveButton.onClick.AddListener(GetSelectedItem);
+        if (deleteButton != null)
+            deleteButton.onClick.AddListener(DeleteAccount);
+        if (closeButton != null)
+            closeButton.onClick.AddListener(ClosePage);
+        if (languageDropdown != null)
+            languageDropdown.dropdownEvent.AddListener(OnDropdownSelected);
+        if (soundSlider != null && soundSlider.mainSlider != null)
+            soundSlider.mainSlider.onValueChanged.AddListener(OnSoundVolumeChanged);
+        if (vibrationToggle != null)
+            vibrationToggle.onValueChanged.AddListener(OnVibrationChanged);
     }
+
     private void OnDisable()
     {
-        saveButton.onClick.RemoveAllListeners();
-        closeButton.onClick.RemoveAllListeners();
-        languageDropdown.dropdownEvent.RemoveListener(OnDropdownSelected);
+        if (saveButton != null)
+            saveButton.onClick.RemoveListener(GetSelectedItem);
+        if (deleteButton != null)
+            deleteButton.onClick.RemoveListener(DeleteAccount);
+        if (closeButton != null)
+            closeButton.onClick.RemoveListener(ClosePage);
+        if (languageDropdown != null)
+            languageDropdown.dropdownEvent.RemoveListener(OnDropdownSelected);
+        if (soundSlider != null && soundSlider.mainSlider != null)
+            soundSlider.mainSlider.onValueChanged.RemoveListener(OnSoundVolumeChanged);
+        if (vibrationToggle != null)
+            vibrationToggle.onValueChanged.RemoveListener(OnVibrationChanged);
+
         dropdownWasOpen = false;
         if (saveButton != null)
             saveButton.interactable = previousSaveInteractable;
@@ -178,72 +211,115 @@ public class Settings : MonoBehaviour
             saveButton.interactable = true;
         LanguageSelected?.Invoke(selectedIndex);
     }
+
+    private void RefreshAudioAndVibrationSettings()
+    {
+        ignoreSettingsEvents = true;
+
+        if (soundSlider != null && soundSlider.mainSlider != null)
+        {
+            Slider slider = soundSlider.mainSlider;
+            slider.minValue = 0f;
+            slider.maxValue = 100f;
+            slider.wholeNumbers = true;
+
+            bool soundOn = SoundManager.Instance != null
+                ? SoundManager.Instance.SoundOn
+                : PlayerPrefs.GetInt(SoundManager.PREF_SOUND_STATE, 1) == 1;
+            int savedVolume = PlayerPrefs.GetInt(SoundManager.PREF_SOUND_VOL_100, 100);
+            slider.SetValueWithoutNotify(soundOn ? savedVolume : 0f);
+            soundSlider.UpdateUI();
+        }
+
+        bool vibrationOn =
+            PlayerPrefs.GetInt(RacingSettingsPanel.VibrationPrefsKey, 1) == 1;
+        if (vibrationToggle != null)
+        {
+            vibrationToggle.SetIsOnWithoutNotify(vibrationOn);
+            CustomToggle customToggle = vibrationToggle.GetComponent<CustomToggle>();
+            if (customToggle != null &&
+                customToggle.toggleObject != null &&
+                customToggle.toggleAnimator != null)
+            {
+                customToggle.UpdateState();
+            }
+        }
+        ApplyVibrationState(vibrationOn, save: false);
+
+        ignoreSettingsEvents = false;
+    }
+
+    private void OnSoundVolumeChanged(float value)
+    {
+        if (ignoreSettingsEvents)
+            return;
+
+        int volume100 = Mathf.Clamp(Mathf.RoundToInt(value), 0, 100);
+        bool soundOn = volume100 > 0;
+
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.SetVolume100(volume100);
+            SoundManager.Instance.SetSoundState(soundOn);
+        }
+        else
+        {
+            PlayerPrefs.SetInt(SoundManager.PREF_SOUND_VOL_100, volume100);
+            PlayerPrefs.SetInt(SoundManager.PREF_SOUND_STATE, soundOn ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
+    private void OnVibrationChanged(bool isOn)
+    {
+        if (ignoreSettingsEvents)
+            return;
+
+        ApplyVibrationState(isOn, save: true);
+    }
+
+    private void ApplyVibrationState(bool isOn, bool save)
+    {
+        if (hapticReceiver == null)
+            hapticReceiver = FindObjectOfType<HapticReceiver>();
+        if (hapticReceiver != null)
+            hapticReceiver.hapticsEnabled = isOn;
+
+        if (!save)
+            return;
+
+        PlayerPrefs.SetInt(
+            RacingSettingsPanel.VibrationPrefsKey,
+            isOn ? 1 : 0);
+        PlayerPrefs.Save();
+    }
+
+    private async void DeleteAccount()
+    {
+        if (isDeletingAccount)
+            return;
+
+        isDeletingAccount = true;
+        if (deleteButton != null)
+            deleteButton.interactable = false;
+
+        try
+        {
+            if (FirebaseManager.Instance == null)
+                throw new InvalidOperationException("FirebaseManager is not available.");
+
+            await FirebaseManager.Instance.DeleteCurrentUserAsync();
+
+            PlayerPrefs.DeleteAll();
+            PlayerPrefs.Save();
+            Application.Quit();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"Account deletion failed: {exception}", this);
+            isDeletingAccount = false;
+            if (deleteButton != null)
+                deleteButton.interactable = true;
+        }
+    }
 }
-//[Header("UI Refs")]
-//[SerializeField] private Slider volumeSlider; // 0..100
-//[SerializeField] private Toggle soundToggle;  // on/off
-
-//private bool _ignoreEvents;
-
-//private void OnEnable()
-//{
-//    SyncFromPrefs();
-//    HookUI();
-//}
-
-//private void OnDisable()
-//{
-//    UnhookUI();
-//}
-
-//private void SyncFromPrefs()
-//{
-//    _ignoreEvents = true;
-
-//    int state = PlayerPrefs.GetInt(SoundManager.PREF_SOUND_STATE, 1);
-//    int vol100 = PlayerPrefs.GetInt(SoundManager.PREF_SOUND_VOL_100, 100);
-
-//    if (soundToggle != null) soundToggle.isOn = (state == 1);
-
-//    if (volumeSlider != null)
-//    {
-//        volumeSlider.minValue = 0;
-//        volumeSlider.maxValue = 100;
-//        volumeSlider.wholeNumbers = true;
-//        volumeSlider.value = vol100;
-//        volumeSlider.interactable = (state == 1); // OFF bo'lsa slider disable
-//    }
-
-//    _ignoreEvents = false;
-//}
-
-//private void HookUI()
-//{
-//    if (volumeSlider != null) volumeSlider.onValueChanged.AddListener(OnVolumeChanged);
-//    if (soundToggle != null) soundToggle.onValueChanged.AddListener(OnSoundToggleChanged);
-//}
-
-//private void UnhookUI()
-//{
-//    if (volumeSlider != null) volumeSlider.onValueChanged.RemoveListener(OnVolumeChanged);
-//    if (soundToggle != null) soundToggle.onValueChanged.RemoveListener(OnSoundToggleChanged);
-//}
-
-//private void OnVolumeChanged(float v)
-//{
-//    if (_ignoreEvents) return;
-//    if (SoundManager.Instance == null) return;
-
-//    SoundManager.Instance.SetVolume100(Mathf.RoundToInt(v));
-//}
-
-//private void OnSoundToggleChanged(bool on)
-//{
-//    if (_ignoreEvents) return;
-//    if (SoundManager.Instance == null) return;
-
-//    SoundManager.Instance.SetSoundState(on);
-
-//    if (volumeSlider != null)
-//        volumeSlider.interactable = on;
-//}

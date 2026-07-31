@@ -9,6 +9,10 @@ using System; // For ProgressBar
 
 public class SceneLoadManager : MonoBehaviour
 {
+    private const int LoadFailureTitleTextId = 800;
+    private const int LoadFailureDescriptionTextId = 801;
+    private const int LoadFailureOkTextId = 802;
+
     public static SceneLoadManager Instance;
 
 
@@ -49,6 +53,8 @@ public class SceneLoadManager : MonoBehaviour
         : LastSceneMoveTime;
 
     private float sceneMoveStartRealtime;
+    private bool loadFailurePopupPending;
+    private bool hideMovementPanelAfterHomeRecovery;
     HashSet<SceneType> assetAlreadyInstantiated = new();
 
     public Action OnSceneLoaded;
@@ -797,19 +803,9 @@ public class SceneLoadManager : MonoBehaviour
         if (!TryBeginSceneMove(scene))
             return;
 
-        // ❌ bu yerda OnSceneLoaded chaqirilmaydi (hali yuklanmadi)
-
-        if (!assetAlreadyInstantiated.Contains(scene))
-        {
-            LoadSceneCoroutine(scene, preloadKeys);
-            assetAlreadyInstantiated.Add(scene);
-        }
-        else
-        {
-            // Agar siz "cached scene" deb o'ylab to'g'ridan-to'g'ri load qilsangiz
-            // bu ham Single bo'lgani uchun baribir load bo'ladi.
-            StartCoroutine(LoadOnlySceneSingle(scene));
-        }
+        // Required dependencies must be verified on every entry. Cached content
+        // can be evicted or updated after a previous visit.
+        LoadSceneCoroutine(scene, preloadKeys);
     }
 
     private IEnumerator LoadOnlySceneSingle(SceneType scene)
@@ -841,14 +837,15 @@ public class SceneLoadManager : MonoBehaviour
         var preloadTask = AddressablesService.Instance.PreloadDependenciesAsync(
             preloadAddresses,
             p => loadingTime = p * 50f,
-            fakeDurationIfCached
+            fakeDurationIfCached,
+            showErrorPopup: false
         );
 
         yield return WaitTask(preloadTask);
         if (!IsSuccessful(preloadTask))
         {
-           // UIOverlayRoot.I.HideLoading();
             CancelSceneMove();
+            ShowLoadFailureRecoveryPopup();
             yield break;
         }
 
@@ -880,8 +877,8 @@ public class SceneLoadManager : MonoBehaviour
 
             if (!IsSuccessful(playerPreloadTask) || !IsSuccessful(horsePreloadTask))
             {
-                //UIOverlayRoot.I.HideLoading();
                 CancelSceneMove();
+                ShowLoadFailureRecoveryPopup();
                 yield break;
             }
         }
@@ -905,7 +902,7 @@ public class SceneLoadManager : MonoBehaviour
             if (!IsSuccessful(aiHorsePoolTask))
             {
                 CancelSceneMove();
-                UIOverlayRoot.I.HideLoading();
+                ShowLoadFailureRecoveryPopup();
                 yield break;
             }
         }
@@ -922,13 +919,65 @@ public class SceneLoadManager : MonoBehaviour
         while (!AssetInstantiationFinished)
             yield return null;
 
+        bool instantiationSucceeded = AssetInstantiationSucceeded;
         SetAssetInstantiationFinished(false);
+
+        if (!instantiationSucceeded)
+        {
+            CancelSceneMove();
+            ShowLoadFailureRecoveryPopup();
+            yield break;
+        }
 
         // ✅ 4) Scene REAL loaded
         CompleteSceneMove();
 
         // ✅ 5) Loading panel yopiladi
         UIOverlayRoot.I.HideLoading();
+    }
+
+    private void ShowLoadFailureRecoveryPopup()
+    {
+        if (loadFailurePopupPending)
+            return;
+
+        bool isHomeScene = CurrentSceneType == SceneType.Home ||
+                           SceneManager.GetActiveScene().name == GetUnitySceneName(SceneType.Home);
+        UIOverlayRoot overlay = UIOverlayRoot.I;
+
+        if (isHomeScene)
+        {
+            overlay?.HideMovementPanel();
+            overlay?.HideCurrentPanel();
+        }
+
+        if (overlay == null)
+        {
+            if (!isHomeScene)
+                ReturnHomeAfterLoadFailure();
+            return;
+        }
+
+        loadFailurePopupPending = true;
+        overlay.Done(
+            LoadFailureTitleTextId,
+            LoadFailureDescriptionTextId,
+            LoadFailureOkTextId,
+            () =>
+            {
+                loadFailurePopupPending = false;
+                if (!isHomeScene)
+                    ReturnHomeAfterLoadFailure();
+            });
+    }
+
+    private void ReturnHomeAfterLoadFailure()
+    {
+        if (!TryBeginSceneMove(SceneType.Home))
+            return;
+
+        hideMovementPanelAfterHomeRecovery = true;
+        StartCoroutine(LoadSceneWithPanel(SceneType.Home));
     }
     #endregion
 
@@ -963,6 +1012,13 @@ public class SceneLoadManager : MonoBehaviour
 
         // ✅ Tayyor bo'ldi -> panelni yopasiz (yoki Home UI'ni ko'rsatishga o'tasiz)
         CompleteSceneMove();
+
+        if (hideMovementPanelAfterHomeRecovery && newScene == SceneType.Home)
+        {
+            hideMovementPanelAfterHomeRecovery = false;
+            UIOverlayRoot.I?.HideMovementPanel();
+            UIOverlayRoot.I?.HideCurrentPanel();
+        }
     }
 
     #endregion

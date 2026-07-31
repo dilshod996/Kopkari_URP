@@ -98,6 +98,7 @@ public class UIButtonActions : MonoBehaviour
     public static Action OnWebSnareFinish;
 
     public static Action<BoostersContainer> OnBindRequested;
+    public static Action OnGameOverOpening;
     #endregion
 
     #region Runtime - Sprint State
@@ -278,7 +279,7 @@ public class UIButtonActions : MonoBehaviour
 
     private void PauseBySystem()
     {
-        if (RacingTutorialController.IsTutorialActive)
+        if (RacingTutorialController.IsNormalPauseBlocked)
             return;
 
         var racingController = RacingController.Instance;
@@ -895,6 +896,9 @@ public class UIButtonActions : MonoBehaviour
 
     public void ShowResultPage()
     {
+        if (RacingTutorialController.ShouldDelayResultPage)
+            return;
+
         ShowUI(resultPage);
     }
     public void ShowResultTutorial()
@@ -1010,7 +1014,7 @@ public class UIButtonActions : MonoBehaviour
     #region Other Button Actions
     private void PauseMenu()
     {
-        if (RacingTutorialController.IsTutorialActive)
+        if (RacingTutorialController.IsNormalPauseBlocked)
             return;
 
         var racingController = RacingController.Instance;
@@ -1107,6 +1111,7 @@ public class UIButtonActions : MonoBehaviour
     #region Game Over
     public void ShowGameOver()
     {
+        OnGameOverOpening?.Invoke();
         EndRace();
         ShowUI(gameOverPanel);
     }

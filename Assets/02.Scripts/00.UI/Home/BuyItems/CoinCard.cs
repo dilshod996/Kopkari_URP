@@ -39,6 +39,8 @@ public class CoinCard : MonoBehaviour
 
     public CoinType coinType;
     public static event Action OnMoneyNotEnough;
+    private bool purchaseInProgress;
+
     public void OnEnable()
     {
         if(LanguageManager.Instance != null && bonusText != null)
@@ -50,6 +52,7 @@ public class CoinCard : MonoBehaviour
             buyButton.onClick.AddListener(BuyCoins);
         if (IapPurchaseManager.Instance != null)
         {
+            IapPurchaseManager.Instance.OnProductsUpdated += UpdateNyufiyPrice;
             IapPurchaseManager.Instance.OnNyufiyPurchaseSucceeded += HandleNyufiyPurchaseSucceeded;
             IapPurchaseManager.Instance.OnPurchaseFailed += HandleIapPurchaseFailed;
         }
@@ -62,6 +65,7 @@ public class CoinCard : MonoBehaviour
             buyButton.onClick.RemoveListener(BuyCoins);
         if (IapPurchaseManager.Instance != null)
         {
+            IapPurchaseManager.Instance.OnProductsUpdated -= UpdateNyufiyPrice;
             IapPurchaseManager.Instance.OnNyufiyPurchaseSucceeded -= HandleNyufiyPurchaseSucceeded;
             IapPurchaseManager.Instance.OnPurchaseFailed -= HandleIapPurchaseFailed;
         }
@@ -77,11 +81,27 @@ public class CoinCard : MonoBehaviour
         }
         else
         {
-            int amount = GetNyufiyAmount();
-            if (mainAmount != null) mainAmount.text = amount > 0 ? $"+{amount:N0}" : "0";
+            if (mainAmount != null) mainAmount.text = mainAmountNum > 0 ? $"+{mainAmountNum:N0}" : "0";
             if (bonusAmount != null) bonusAmount.text = bonusAmountNum > 0 ? $"+{bonusAmountNum:N0}" : "0";
-            if (cost != null) cost.text = costNum % 1f == 0f ? $"${costNum:0}" : $"${costNum:0.##}";
+            UpdateNyufiyPrice();
         }
+    }
+
+    private void UpdateNyufiyPrice()
+    {
+        if (coinType != CoinType.Nyufiy)
+            return;
+
+        string localizedPrice = string.Empty;
+        bool priceAvailable =
+            IapPurchaseManager.Instance != null &&
+            IapPurchaseManager.Instance.TryGetLocalizedPrice(nyufiyProduct, out localizedPrice);
+
+        if (cost != null)
+            cost.text = priceAvailable ? localizedPrice : "...";
+
+        if (buyButton != null)
+            buyButton.interactable = priceAvailable && !purchaseInProgress;
     }
 
     private void BuyCoins()
@@ -94,8 +114,8 @@ public class CoinCard : MonoBehaviour
                 return;
             }
 
-            if (buyButton != null)
-                buyButton.interactable = false;
+            purchaseInProgress = true;
+            UpdateNyufiyPrice();
             IapPurchaseManager.Instance.BuyNyufiy(nyufiyProduct);
             return;
         }
@@ -165,8 +185,8 @@ public class CoinCard : MonoBehaviour
         if (coinType != CoinType.Nyufiy || productId != nyufiyProduct.ToString())
             return;
 
-        if (buyButton != null)
-            buyButton.interactable = true;
+        purchaseInProgress = false;
+        UpdateNyufiyPrice();
         HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
 
         if (HomeMainUI.Instance != null)
@@ -190,8 +210,8 @@ public class CoinCard : MonoBehaviour
         if (!string.IsNullOrEmpty(productId) && productId != nyufiyProduct.ToString())
             return;
 
-        if (buyButton != null)
-            buyButton.interactable = true;
+        purchaseInProgress = false;
+        UpdateNyufiyPrice();
         HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
         Debug.LogWarning($"Nyufiy purchase failed: {reason}");
     }

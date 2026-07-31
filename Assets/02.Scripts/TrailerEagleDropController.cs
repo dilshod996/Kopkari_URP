@@ -25,9 +25,17 @@ public sealed class TrailerEagleDropController : MonoBehaviour
     [SerializeField] private Transform[] flightWaypoints;
     [SerializeField, Min(0.01f)] private float flightSpeed = 12f;
     [SerializeField, Min(0f)] private float waypointReachDistance = 0.25f;
+    [Tooltip("Smooths the velocity inherited by the ulak without slowing the eagle between waypoints.")]
     [SerializeField, Min(0.01f)] private float movementSmoothTime = 0.2f;
     [SerializeField, Min(0f)] private float rotationSpeed = 240f;
+    [Tooltip("Higher values react faster. Lower values create wider, more cinematic turns.")]
+    [SerializeField, Min(0.01f)] private float rotationDirectionSmoothTime = 0.35f;
+    [SerializeField, Min(0.01f)] private float rotationResponsiveness = 5f;
+    [SerializeField, Range(0f, 30f)] private float maximumBankAngle = 10f;
+    [SerializeField, Min(0.01f)] private float bankSmoothTime = 0.25f;
     [SerializeField] private bool resetToFirstWaypointOnPlay = true;
+    [Tooltip("Faces the eagle toward the next waypoint before it becomes visible.")]
+    [SerializeField] private bool alignRotationToPathOnPlay = true;
     [SerializeField] private bool continueFacingFlightDirectionAtPathEnd = true;
 
     [Header("Ulak")]
@@ -40,6 +48,10 @@ public sealed class TrailerEagleDropController : MonoBehaviour
     [SerializeField, Min(0f)] private float ulakReleaseDelay = 3f;
     [SerializeField] private Vector3 releaseVelocityOffset;
     [SerializeField] private bool inheritEagleVelocity = true;
+    [Tooltip("1 uses normal gravity; lower values create a slower cinematic fall.")]
+    [SerializeField, Range(0f, 1f)] private float ulakGravityScale = 0.45f;
+    [Tooltip("Maximum speed along the gravity direction after release.")]
+    [SerializeField, Min(0.1f)] private float maximumUlakFallSpeed = 7f;
     [SerializeField] private bool enableUlakColliderOnRelease = true;
     [SerializeField] private bool snapUlakToCarrySocketOnPlay = true;
     [SerializeField] private bool restoreUlakWhenStopped = true;
@@ -47,15 +59,37 @@ public sealed class TrailerEagleDropController : MonoBehaviour
     [Header("Cinemachine Cameras")]
     [SerializeField] private CinemachineVirtualCameraBase eagleTrackingCamera;
     [SerializeField] private CinemachineVirtualCameraBase ulakDropCamera;
+    [Tooltip("Priority used until the opening controller intentionally activates an eagle camera.")]
+    [SerializeField] private int inactiveCameraPriority;
+    [Tooltip("Use a stable Transform such as EagleParent, never an animated bone or mesh Transform.")]
+    [SerializeField] private Transform eagleCameraFollowTarget;
+    [Tooltip("Optional stable framing target. Defaults to Eagle Root.")]
+    [SerializeField] private Transform eagleCameraLookAtTarget;
+    [SerializeField] private bool overrideTrackingCameraTargetsWhilePlaying = true;
+    [Tooltip("When controller targets are empty, snapshots the virtual camera's targets under Eagle Root. " +
+             "This preserves framing without following animated bones.")]
+    [SerializeField] private bool createStableCameraTargetProxies = true;
     [Tooltip("Allows the second LookDistance camera to establish the eagle before tracking begins.")]
     [SerializeField, Min(0f)] private float eagleTrackingCameraDelay = 1f;
     [SerializeField, Min(0f)] private float eagleTrackingCameraBlendDuration = 0.35f;
+    [SerializeField] private bool fadeToEagleTrackingCamera = true;
+    [SerializeField, Min(0f)] private float eagleCameraFadeInDuration = 0.2f;
+    [SerializeField, Min(0f)] private float eagleCameraBlackHoldDuration = 0.05f;
+    [SerializeField, Min(0f)] private float eagleCameraFadeOutDuration = 0.3f;
     [SerializeField, Min(0f)] private float ulakDropCameraBlendDuration = 0.15f;
     [SerializeField, Min(0f)] private float postReleaseHoldDuration = 2.5f;
+    [Tooltip("Keeps the inactive tracking camera updated before it becomes live, preventing a first-frame jump.")]
+    [SerializeField] private bool prewarmEagleTrackingCamera = true;
 
     private Coroutine sequenceCoroutine;
+    private Coroutine trackingCameraTransitionCoroutine;
     private TrailerOpeningController openingCameraController;
     private Vector3 eagleVelocity;
+    private Vector3 eagleVelocitySmoothing;
+    private Vector3 smoothedFlightDirection;
+    private Vector3 flightDirectionSmoothing;
+    private float currentBankAngle;
+    private float bankSmoothingVelocity;
     private int currentWaypointIndex;
     private int flightStateHash;
     private bool isPlaying;
@@ -66,8 +100,20 @@ public sealed class TrailerEagleDropController : MonoBehaviour
     private Quaternion originalUlakLocalRotation;
     private bool originalUlakRigidbodyIsKinematic;
     private bool originalUlakRigidbodyUseGravity;
+    private bool originalUlakRigidbodyDetectCollisions;
+    private RigidbodyInterpolation originalUlakRigidbodyInterpolation;
     private bool originalUlakColliderEnabled;
     private bool hasStoredUlakState;
+
+    private bool originalAnimatorApplyRootMotion;
+    private bool hasStoredAnimatorRootMotion;
+    private CinemachineVirtualCameraBase.StandbyUpdateMode originalTrackingCameraStandbyMode;
+    private bool hasStoredTrackingCameraStandbyMode;
+    private Transform originalTrackingCameraFollow;
+    private Transform originalTrackingCameraLookAt;
+    private bool hasStoredTrackingCameraTargets;
+    private Transform runtimeCameraFollowProxy;
+    private Transform runtimeCameraLookAtProxy;
 
     public bool IsPlaying => isPlaying;
     public bool HasReleasedUlak => ulakReleased;
@@ -84,12 +130,18 @@ public sealed class TrailerEagleDropController : MonoBehaviour
             ulak = ulakRigidbody.transform;
         }
 
+        SetEagleCamerasInactive();
         CacheFlightStateHash();
     }
 
     private void OnDisable()
     {
         StopEagleDrop();
+    }
+
+    private void FixedUpdate()
+    {
+        ApplyCinematicUlakGravity();
     }
 
     /// <summary>
@@ -108,7 +160,13 @@ public sealed class TrailerEagleDropController : MonoBehaviour
             eagleRoot = transform;
         }
 
+        if (hasStoredTrackingCameraTargets || hasStoredTrackingCameraStandbyMode)
+        {
+            RestoreTrackingCameraRuntimeState(true);
+        }
+
         openingCameraController = cameraController;
+        SetEagleCamerasInactive();
         CacheFlightStateHash();
 
         if (hasStoredUlakState)
@@ -119,6 +177,8 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         StoreUlakState();
         PrepareUlakForCarry();
         PrepareFlightPath();
+        PrepareAnimatorForScriptedMovement();
+        PrepareTrackingCamera();
         PlayFlightAnimation();
 
         isPlaying = true;
@@ -138,14 +198,23 @@ public sealed class TrailerEagleDropController : MonoBehaviour
             sequenceCoroutine = null;
         }
 
+        if (trackingCameraTransitionCoroutine != null)
+        {
+            StopCoroutine(trackingCameraTransitionCoroutine);
+            trackingCameraTransitionCoroutine = null;
+        }
+
         if (restoreUlakWhenStopped)
         {
             RestoreUlakState();
         }
 
+        RestoreAnimatorRootMotion();
+        RestoreTrackingCameraRuntimeState(true);
         isPlaying = false;
         openingCameraController = null;
         eagleVelocity = Vector3.zero;
+        SetEagleCamerasInactive();
     }
 
     private IEnumerator EagleSequence()
@@ -159,11 +228,12 @@ public sealed class TrailerEagleDropController : MonoBehaviour
 
             if (!trackingCameraActivated && elapsed >= eagleTrackingCameraDelay)
             {
-                SwitchCamera(eagleTrackingCamera, eagleTrackingCameraBlendDuration);
+                BeginTrackingCameraTransition();
                 trackingCameraActivated = true;
             }
 
-            if (elapsed >= ulakReleaseDelay)
+            if (elapsed >= ulakReleaseDelay &&
+                trackingCameraTransitionCoroutine == null)
             {
                 ReleaseUlak();
                 break;
@@ -183,6 +253,8 @@ public sealed class TrailerEagleDropController : MonoBehaviour
 
         sequenceCoroutine = null;
         isPlaying = false;
+        RestoreAnimatorRootMotion();
+        RestoreTrackingCameraRuntimeState(ulakDropCamera != null);
         openingCameraController = null;
         onEagleSequenceFinished?.Invoke();
     }
@@ -190,6 +262,11 @@ public sealed class TrailerEagleDropController : MonoBehaviour
     private void PrepareFlightPath()
     {
         eagleVelocity = Vector3.zero;
+        eagleVelocitySmoothing = Vector3.zero;
+        smoothedFlightDirection = Vector3.zero;
+        flightDirectionSmoothing = Vector3.zero;
+        currentBankAngle = 0f;
+        bankSmoothingVelocity = 0f;
         currentWaypointIndex = 0;
 
         if (flightWaypoints == null || flightWaypoints.Length == 0)
@@ -207,10 +284,42 @@ public sealed class TrailerEagleDropController : MonoBehaviour
             if (firstWaypointIndex >= 0)
             {
                 Transform firstWaypoint = flightWaypoints[firstWaypointIndex];
-                eagleRoot.SetPositionAndRotation(firstWaypoint.position, firstWaypoint.rotation);
+                eagleRoot.position = firstWaypoint.position;
+                if (!alignRotationToPathOnPlay)
+                {
+                    eagleRoot.rotation = firstWaypoint.rotation;
+                }
+
                 currentWaypointIndex = GetNextValidWaypointIndex(firstWaypointIndex + 1);
             }
         }
+
+        if (alignRotationToPathOnPlay)
+        {
+            AlignRotationToCurrentPathDirection();
+        }
+    }
+
+    private void AlignRotationToCurrentPathDirection()
+    {
+        Transform targetWaypoint = GetCurrentWaypoint();
+        if (targetWaypoint == null)
+        {
+            return;
+        }
+
+        Vector3 initialDirection = targetWaypoint.position - eagleRoot.position;
+        if (initialDirection.sqrMagnitude <= 0.000001f)
+        {
+            return;
+        }
+
+        initialDirection.Normalize();
+        smoothedFlightDirection = initialDirection;
+        flightDirectionSmoothing = Vector3.zero;
+        currentBankAngle = 0f;
+        bankSmoothingVelocity = 0f;
+        eagleRoot.rotation = Quaternion.LookRotation(initialDirection, Vector3.up);
     }
 
     private void UpdateFlight()
@@ -227,22 +336,25 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         }
 
         Vector3 previousPosition = eagleRoot.position;
-        eagleRoot.position = Vector3.SmoothDamp(
+        float deltaTime = DeltaTime;
+        eagleRoot.position = Vector3.MoveTowards(
             eagleRoot.position,
             targetWaypoint.position,
-            ref eagleVelocity,
-            movementSmoothTime,
-            flightSpeed,
-            DeltaTime);
+            flightSpeed * deltaTime);
 
         Vector3 frameMovement = eagleRoot.position - previousPosition;
-        if (frameMovement.sqrMagnitude > 0.000001f)
+        if (frameMovement.sqrMagnitude > 0.000001f && deltaTime > 0f)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(frameMovement.normalized, Vector3.up);
-            eagleRoot.rotation = Quaternion.RotateTowards(
-                eagleRoot.rotation,
-                targetRotation,
-                rotationSpeed * DeltaTime);
+            Vector3 frameVelocity = frameMovement / deltaTime;
+            eagleVelocity = Vector3.SmoothDamp(
+                eagleVelocity,
+                frameVelocity,
+                ref eagleVelocitySmoothing,
+                movementSmoothTime,
+                Mathf.Infinity,
+                deltaTime);
+
+            UpdateFlightRotation(frameVelocity.normalized, deltaTime);
         }
 
         if ((eagleRoot.position - targetWaypoint.position).sqrMagnitude <=
@@ -276,6 +388,9 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         {
             ulakRigidbody.isKinematic = false;
             ulakRigidbody.useGravity = true;
+            ulakRigidbody.detectCollisions =
+                enableUlakColliderOnRelease || originalUlakRigidbodyDetectCollisions;
+            ulakRigidbody.interpolation = originalUlakRigidbodyInterpolation;
             ulakRigidbody.velocity =
                 (inheritEagleVelocity ? eagleVelocity : Vector3.zero) + releaseVelocityOffset;
         }
@@ -291,16 +406,64 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         onUlakReleased?.Invoke();
     }
 
+    private void ApplyCinematicUlakGravity()
+    {
+        if (!ulakReleased ||
+            ulakRigidbody == null ||
+            ulakRigidbody.isKinematic ||
+            !ulakRigidbody.useGravity)
+        {
+            return;
+        }
+
+        Vector3 gravity = Physics.gravity;
+        if (gravity.sqrMagnitude <= Mathf.Epsilon)
+        {
+            return;
+        }
+
+        // Rigidbody gravity is already applied by Unity. This opposing acceleration
+        // reduces only this ulak's effective gravity to the configured scale.
+        if (ulakGravityScale < 1f)
+        {
+            ulakRigidbody.AddForce(
+                -gravity * (1f - ulakGravityScale),
+                ForceMode.Acceleration);
+        }
+
+        Vector3 gravityDirection = gravity.normalized;
+        float downwardSpeed = Vector3.Dot(ulakRigidbody.velocity, gravityDirection);
+        if (downwardSpeed > maximumUlakFallSpeed)
+        {
+            ulakRigidbody.velocity -=
+                gravityDirection * (downwardSpeed - maximumUlakFallSpeed);
+        }
+    }
+
     private void PrepareUlakForCarry()
     {
         if (ulak != null && ulakCarrySocket != null)
         {
-            ulak.SetParent(ulakCarrySocket, !snapUlakToCarrySocketOnPlay);
+            bool invalidCarrySocket =
+                ulakCarrySocket == ulak || ulakCarrySocket.IsChildOf(ulak);
 
-            if (snapUlakToCarrySocketOnPlay)
+            if (invalidCarrySocket)
             {
-                ulak.localPosition = Vector3.zero;
-                ulak.localRotation = Quaternion.identity;
+                Debug.LogWarning(
+                    $"{nameof(TrailerEagleDropController)} on '{name}' has the ulak itself, or one of " +
+                    "its children, assigned as Ulak Carry Socket. Assign a separate Transform under " +
+                    "the eagle's claw. The ulak pose will not be changed.",
+                    this);
+            }
+            else
+            {
+                ulak.SetParent(ulakCarrySocket, !snapUlakToCarrySocketOnPlay);
+
+                if (snapUlakToCarrySocketOnPlay)
+                {
+                    ulak.localPosition = Vector3.zero;
+                    ulak.localRotation = Quaternion.identity;
+                }
             }
         }
 
@@ -310,6 +473,8 @@ public sealed class TrailerEagleDropController : MonoBehaviour
             ulakRigidbody.angularVelocity = Vector3.zero;
             ulakRigidbody.useGravity = false;
             ulakRigidbody.isKinematic = true;
+            ulakRigidbody.detectCollisions = false;
+            ulakRigidbody.interpolation = RigidbodyInterpolation.None;
         }
 
         if (ulakCollider != null && enableUlakColliderOnRelease)
@@ -335,6 +500,8 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         {
             originalUlakRigidbodyIsKinematic = ulakRigidbody.isKinematic;
             originalUlakRigidbodyUseGravity = ulakRigidbody.useGravity;
+            originalUlakRigidbodyDetectCollisions = ulakRigidbody.detectCollisions;
+            originalUlakRigidbodyInterpolation = ulakRigidbody.interpolation;
         }
 
         if (ulakCollider != null)
@@ -368,6 +535,8 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         {
             ulakRigidbody.isKinematic = originalUlakRigidbodyIsKinematic;
             ulakRigidbody.useGravity = originalUlakRigidbodyUseGravity;
+            ulakRigidbody.detectCollisions = originalUlakRigidbodyDetectCollisions;
+            ulakRigidbody.interpolation = originalUlakRigidbodyInterpolation;
         }
 
         if (ulakCollider != null)
@@ -377,6 +546,136 @@ public sealed class TrailerEagleDropController : MonoBehaviour
 
         hasStoredUlakState = false;
         ulakReleased = false;
+    }
+
+    private void PrepareAnimatorForScriptedMovement()
+    {
+        if (eagleAnimator == null)
+        {
+            return;
+        }
+
+        originalAnimatorApplyRootMotion = eagleAnimator.applyRootMotion;
+        hasStoredAnimatorRootMotion = true;
+        eagleAnimator.applyRootMotion = false;
+    }
+
+    private void RestoreAnimatorRootMotion()
+    {
+        if (hasStoredAnimatorRootMotion && eagleAnimator != null)
+        {
+            eagleAnimator.applyRootMotion = originalAnimatorApplyRootMotion;
+        }
+
+        hasStoredAnimatorRootMotion = false;
+    }
+
+    private void PrepareTrackingCamera()
+    {
+        if (eagleTrackingCamera == null)
+        {
+            return;
+        }
+
+        originalTrackingCameraFollow = eagleTrackingCamera.Follow;
+        originalTrackingCameraLookAt = eagleTrackingCamera.LookAt;
+        hasStoredTrackingCameraTargets = true;
+
+        if (overrideTrackingCameraTargetsWhilePlaying)
+        {
+            Transform stableFollowTarget = eagleCameraFollowTarget;
+            Transform stableLookAtTarget = eagleCameraLookAtTarget;
+
+            if (stableFollowTarget == null && createStableCameraTargetProxies)
+            {
+                runtimeCameraFollowProxy = CreateStableCameraTargetProxy(
+                    originalTrackingCameraFollow,
+                    "EagleCameraFollowProxy");
+                stableFollowTarget = runtimeCameraFollowProxy;
+            }
+
+            if (stableLookAtTarget == null && createStableCameraTargetProxies)
+            {
+                runtimeCameraLookAtProxy = CreateStableCameraTargetProxy(
+                    originalTrackingCameraLookAt,
+                    "EagleCameraLookAtProxy");
+                stableLookAtTarget = runtimeCameraLookAtProxy;
+            }
+
+            stableFollowTarget = stableFollowTarget != null ? stableFollowTarget : eagleRoot;
+            stableLookAtTarget =
+                stableLookAtTarget != null ? stableLookAtTarget : stableFollowTarget;
+
+            eagleTrackingCamera.Follow = stableFollowTarget;
+            eagleTrackingCamera.LookAt = stableLookAtTarget;
+        }
+
+        if (!prewarmEagleTrackingCamera)
+        {
+            return;
+        }
+
+        originalTrackingCameraStandbyMode = eagleTrackingCamera.m_StandbyUpdate;
+        hasStoredTrackingCameraStandbyMode = true;
+        eagleTrackingCamera.m_StandbyUpdate =
+            CinemachineVirtualCameraBase.StandbyUpdateMode.Always;
+        eagleTrackingCamera.PreviousStateIsValid = false;
+    }
+
+    private void RestoreTrackingCameraRuntimeState(bool restoreTargets)
+    {
+        if (restoreTargets && hasStoredTrackingCameraTargets && eagleTrackingCamera != null)
+        {
+            eagleTrackingCamera.Follow = originalTrackingCameraFollow;
+            eagleTrackingCamera.LookAt = originalTrackingCameraLookAt;
+        }
+
+        if (restoreTargets)
+        {
+            hasStoredTrackingCameraTargets = false;
+            DestroyRuntimeCameraTarget(ref runtimeCameraFollowProxy);
+            DestroyRuntimeCameraTarget(ref runtimeCameraLookAtProxy);
+        }
+
+        if (hasStoredTrackingCameraStandbyMode && eagleTrackingCamera != null)
+        {
+            eagleTrackingCamera.m_StandbyUpdate = originalTrackingCameraStandbyMode;
+        }
+
+        hasStoredTrackingCameraStandbyMode = false;
+    }
+
+    private Transform CreateStableCameraTargetProxy(Transform source, string proxyName)
+    {
+        if (eagleRoot == null)
+        {
+            return source;
+        }
+
+        GameObject proxyObject = new GameObject(proxyName);
+        proxyObject.hideFlags = HideFlags.HideAndDontSave;
+
+        Transform proxy = proxyObject.transform;
+        if (source != null)
+        {
+            proxy.SetPositionAndRotation(source.position, source.rotation);
+        }
+        else
+        {
+            proxy.SetPositionAndRotation(eagleRoot.position, eagleRoot.rotation);
+        }
+
+        proxy.SetParent(eagleRoot, true);
+        return proxy;
+    }
+
+    private static void DestroyRuntimeCameraTarget(ref Transform target)
+    {
+        if (target != null)
+        {
+            Object.Destroy(target.gameObject);
+            target = null;
+        }
     }
 
     private void SwitchCamera(CinemachineVirtualCameraBase targetCamera, float blendDuration)
@@ -399,6 +698,99 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         }
 
         openingCameraController.SwitchCamera(targetCamera, blendDuration);
+    }
+
+    private void BeginTrackingCameraTransition()
+    {
+        if (trackingCameraTransitionCoroutine != null)
+        {
+            return;
+        }
+
+        if (!fadeToEagleTrackingCamera || openingCameraController == null)
+        {
+            SwitchCamera(eagleTrackingCamera, eagleTrackingCameraBlendDuration);
+            return;
+        }
+
+        trackingCameraTransitionCoroutine =
+            StartCoroutine(TransitionToEagleTrackingCamera());
+    }
+
+    private IEnumerator TransitionToEagleTrackingCamera()
+    {
+        yield return openingCameraController.FadeThroughBlackToCamera(
+            eagleTrackingCamera,
+            0f,
+            eagleCameraFadeInDuration,
+            eagleCameraBlackHoldDuration,
+            eagleCameraFadeOutDuration);
+
+        trackingCameraTransitionCoroutine = null;
+    }
+
+    private void UpdateFlightRotation(
+        Vector3 desiredDirection,
+        float deltaTime)
+    {
+        if (smoothedFlightDirection.sqrMagnitude < 0.000001f)
+        {
+            smoothedFlightDirection = desiredDirection;
+        }
+
+        smoothedFlightDirection = Vector3.SmoothDamp(
+            smoothedFlightDirection,
+            desiredDirection,
+            ref flightDirectionSmoothing,
+            rotationDirectionSmoothTime,
+            Mathf.Infinity,
+            deltaTime).normalized;
+
+        float signedTurnAngle = Vector3.SignedAngle(
+            smoothedFlightDirection,
+            desiredDirection,
+            Vector3.up);
+        float desiredBankAngle =
+            -Mathf.Clamp(signedTurnAngle / 45f, -1f, 1f) * maximumBankAngle;
+
+        currentBankAngle = Mathf.SmoothDamp(
+            currentBankAngle,
+            desiredBankAngle,
+            ref bankSmoothingVelocity,
+            bankSmoothTime,
+            Mathf.Infinity,
+            deltaTime);
+
+        Quaternion facingRotation =
+            Quaternion.LookRotation(smoothedFlightDirection, Vector3.up);
+        Quaternion bankRotation =
+            Quaternion.AngleAxis(currentBankAngle, Vector3.forward);
+        Quaternion desiredRotation = facingRotation * bankRotation;
+
+        float easedRotationAmount =
+            1f - Mathf.Exp(-rotationResponsiveness * deltaTime);
+        Quaternion easedRotation = Quaternion.Slerp(
+            eagleRoot.rotation,
+            desiredRotation,
+            easedRotationAmount);
+
+        eagleRoot.rotation = Quaternion.RotateTowards(
+            eagleRoot.rotation,
+            easedRotation,
+            rotationSpeed * deltaTime);
+    }
+
+    private void SetEagleCamerasInactive()
+    {
+        if (eagleTrackingCamera != null)
+        {
+            eagleTrackingCamera.Priority = inactiveCameraPriority;
+        }
+
+        if (ulakDropCamera != null)
+        {
+            ulakDropCamera.Priority = inactiveCameraPriority;
+        }
     }
 
     private void PlayFlightAnimation()
@@ -501,9 +893,16 @@ public sealed class TrailerEagleDropController : MonoBehaviour
         waypointReachDistance = Mathf.Max(0f, waypointReachDistance);
         movementSmoothTime = Mathf.Max(0.01f, movementSmoothTime);
         rotationSpeed = Mathf.Max(0f, rotationSpeed);
+        rotationDirectionSmoothTime = Mathf.Max(0.01f, rotationDirectionSmoothTime);
+        rotationResponsiveness = Mathf.Max(0.01f, rotationResponsiveness);
+        bankSmoothTime = Mathf.Max(0.01f, bankSmoothTime);
         ulakReleaseDelay = Mathf.Max(0f, ulakReleaseDelay);
+        maximumUlakFallSpeed = Mathf.Max(0.1f, maximumUlakFallSpeed);
         eagleTrackingCameraDelay = Mathf.Max(0f, eagleTrackingCameraDelay);
         eagleTrackingCameraBlendDuration = Mathf.Max(0f, eagleTrackingCameraBlendDuration);
+        eagleCameraFadeInDuration = Mathf.Max(0f, eagleCameraFadeInDuration);
+        eagleCameraBlackHoldDuration = Mathf.Max(0f, eagleCameraBlackHoldDuration);
+        eagleCameraFadeOutDuration = Mathf.Max(0f, eagleCameraFadeOutDuration);
         ulakDropCameraBlendDuration = Mathf.Max(0f, ulakDropCameraBlendDuration);
         postReleaseHoldDuration = Mathf.Max(0f, postReleaseHoldDuration);
     }

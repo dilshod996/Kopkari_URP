@@ -92,6 +92,7 @@ public sealed class RegistanTutorialController : MonoBehaviour
     [SerializeField, Range(3f, 8f)] private float walkZoneTutorialDelay = 4.5f;
     [SerializeField, Range(0.25f, 3f)] private float webSnareShootTutorialDelay = 1f;
     [SerializeField, Range(2f, 10f)] private float cloudProgressWaitTimeout = 6f;
+    [SerializeField, Range(2f, 6f)] private float objectiveReminderDuration = 3f;
 
     [Header("Popup Placement")]
     [SerializeField] private UITargetPlacementSettings joystickPlacement = new UITargetPlacementSettings
@@ -149,6 +150,7 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private Coroutine cameraTransitionRoutine;
     private Coroutine walkZoneDelayRoutine;
     private Coroutine webSnareTutorialDelayRoutine;
+    private Coroutine objectiveReminderRoutine;
     private GameObject tutorialCanvasObject;
     private GameObject presentationRoot;
     private Image blocker;
@@ -180,6 +182,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private bool lostUlakTutorialShown;
     private bool opponentCarrierTutorialShown;
     private bool localPlayerHadUlak;
+    private bool objectiveReminderActive;
+    private bool tutorialWasActiveBeforeObjectiveReminder;
+    private KopkariObjectiveIndicator.ObjectiveKind observedObjectiveKind;
+    private Transform observedObjectiveTarget;
+    private KopkariObjectiveIndicator.ObjectiveKind pendingObjectiveReminder;
+    private Transform pendingObjectiveReminderTarget;
     private float nextProgressCompletionCheck;
     private KopkariTutorialProgress.CoreCheckpoint savedCheckpoint;
     private TutorialState contextReturnState = TutorialState.Finished;
@@ -251,12 +259,28 @@ public sealed class RegistanTutorialController : MonoBehaviour
         if (presentationRoot == null)
             return;
 
+        KopkariManager manager = KopkariManager.Instance;
+        if (manager != null &&
+            manager.roomState == KopkariManager.RoomState.GameFinished &&
+            !manager.HasPreparedNextRound)
+        {
+            if (state != TutorialState.None ||
+                presentationRoot.activeSelf ||
+                objectiveReminderActive)
+            {
+                FinishTutorial(false);
+            }
+            return;
+        }
+
         if (state != TutorialState.None &&
             state != TutorialState.Finished &&
             Time.unscaledTime >= nextProgressCompletionCheck)
         {
             nextProgressCompletionCheck = Time.unscaledTime + 1f;
-            if (KopkariTutorialProgress.LoadLocal().Completed)
+            KopkariTutorialProgress.State progress =
+                KopkariTutorialProgress.LoadLocal();
+            if (KopkariTutorialProgress.IsFullyCompleted(progress))
             {
                 FinishCompletedTutorialSetup();
                 return;
@@ -264,6 +288,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
         }
 
         RefreshTutorialObjectivePreview();
+        ObserveObjectiveReminderTransition();
+        HandleWarmupArrivalTransition(manager);
 
         if (gripDepletionObserved && !fakeUlakTutorialShown &&
             mainUI != null && mainUI.IsFakeUlakInteractable)
@@ -272,6 +298,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
         RefreshPendingOpponentCarrier();
 
         if (TryShowPendingContextTutorial())
+            return;
+
+        if (TryShowPendingObjectiveReminder())
+            return;
+
+        if (objectiveReminderActive)
             return;
 
         if (state == TutorialState.None || state == TutorialState.Finished)
@@ -308,7 +340,6 @@ public sealed class RegistanTutorialController : MonoBehaviour
             }
         }
 
-        KopkariManager manager = KopkariManager.Instance;
         if (state == TutorialState.WaitingForPickupAvailability &&
             (pickupFocusAvailable ||
              (mainUI != null && mainUI.PickupButtonTutorialTarget != null &&
@@ -347,6 +378,34 @@ public sealed class RegistanTutorialController : MonoBehaviour
         }
     }
 
+    private void HandleWarmupArrivalTransition(KopkariManager manager)
+    {
+        if (manager == null || !manager.IsRoundStartCountdownActive)
+            return;
+
+        if (objectiveReminderActive &&
+            observedObjectiveKind ==
+            KopkariObjectiveIndicator.ObjectiveKind.Warmup)
+        {
+            CancelObjectiveReminder();
+        }
+
+        if (state != TutorialState.WaitingForNextRoundWarmup &&
+            state != TutorialState.WarmupBackgroundExplanation &&
+            state != TutorialState.WarmupIndicatorExplanation)
+        {
+            return;
+        }
+
+        CompleteCoreStep(
+            Constants.KopkariTutorial.WarmupBackground,
+            KopkariTutorialProgress.CoreCheckpoint.WarmupIndicator);
+        CompleteCoreStep(
+            Constants.KopkariTutorial.WarmupIndicator,
+            KopkariTutorialProgress.CoreCheckpoint.WarmupArrival);
+        WaitForWarmupArrival();
+    }
+
     private void HandleGameStartFinishState(bool gameStarted)
     {
         if (!gameStarted)
@@ -364,9 +423,14 @@ public sealed class RegistanTutorialController : MonoBehaviour
             return;
 
         KopkariTutorialProgress.State localProgress = KopkariTutorialProgress.LoadLocal();
-        if (localProgress.Completed)
+        if (KopkariTutorialProgress.IsFullyCompleted(localProgress))
         {
             FinishCompletedTutorialSetup();
+            return;
+        }
+        if (localProgress.Checkpoint >= KopkariTutorialProgress.CoreCheckpoint.Completed)
+        {
+            PrepareForRemainingContextTutorials(localProgress);
             return;
         }
 
@@ -394,10 +458,16 @@ public sealed class RegistanTutorialController : MonoBehaviour
         }
 
         KopkariTutorialProgress.State progress = KopkariTutorialProgress.LoadLocal();
-        if (progress.Completed)
+        if (KopkariTutorialProgress.IsFullyCompleted(progress))
         {
             startRoutine = null;
             FinishCompletedTutorialSetup();
+            yield break;
+        }
+        if (progress.Checkpoint >= KopkariTutorialProgress.CoreCheckpoint.Completed)
+        {
+            startRoutine = null;
+            PrepareForRemainingContextTutorials(progress);
             yield break;
         }
 
@@ -486,6 +556,24 @@ public sealed class RegistanTutorialController : MonoBehaviour
     private void FinishCompletedTutorialSetup()
     {
         KopkariTutorialProgress.State progress = KopkariTutorialProgress.LoadLocal();
+        if (!KopkariTutorialProgress.IsFullyCompleted(progress))
+        {
+            PrepareForRemainingContextTutorials(progress);
+            return;
+        }
+
+        ApplyPostCoreTutorialSetup(progress);
+    }
+
+    private void PrepareForRemainingContextTutorials(
+        KopkariTutorialProgress.State progress)
+    {
+        ApplyPostCoreTutorialSetup(progress);
+    }
+
+    private void ApplyPostCoreTutorialSetup(
+        KopkariTutorialProgress.State progress)
+    {
         savedCheckpoint = progress.Checkpoint;
         ApplySavedContextProgress(progress.Context);
         StopOwnedCoroutines();
@@ -504,14 +592,19 @@ public sealed class RegistanTutorialController : MonoBehaviour
         walkZoneTutorialShown =
             (context & KopkariTutorialProgress.ContextLesson.WalkZone) != 0;
         gripDamageTutorialShown =
+            gripDamageTutorialShown ||
             (context & KopkariTutorialProgress.ContextLesson.Defend) != 0;
         lostUlakTutorialShown =
             (context & KopkariTutorialProgress.ContextLesson.LostUloq) != 0;
         fakeUlakTutorialShown =
             (context & KopkariTutorialProgress.ContextLesson.FakeUloq) != 0;
+        // Do not clear an in-flight one-shot latch when the periodic completed
+        // progress check reloads a context mask that predates this lesson.
         opponentCarrierTutorialShown =
+            opponentCarrierTutorialShown ||
             (context & KopkariTutorialProgress.ContextLesson.OpponentCarrier) != 0;
         horseHealthTutorialShown =
+            horseHealthTutorialShown ||
             (context & KopkariTutorialProgress.ContextLesson.HorseHealth) != 0;
         walkZoneTutorialUnlocked =
             savedCheckpoint >= KopkariTutorialProgress.CoreCheckpoint.NextRound;
@@ -810,6 +903,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void ShowUloqIndicatorExplanation()
     {
+        RegisterFirstObjectiveExplanation(
+            KopkariTutorialProgress.ObjectiveReminderKind.Uloq);
         state = TutorialState.UloqIndicatorExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
         ShowTutorialObjectivePreview();
@@ -989,6 +1084,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void ShowTargetIndicatorExplanation()
     {
+        RegisterFirstObjectiveExplanation(
+            KopkariTutorialProgress.ObjectiveReminderKind.Target);
         state = TutorialState.TargetIndicatorExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
         ShowTutorialObjectivePreview();
@@ -1115,7 +1212,15 @@ public sealed class RegistanTutorialController : MonoBehaviour
             contextReturnState = state;
             pendingGripDamageTutorial = false;
             gripDamageTutorialShown = true;
-            ShowGripDamageExplanation();
+            if (KopkariTutorialProgress.HasContextLesson(
+                    KopkariTutorialProgress.ContextLesson.GripDamage))
+            {
+                ShowDefendExplanation();
+            }
+            else
+            {
+                ShowGripDamageExplanation();
+            }
             return true;
         }
 
@@ -1188,7 +1293,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void RefreshPendingOpponentCarrier()
     {
-        if (opponentCarrierTutorialShown ||
+        if (IsOpponentCarrierTutorialFlowActive() ||
+            opponentCarrierTutorialShown ||
             pendingOpponentCarrierTutorial ||
             mainUI == null ||
             !mainUI.IsCarrierVisible)
@@ -1209,6 +1315,15 @@ public sealed class RegistanTutorialController : MonoBehaviour
         // Ownership can already be established when a saved tutorial resumes,
         // so do not depend only on receiving a fresh owner-change event.
         pendingOpponentCarrierTutorial = true;
+    }
+
+    private bool IsOpponentCarrierTutorialFlowActive()
+    {
+        return state == TutorialState.OpponentCarrierExplanation ||
+               state == TutorialState.WebSnareButtonExplanation ||
+               state == TutorialState.WaitingForWebSnareButtonClick ||
+               state == TutorialState.ChainContainerExplanation ||
+               state == TutorialState.WaitingForChainContainerPress;
     }
 
     private bool IsContextTutorialSlotAvailable()
@@ -1462,6 +1577,8 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void ShowWarmupIndicatorExplanation()
     {
+        RegisterFirstObjectiveExplanation(
+            KopkariTutorialProgress.ObjectiveReminderKind.Warmup);
         state = TutorialState.WarmupIndicatorExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
         ShowTutorialObjectivePreview();
@@ -1621,9 +1738,17 @@ public sealed class RegistanTutorialController : MonoBehaviour
                 TryShowPendingContextTutorial();
                 break;
             case TutorialState.GripDamageExplanation:
+                CompleteContextStep(
+                    Constants.KopkariTutorial.GripDamage,
+                    KopkariTutorialProgress.ContextLesson.GripDamage);
                 ShowDefendExplanation();
                 break;
             case TutorialState.OpponentCarrierExplanation:
+                pendingOpponentCarrierTutorial = false;
+                opponentCarrierTutorialShown = true;
+                CompleteContextStep(
+                    Constants.KopkariTutorial.OpponentCarrier,
+                    KopkariTutorialProgress.ContextLesson.OpponentCarrier);
                 ShowWebSnareButtonExplanation();
                 break;
             case TutorialState.WebSnareButtonExplanation:
@@ -1728,6 +1853,7 @@ public sealed class RegistanTutorialController : MonoBehaviour
             webSnareTutorialDelayRoutine = null;
         }
 
+        CancelObjectiveReminder();
     }
 
     private void ShowPresentation(
@@ -1798,6 +1924,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void RefreshCurrentPlacement()
     {
+        if (objectiveReminderActive)
+        {
+            PlaceAt(GetObjectiveTutorialTarget(), indicatorPlacement);
+            return;
+        }
+
         switch (state)
         {
             case TutorialState.JoystickExplanation:
@@ -2052,6 +2184,7 @@ public sealed class RegistanTutorialController : MonoBehaviour
             return;
 
         bool shouldShow = forceShow ||
+                          objectiveReminderActive ||
                           state == TutorialState.UloqIndicatorExplanation ||
                           state == TutorialState.WaitingForPickupAvailability ||
                           state == TutorialState.TargetIndicatorExplanation ||
@@ -2093,6 +2226,209 @@ public sealed class RegistanTutorialController : MonoBehaviour
                 return RegistanTutorialTextIds.ObjectiveUloq;
             default:
                 return RegistanTutorialTextIds.None;
+        }
+    }
+
+    private void RegisterFirstObjectiveExplanation(
+        KopkariTutorialProgress.ObjectiveReminderKind kind)
+    {
+        KopkariTutorialProgress.EnsureObjectiveReminderCountAtLeast(kind, 1);
+        if (objectiveIndicator == null)
+            return;
+
+        objectiveIndicator.RefreshNow();
+        observedObjectiveKind = objectiveIndicator.CurrentKind;
+        observedObjectiveTarget = objectiveIndicator.CurrentTarget;
+        pendingObjectiveReminder = KopkariObjectiveIndicator.ObjectiveKind.None;
+        pendingObjectiveReminderTarget = null;
+    }
+
+    private void ObserveObjectiveReminderTransition()
+    {
+        if (objectiveIndicator == null)
+            return;
+
+        KopkariObjectiveIndicator.ObjectiveKind currentKind =
+            objectiveIndicator.CurrentKind;
+        Transform currentTarget = objectiveIndicator.CurrentTarget;
+        if (currentKind == observedObjectiveKind &&
+            currentTarget == observedObjectiveTarget)
+        {
+            return;
+        }
+
+        observedObjectiveKind = currentKind;
+        observedObjectiveTarget = currentTarget;
+
+        if (objectiveReminderActive)
+            CancelObjectiveReminder();
+
+        if (currentKind == KopkariObjectiveIndicator.ObjectiveKind.None ||
+            currentTarget == null ||
+            IsFirstObjectiveExplanationActive(currentKind))
+        {
+            pendingObjectiveReminder = KopkariObjectiveIndicator.ObjectiveKind.None;
+            pendingObjectiveReminderTarget = null;
+            return;
+        }
+
+        KopkariTutorialProgress.ObjectiveReminderKind reminderKind;
+        if (!TryMapObjectiveReminderKind(currentKind, out reminderKind))
+            return;
+
+        int count = KopkariTutorialProgress.GetObjectiveReminderCount(
+            KopkariTutorialProgress.LoadLocal(),
+            reminderKind);
+        if (count <= 0 || count >= 3)
+            return;
+
+        pendingObjectiveReminder = currentKind;
+        pendingObjectiveReminderTarget = currentTarget;
+    }
+
+    private bool TryShowPendingObjectiveReminder()
+    {
+        if (objectiveReminderActive ||
+            pendingObjectiveReminder == KopkariObjectiveIndicator.ObjectiveKind.None ||
+            state != TutorialState.Finished ||
+            presentationRoot == null ||
+            presentationRoot.activeSelf ||
+            objectiveIndicator == null ||
+            objectiveIndicator.CurrentKind != pendingObjectiveReminder ||
+            objectiveIndicator.CurrentTarget != pendingObjectiveReminderTarget)
+        {
+            return false;
+        }
+
+        KopkariTutorialProgress.ObjectiveReminderKind reminderKind;
+        if (!TryMapObjectiveReminderKind(pendingObjectiveReminder, out reminderKind))
+            return false;
+
+        int count = KopkariTutorialProgress.GetObjectiveReminderCount(
+            KopkariTutorialProgress.LoadLocal(),
+            reminderKind);
+        if (count <= 0 || count >= 3)
+        {
+            pendingObjectiveReminder = KopkariObjectiveIndicator.ObjectiveKind.None;
+            pendingObjectiveReminderTarget = null;
+            return false;
+        }
+
+        KopkariObjectiveIndicator.ObjectiveKind kind = pendingObjectiveReminder;
+        pendingObjectiveReminder = KopkariObjectiveIndicator.ObjectiveKind.None;
+        pendingObjectiveReminderTarget = null;
+        KopkariTutorialProgress.RecordObjectiveReminder(reminderKind);
+
+        objectiveReminderActive = true;
+        tutorialWasActiveBeforeObjectiveReminder = IsTutorialActive;
+        IsTutorialActive = true;
+        objectiveIndicator.RefreshNow();
+        ShowTutorialObjectivePreview();
+        ShowPresentation(
+            GetObjectiveTutorialTarget(),
+            indicatorPlacement,
+            GetObjectiveReminderTitleId(kind),
+            GetObjectiveReminderDescriptionId(kind),
+            RegistanTutorialTextIds.None,
+            false,
+            false);
+
+        objectiveReminderRoutine = StartCoroutine(HideObjectiveReminderAfterDelay());
+        return true;
+    }
+
+    private IEnumerator HideObjectiveReminderAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(
+            Mathf.Max(2f, objectiveReminderDuration));
+        objectiveReminderRoutine = null;
+        EndObjectiveReminder();
+    }
+
+    private void CancelObjectiveReminder()
+    {
+        if (objectiveReminderRoutine != null)
+        {
+            StopCoroutine(objectiveReminderRoutine);
+            objectiveReminderRoutine = null;
+        }
+
+        if (objectiveReminderActive)
+            EndObjectiveReminder();
+    }
+
+    private void EndObjectiveReminder()
+    {
+        objectiveReminderActive = false;
+        HidePresentation();
+        HideTutorialObjectivePreview();
+        IsTutorialActive = tutorialWasActiveBeforeObjectiveReminder;
+    }
+
+    private bool IsFirstObjectiveExplanationActive(
+        KopkariObjectiveIndicator.ObjectiveKind kind)
+    {
+        switch (kind)
+        {
+            case KopkariObjectiveIndicator.ObjectiveKind.Uloq:
+                return state == TutorialState.UloqIndicatorExplanation ||
+                       state == TutorialState.WaitingForPickupAvailability;
+            case KopkariObjectiveIndicator.ObjectiveKind.Target:
+                return state == TutorialState.TargetIndicatorExplanation;
+            case KopkariObjectiveIndicator.ObjectiveKind.Warmup:
+                return state == TutorialState.WarmupIndicatorExplanation ||
+                       state == TutorialState.WaitingForWarmupArrival;
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryMapObjectiveReminderKind(
+        KopkariObjectiveIndicator.ObjectiveKind objectiveKind,
+        out KopkariTutorialProgress.ObjectiveReminderKind reminderKind)
+    {
+        switch (objectiveKind)
+        {
+            case KopkariObjectiveIndicator.ObjectiveKind.Uloq:
+                reminderKind = KopkariTutorialProgress.ObjectiveReminderKind.Uloq;
+                return true;
+            case KopkariObjectiveIndicator.ObjectiveKind.Target:
+                reminderKind = KopkariTutorialProgress.ObjectiveReminderKind.Target;
+                return true;
+            case KopkariObjectiveIndicator.ObjectiveKind.Warmup:
+                reminderKind = KopkariTutorialProgress.ObjectiveReminderKind.Warmup;
+                return true;
+            default:
+                reminderKind = default;
+                return false;
+        }
+    }
+
+    private static int GetObjectiveReminderTitleId(
+        KopkariObjectiveIndicator.ObjectiveKind kind)
+    {
+        switch (kind)
+        {
+            case KopkariObjectiveIndicator.ObjectiveKind.Target:
+                return RegistanTutorialTextIds.RideToSalym;
+            case KopkariObjectiveIndicator.ObjectiveKind.Warmup:
+                return RegistanTutorialTextIds.WarmupPoint;
+            default:
+                return RegistanTutorialTextIds.FindUloq;
+        }
+    }
+
+    private static int GetObjectiveReminderDescriptionId(
+        KopkariObjectiveIndicator.ObjectiveKind kind)
+    {
+        switch (kind)
+        {
+            case KopkariObjectiveIndicator.ObjectiveKind.Target:
+                return RegistanTutorialTextIds.RideToSalymDescription;
+            case KopkariObjectiveIndicator.ObjectiveKind.Warmup:
+                return RegistanTutorialTextIds.WarmupPointDescription;
+            default:
+                return RegistanTutorialTextIds.FindUloqDescription;
         }
     }
 

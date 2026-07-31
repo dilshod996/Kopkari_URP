@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: EgyptMapData
+  m_EditorClassIdentifier: 
+  m_GroupName: EgyptMapData
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 9765dc8cecee65e4a9195e756e32dd98
+  m_SerializeEntries:
+  - m_GUID: f1d96294466739549bf71c9065d89cbe
+    m_Address: EgyptGameAssets
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Environment
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 70e212f9be383e24fa38a8811d5d3f3b, type: 2}
+    - {fileID: 11400000, guid: f6aaf28878e9b3c4e8aa16b0bf88818a, type: 2}

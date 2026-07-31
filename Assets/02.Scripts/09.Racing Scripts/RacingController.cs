@@ -15,9 +15,15 @@ using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using DG.Tweening;
+using GPUInstancerPro.PrefabModule;
+using GPUInstancerPro.TerrainModule;
 using UnluckSoftware;
 public class RacingController : MonoBehaviour
 {
+    private const string ZarafshanGameAssetsAddress = "ZarafshanGameAssets";
+    private const string EgyptGameAssetsAddress = "EgyptGameAssets";
+    private const string KansasGameAssetsAddress = "KansasGameAssets";
+
     public static RacingController Instance { get; protected set; }
 
     public enum RacingType
@@ -147,6 +153,18 @@ public class RacingController : MonoBehaviour
     private bool playerAndHorseReady;
     private bool racingLoadingCompleted;
     private bool finishSequenceStarted;
+    private int racingEnvironmentInstanceId;
+    private readonly TaskCompletionSource<bool> environmentReadySource =
+        new TaskCompletionSource<bool>();
+
+    [Header("Legacy Scene GPUI Fallback")]
+    [Tooltip("Used only when the instantiated Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUIPrefabManager prefabManager;
+    [Tooltip("Used only when the instantiated Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUITreeManager treeManager;
+    [Tooltip("Used only when the instantiated Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUIDetailManager detailManager;
+
     #region Starting Functions
     private void Awake()
     {
@@ -170,6 +188,25 @@ public class RacingController : MonoBehaviour
         SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 8, expandable: true);
         SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
         SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
+
+        bool environmentReady;
+        try
+        {
+            environmentReady = await LoadRacingEnvironmentAsync();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            environmentReady = false;
+        }
+
+        environmentReadySource.TrySetResult(environmentReady);
+        if (!environmentReady)
+        {
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
+            return;
+        }
+
         await ApplyRandomSkinsToAllAI();
         ////GetSetAnimal(HorseMine.Instance.horseAnimal);
         await ApplySkyboxByMapType();
@@ -195,6 +232,8 @@ public class RacingController : MonoBehaviour
     }
     private void OnDestroy()
     {
+        environmentReadySource.TrySetResult(false);
+
         // poolingdagi barcha aktiv WalkZone obyektlarni qaytaradi
         SimplePool.ClearAll();
         LaunchTimingMeterUI.OnLaunchFinishedGlobal -= OnLaunchMeterFinished;
@@ -208,9 +247,240 @@ public class RacingController : MonoBehaviour
        // RacingResultPage.OnGetRiderRank -= PlayFinalAnim;
         UILookBackButton.OnCameraPressedState -= CameraBackState;
         FoodInfo.OnFoodAddToHorse -= AddFoods;
+        if (racingEnvironmentInstanceId != 0 && AddressablesService.Instance != null)
+        {
+            AddressablesService.Instance.ReleaseInstance(racingEnvironmentInstanceId);
+            racingEnvironmentInstanceId = 0;
+        }
         riderAnimal = null;
         horse = null;
         ClearAgents();
+    }
+    #endregion
+
+    #region Racing Environment
+    public Task<bool> WaitForEnvironmentReadyAsync()
+    {
+        return environmentReadySource.Task;
+    }
+
+    private async Task<bool> LoadRacingEnvironmentAsync()
+    {
+        string environmentAddress = GetRacingEnvironmentAddress(mapType);
+        if (string.IsNullOrEmpty(environmentAddress))
+            return true;
+
+        AddressablesService service = AddressablesService.Instance;
+        if (service == null)
+        {
+            Debug.LogWarning(
+                $"RacingController: AddressablesService is missing. Skipping optional environment '{environmentAddress}'.");
+            return true;
+        }
+
+        bool addressExists = await service.AddressExistsAsync(environmentAddress);
+        if (!addressExists)
+        {
+            Debug.Log(
+                $"RacingController: No Addressables racing environment found for {mapType} at '{environmentAddress}'. Skipping.");
+            return true;
+        }
+
+        bool downloaded = await service.EnsureDependenciesDownloadedAsync(
+            environmentAddress,
+            progress =>
+            {
+                if (SceneLoadManager.Instance != null)
+                    SceneLoadManager.Instance.loadingTime = Mathf.Max(
+                        SceneLoadManager.Instance.loadingTime,
+                        95f + Mathf.Clamp01(progress) * 4f);
+            });
+
+        if (!downloaded)
+        {
+            Debug.LogError(
+                $"RacingController: Failed to download racing environment '{environmentAddress}'.");
+            return false;
+        }
+
+        GameObject environment = await service.InstantiateAsync(
+            environmentAddress,
+            Vector3.zero,
+            Quaternion.identity);
+
+        if (environment == null)
+        {
+            Debug.LogError(
+                $"RacingController: Failed to instantiate racing environment '{environmentAddress}'.");
+            return false;
+        }
+
+        racingEnvironmentInstanceId = environment.GetInstanceID();
+        RegisterEnvironmentGPUIPrefabs(environment.transform);
+        RegisterEnvironmentGPUITerrains(environment.transform);
+        return true;
+    }
+
+    private void RegisterEnvironmentGPUIPrefabs(Transform environmentRoot)
+    {
+        if (environmentRoot == null)
+            return;
+
+        GPUIPrefab[] instances = environmentRoot.GetComponentsInChildren<GPUIPrefab>(true);
+        GPUIPrefab[] validInstances = instances
+            .Where(instance =>
+                instance != null &&
+                instance.GetPrefabID() != 0 &&
+                !instance.IsInstanced)
+            .ToArray();
+
+        if (validInstances.Length == 0)
+            return;
+
+        GPUIPrefabManager environmentManager =
+            environmentRoot.GetComponentInChildren<GPUIPrefabManager>(true);
+        GPUIPrefabManager activeManager =
+            environmentManager != null ? environmentManager : prefabManager;
+
+        WarnIfDuplicateManagers(environmentManager, prefabManager, "GPUIPrefabManager");
+
+        if (activeManager == null)
+        {
+            Debug.LogWarning(
+                "RacingController: The Addressable environment has GPUI prefab instances but no GPUIPrefabManager.");
+            return;
+        }
+
+        if (!activeManager.isActiveAndEnabled)
+        {
+            Debug.LogWarning(
+                "RacingController: The selected GPUIPrefabManager is inactive. Runtime prefab registration was skipped.");
+            return;
+        }
+
+        Dictionary<int, List<GPUIPrefab>> instancesByPrototypeIndex =
+            new Dictionary<int, List<GPUIPrefab>>();
+        Dictionary<int, int> prototypeIndexByPrefabId =
+            new Dictionary<int, int>();
+        int unmatchedInstanceCount = 0;
+
+        for (int prototypeIndex = 0;
+             prototypeIndex < activeManager.GetPrototypeCount();
+             prototypeIndex++)
+        {
+            prototypeIndexByPrefabId[activeManager.GetPrefabID(prototypeIndex)] = prototypeIndex;
+        }
+
+        for (int instanceIndex = 0; instanceIndex < validInstances.Length; instanceIndex++)
+        {
+            GPUIPrefab instance = validInstances[instanceIndex];
+            if (!prototypeIndexByPrefabId.TryGetValue(
+                    instance.GetPrefabID(),
+                    out int matchingPrototypeIndex))
+            {
+                unmatchedInstanceCount++;
+                continue;
+            }
+
+            if (!instancesByPrototypeIndex.TryGetValue(
+                    matchingPrototypeIndex,
+                    out List<GPUIPrefab> prototypeInstances))
+            {
+                prototypeInstances = new List<GPUIPrefab>();
+                instancesByPrototypeIndex.Add(matchingPrototypeIndex, prototypeInstances);
+            }
+
+            prototypeInstances.Add(instance);
+        }
+
+        foreach (KeyValuePair<int, List<GPUIPrefab>> pair in instancesByPrototypeIndex)
+            activeManager.AddPrefabInstances(pair.Value, pair.Key);
+
+        if (unmatchedInstanceCount > 0)
+        {
+            Debug.LogWarning(
+                $"RacingController: {unmatchedInstanceCount} runtime GPUI prefab instance(s) do not have a matching " +
+                "prototype on the Addressable environment's GPUIPrefabManager.");
+        }
+
+        activeManager.RequireTransformUpdate();
+    }
+
+    private void RegisterEnvironmentGPUITerrains(Transform environmentRoot)
+    {
+        if (environmentRoot == null)
+            return;
+
+        GPUITerrain[] terrains = environmentRoot.GetComponentsInChildren<GPUITerrain>(true);
+        if (terrains.Length == 0)
+            return;
+
+        GPUITreeManager environmentTreeManager =
+            environmentRoot.GetComponentInChildren<GPUITreeManager>(true);
+        GPUITreeManager activeTreeManager =
+            environmentTreeManager != null ? environmentTreeManager : treeManager;
+
+        WarnIfDuplicateManagers(environmentTreeManager, treeManager, "GPUITreeManager");
+
+        if (activeTreeManager != null && activeTreeManager.isActiveAndEnabled)
+        {
+            activeTreeManager.AddTerrains(terrains);
+            activeTreeManager.RequireUpdate(true);
+        }
+        else if (environmentTreeManager != null || treeManager != null)
+        {
+            Debug.LogWarning(
+                "RacingController: The selected GPUITreeManager is inactive. Runtime tree registration was skipped.");
+        }
+
+        GPUIDetailManager environmentDetailManager =
+            environmentRoot.GetComponentInChildren<GPUIDetailManager>(true);
+        GPUIDetailManager activeDetailManager =
+            environmentDetailManager != null ? environmentDetailManager : detailManager;
+
+        WarnIfDuplicateManagers(environmentDetailManager, detailManager, "GPUIDetailManager");
+
+        if (activeDetailManager != null && activeDetailManager.isActiveAndEnabled)
+        {
+            activeDetailManager.AddTerrains(terrains);
+            activeDetailManager.RequireUpdate(true);
+        }
+        else if (environmentDetailManager != null || detailManager != null)
+        {
+            Debug.LogWarning(
+                "RacingController: The selected GPUIDetailManager is inactive. Runtime detail registration was skipped.");
+        }
+    }
+
+    private static void WarnIfDuplicateManagers(
+        Component environmentManager,
+        Component sceneManager,
+        string managerName)
+    {
+        if (environmentManager == null || sceneManager == null || environmentManager == sceneManager)
+            return;
+
+        Debug.LogWarning(
+            $"RacingController: Both the Addressable environment and the racing scene contain a {managerName}. " +
+            "The Addressable manager will be used; remove the scene manager after migration to avoid duplicate GPUI processing.");
+    }
+
+    private static string GetRacingEnvironmentAddress(RacingType racingType)
+    {
+        switch (racingType)
+        {
+            case RacingType.Zarafshan:
+                return ZarafshanGameAssetsAddress;
+
+            case RacingType.Egypt:
+                return EgyptGameAssetsAddress;
+
+            case RacingType.Kansas:
+                return KansasGameAssetsAddress;
+
+            default:
+                return null;
+        }
     }
     #endregion
 

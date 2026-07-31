@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: ZarafshanMapData
+  m_EditorClassIdentifier: 
+  m_GroupName: ZarafshanMapData
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 88474e40939214a40b39c301f0618ea5
+  m_SerializeEntries:
+  - m_GUID: c8f94f9625619724897814ace818a2dd
+    m_Address: ZarafshanGameAssets
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Environment
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 47c83ed3f89e2f748a48f2fdd8fd9eb5, type: 2}
+    - {fileID: 11400000, guid: 0359d6cfc90d45b4299f6f7cc9c4a450, type: 2}

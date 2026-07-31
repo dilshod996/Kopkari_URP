@@ -118,7 +118,7 @@ public class KopkariResultsManager : MonoBehaviour
     {
         if (roundStarted)
         {
-            lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
+            lastRoundDuration = GetCurrentRoundDuration();
             completedRoundDuration += lastRoundDuration;
             CloseAllActiveHolds();
             ApplyLiveHorseConditionDrain(lastRoundDuration, GetPlayerRoundCatchTime());
@@ -139,7 +139,7 @@ public class KopkariResultsManager : MonoBehaviour
             return;
 
         CloseAllActiveHolds();
-        lastRoundDuration = Mathf.Max(0f, Time.time - roundStartTime);
+        lastRoundDuration = GetCurrentRoundDuration();
         completedRoundDuration += lastRoundDuration;
         ApplyLiveHorseConditionDrain(lastRoundDuration, GetPlayerRoundCatchTime());
         SaveRoundSnapshots(NoWinnerId, 0f);
@@ -229,7 +229,6 @@ public class KopkariResultsManager : MonoBehaviour
                 });
             }
 
-            ApplyLiveHorseConditionDrain(finishTime, 0f);
             simulatedRoundCount++;
         }
 
@@ -443,7 +442,7 @@ public class KopkariResultsManager : MonoBehaviour
         if (winner == null || !winner.isHolding)
             return;
 
-        float finishTime = Mathf.Max(0f, Time.time - roundStartTime);
+        float finishTime = GetCurrentRoundDuration();
         winner.finishedWithLamb = true;
         winner.roundWins++;
         winner.lastRoundFinishTime = finishTime;
@@ -634,6 +633,17 @@ public class KopkariResultsManager : MonoBehaviour
     {
         RiderRaceStats player = GetPlayerStats();
         return player != null ? Mathf.Max(0f, player.roundCatchTime) : 0f;
+    }
+
+    private float GetCurrentRoundDuration()
+    {
+        // Registan's main timer deliberately pauses for tutorial explanations.
+        // Time.time keeps advancing during those pauses, so using it directly
+        // overcharges horse condition and also inflates the recorded round time.
+        KopkariManager manager = KopkariManager.Instance;
+        return manager != null
+            ? Mathf.Max(0f, manager.GetUsedMainTime())
+            : Mathf.Max(0f, Time.time - roundStartTime);
     }
 
     private void PersistActiveLiveHorseCondition()

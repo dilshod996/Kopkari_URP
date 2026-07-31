@@ -17,8 +17,20 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 7970c930a78805549a89df3ace0441e7
   m_SerializeEntries:
+  - m_GUID: 5896895507e0b5c4885f9d45da257599
+    m_Address: KansasSkybox
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SkyBox
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7e86961b1f898a541914fc6ddbbb0a8d
     m_Address: ZarafshanSkybox
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SkyBox
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: af44d84b4ae79804784229526a73eb87
+    m_Address: CustomRoomSkybox
     m_ReadOnly: 0
     m_SerializedLabels:
     - SkyBox
@@ -28,11 +40,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels:
     - SkyBox
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 5896895507e0b5c4885f9d45da257599
-    m_Address: KansasSkybox
-    m_ReadOnly: 0
-    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}

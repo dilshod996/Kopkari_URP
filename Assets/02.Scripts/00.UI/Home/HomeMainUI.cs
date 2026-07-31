@@ -181,6 +181,12 @@ public class HomeMainUI : MonoBehaviour
     public event Action FoodPanelShown;
     private Coroutine levelUpCheckRoutine;
     private Coroutine homeTutorialResumeRoutine;
+    private static bool IsAnyHomeTutorialActive =>
+        HomeTutorialController.IsTutorialActive ||
+        HomeHorseConditionTutorialController.IsTutorialActive;
+    private static bool CanShowHomeDailyReward =>
+        HomeTutorialProgress.LoadLocal().Completed &&
+        !IsAnyHomeTutorialActive;
     private void Awake()
     {
         if (Instance == null)
@@ -717,24 +723,43 @@ public class HomeMainUI : MonoBehaviour
     #region Daily Reward
     public void DailyReward()
     {
-        if (HomeTutorialController.IsTutorialActive)
+        if (!CanShowHomeDailyReward)
+        {
+            HideDailyRewardPage();
             return;
+        }
 
         if (string.IsNullOrWhiteSpace(
                 PlayerPrefs.GetString(Constants.Player.UsernameKey, string.Empty)))
         {
+            HideDailyRewardPage();
             return;
         }
         TryOpenDailyRewardIfAvailable();
     }
     public void TryOpenDailyRewardIfAvailable()
     {
+        if (!CanShowHomeDailyReward)
+        {
+            HideDailyRewardPage();
+            return;
+        }
+
         if (dailyRewardUI == null) return;
 
         // UI inactive bo‘lsa ham, canClaimni hisoblab beradi:
         bool canClaim = dailyRewardUI.PeekCanClaimToday();
 
         dailyRewardUI.gameObject.SetActive(canClaim);
+    }
+
+    private void HideDailyRewardPage()
+    {
+        if (dailyRewardUI != null &&
+            dailyRewardUI.gameObject.activeSelf)
+        {
+            dailyRewardUI.gameObject.SetActive(false);
+        }
     }
     public void OnClickNextDayDebug()
     {
@@ -1087,12 +1112,15 @@ public class HomeMainUI : MonoBehaviour
 
     private void HandlePlayerDataLoaded()
     {
-        if (!HomeTutorialController.IsTutorialActive)
+        if (CanShowHomeDailyReward)
             TryOpenDailyRewardIfAvailable();
+        else
+            HideDailyRewardPage();
     }
     private void CheckTutorialRewardOnReturn()
     {
-        if (HomeTutorialController.IsTutorialActive)
+        if (!HomeTutorialProgress.LoadLocal().Completed ||
+            IsAnyHomeTutorialActive)
             return;
 
         bool tutorialPlayed = PlayerPrefs.GetInt(Constants.Tutorial.TutorialPlay, 0) == 1;
@@ -1118,8 +1146,12 @@ public class HomeMainUI : MonoBehaviour
 
     private IEnumerator ResumeHomePopupsAfterTutorial()
     {
-        while ((settingsPanel != null && settingsPanel.activeInHierarchy) ||
-               (userDetailsPanel != null && userDetailsPanel.activeInHierarchy))
+        yield return null;
+
+        while (IsAnyHomeTutorialActive ||
+               (settingsPanel != null && settingsPanel.activeInHierarchy) ||
+               (userDetailsPanel != null &&
+                userDetailsPanel.activeInHierarchy))
         {
             yield return null;
         }
@@ -1144,7 +1176,8 @@ public class HomeMainUI : MonoBehaviour
 
         while ((dailyRewardUI != null && dailyRewardUI.gameObject.activeInHierarchy) ||
                (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy) ||
-               HomeTutorialController.IsTutorialActive)
+               !HomeTutorialProgress.LoadLocal().Completed ||
+               IsAnyHomeTutorialActive)
         {
             yield return null;
         }
@@ -1182,7 +1215,9 @@ public class HomeMainUI : MonoBehaviour
         yield return null;
 
         while ((dailyRewardUI != null && dailyRewardUI.gameObject.activeInHierarchy) ||
-               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy))
+               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy) ||
+               !HomeTutorialProgress.LoadLocal().Completed ||
+               IsAnyHomeTutorialActive)
         {
             yield return null;
         }

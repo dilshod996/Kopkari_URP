@@ -227,7 +227,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   requireInternetWhenDownloadNeeded: 1
-  updateCatalogsOnInitialize: 1
   showPopupOnErrors: 1
   popupCooldownSeconds: 2
   popupTitleTextId: 520
@@ -7227,10 +7226,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b5c1d458979f31469f6a33e818d85ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useTestAds: 1
-  androidBannerId: 
-  androidInterstitialId: 
-  androidRewardedId: 
+  useTestAds: 0
+  androidBannerId: ca-app-pub-3882629957668213/8973527914
+  androidInterstitialId: ca-app-pub-3882629957668213/1040031720
+  androidRewardedId: ca-app-pub-3882629957668213/3857766751
 --- !u!4 &2095916375
 Transform:
   m_ObjectHideFlags: 0
@@ -8134,7 +8133,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1054.3623, y: -456.67157}
+  m_AnchoredPosition: {x: 960, y: -505}
   m_SizeDelta: {x: 826, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1622846075032300652

@@ -9,7 +9,23 @@ using UnityEngine.ResourceManagement.ResourceLocations;
 
 public sealed class AddressablesService : MonoBehaviour
 {
+    public enum DependencyDownloadState
+    {
+        NotDownloaded,
+        Downloading,
+        Ready,
+        Failed
+    }
+
+    private sealed class DependencyDownloadOperation
+    {
+        public readonly TaskCompletionSource<bool> Completion = new();
+        public readonly List<Action<float>> ProgressListeners = new();
+        public float Progress;
+    }
+
     public static AddressablesService Instance { get; private set; }
+    public event Action<string, DependencyDownloadState, float> DependencyDownloadStateChanged;
 
     private Task _initTask;
     private bool _initialized;
@@ -20,6 +36,9 @@ public sealed class AddressablesService : MonoBehaviour
     private readonly Dictionary<string, AsyncOperationHandle> _assetHandles = new();
     private readonly Dictionary<string, object> _assetListCache = new();
     private readonly Dictionary<string, Task<UnityEngine.Object>> _assetLoadTasks = new();
+    private readonly Dictionary<string, DependencyDownloadOperation> _dependencyDownloadOperations = new();
+    private readonly HashSet<string> _readyDependencyKeys = new();
+    private readonly HashSet<string> _failedDependencyKeys = new();
 
     // Instance handle cache (InstantiateAsync uchun) - key: instanceId
     private readonly Dictionary<int, AsyncOperationHandle<GameObject>> _instanceHandles = new();
@@ -253,6 +272,35 @@ public sealed class AddressablesService : MonoBehaviour
         return missingKeys;
     }
 
+    public async Task<bool> AddressExistsAsync(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return false;
+
+        AsyncOperationHandle<IList<IResourceLocation>> locationsHandle = default;
+
+        try
+        {
+            await EnsureInitializedAsync();
+            locationsHandle = Addressables.LoadResourceLocationsAsync(key.Trim());
+            IList<IResourceLocation> locations = await locationsHandle.Task;
+
+            return IsSucceeded(locationsHandle) &&
+                   locations != null &&
+                   locations.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Could not check Addressables address '{key}': {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (locationsHandle.IsValid())
+                Addressables.Release(locationsHandle);
+        }
+    }
+
     /// <summary>
     /// Bitta address/label uchun preload.
     /// </summary>
@@ -263,6 +311,156 @@ public sealed class AddressablesService : MonoBehaviour
         bool showErrorPopup = true)
     {
         return await PreloadDependenciesAsync(new List<string> { key }, onProgress, fakeDurationIfCached, showErrorPopup);
+    }
+
+    /// <summary>
+    /// Ensures that one Addressables key and all of its dependencies are cached.
+    /// Concurrent callers for the same key share one download operation.
+    /// </summary>
+    public async Task<bool> EnsureDependenciesDownloadedAsync(
+        string key,
+        Action<float> onProgress = null,
+        bool showErrorPopup = true)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            onProgress?.Invoke(0f);
+            ReportAddressablesError(
+                "Cannot download Addressables dependencies for an empty key.",
+                showPopup: showErrorPopup);
+            return false;
+        }
+
+        string normalizedKey = key.Trim();
+
+        if (_dependencyDownloadOperations.TryGetValue(normalizedKey, out DependencyDownloadOperation existing))
+        {
+            AddProgressListener(existing, onProgress);
+            return await existing.Completion.Task;
+        }
+
+        var operation = new DependencyDownloadOperation();
+        AddProgressListener(operation, onProgress);
+        _dependencyDownloadOperations[normalizedKey] = operation;
+        SetDependencyDownloadState(normalizedKey, DependencyDownloadState.Downloading, 0f);
+        _ = RunDependencyDownloadAsync(normalizedKey, operation, showErrorPopup);
+
+        return await operation.Completion.Task;
+    }
+
+    public DependencyDownloadState GetDependencyDownloadState(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return DependencyDownloadState.NotDownloaded;
+
+        string normalizedKey = key.Trim();
+        if (_dependencyDownloadOperations.ContainsKey(normalizedKey))
+            return DependencyDownloadState.Downloading;
+        if (_readyDependencyKeys.Contains(normalizedKey))
+            return DependencyDownloadState.Ready;
+        if (_failedDependencyKeys.Contains(normalizedKey))
+            return DependencyDownloadState.Failed;
+
+        return DependencyDownloadState.NotDownloaded;
+    }
+
+    private async Task RunDependencyDownloadAsync(
+        string key,
+        DependencyDownloadOperation operation,
+        bool showErrorPopup)
+    {
+        bool succeeded = false;
+
+        try
+        {
+            succeeded = await PreloadDependenciesAsync(
+                new List<string> { key },
+                progress => NotifyDependencyDownloadProgress(key, operation, progress),
+                fakeDurationIfCached: 0f,
+                showErrorPopup: showErrorPopup);
+        }
+        catch (Exception ex)
+        {
+            ReportAddressablesError(
+                $"Addressables dependency download failed for: {key}",
+                ex,
+                showErrorPopup);
+        }
+        finally
+        {
+            _dependencyDownloadOperations.Remove(key);
+
+            if (succeeded)
+            {
+                _failedDependencyKeys.Remove(key);
+                _readyDependencyKeys.Add(key);
+                NotifyDependencyDownloadProgress(key, operation, 1f);
+                SetDependencyDownloadState(key, DependencyDownloadState.Ready, 1f);
+            }
+            else
+            {
+                _readyDependencyKeys.Remove(key);
+                _failedDependencyKeys.Add(key);
+                SetDependencyDownloadState(key, DependencyDownloadState.Failed, operation.Progress);
+            }
+
+            operation.Completion.TrySetResult(succeeded);
+        }
+    }
+
+    private static void AddProgressListener(
+        DependencyDownloadOperation operation,
+        Action<float> listener)
+    {
+        if (listener == null)
+            return;
+
+        operation.ProgressListeners.Add(listener);
+        try
+        {
+            listener(operation.Progress);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
+    }
+
+    private void NotifyDependencyDownloadProgress(
+        string key,
+        DependencyDownloadOperation operation,
+        float progress)
+    {
+        operation.Progress = Mathf.Clamp01(progress);
+
+        for (int i = 0; i < operation.ProgressListeners.Count; i++)
+        {
+            try
+            {
+                operation.ProgressListeners[i]?.Invoke(operation.Progress);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+
+        SetDependencyDownloadState(key, DependencyDownloadState.Downloading, operation.Progress);
+    }
+
+    private void SetDependencyDownloadState(
+        string key,
+        DependencyDownloadState state,
+        float progress)
+    {
+        try
+        {
+            DependencyDownloadStateChanged?.Invoke(key, state, Mathf.Clamp01(progress));
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
     }
 
     private async Task FakeProgressAsync(Action<float> onProgress, float duration)
@@ -417,7 +615,8 @@ public sealed class AddressablesService : MonoBehaviour
         string address,
         Vector3 position,
         Quaternion rotation,
-        Transform parent = null)
+        Transform parent = null,
+        bool showErrorPopup = true)
     {
         try
         {
@@ -429,7 +628,8 @@ public sealed class AddressablesService : MonoBehaviour
             if (!IsSucceeded(handle))
             {
                 ReportAddressablesError(BuildHandleError($"Failed to instantiate Addressables asset: {address}", handle),
-                    GetOperationException(handle));
+                    GetOperationException(handle),
+                    showErrorPopup);
 
                 if (handle.IsValid())
                     Addressables.Release(handle);
@@ -444,7 +644,10 @@ public sealed class AddressablesService : MonoBehaviour
         catch (Exception ex)
         {
             if (!WasInitializationFailureAlreadyReported())
-                ReportAddressablesError($"Exception while instantiating Addressables asset: {address}", ex);
+                ReportAddressablesError(
+                    $"Exception while instantiating Addressables asset: {address}",
+                    ex,
+                    showErrorPopup);
 
             return null;
         }
@@ -455,16 +658,24 @@ public sealed class AddressablesService : MonoBehaviour
         if (instance == null) return;
 
         int id = instance.GetInstanceID();
-        if (_instanceHandles.TryGetValue(id, out var handle) && handle.IsValid())
+        if (ReleaseInstance(id))
+            return;
+
+        // Agar handle topilmasa, fallback:
+        Destroy(instance);
+    }
+
+    public bool ReleaseInstance(int instanceId)
+    {
+        if (_instanceHandles.TryGetValue(instanceId, out var handle) && handle.IsValid())
         {
             Addressables.ReleaseInstance(handle);
-            _instanceHandles.Remove(id);
+            _instanceHandles.Remove(instanceId);
+            return true;
         }
-        else
-        {
-            // Agar handle topilmasa, fallback:
-            Destroy(instance);
-        }
+
+        _instanceHandles.Remove(instanceId);
+        return false;
     }
 
     public void ReleaseAllInstances()

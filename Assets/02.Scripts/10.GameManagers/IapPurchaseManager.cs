@@ -27,13 +27,31 @@ public class IapPurchaseManager : MonoBehaviour
         }
     }
 
+    public readonly struct BonusCardReward
+    {
+        public int CoinAmount { get; }
+        public int NyufiyAmount { get; }
+        public string ItemKey { get; }
+        public int ItemAmount { get; }
+
+        public BonusCardReward(int coinAmount, int nyufiyAmount, string itemKey, int itemAmount)
+        {
+            CoinAmount = coinAmount;
+            NyufiyAmount = nyufiyAmount;
+            ItemKey = itemKey;
+            ItemAmount = itemAmount;
+        }
+    }
+
     public static IapPurchaseManager Instance { get; private set; }
 
     public bool IsReady => storeController != null && productsFetched;
 
     public event Action<string> OnPurchaseStarted;
+    public event Action OnProductsUpdated;
     public event Action<string, int> OnNyufiyPurchaseSucceeded;
     public event Action<string, int, int> OnCurrencyBundlePurchaseSucceeded;
+    public event Action<string, BonusCardReward> OnBonusCardPurchaseSucceeded;
     public event Action<string, string> OnPurchaseFailed;
 
     private StoreController storeController;
@@ -69,6 +87,19 @@ public class IapPurchaseManager : MonoBehaviour
             { "currency_bundle_legend", new CurrencyBundleReward(110, 4500) }
         };
 
+    private readonly Dictionary<string, BonusCardReward> bonusCardProducts =
+        new Dictionary<string, BonusCardReward>
+        {
+            {
+                "bonus_card_coin_15_websnare_10",
+                new BonusCardReward(15, 0, Constants.PlayerItems.WebSnare, 10)
+            },
+            {
+                "bonus_card_7900_nyufiy_10_defender",
+                new BonusCardReward(0, 7900, Constants.PlayerItems.Defense, 10)
+            }
+        };
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -90,6 +121,8 @@ public class IapPurchaseManager : MonoBehaviour
         storeController.OnStoreDisconnected += OnStoreDisconnected;
         storeController.OnProductsFetched += OnProductsFetched;
         storeController.OnProductsFetchFailed += OnProductsFetchFailed;
+        storeController.OnPurchasesFetched += OnPurchasesFetched;
+        storeController.OnPurchasesFetchFailed += OnPurchasesFetchFailed;
         storeController.OnPurchasePending += OnPurchasePending;
         storeController.OnPurchaseConfirmed += OnPurchaseConfirmed;
         storeController.OnPurchaseFailed += OnPurchaseFailedInternal;
@@ -107,14 +140,14 @@ public class IapPurchaseManager : MonoBehaviour
         return;
 #endif
 
-        if (storeController == null)
+        if (!TryGetProduct(productId, out Product storeProduct))
         {
-            OnPurchaseFailed?.Invoke(productId, "Store is not initialized yet.");
+            OnPurchaseFailed?.Invoke(productId, "Product is not available from the store yet.");
             return;
         }
 
         OnPurchaseStarted?.Invoke(productId);
-        storeController.PurchaseProduct(productId);
+        storeController.PurchaseProduct(storeProduct);
     }
 
     public void BuyCurrencyBundle(CurrencyBundleProduct product)
@@ -139,6 +172,30 @@ public class IapPurchaseManager : MonoBehaviour
 
         OnPurchaseStarted?.Invoke(productId);
         storeController.PurchaseProduct(productId);
+    }
+
+    public void BuyBonusCard(BonusCoinCard.BonusCardProduct product)
+    {
+        string productId = GetBonusCardProductId(product);
+        if (string.IsNullOrEmpty(productId) || !bonusCardProducts.ContainsKey(productId))
+        {
+            OnPurchaseFailed?.Invoke(productId, "Unknown bonus card product.");
+            return;
+        }
+
+#if UNITY_EDITOR
+        SimulateEditorBonusCardPurchase(productId);
+        return;
+#endif
+
+        if (!TryGetProduct(productId, out Product storeProduct))
+        {
+            OnPurchaseFailed?.Invoke(productId, "Product is not available from the store yet.");
+            return;
+        }
+
+        OnPurchaseStarted?.Invoke(productId);
+        storeController.PurchaseProduct(storeProduct);
     }
 
 #if UNITY_EDITOR
@@ -184,6 +241,26 @@ public class IapPurchaseManager : MonoBehaviour
         OnCurrencyBundlePurchaseSucceeded?.Invoke(productId, reward.CoinAmount, reward.NyufiyAmount);
     }
 
+    private void SimulateEditorBonusCardPurchase(string productId)
+    {
+        DestroyFakeStoreWindowIfPresent();
+
+        if (!bonusCardProducts.TryGetValue(productId, out BonusCardReward reward))
+        {
+            OnPurchaseFailed?.Invoke(productId, "Unknown editor bonus card product.");
+            return;
+        }
+
+        if (!TryGrantBonusCardReward(productId, reward))
+            return;
+
+        Debug.Log(
+            $"IAP Editor: Simulated bonus card purchase. Product={productId}, " +
+            $"Coin={reward.CoinAmount}, Nyufiy={reward.NyufiyAmount}, " +
+            $"Item={reward.ItemKey}, ItemAmount={reward.ItemAmount}");
+        OnBonusCardPurchaseSucceeded?.Invoke(productId, reward);
+    }
+
     private void DestroyFakeStoreWindowIfPresent()
     {
         GameObject fakeStoreWindow = GameObject.Find("UIFakeStoreWindow");
@@ -195,6 +272,39 @@ public class IapPurchaseManager : MonoBehaviour
     public int GetNyufiyAmount(CoinCard.NyufiyProduct product)
     {
         return nyufiyProducts.TryGetValue(product.ToString(), out int amount) ? amount : 0;
+    }
+
+    public bool TryGetLocalizedPrice(CoinCard.NyufiyProduct product, out string localizedPrice)
+    {
+        return TryGetLocalizedPrice(product.ToString(), out localizedPrice);
+    }
+
+    public bool TryGetLocalizedPrice(string productId, out string localizedPrice)
+    {
+        localizedPrice = string.Empty;
+
+        if (!TryGetProduct(productId, out Product storeProduct))
+            return false;
+
+        localizedPrice = storeProduct.metadata?.localizedPriceString;
+        return !string.IsNullOrEmpty(localizedPrice);
+    }
+
+    private bool TryGetProduct(string productId, out Product product)
+    {
+        if (!productsFetched || storeController == null)
+        {
+            product = null;
+            return false;
+        }
+
+        product = storeController?
+            .GetProducts()
+            .FirstOrDefault(candidate =>
+                candidate.definition.id == productId &&
+                candidate.availableToPurchase);
+
+        return product != null;
     }
 
     public string GetCurrencyBundleProductId(CurrencyBundleProduct product)
@@ -220,12 +330,25 @@ public class IapPurchaseManager : MonoBehaviour
         return currencyBundleProducts.TryGetValue(productId, out reward);
     }
 
+    public string GetBonusCardProductId(BonusCoinCard.BonusCardProduct product)
+    {
+        return product == BonusCoinCard.BonusCardProduct.None ? string.Empty : product.ToString();
+    }
+
+    public bool TryGetBonusCardReward(
+        BonusCoinCard.BonusCardProduct product,
+        out BonusCardReward reward)
+    {
+        return bonusCardProducts.TryGetValue(GetBonusCardProductId(product), out reward);
+    }
+
     private void OnStoreConnected()
     {
         Debug.Log("IAP: Store connected.");
 
         List<ProductDefinition> products = nyufiyProducts.Keys
             .Concat(currencyBundleProducts.Keys)
+            .Concat(bonusCardProducts.Keys)
             .Select(productId => new ProductDefinition(productId, ProductType.Consumable))
             .ToList();
 
@@ -236,18 +359,40 @@ public class IapPurchaseManager : MonoBehaviour
     {
         productsFetched = false;
         Debug.LogWarning($"IAP: Store disconnected. {description.message}");
+        OnProductsUpdated?.Invoke();
     }
 
     private void OnProductsFetched(List<Product> products)
     {
         productsFetched = true;
         Debug.Log($"IAP: Products fetched successfully. Count={products.Count}");
+        OnProductsUpdated?.Invoke();
+        storeController.FetchPurchases();
     }
 
     private void OnProductsFetchFailed(ProductFetchFailed failure)
     {
-        productsFetched = false;
-        Debug.LogWarning($"IAP: Product fetch failed. Reason={failure.FailureReason}");
+        productsFetched = storeController.GetProducts().Any(product => product.availableToPurchase);
+        string failedProductIds = string.Join(
+            ", ",
+            failure.FailedFetchProducts.Select(product => product.id));
+        Debug.LogWarning(
+            $"IAP: Product fetch failed. Products=[{failedProductIds}], Reason={failure.FailureReason}");
+        OnProductsUpdated?.Invoke();
+    }
+
+    private void OnPurchasesFetched(Orders orders)
+    {
+        Debug.Log(
+            $"IAP: Existing purchases fetched. Pending={orders.PendingOrders.Count}, " +
+            $"Confirmed={orders.ConfirmedOrders.Count}, Deferred={orders.DeferredOrders.Count}");
+    }
+
+    private void OnPurchasesFetchFailed(PurchasesFetchFailureDescription failure)
+    {
+        Debug.LogWarning(
+            $"IAP: Existing purchases fetch failed. Reason={failure.FailureReason}, " +
+            $"Message={failure.Message}");
     }
 
     private void OnPurchasePending(PendingOrder order)
@@ -292,8 +437,38 @@ public class IapPurchaseManager : MonoBehaviour
             return;
         }
 
+        if (bonusCardProducts.TryGetValue(productId, out BonusCardReward bonusCardReward))
+        {
+            if (!TryGrantBonusCardReward(productId, bonusCardReward))
+                return;
+
+            OnBonusCardPurchaseSucceeded?.Invoke(productId, bonusCardReward);
+            storeController.ConfirmPurchase(order);
+            return;
+        }
+
         Debug.LogWarning($"IAP: Unknown purchased product '{productId}'.");
         storeController.ConfirmPurchase(order);
+    }
+
+    private bool TryGrantBonusCardReward(string productId, BonusCardReward reward)
+    {
+        if (CurrencyManager.Instance == null || DataManager.Instance == null)
+        {
+            Debug.LogError(
+                $"IAP: Cannot grant {productId}; CurrencyManager or DataManager is missing.");
+            OnPurchaseFailed?.Invoke(productId, "A required player data manager is missing.");
+            return false;
+        }
+
+        if (reward.CoinAmount > 0)
+            CurrencyManager.Instance.AddCoin(reward.CoinAmount, true);
+        if (reward.NyufiyAmount > 0)
+            CurrencyManager.Instance.AddNyufiy(reward.NyufiyAmount, true);
+        if (!string.IsNullOrEmpty(reward.ItemKey) && reward.ItemAmount > 0)
+            DataManager.Instance.AddItem(reward.ItemKey, reward.ItemAmount, true);
+
+        return true;
     }
 
     private void OnPurchaseConfirmed(Order order)

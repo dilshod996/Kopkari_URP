@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: RegistanMapData
+  m_EditorClassIdentifier: 
+  m_GroupName: RegistanMapData
+  m_Data:
+    m_SerializedData: []
+  m_GUID: dfb7287f8629b62408340eb55d0740f3
+  m_SerializeEntries:
+  - m_GUID: 937ebe70dafe27c49a564246d0d8dd64
+    m_Address: RegistanGameAssets
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Environment
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 207353b7442506546b5480a12c0bd396, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 10c56d5bbadb32242a79c2a9c9deb334, type: 2}
+    - {fileID: 11400000, guid: 70b9b1f7f145dd44d8981f7ca74f105f, type: 2}

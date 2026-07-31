@@ -9,6 +9,7 @@ public static partial class Constants
         public const string Version = Prefix + "version";
         public const string LastCheckpoint = Prefix + "checkpoint";
         public const string ContextFlags = Prefix + "context_flags";
+        public const string ObjectiveReminderCounts = Prefix + "objective_reminder_counts";
 
         public const string Joystick = Prefix + "joystick";
         public const string CameraJoystick = Prefix + "camera_joystick";
@@ -42,5 +43,7 @@ public static partial class Constants
         public const string CloudVersion = "kopkariTutorialVersion";
         public const string CloudCheckpoint = "kopkariTutorialCheckpoint";
         public const string CloudContextFlags = "kopkariTutorialContextFlags";
+        public const string CloudObjectiveReminderCounts =
+            "kopkariTutorialObjectiveReminderCounts";
     }
 }

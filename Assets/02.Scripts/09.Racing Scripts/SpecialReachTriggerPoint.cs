@@ -7,6 +7,7 @@ using UnityEngine;
 public class SpecialReachTriggerPoint : MonoBehaviour
 {
     public static event Action OnFirstAIRiderEntered;
+    public static event Action OnPlayerEntered;
 
     [Header("Trigger Filter")]
     [SerializeField] private string requiredTag = "RacingHead";
@@ -64,6 +65,9 @@ public class SpecialReachTriggerPoint : MonoBehaviour
 
         if (logDebug)
             Debug.Log($"[SpecialReach] Passed: {agent.displayName} (player={agent.isPlayer})");
+
+        if (agent.isPlayer)
+            OnPlayerEntered?.Invoke();
 
         // Birinchi o'tgan agent => timer start
         if (!_timerStarted && !controller.IsRaceOver)

@@ -1,12 +1,15 @@
 using System;
 using DG.Tweening;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class MapShowPopup : MonoBehaviour
 {
+    private const string KansasGameAssetsAddress = "KansasGameAssets";
+
     public event Action<MapCard.MapDetailsData> MapDetailsShown;
     public event Action<MapCard.MapDetailsData> RacingRoomEntryRequested;
     public event Action<HorseConditionStats> HorseConditionEntryBlocked;
@@ -69,6 +72,7 @@ public class MapShowPopup : MonoBehaviour
     private Tween mapImageTween;
     private float mapImageDefaultAlpha = 1f;
     private readonly List<string> preloadRacing = new List<string>();
+    private bool entryRequestInProgress;
 
     private void Awake()
     {
@@ -382,6 +386,7 @@ public class MapShowPopup : MonoBehaviour
         );
 
         HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
+        StartMapContentDownloadIfNeeded();
     }
 
     private bool IsMapAlreadyUnlocked()
@@ -435,20 +440,68 @@ public class MapShowPopup : MonoBehaviour
             SpendCostAndMoveRoom();
     }
 
-    private void SpendCostAndMoveRoom()
+    private async void SpendCostAndMoveRoom()
     {
-        if (currentMapData.PlayCost > 0)
+        if (entryRequestInProgress)
+            return;
+
+        entryRequestInProgress = true;
+        if (buyBtn != null)
+            buyBtn.interactable = false;
+
+        bool sceneMoveStarted = false;
+
+        try
         {
-            bool success = CurrencyManager.Instance.SpendNyufiy(currentMapData.PlayCost);
-            if (!success)
+            if (RequiresKansasGameAssets())
             {
-                Debug.Log("Money is not enough to play popup");
-                UIOverlayRoot.I.Confirm(487, 488, 489, 490, MoveToShop, WatchAdds);
-                return;
+                UIOverlayRoot.I?.ShowMovementPanel(currentMapData);
+
+                bool contentReady = await EnsureKansasGameAssetsDownloadedAsync(
+                    progress =>
+                    {
+                        if (SceneLoadManager.Instance != null)
+                            SceneLoadManager.Instance.loadingTime = progress * 50f;
+                    });
+
+                if (!contentReady)
+                {
+                    UIOverlayRoot.I?.HideCurrentPanel();
+                    HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
+                    return;
+                }
+            }
+
+            if (currentMapData.PlayCost > 0)
+            {
+                bool success = CurrencyManager.Instance.SpendNyufiy(currentMapData.PlayCost);
+                if (!success)
+                {
+                    UIOverlayRoot.I?.HideCurrentPanel();
+                    Debug.Log("Money is not enough to play popup");
+                    UIOverlayRoot.I?.Confirm(487, 488, 489, 490, MoveToShop, WatchAdds);
+                    return;
+                }
+            }
+
+            MovingRoom();
+            sceneMoveStarted = true;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            UIOverlayRoot.I?.HideCurrentPanel();
+            HomeHapticsManager.Instance?.Play(HomeHapticId.NotEnoughMoney);
+        }
+        finally
+        {
+            if (!sceneMoveStarted)
+            {
+                entryRequestInProgress = false;
+                if (buyBtn != null)
+                    buyBtn.interactable = true;
             }
         }
-
-        MovingRoom();
     }
 
     private void MovingRoom()
@@ -458,9 +511,48 @@ public class MapShowPopup : MonoBehaviour
         preloadRacing.Clear();
         if (currentMapData.MapType == MapCard.MapType.Racing)
             preloadRacing.Add(Constants.RoomSound.RacingSound);
+        if (RequiresKansasGameAssets())
+            preloadRacing.Add(KansasGameAssetsAddress);
 
+        MapCard.SaveLastPlayedMap(currentMapData.MapType, currentMapData.MapKey);
         HomeHapticsManager.Instance.Play(HomeHapticId.Success);
         SceneLoadManager.Instance.LoadSceneNew(currentMapData.MovingRoom, preloadRacing);
+    }
+
+    private bool RequiresKansasGameAssets()
+    {
+        return currentMapData.MovingRoom == SceneLoadManager.SceneType.Kansas ||
+               string.Equals(currentMapData.MapKey, Constants.MapNames.Kansas, StringComparison.Ordinal);
+    }
+
+    private void StartMapContentDownloadIfNeeded()
+    {
+        if (!RequiresKansasGameAssets())
+            return;
+
+        _ = StartKansasGameAssetsDownloadAsync();
+    }
+
+    private async Task StartKansasGameAssetsDownloadAsync()
+    {
+        bool succeeded = await EnsureKansasGameAssetsDownloadedAsync();
+        if (!succeeded)
+            Debug.LogWarning("Kansas was unlocked, but KansasGameAssets could not be downloaded. Entry will retry.");
+    }
+
+    private static async Task<bool> EnsureKansasGameAssetsDownloadedAsync(
+        Action<float> onProgress = null)
+    {
+        if (AddressablesService.Instance == null)
+        {
+            Debug.LogError("AddressablesService is unavailable. KansasGameAssets cannot be downloaded.");
+            onProgress?.Invoke(0f);
+            return false;
+        }
+
+        return await AddressablesService.Instance.EnsureDependenciesDownloadedAsync(
+            KansasGameAssetsAddress,
+            onProgress);
     }
 
     private void OpenTacticItemsPanel()

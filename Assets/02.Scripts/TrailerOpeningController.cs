@@ -321,6 +321,30 @@ public sealed class TrailerOpeningController : MonoBehaviour
         currentCinematicCamera = targetCamera;
     }
 
+    /// <summary>
+    /// Fades to black, changes camera while hidden, then fades back to the cinematic.
+    /// Intended for coordinated transitions started by attached cinematic controllers.
+    /// </summary>
+    public IEnumerator FadeThroughBlackToCamera(
+        CinemachineVirtualCameraBase targetCamera,
+        float cameraBlendDuration,
+        float fadeToBlackDuration,
+        float blackHoldDuration,
+        float fadeFromBlackDuration)
+    {
+        if (openingFadeCanvasGroup == null)
+        {
+            SwitchCamera(targetCamera, cameraBlendDuration);
+            yield break;
+        }
+
+        yield return FadeOverlay(0f, 1f, fadeToBlackDuration, true);
+        SwitchCamera(targetCamera, cameraBlendDuration);
+        yield return WaitForDuration(blackHoldDuration);
+        yield return FadeOverlay(1f, 0f, fadeFromBlackDuration, true);
+        ClearOpeningFade();
+    }
+
     /// <summary>Crossfades the rider to a cached Animator state hash.</summary>
     public void PlayAnimatorState(int stateHash, string stateName, float transitionDuration)
     {

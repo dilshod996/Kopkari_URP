@@ -3,6 +3,20 @@ using UnityEngine;
 
 public static class KopkariTutorialProgress
 {
+    private const int ReminderCountMask = 0x3;
+    private const int MaximumReminderCount = 3;
+
+    public const ContextLesson RequiredContextLessons =
+        ContextLesson.WalkZone |
+        ContextLesson.GripDamage |
+        ContextLesson.Defend |
+        ContextLesson.LostUloq |
+        ContextLesson.FakeUloq |
+        ContextLesson.OpponentCarrier |
+        ContextLesson.WebSnare |
+        ContextLesson.ChainContainer |
+        ContextLesson.HorseHealth;
+
     public enum CoreCheckpoint
     {
         Joystick = 0,
@@ -22,6 +36,13 @@ public static class KopkariTutorialProgress
         Completed = 14
     }
 
+    public enum ObjectiveReminderKind
+    {
+        Uloq = 0,
+        Target = 1,
+        Warmup = 2
+    }
+
     [Flags]
     public enum ContextLesson
     {
@@ -39,18 +60,25 @@ public static class KopkariTutorialProgress
 
     public readonly struct State
     {
-        public State(int version, bool completed, CoreCheckpoint checkpoint, ContextLesson context)
+        public State(
+            int version,
+            bool completed,
+            CoreCheckpoint checkpoint,
+            ContextLesson context,
+            int objectiveReminderCounts = 0)
         {
             Version = version;
             Completed = completed;
             Checkpoint = checkpoint;
             Context = context;
+            ObjectiveReminderCounts = objectiveReminderCounts;
         }
 
         public int Version { get; }
         public bool Completed { get; }
         public CoreCheckpoint Checkpoint { get; }
         public ContextLesson Context { get; }
+        public int ObjectiveReminderCounts { get; }
     }
 
     public static bool HasAnyLocalData =>
@@ -60,7 +88,8 @@ public static class KopkariTutorialProgress
 
     public static State LoadLocal()
     {
-        bool completed = PlayerPrefs.GetInt(Constants.KopkariTutorial.Completed, 0) == 1;
+        bool legacyCompleted =
+            PlayerPrefs.GetInt(Constants.KopkariTutorial.Completed, 0) == 1;
         int checkpointValue = Mathf.Clamp(
             PlayerPrefs.GetInt(
                 Constants.KopkariTutorial.LastCheckpoint,
@@ -68,8 +97,35 @@ public static class KopkariTutorialProgress
             (int)CoreCheckpoint.Joystick,
             (int)CoreCheckpoint.Completed);
 
-        if (completed)
+        if (legacyCompleted)
             checkpointValue = (int)CoreCheckpoint.Completed;
+
+        ContextLesson context =
+            (ContextLesson)PlayerPrefs.GetInt(Constants.KopkariTutorial.ContextFlags, 0);
+        int storedReminderCounts = PlayerPrefs.GetInt(
+            Constants.KopkariTutorial.ObjectiveReminderCounts,
+            0);
+        int objectiveReminderCounts =
+            ApplyLegacyFirstExposureCounts(
+                (CoreCheckpoint)checkpointValue,
+                storedReminderCounts);
+        bool completed =
+            checkpointValue >= (int)CoreCheckpoint.Completed &&
+            HasAllRequiredContextLessons(context);
+        if (legacyCompleted != completed)
+        {
+            PlayerPrefs.SetInt(
+                Constants.KopkariTutorial.Completed,
+                completed ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        if (storedReminderCounts != objectiveReminderCounts)
+        {
+            PlayerPrefs.SetInt(
+                Constants.KopkariTutorial.ObjectiveReminderCounts,
+                objectiveReminderCounts);
+            PlayerPrefs.Save();
+        }
 
         return new State(
             PlayerPrefs.GetInt(
@@ -77,25 +133,32 @@ public static class KopkariTutorialProgress
                 Constants.KopkariTutorial.CurrentVersion),
             completed,
             (CoreCheckpoint)checkpointValue,
-            (ContextLesson)PlayerPrefs.GetInt(Constants.KopkariTutorial.ContextFlags, 0));
+            context,
+            objectiveReminderCounts);
     }
 
     public static State MergeAndSave(State cloudState)
     {
         State local = LoadLocal();
-        bool completed = local.Completed || cloudState.Completed;
         CoreCheckpoint checkpoint = (CoreCheckpoint)Mathf.Max(
             (int)local.Checkpoint,
             (int)cloudState.Checkpoint);
-        if (completed)
+        if (local.Completed || cloudState.Completed)
             checkpoint = CoreCheckpoint.Completed;
 
         ContextLesson context = local.Context | cloudState.Context;
+        int objectiveReminderCounts = MergeReminderCounts(
+            local.ObjectiveReminderCounts,
+            cloudState.ObjectiveReminderCounts);
+        bool completed =
+            checkpoint >= CoreCheckpoint.Completed &&
+            HasAllRequiredContextLessons(context);
         State merged = new State(
             Constants.KopkariTutorial.CurrentVersion,
             completed,
             checkpoint,
-            context);
+            context,
+            objectiveReminderCounts);
         SaveState(merged);
         return merged;
     }
@@ -113,7 +176,8 @@ public static class KopkariTutorialProgress
             Constants.KopkariTutorial.CurrentVersion,
             current.Completed,
             checkpoint,
-            current.Context));
+            current.Context,
+            current.ObjectiveReminderCounts));
         DataManager.Instance?.QueueKopkariTutorialProgressSync();
     }
 
@@ -123,29 +187,90 @@ public static class KopkariTutorialProgress
             PlayerPrefs.SetInt(stepKey, 1);
 
         State current = LoadLocal();
+        ContextLesson context = current.Context | lesson;
+        bool completed =
+            current.Checkpoint >= CoreCheckpoint.Completed &&
+            HasAllRequiredContextLessons(context);
         SaveState(new State(
             Constants.KopkariTutorial.CurrentVersion,
-            current.Completed,
+            completed,
             current.Checkpoint,
-            current.Context | lesson));
-        DataManager.Instance?.QueueKopkariTutorialProgressSync();
+            context,
+            current.ObjectiveReminderCounts));
+        if (completed)
+            DataManager.Instance?.CompleteKopkariTutorial();
+        else
+            DataManager.Instance?.QueueKopkariTutorialProgressSync();
     }
 
     public static void CompleteTutorial()
     {
         PlayerPrefs.SetInt(Constants.KopkariTutorial.RoundStart, 1);
         State current = LoadLocal();
+        bool completed = HasAllRequiredContextLessons(current.Context);
         SaveState(new State(
             Constants.KopkariTutorial.CurrentVersion,
-            true,
+            completed,
             CoreCheckpoint.Completed,
-            current.Context));
-        DataManager.Instance?.CompleteKopkariTutorial();
+            current.Context,
+            current.ObjectiveReminderCounts));
+        if (completed)
+            DataManager.Instance?.CompleteKopkariTutorial();
+        else
+            DataManager.Instance?.QueueKopkariTutorialProgressSync();
     }
 
     public static bool HasContextLesson(ContextLesson lesson)
     {
         return (LoadLocal().Context & lesson) == lesson;
+    }
+
+    public static bool IsFullyCompleted(State state)
+    {
+        return state.Checkpoint >= CoreCheckpoint.Completed &&
+               HasAllRequiredContextLessons(state.Context);
+    }
+
+    public static bool HasAllRequiredContextLessons(ContextLesson context)
+    {
+        return (context & RequiredContextLessons) == RequiredContextLessons;
+    }
+
+    public static int GetObjectiveReminderCount(
+        State state,
+        ObjectiveReminderKind kind)
+    {
+        int shift = GetReminderShift(kind);
+        return (state.ObjectiveReminderCounts >> shift) & ReminderCountMask;
+    }
+
+    public static int EnsureObjectiveReminderCountAtLeast(
+        ObjectiveReminderKind kind,
+        int minimumCount)
+    {
+        State current = LoadLocal();
+        int currentCount = GetObjectiveReminderCount(current, kind);
+        int targetCount = Mathf.Clamp(
+            Mathf.Max(currentCount, minimumCount),
+            0,
+            MaximumReminderCount);
+        if (targetCount == currentCount)
+            return currentCount;
+
+        SaveReminderCount(current, kind, targetCount);
+        return targetCount;
+    }
+
+    public static int RecordObjectiveReminder(ObjectiveReminderKind kind)
+    {
+        State current = LoadLocal();
+        int currentCount = GetObjectiveReminderCount(current, kind);
+        int nextCount = Mathf.Min(MaximumReminderCount, currentCount + 1);
+        if (nextCount == currentCount)
+            return currentCount;
+
+        SaveReminderCount(current, kind, nextCount);
+        return nextCount;
     }
 
     public static void DeleteAllLocalProgress()
@@ -156,6 +281,7 @@ public static class KopkariTutorialProgress
             Constants.KopkariTutorial.Version,
             Constants.KopkariTutorial.LastCheckpoint,
             Constants.KopkariTutorial.ContextFlags,
+            Constants.KopkariTutorial.ObjectiveReminderCounts,
             Constants.KopkariTutorial.Joystick,
             Constants.KopkariTutorial.CameraJoystick,
             Constants.KopkariTutorial.MatchStatus,
@@ -202,6 +328,9 @@ public static class KopkariTutorialProgress
         PlayerPrefs.SetInt(
             Constants.KopkariTutorial.ContextFlags,
             (int)state.Context);
+        PlayerPrefs.SetInt(
+            Constants.KopkariTutorial.ObjectiveReminderCounts,
+            state.ObjectiveReminderCounts);
         PlayerPrefs.SetInt(
             Constants.KopkariTutorial.Completed,
             state.Completed ? 1 : 0);
@@ -264,5 +393,84 @@ public static class KopkariTutorialProgress
     {
         if ((context & required) == required)
             PlayerPrefs.SetInt(key, 1);
+    }
+
+    private static void SaveReminderCount(
+        State current,
+        ObjectiveReminderKind kind,
+        int count)
+    {
+        int shift = GetReminderShift(kind);
+        int cleared = current.ObjectiveReminderCounts &
+                      ~(ReminderCountMask << shift);
+        int packed = cleared |
+                     ((Mathf.Clamp(count, 0, MaximumReminderCount) &
+                       ReminderCountMask) << shift);
+        SaveState(new State(
+            Constants.KopkariTutorial.CurrentVersion,
+            current.Completed,
+            current.Checkpoint,
+            current.Context,
+            packed));
+        DataManager.Instance?.QueueKopkariTutorialProgressSync();
+    }
+
+    private static int ApplyLegacyFirstExposureCounts(
+        CoreCheckpoint checkpoint,
+        int packedCounts)
+    {
+        if (checkpoint >= CoreCheckpoint.Pickup)
+            packedCounts = SetReminderCountAtLeast(
+                packedCounts,
+                ObjectiveReminderKind.Uloq,
+                1);
+        if (checkpoint >= CoreCheckpoint.ComboPrize)
+            packedCounts = SetReminderCountAtLeast(
+                packedCounts,
+                ObjectiveReminderKind.Target,
+                1);
+        if (checkpoint >= CoreCheckpoint.WarmupArrival)
+            packedCounts = SetReminderCountAtLeast(
+                packedCounts,
+                ObjectiveReminderKind.Warmup,
+                1);
+
+        return packedCounts;
+    }
+
+    private static int MergeReminderCounts(int first, int second)
+    {
+        int merged = 0;
+        foreach (ObjectiveReminderKind kind in
+                 (ObjectiveReminderKind[])Enum.GetValues(typeof(ObjectiveReminderKind)))
+        {
+            int shift = GetReminderShift(kind);
+            int count = Mathf.Max(
+                (first >> shift) & ReminderCountMask,
+                (second >> shift) & ReminderCountMask);
+            merged |= count << shift;
+        }
+
+        return merged;
+    }
+
+    private static int SetReminderCountAtLeast(
+        int packedCounts,
+        ObjectiveReminderKind kind,
+        int minimumCount)
+    {
+        int shift = GetReminderShift(kind);
+        int current = (packedCounts >> shift) & ReminderCountMask;
+        int target = Mathf.Clamp(
+            Mathf.Max(current, minimumCount),
+            0,
+            MaximumReminderCount);
+        return (packedCounts & ~(ReminderCountMask << shift)) |
+               (target << shift);
+    }
+
+    private static int GetReminderShift(ObjectiveReminderKind kind)
+    {
+        return (int)kind * 2;
     }
 }

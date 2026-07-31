@@ -82,7 +82,7 @@ public sealed class HomeHorseConditionTutorialController : MonoBehaviour
         LanguageManager.OnLanguageChanged -= HandleLanguageChanged;
 
         if (IsTutorialActive)
-            FinishTutorial(false);
+            FinishTutorial(false, false);
     }
 
     public void StartTutorialForTesting()
@@ -93,7 +93,7 @@ public sealed class HomeHorseConditionTutorialController : MonoBehaviour
     public void FinishTutorialForTesting()
     {
         CompleteHorseConditionLesson();
-        FinishTutorial(true);
+        FinishTutorial(true, true);
     }
 
     private void HandleConditionBlocked(HorseConditionStats current)
@@ -174,7 +174,7 @@ public sealed class HomeHorseConditionTutorialController : MonoBehaviour
         if (IsTutorialActive)
         {
             CompleteHorseConditionLesson();
-            FinishTutorial(true);
+            FinishTutorial(true, true);
         }
     }
 
@@ -403,7 +403,9 @@ public sealed class HomeHorseConditionTutorialController : MonoBehaviour
         showRoutine = null;
     }
 
-    private void FinishTutorial(bool playSuccessHaptic)
+    private void FinishTutorial(
+        bool playSuccessHaptic,
+        bool resumeHomePopups)
     {
         StopShowRoutine();
         StopPresentationAnimation();
@@ -424,6 +426,9 @@ public sealed class HomeHorseConditionTutorialController : MonoBehaviour
 
         if (playSuccessHaptic)
             HomeHapticsManager.Instance?.Play(HomeHapticId.Success);
+
+        if (resumeHomePopups)
+            homeUI?.OnHomeTutorialFinishedForTesting();
     }
 
     private bool HasRequiredReferences()

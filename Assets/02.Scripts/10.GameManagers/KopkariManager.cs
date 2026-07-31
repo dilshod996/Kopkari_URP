@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using GPUInstancerPro.CrowdAnimations;
+using GPUInstancerPro.PrefabModule;
+using GPUInstancerPro.TerrainModule;
 using UnityEngine;
 using MalbersAnimations;
 using MalbersAnimations.Controller;
@@ -273,6 +277,31 @@ public class KopkariManager : MonoBehaviour
     private bool poolsCreated = false;
     private bool sceneReadySignaled = false;
     private Coroutine sceneReadyRoutine;
+    private int environmentInstanceId;
+    private readonly TaskCompletionSource<bool> environmentReadySource =
+        new TaskCompletionSource<bool>();
+    private GPUIPrefabManager runtimePrefabManager;
+    private readonly Dictionary<int, GPUIPrefab[]> dynamicGPUIInstances =
+        new Dictionary<int, GPUIPrefab[]>();
+
+    [Header("Intro Crowd Visibility")]
+    [Tooltip("Assign only the crowd drawers whose configured baked points should hide when gameplay starts.")]
+    [SerializeField] private GPUICrowdNoGOPrefabDrawer[] introCrowdDrawers;
+    private bool introCrowdPointsHidden;
+
+    [Header("Addressable Environment")]
+    [Tooltip("Leave empty for scenes that keep their environment locally. Set Registon to RegistanGameAssets.")]
+    [SerializeField] private string environmentAddress;
+    [Tooltip("Optional Addressable skybox material. Leave empty when the scene keeps its current skybox.")]
+    [SerializeField] private string skyboxAddress;
+
+    [Header("Legacy Scene GPUI Fallback")]
+    [Tooltip("Used only when the Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUIPrefabManager prefabManager;
+    [Tooltip("Used only when the Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUITreeManager treeManager;
+    [Tooltip("Used only when the Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUIDetailManager detailManager;
 
     //Horse Statistics
     private float webSnareDamageTime;
@@ -308,8 +337,26 @@ public class KopkariManager : MonoBehaviour
         warmupTrigger?.Deactivate();
     }
 
-    private void Start()
+    private async void Start()
     {
+        bool environmentReady;
+        try
+        {
+            environmentReady = await LoadEnvironmentAsync();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            environmentReady = false;
+        }
+
+        environmentReadySource.TrySetResult(environmentReady);
+        if (!environmentReady)
+        {
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
+            return;
+        }
+
         if (pickableObj != null)
         {
             pickableObj.OnPicked.RemoveListener(OnUloqPicked);
@@ -319,6 +366,9 @@ public class KopkariManager : MonoBehaviour
             pickableObj.OnUnfocusedBy.RemoveListener(HandleUlakUnfocusedBy);
             pickableObj.OnUnfocusedBy.AddListener(HandleUlakUnfocusedBy);
         }
+
+        if (myLamb != null && !myLamb.activeSelf)
+            myLamb.SetActive(true);
 
         // ✅ Pool create faqat bir marta
         CreatePoolsOnce();
@@ -402,6 +452,8 @@ public class KopkariManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        environmentReadySource.TrySetResult(false);
+
         if (pickableObj != null)
         {
             pickableObj.OnPicked.RemoveListener(OnUloqPicked);
@@ -414,10 +466,403 @@ public class KopkariManager : MonoBehaviour
 
         UnbindLocalPlayerGrip();
 
+        if (environmentInstanceId != 0 && AddressablesService.Instance != null)
+        {
+            AddressablesService.Instance.ReleaseInstance(environmentInstanceId);
+            environmentInstanceId = 0;
+        }
+        dynamicGPUIInstances.Clear();
+        runtimePrefabManager = null;
+
         if (Instance == this) Instance = null;
         IsSceneReady = false;
         SimplePool.ClearAll();
     }
+
+    #region Addressable Environment
+    public Task<bool> WaitForEnvironmentReadyAsync()
+    {
+        return environmentReadySource.Task;
+    }
+
+    private async Task<bool> LoadEnvironmentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(environmentAddress))
+            return true;
+
+        AddressablesService service = AddressablesService.Instance;
+        if (service == null)
+        {
+            Debug.LogError(
+                $"KopkariManager: AddressablesService is missing. Environment '{environmentAddress}' cannot be loaded.");
+            return false;
+        }
+
+        bool addressExists = await service.AddressExistsAsync(environmentAddress);
+        if (!addressExists)
+        {
+            Debug.LogError(
+                $"KopkariManager: Addressable environment '{environmentAddress}' was not found.");
+            return false;
+        }
+
+        bool downloaded = await service.EnsureDependenciesDownloadedAsync(
+            environmentAddress,
+            progress =>
+            {
+                if (SceneLoadManager.Instance != null)
+                {
+                    SceneLoadManager.Instance.loadingTime = Mathf.Max(
+                        SceneLoadManager.Instance.loadingTime,
+                        95f + Mathf.Clamp01(progress) * 4f);
+                }
+            });
+
+        if (!downloaded)
+        {
+            Debug.LogError(
+                $"KopkariManager: Failed to download environment '{environmentAddress}'.");
+            return false;
+        }
+
+        GameObject environment = await service.InstantiateAsync(
+            environmentAddress,
+            Vector3.zero,
+            Quaternion.identity);
+
+        if (environment == null)
+        {
+            Debug.LogError(
+                $"KopkariManager: Failed to instantiate environment '{environmentAddress}'.");
+            return false;
+        }
+
+        environmentInstanceId = environment.GetInstanceID();
+
+        if (!BindEnvironmentReferences(environment.transform))
+            return false;
+
+        StylizedWeatherController environmentWeatherController =
+            environment.transform.GetComponentInChildren<StylizedWeatherController>(true);
+        if (environmentWeatherController != null)
+            weatherController = environmentWeatherController;
+
+        RegisterEnvironmentGPUIPrefabs(environment.transform);
+        RegisterEnvironmentGPUITerrains(environment.transform);
+        await ApplyEnvironmentSkyboxAsync(service);
+        return true;
+    }
+
+    private bool BindEnvironmentReferences(Transform environmentRoot)
+    {
+        if (environmentRoot == null)
+            return false;
+
+        KopkariEnvironmentReferences references =
+            environmentRoot.GetComponentInChildren<KopkariEnvironmentReferences>(true);
+
+        if (references == null)
+        {
+            bool legacyReferencesAvailable =
+                targetObject != null &&
+                ulakBottomObject != null &&
+                warmupTrigger != null;
+
+            if (legacyReferencesAvailable)
+            {
+                Debug.LogWarning(
+                    "KopkariManager: The Addressable environment has no KopkariEnvironmentReferences component. " +
+                    "Using the temporary scene references.");
+                return true;
+            }
+
+            Debug.LogError(
+                "KopkariManager: The Addressable environment has no KopkariEnvironmentReferences component " +
+                "and the required scene references are missing.");
+            return false;
+        }
+
+        if (!references.HasRequiredReferences)
+        {
+            Debug.LogError(
+                "KopkariManager: KopkariEnvironmentReferences is missing Target Object, Ulak Bottom Object, " +
+                "or Warmup Trigger.");
+            return false;
+        }
+
+        targetObject = references.TargetObject;
+        ulakBottomObject = references.UlakBottomObject;
+        warmupTrigger = references.WarmupTrigger;
+        CacheDynamicGPUIInstances(targetObject);
+        CacheDynamicGPUIInstances(ulakBottomObject.gameObject);
+        CacheDynamicGPUIInstances(warmupTrigger.gameObject);
+        SetEnvironmentObjectActive(warmupTrigger.gameObject, false);
+        return true;
+    }
+
+    private async Task ApplyEnvironmentSkyboxAsync(AddressablesService service)
+    {
+        if (service == null || string.IsNullOrWhiteSpace(skyboxAddress))
+            return;
+
+        bool addressExists = await service.AddressExistsAsync(skyboxAddress);
+        if (!addressExists)
+        {
+            Debug.LogWarning(
+                $"KopkariManager: Skybox address '{skyboxAddress}' was not found. Keeping the current skybox.");
+            return;
+        }
+
+        Material skyboxMaterial = await service.LoadAssetAsync<Material>(
+            skyboxAddress,
+            showErrorPopup: false);
+
+        if (skyboxMaterial == null)
+        {
+            Debug.LogWarning(
+                $"KopkariManager: Failed to load skybox '{skyboxAddress}'. Keeping the current skybox.");
+            return;
+        }
+
+        RenderSettings.skybox = skyboxMaterial;
+        DynamicGI.UpdateEnvironment();
+    }
+
+    private void RegisterEnvironmentGPUIPrefabs(Transform environmentRoot)
+    {
+        if (environmentRoot == null)
+            return;
+
+        GPUIPrefabManager environmentManager =
+            environmentRoot.GetComponentInChildren<GPUIPrefabManager>(true);
+        GPUIPrefabManager activeManager =
+            environmentManager != null ? environmentManager : prefabManager;
+
+        WarnIfDuplicateManagers(environmentManager, prefabManager, "GPUIPrefabManager");
+
+        if (activeManager == null)
+        {
+            Debug.LogWarning(
+                "KopkariManager: The Addressable environment has no GPUIPrefabManager.");
+            return;
+        }
+
+        if (!activeManager.isActiveAndEnabled)
+        {
+            Debug.LogWarning(
+                "KopkariManager: The selected GPUIPrefabManager is inactive. Runtime prefab registration was skipped.");
+            return;
+        }
+
+        runtimePrefabManager = activeManager;
+
+        GPUIPrefab[] instances = environmentRoot.GetComponentsInChildren<GPUIPrefab>(true);
+        List<GPUIPrefab> validInstances = new List<GPUIPrefab>(instances.Length);
+        for (int i = 0; i < instances.Length; i++)
+        {
+            GPUIPrefab instance = instances[i];
+            if (instance != null &&
+                instance.gameObject.activeInHierarchy &&
+                instance.GetPrefabID() != 0 &&
+                !instance.IsInstanced)
+            {
+                validInstances.Add(instance);
+            }
+        }
+
+        AddGPUIPrefabInstances(activeManager, validInstances);
+    }
+
+    private void AddGPUIPrefabInstances(
+        GPUIPrefabManager activeManager,
+        IList<GPUIPrefab> instances)
+    {
+        if (activeManager == null ||
+            !activeManager.isActiveAndEnabled ||
+            instances == null ||
+            instances.Count == 0)
+        {
+            return;
+        }
+
+        Dictionary<int, int> prototypeIndexByPrefabId = new Dictionary<int, int>();
+        Dictionary<int, List<GPUIPrefab>> instancesByPrototypeIndex =
+            new Dictionary<int, List<GPUIPrefab>>();
+
+        for (int prototypeIndex = 0;
+             prototypeIndex < activeManager.GetPrototypeCount();
+             prototypeIndex++)
+        {
+            prototypeIndexByPrefabId[activeManager.GetPrefabID(prototypeIndex)] = prototypeIndex;
+        }
+
+        int unmatchedInstanceCount = 0;
+        for (int instanceIndex = 0; instanceIndex < instances.Count; instanceIndex++)
+        {
+            GPUIPrefab instance = instances[instanceIndex];
+            if (instance == null ||
+                !instance.gameObject.activeInHierarchy ||
+                instance.GetPrefabID() == 0 ||
+                instance.IsInstanced)
+            {
+                continue;
+            }
+
+            if (!prototypeIndexByPrefabId.TryGetValue(
+                    instance.GetPrefabID(),
+                    out int matchingPrototypeIndex))
+            {
+                unmatchedInstanceCount++;
+                continue;
+            }
+
+            if (!instancesByPrototypeIndex.TryGetValue(
+                    matchingPrototypeIndex,
+                    out List<GPUIPrefab> prototypeInstances))
+            {
+                prototypeInstances = new List<GPUIPrefab>();
+                instancesByPrototypeIndex.Add(matchingPrototypeIndex, prototypeInstances);
+            }
+
+            prototypeInstances.Add(instance);
+        }
+
+        foreach (KeyValuePair<int, List<GPUIPrefab>> pair in instancesByPrototypeIndex)
+            activeManager.AddPrefabInstances(pair.Value, pair.Key);
+
+        if (unmatchedInstanceCount > 0)
+        {
+            Debug.LogWarning(
+                $"KopkariManager: {unmatchedInstanceCount} runtime GPUI prefab instance(s) do not have a matching " +
+                "prototype on the Addressable environment's GPUIPrefabManager.");
+        }
+
+        activeManager.RequireTransformUpdate();
+    }
+
+    private void CacheDynamicGPUIInstances(GameObject root)
+    {
+        if (root == null)
+            return;
+
+        int rootId = root.GetInstanceID();
+        if (!dynamicGPUIInstances.ContainsKey(rootId))
+        {
+            dynamicGPUIInstances.Add(
+                rootId,
+                root.GetComponentsInChildren<GPUIPrefab>(true));
+        }
+    }
+
+    private GPUIPrefab[] GetDynamicGPUIInstances(GameObject root)
+    {
+        if (root == null)
+            return Array.Empty<GPUIPrefab>();
+
+        int rootId = root.GetInstanceID();
+        if (!dynamicGPUIInstances.TryGetValue(rootId, out GPUIPrefab[] instances))
+        {
+            instances = root.GetComponentsInChildren<GPUIPrefab>(true);
+            dynamicGPUIInstances.Add(rootId, instances);
+        }
+
+        return instances;
+    }
+
+    public void SetEnvironmentObjectActive(GameObject root, bool active)
+    {
+        if (root == null)
+            return;
+
+        GPUIPrefab[] instances = GetDynamicGPUIInstances(root);
+
+        if (!active)
+        {
+            for (int i = 0; i < instances.Length; i++)
+            {
+                GPUIPrefab instance = instances[i];
+                if (instance != null && instance.IsInstanced)
+                    instance.RemovePrefabInstance();
+            }
+
+            if (root.activeSelf)
+                root.SetActive(false);
+
+            return;
+        }
+
+        if (!root.activeSelf)
+            root.SetActive(true);
+
+        GPUIPrefabManager activeManager =
+            runtimePrefabManager != null ? runtimePrefabManager : prefabManager;
+        if (activeManager == null || !activeManager.isActiveAndEnabled)
+            return;
+
+        AddGPUIPrefabInstances(activeManager, instances);
+        activeManager.RequireTransformUpdate();
+    }
+
+    private void RegisterEnvironmentGPUITerrains(Transform environmentRoot)
+    {
+        if (environmentRoot == null)
+            return;
+
+        GPUITerrain[] terrains = environmentRoot.GetComponentsInChildren<GPUITerrain>(true);
+        if (terrains.Length == 0)
+            return;
+
+        GPUITreeManager environmentTreeManager =
+            environmentRoot.GetComponentInChildren<GPUITreeManager>(true);
+        GPUITreeManager activeTreeManager =
+            environmentTreeManager != null ? environmentTreeManager : treeManager;
+
+        WarnIfDuplicateManagers(environmentTreeManager, treeManager, "GPUITreeManager");
+
+        if (activeTreeManager != null && activeTreeManager.isActiveAndEnabled)
+        {
+            activeTreeManager.AddTerrains(terrains);
+            activeTreeManager.RequireUpdate(true);
+        }
+        else if (environmentTreeManager != null || treeManager != null)
+        {
+            Debug.LogWarning(
+                "KopkariManager: The selected GPUITreeManager is inactive. Runtime tree registration was skipped.");
+        }
+
+        GPUIDetailManager environmentDetailManager =
+            environmentRoot.GetComponentInChildren<GPUIDetailManager>(true);
+        GPUIDetailManager activeDetailManager =
+            environmentDetailManager != null ? environmentDetailManager : detailManager;
+
+        WarnIfDuplicateManagers(environmentDetailManager, detailManager, "GPUIDetailManager");
+
+        if (activeDetailManager != null && activeDetailManager.isActiveAndEnabled)
+        {
+            activeDetailManager.AddTerrains(terrains);
+            activeDetailManager.RequireUpdate(true);
+        }
+        else if (environmentDetailManager != null || detailManager != null)
+        {
+            Debug.LogWarning(
+                "KopkariManager: The selected GPUIDetailManager is inactive. Runtime detail registration was skipped.");
+        }
+    }
+
+    private static void WarnIfDuplicateManagers(
+        Component environmentManager,
+        Component sceneManager,
+        string managerName)
+    {
+        if (environmentManager == null || sceneManager == null || environmentManager == sceneManager)
+            return;
+
+        Debug.LogWarning(
+            $"KopkariManager: Both the Addressable environment and the scene contain a {managerName}. " +
+            "The Addressable manager will be used; remove the scene manager after migration to avoid duplicate GPUI processing.");
+    }
+    #endregion
+
     private void StartMainGame()
     {
         CancelFakeUlakDiversion();
@@ -584,8 +1029,8 @@ public class KopkariManager : MonoBehaviour
     public void FinalPosState(bool state)
     {
         GameObject target = targetObject;
-        if (target != null && target.activeSelf != state)
-            target.SetActive(state);
+        if (target != null)
+            SetEnvironmentObjectActive(target, state);
     }
 
     private void HandleFirstUlakPickupMarkers()
@@ -608,7 +1053,7 @@ public class KopkariManager : MonoBehaviour
             yield return new WaitForSecondsRealtime(delay);
 
         if (ulakBottomObject != null)
-            ulakBottomObject.gameObject.SetActive(false);
+            SetEnvironmentObjectActive(ulakBottomObject.gameObject, false);
         ulakBottomHideCoroutine = null;
     }
 
@@ -1104,7 +1549,7 @@ public class KopkariManager : MonoBehaviour
         {
             if (targetPosition != null)
                 targetObject.transform.SetPositionAndRotation(targetPosition.position, targetPosition.rotation);
-            targetObject.SetActive(false);
+            SetEnvironmentObjectActive(targetObject, false);
         }
 
         Transform ulakPosition = CurrentUlakPosition;
@@ -1112,7 +1557,7 @@ public class KopkariManager : MonoBehaviour
         {
             if (ulakPosition != null)
                 ulakBottomObject.SetPositionAndRotation(ulakPosition.position, ulakPosition.rotation);
-            ulakBottomObject.gameObject.SetActive(true);
+            SetEnvironmentObjectActive(ulakBottomObject.gameObject, true);
         }
     }
 
@@ -1586,6 +2031,7 @@ public class KopkariManager : MonoBehaviour
             return;
         }
 
+        HideIntroCrowdPoints();
         PrepareCurrentRoundForGameplay();
         IsRoundWarmupActive = false;
         warmupTrigger?.Deactivate();
@@ -1620,6 +2066,20 @@ public class KopkariManager : MonoBehaviour
         if (speechBubble != null)
             speechBubble.ShowPopup(LanguageManager.Instance?.GetText(508));
         UserId = PlayerPrefs.GetInt(Constants.Player.Userid, 0);
+    }
+
+    private void HideIntroCrowdPoints()
+    {
+        if (introCrowdPointsHidden)
+            return;
+
+        if (introCrowdDrawers != null)
+        {
+            for (int i = 0; i < introCrowdDrawers.Length; i++)
+                introCrowdDrawers[i]?.HideConfiguredBakedPoints();
+        }
+
+        introCrowdPointsHidden = true;
     }
 
     public void ContinueGame()
@@ -1692,28 +2152,50 @@ public class KopkariManager : MonoBehaviour
             KopkariCarrierGrip.DamageSource source = AIKopkariRider.IsCarrierEngagedByGuard(currentGoatOwner)
                 ? KopkariCarrierGrip.DamageSource.GuardRiderMelee
                 : KopkariCarrierGrip.DamageSource.GuardHorseAttack;
-            localPlayerGrip.ApplyDamage(source, attackingRider.gameObject);
+            TryApplyLocalPlayerGripDamage(source, attackingRider.gameObject);
         }
         else if (attackingRider != null && attackingRider.IsMainRival)
         {
-            localPlayerGrip.ApplyDamage(KopkariCarrierGrip.DamageSource.MainRivalSideAttack,
+            TryApplyLocalPlayerGripDamage(KopkariCarrierGrip.DamageSource.MainRivalSideAttack,
                 attackingRider.gameObject);
         }
         else if (attackingRider != null)
         {
-            localPlayerGrip.ApplyDamage(KopkariCarrierGrip.DamageSource.OtherRiderContact,
+            TryApplyLocalPlayerGripDamage(KopkariCarrierGrip.DamageSource.OtherRiderContact,
                 attackingRider.gameObject);
         }
         else if (AIKopkariRider.IsCarrierEngagedByGuard(currentGoatOwner))
         {
             // Supports older Guard hitboxes whose Malbers Owner is not configured.
-            localPlayerGrip.ApplyDamage(KopkariCarrierGrip.DamageSource.GuardRiderMelee, damager);
+            TryApplyLocalPlayerGripDamage(
+                KopkariCarrierGrip.DamageSource.GuardRiderMelee,
+                damager);
         }
     }
 
     private bool IsLocalPlayerCurrentCarrier => roomState == RoomState.GameStarted &&
                                                 currentGoatOwner != null &&
                                                 IsLocalRiderTransform(currentGoatOwner.transform);
+
+    private bool IsLocalPlayerDefending =>
+        localPlayerBoosters != null &&
+        (localPlayerBoosters.isDefend ||
+         (localPlayerBoosters.defendQobiq != null &&
+          localPlayerBoosters.defendQobiq.activeInHierarchy));
+
+    private bool TryApplyLocalPlayerGripDamage(
+        KopkariCarrierGrip.DamageSource source,
+        GameObject attacker = null)
+    {
+        if (!IsLocalPlayerCurrentCarrier ||
+            localPlayerGrip == null ||
+            IsLocalPlayerDefending)
+        {
+            return false;
+        }
+
+        return localPlayerGrip.ApplyDamage(source, attacker);
+    }
 
     private void BindLocalPlayerGrip()
     {
@@ -1814,30 +2296,28 @@ public class KopkariManager : MonoBehaviour
         if (ulak != null && ulak.gameObject.activeSelf != visible)
             ulak.gameObject.SetActive(visible);
 
-        if (ulakBottomObject != null && ulakBottomObject.gameObject.activeSelf != visible)
-            ulakBottomObject.gameObject.SetActive(visible);
+        if (ulakBottomObject != null)
+            SetEnvironmentObjectActive(ulakBottomObject.gameObject, visible);
     }
 
     private void HandleLocalPlayerWalkZoneDamaged(bool damaged)
     {
-        if (damaged && IsLocalPlayerCurrentCarrier && localPlayerGrip != null)
-            localPlayerGrip.ApplyDamage(KopkariCarrierGrip.DamageSource.WalkTrap);
+        if (damaged)
+            TryApplyLocalPlayerGripDamage(KopkariCarrierGrip.DamageSource.WalkTrap);
     }
 
     public bool ApplyTrapSetterContactDamage(GameObject trapSetterRoot)
     {
-        return IsLocalPlayerCurrentCarrier && localPlayerGrip != null &&
-               localPlayerGrip.ApplyDamage(
-                   KopkariCarrierGrip.DamageSource.TrapSetterContact,
-                   trapSetterRoot);
+        return TryApplyLocalPlayerGripDamage(
+            KopkariCarrierGrip.DamageSource.TrapSetterContact,
+            trapSetterRoot);
     }
 
     public bool ApplyGuardContactDamage(GameObject guardRoot)
     {
-        return IsLocalPlayerCurrentCarrier && localPlayerGrip != null &&
-               localPlayerGrip.ApplyDamage(
-                   KopkariCarrierGrip.DamageSource.GuardContact,
-                   guardRoot);
+        return TryApplyLocalPlayerGripDamage(
+            KopkariCarrierGrip.DamageSource.GuardContact,
+            guardRoot);
     }
 
     private void StartLocalPlayerGripContactMonitoring()
@@ -1908,7 +2388,7 @@ public class KopkariManager : MonoBehaviour
             else
                 source = KopkariCarrierGrip.DamageSource.OtherRiderContact;
 
-            if (localPlayerGrip.ApplyDamage(source, rider.gameObject))
+            if (TryApplyLocalPlayerGripDamage(source, rider.gameObject))
                 return;
         }
 
@@ -1930,7 +2410,7 @@ public class KopkariManager : MonoBehaviour
             else
                 fallbackSource = KopkariCarrierGrip.DamageSource.OtherRiderContact;
 
-            localPlayerGrip.ApplyDamage(fallbackSource, nearbyRider.gameObject);
+            TryApplyLocalPlayerGripDamage(fallbackSource, nearbyRider.gameObject);
         }
     }
 

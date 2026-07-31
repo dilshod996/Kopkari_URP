@@ -3,6 +3,7 @@ using Firebase.Analytics;
 using Firebase.Auth;
 using Firebase.Extensions;
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class FirebaseManager : MonoBehaviour
@@ -86,5 +87,21 @@ public class FirebaseManager : MonoBehaviour
         FirebaseAnalytics.SetUserId(User.UserId);
         FirebaseAnalytics.LogEvent(analyticsEvent);
         OnUserSignedIn?.Invoke(User.UserId);
+    }
+
+    public async Task DeleteCurrentUserAsync()
+    {
+        if (!IsReady || Auth == null)
+            throw new InvalidOperationException("Firebase authentication is not ready.");
+
+        FirebaseUser currentUser = Auth.CurrentUser ?? User;
+        if (currentUser == null)
+            throw new InvalidOperationException("There is no signed-in Firebase user to delete.");
+
+        await currentUser.DeleteAsync();
+
+        Auth.SignOut();
+        User = null;
+        FirebaseAnalytics.SetUserId(string.Empty);
     }
 }

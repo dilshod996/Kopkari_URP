@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class MapCard : MonoBehaviour
 {
+    private const string LastPlayedMapKeyPrefix = "LastPlayedMap_";
+
     public enum MapType
     {
         Kopkari,
@@ -44,6 +46,25 @@ public class MapCard : MonoBehaviour
 
     public static event Action<MapCard, MapDetailsData> OnMapSelected;
     public string MapKey => mapLangName;
+
+    public static void SaveLastPlayedMap(MapType mapType, string mapKey)
+    {
+        if (string.IsNullOrWhiteSpace(mapKey))
+            return;
+
+        PlayerPrefs.SetString(GetLastPlayedMapPreferenceKey(mapType), mapKey.Trim());
+        PlayerPrefs.Save();
+    }
+
+    public static string GetLastPlayedMap(MapType mapType)
+    {
+        return PlayerPrefs.GetString(GetLastPlayedMapPreferenceKey(mapType), string.Empty);
+    }
+
+    private static string GetLastPlayedMapPreferenceKey(MapType mapType)
+    {
+        return LastPlayedMapKeyPrefix + mapType;
+    }
 
     [Header("Map Data")]
     [SerializeField] private MapType mapType;

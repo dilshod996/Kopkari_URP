@@ -36,6 +36,9 @@ namespace GPUInstancerPro.CrowdAnimations
         [Tooltip("Spline Spawner (Staggart) chiqargan point Transformlar ro'yxati. Kamida 2 ta bo'lsin.")]
         public Transform[] bakedPoints;
 
+        [Tooltip("Qo'shimcha NPC pointlari. Introda ko'rinadi va gameplay boshlanganda yashiriladi.")]
+        public Transform[] bakedPointsToHide;
+
         [Tooltip("Spline yo'nalishi bo'yicha burib qo'yadi")]
         public bool alignToSpline = true;
 
@@ -59,6 +62,7 @@ namespace GPUInstancerPro.CrowdAnimations
         private int _rendererKey;
         private GraphicsBuffer _colorBuffer;
         private int _currentInstanceCount;
+        private bool _bakedPointsToHideHidden;
         private const int MAX_INSTANCE_COUT = 2000;
         private Vector2 _currentSpacing;
         public enum RotationSource { SplineTangent, BakedPointRotation }
@@ -77,6 +81,8 @@ namespace GPUInstancerPro.CrowdAnimations
 
         private void OnValidate()
         {
+            _bakedPointsToHideHidden = false;
+
             if (GPUIRenderingSystem.IsActive && _rendererKey != 0)
                 RegisterRenderers();
         }
@@ -89,15 +95,16 @@ namespace GPUInstancerPro.CrowdAnimations
             if (_instanceCount > 0 && crowdInstancePrefab != null)
             {
                 _instanceCount = Mathf.Min(_instanceCount, MAX_INSTANCE_COUT);
+                int renderInstanceCount = GetRenderInstanceCount();
 
                 if (_rendererKey == 0)
                 {
                     GPUICoreAPI.RegisterRenderer(this, crowdInstancePrefab.gameObject, profile, out _rendererKey);
-                    GPUICoreAPI.SetTransformBufferData(_rendererKey, GenerateMatrixArray(MAX_INSTANCE_COUT, _instanceCount));
+                    GPUICoreAPI.SetTransformBufferData(_rendererKey, GenerateMatrixArray(MAX_INSTANCE_COUT, renderInstanceCount));
                 }
 
-                GPUICoreAPI.SetTransformBufferData(_rendererKey, GenerateMatrixArray(MAX_INSTANCE_COUT, _instanceCount));
-                GPUICoreAPI.SetInstanceCount(_rendererKey, _instanceCount);
+                GPUICoreAPI.SetTransformBufferData(_rendererKey, GenerateMatrixArray(MAX_INSTANCE_COUT, renderInstanceCount));
+                GPUICoreAPI.SetInstanceCount(_rendererKey, renderInstanceCount);
 
 #if UNITY_EDITOR
                 if (!Application.isPlaying)
@@ -111,7 +118,7 @@ namespace GPUInstancerPro.CrowdAnimations
                     int clipCount = animationClips.Length;
                     UnityEngine.Random.InitState(randomSeed);
 
-                    for (int i = _currentInstanceCount; i < _instanceCount; i++)
+                    for (int i = _currentInstanceCount; i < renderInstanceCount; i++)
                     {
                         AnimationClip clip = animationClips[UnityEngine.Random.Range(0, clipCount)];
                         if (clip == null) continue;
@@ -120,7 +127,7 @@ namespace GPUInstancerPro.CrowdAnimations
                     }
                 }
 
-                _currentInstanceCount = _instanceCount;
+                _currentInstanceCount = renderInstanceCount;
             }
             else
                 _currentInstanceCount = 0;
@@ -161,12 +168,15 @@ namespace GPUInstancerPro.CrowdAnimations
             // ======================================
             // ✅ SPLINE MODE (baked points asosida)
             // ======================================
-            if (placementMode == PlacementMode.Spline && bakedPoints != null && bakedPoints.Length > 0)
+            int regularPointCount = bakedPoints != null ? bakedPoints.Length : 0;
+            int hiddenPointCount = bakedPointsToHide != null ? bakedPointsToHide.Length : 0;
+            int totalPointCount = regularPointCount + hiddenPointCount;
+
+            if (placementMode == PlacementMode.Spline && totalPointCount > 0)
             {
                 Quaternion modelOffsetRot = Quaternion.Euler(modelForwardEulerOffset);
 
-                int pointCount = bakedPoints.Length;
-                int spawnCount = Mathf.Min(visibleCount, pointCount);
+                int spawnCount = Mathf.Min(visibleCount, totalPointCount);
 
                 for (int i = 0; i < totalCount; i++)
                 {
@@ -177,8 +187,25 @@ namespace GPUInstancerPro.CrowdAnimations
                         continue;
                     }
 
-                    Transform tp = bakedPoints[i];
-                    Vector3 pos = tp ? tp.position : originPos;
+                    bool isRuntimeHiddenPoint = i >= regularPointCount;
+                    Transform[] currentPoints = isRuntimeHiddenPoint ? bakedPointsToHide : bakedPoints;
+                    int currentPointIndex = isRuntimeHiddenPoint ? i - regularPointCount : i;
+                    int currentPointCount = currentPoints != null ? currentPoints.Length : 0;
+                    Transform tp = currentPoints != null && currentPointIndex < currentPointCount
+                        ? currentPoints[currentPointIndex]
+                        : null;
+
+                    if (tp == null || (isRuntimeHiddenPoint && _bakedPointsToHideHidden))
+                    {
+                        matrix4X4.SetTRS(
+                            new Vector3(999999, 999999, 999999),
+                            Quaternion.identity,
+                            Vector3.zero);
+                        matrix4X4s[i] = matrix4X4;
+                        continue;
+                    }
+
+                    Vector3 pos = tp.position;
 
                     Vector3 forward = transform.forward;
 
@@ -187,16 +214,16 @@ namespace GPUInstancerPro.CrowdAnimations
                         Vector3 prevPos = pos;
                         Vector3 nextPos = pos;
 
-                        if (i > 0 && bakedPoints[i - 1] != null)
-                            prevPos = bakedPoints[i - 1].position;
+                        if (currentPointIndex > 0 && currentPoints[currentPointIndex - 1] != null)
+                            prevPos = currentPoints[currentPointIndex - 1].position;
 
-                        if (i < pointCount - 1 && bakedPoints[i + 1] != null)
-                            nextPos = bakedPoints[i + 1].position;
+                        if (currentPointIndex < currentPointCount - 1 && currentPoints[currentPointIndex + 1] != null)
+                            nextPos = currentPoints[currentPointIndex + 1].position;
 
-                        if (i == 0 && pointCount > 1 && bakedPoints[i + 1] != null)
-                            forward = (bakedPoints[i + 1].position - pos);
-                        else if (i == pointCount - 1 && pointCount > 1 && bakedPoints[i - 1] != null)
-                            forward = (pos - bakedPoints[i - 1].position);
+                        if (currentPointIndex == 0 && currentPointCount > 1 && currentPoints[currentPointIndex + 1] != null)
+                            forward = (currentPoints[currentPointIndex + 1].position - pos);
+                        else if (currentPointIndex == currentPointCount - 1 && currentPointCount > 1 && currentPoints[currentPointIndex - 1] != null)
+                            forward = (pos - currentPoints[currentPointIndex - 1].position);
                         else
                             forward = (nextPos - prevPos);
 
@@ -324,14 +351,52 @@ namespace GPUInstancerPro.CrowdAnimations
             RegisterRenderers();
         }
 
+        public void HideConfiguredBakedPoints()
+        {
+            if (_bakedPointsToHideHidden || !HasBakedPointsToHide())
+            {
+                return;
+            }
+
+            _bakedPointsToHideHidden = true;
+            RefreshCrowdPlacement();
+        }
+
+        private bool HasBakedPointsToHide()
+        {
+            if (bakedPointsToHide == null || bakedPointsToHide.Length == 0)
+                return false;
+
+            for (int i = 0; i < bakedPointsToHide.Length; i++)
+            {
+                if (bakedPointsToHide[i] != null)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private int GetRenderInstanceCount()
+        {
+            if (placementMode != PlacementMode.Spline)
+                return _instanceCount;
+
+            int regularPointCount = bakedPoints != null ? bakedPoints.Length : 0;
+            int hiddenPointCount = bakedPointsToHide != null ? bakedPointsToHide.Length : 0;
+            return Mathf.Min(
+                MAX_INSTANCE_COUT,
+                Mathf.Max(_instanceCount, regularPointCount + hiddenPointCount));
+        }
+
         // ✅ Qulay: bakedPoints o'zgarsa, qo'lda refresh bosish uchun
         [ContextMenu("Refresh Crowd Placement")]
         private void RefreshCrowdPlacement()
         {
             if (_rendererKey != 0)
             {
-                GPUICoreAPI.SetTransformBufferData(_rendererKey, GenerateMatrixArray(MAX_INSTANCE_COUT, _instanceCount));
-                GPUICoreAPI.SetInstanceCount(_rendererKey, _instanceCount);
+                int renderInstanceCount = GetRenderInstanceCount();
+                GPUICoreAPI.SetTransformBufferData(_rendererKey, GenerateMatrixArray(MAX_INSTANCE_COUT, renderInstanceCount));
+                GPUICoreAPI.SetInstanceCount(_rendererKey, renderInstanceCount);
             }
             else
             {

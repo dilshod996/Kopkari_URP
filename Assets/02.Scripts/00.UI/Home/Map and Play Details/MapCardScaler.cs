@@ -55,7 +55,7 @@ public class MapCardScaler : MonoBehaviour
             closeBtn.onClick.AddListener(ClosePage);
 
         RefreshCards();
-        ResetToDefaultMainCard();
+        RestorePreferredMainCard();
     }
 
     private void OnDisable()
@@ -156,28 +156,28 @@ public class MapCardScaler : MonoBehaviour
         popupMapInfo.SetMapData(data);
     }
 
-    private void ResetToDefaultMainCard()
+    private void RestorePreferredMainCard()
     {
         StopCenterRoutine();
 
         if (!isActiveAndEnabled)
             return;
 
-        centerRoutine = StartCoroutine(CenterDefaultMainCardNextFrame());
+        centerRoutine = StartCoroutine(CenterPreferredMainCardNextFrame());
     }
 
-    private IEnumerator CenterDefaultMainCardNextFrame()
+    private IEnumerator CenterPreferredMainCardNextFrame()
     {
         yield return null;
 
         Canvas.ForceUpdateCanvases();
         RefreshCards();
 
-        MapCard defaultCard = GetDefaultMainCard();
-        if (defaultCard != null && scrollRect != null && scrollRect.content != null && scrollRect.viewport != null)
+        MapCard preferredCard = GetPreferredMainCard();
+        if (preferredCard != null && scrollRect != null && scrollRect.content != null && scrollRect.viewport != null)
         {
-            scrollRect.content.anchoredPosition = GetCenteredContentPosition(defaultCard);
-            currentMainCard = defaultCard;
+            scrollRect.content.anchoredPosition = GetCenteredContentPosition(preferredCard);
+            currentMainCard = preferredCard;
             targetCard = null;
             UpdateCardVisuals();
         }
@@ -185,12 +185,54 @@ public class MapCardScaler : MonoBehaviour
         centerRoutine = null;
     }
 
-    private MapCard GetDefaultMainCard()
+    private MapCard GetPreferredMainCard()
     {
         if (mapCards == null || mapCards.Length == 0)
             return null;
 
-        return mapCards.Length > 1 ? mapCards[1] : mapCards[0];
+        MapCard.MapType cardType = GetCardType();
+        string preferredMapKey = MapCard.GetLastPlayedMap(cardType);
+
+        MapCard preferredCard = FindCardByKey(preferredMapKey);
+        if (preferredCard != null)
+            return preferredCard;
+
+        if (cardType == MapCard.MapType.Racing)
+        {
+            MapCard zarafshanCard = FindCardByKey(Constants.MapNames.Zarafshan);
+            if (zarafshanCard != null)
+                return zarafshanCard;
+        }
+
+        return mapCards[0];
+    }
+
+    private MapCard FindCardByKey(string mapKey)
+    {
+        if (string.IsNullOrWhiteSpace(mapKey) || mapCards == null)
+            return null;
+
+        foreach (MapCard card in mapCards)
+        {
+            if (card != null &&
+                string.Equals(card.MapKey, mapKey, System.StringComparison.Ordinal))
+                return card;
+        }
+
+        return null;
+    }
+
+    private MapCard.MapType GetCardType()
+    {
+        switch (mapType)
+        {
+            case MapScalerType.Kopkari:
+                return MapCard.MapType.Kopkari;
+            case MapScalerType.Archery:
+                return MapCard.MapType.Archery;
+            default:
+                return MapCard.MapType.Racing;
+        }
     }
 
     private void CenterCard(MapCard card, bool animated)

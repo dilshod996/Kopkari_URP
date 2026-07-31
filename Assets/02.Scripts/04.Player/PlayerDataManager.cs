@@ -41,6 +41,22 @@ public class PlayerDataManager : MonoBehaviour
     //public MAnimal playerAnimal;
     private async void Start()
     {
+        RacingController racingController = RacingController.Instance;
+        if (racingController != null)
+        {
+            bool environmentReady = await racingController.WaitForEnvironmentReadyAsync();
+            if (!environmentReady || this == null || !isActiveAndEnabled)
+                return;
+        }
+
+        KopkariManager kopkariManager = KopkariManager.Instance;
+        if (kopkariManager != null)
+        {
+            bool environmentReady = await kopkariManager.WaitForEnvironmentReadyAsync();
+            if (!environmentReady || this == null || !isActiveAndEnabled)
+                return;
+        }
+
         await InitializePlayerAndMountAsync();
     }
 

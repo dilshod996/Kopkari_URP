@@ -1,5 +1,6 @@
 ﻿using DG.Tweening;
 using GPUInstancerPro.PrefabModule;
+using GPUInstancerPro.TerrainModule;
 using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,8 @@ using UnityEngine.Video;
 
 public class AvatarCustomManager : MonoBehaviour
 {
+    private const string CustomRoomSkyboxAddress = "CustomRoomSkybox";
+
     [SerializeField] private ModalWindowManager Popup;
     [SerializeField] private AvatarCustomUIManager uiManager;
 
@@ -26,6 +29,7 @@ public class AvatarCustomManager : MonoBehaviour
     // public GameObject environmentObj;
     [SerializeField] private string envAddressAddressablesName = "CustomRoomEnvironment";
     private GameObject _currentEnvInstance;
+    private int _currentEnvironmentInstanceId;
     [Header("Spawn Positions")]
     [SerializeField] private Transform playerSpawnPos;
     [SerializeField] private Transform horseSpawnPos;
@@ -69,7 +73,13 @@ public class AvatarCustomManager : MonoBehaviour
 
     #endregion
 
+    [Header("Legacy Scene GPUI Fallback")]
+    [Tooltip("Temporary fallback while migrating GPUI managers into CustomRoomEnvironment.")]
     [SerializeField] private GPUIPrefabManager prefabManager;
+    [Tooltip("Temporary fallback while migrating GPUI managers into CustomRoomEnvironment.")]
+    [SerializeField] private GPUITreeManager treeManager;
+    [Tooltip("Temporary fallback while migrating GPUI managers into CustomRoomEnvironment.")]
+    [SerializeField] private GPUIDetailManager detailManager;
     public static PlayerSkinLoader CurrentPlayerSkinLoader { get; private set; }
     public static event Action<PlayerSkinLoader> OnPlayerSkinLoad;
     public static event Action<HorseSkinLoader> OnHorseSkinLoad;
@@ -108,17 +118,81 @@ public class AvatarCustomManager : MonoBehaviour
         _posAction.Disable();
     }
 
+    private void OnDestroy()
+    {
+        if (_currentEnvironmentInstanceId != 0 && AddressablesService.Instance != null)
+        {
+            AddressablesService.Instance.ReleaseInstance(_currentEnvironmentInstanceId);
+            _currentEnvironmentInstanceId = 0;
+        }
+    }
+
     private async void Start()
     {
-        _currentEnvInstance = await AddressablesService.Instance.InstantiateAsync(
+        AddressablesService service = AddressablesService.Instance;
+        if (service == null)
+        {
+            Debug.LogError(
+                "AvatarCustomManager: AddressablesService is missing. Custom Room environment cannot be loaded.");
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
+            return;
+        }
+
+        _currentEnvInstance = await service.InstantiateAsync(
             envAddressAddressablesName,
             Vector3.zero,
             Quaternion.identity
         );
+
+        if (_currentEnvInstance == null)
+        {
+            Debug.LogError(
+                $"AvatarCustomManager: Failed to instantiate Custom Room environment '{envAddressAddressablesName}'.");
+            SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
+            return;
+        }
+
+        _currentEnvironmentInstanceId = _currentEnvInstance.GetInstanceID();
+
+        await ApplyCustomRoomSkyboxAsync();
+        RegisterEnvironmentGPUI(_currentEnvInstance.transform);
+
         // eski Start'ingni saqlab qoldim (commentlar ham)
         await InitializePlayerAndHorse();
-        RegisterEnvPrefabs(_currentEnvInstance.transform);
         //Popup.confirmButton.onClick.AddListener(LoadLobbyScene);
+    }
+
+    private async Task ApplyCustomRoomSkyboxAsync()
+    {
+        AddressablesService service = AddressablesService.Instance;
+        if (service == null)
+        {
+            Debug.LogWarning(
+                "AvatarCustomManager: AddressablesService is missing. Custom Room skybox cannot be loaded.");
+            return;
+        }
+
+        bool addressExists = await service.AddressExistsAsync(CustomRoomSkyboxAddress);
+        if (!addressExists)
+        {
+            Debug.LogWarning(
+                $"AvatarCustomManager: Skybox address '{CustomRoomSkyboxAddress}' was not found. Keeping the current skybox.");
+            return;
+        }
+
+        Material skyboxMaterial = await service.LoadAssetAsync<Material>(
+            CustomRoomSkyboxAddress,
+            showErrorPopup: false);
+
+        if (skyboxMaterial == null)
+        {
+            Debug.LogWarning(
+                $"AvatarCustomManager: Failed to load skybox material '{CustomRoomSkyboxAddress}'. Keeping the current skybox.");
+            return;
+        }
+
+        RenderSettings.skybox = skyboxMaterial;
+        DynamicGI.UpdateEnvironment();
     }
 
 
@@ -290,25 +364,150 @@ public class AvatarCustomManager : MonoBehaviour
     }
     #endregion
 
-    public void RegisterEnvPrefabs(Transform envRoot)
+    private void RegisterEnvironmentGPUI(Transform envRoot)
     {
-        if (prefabManager == null || envRoot == null) return;
+        if (envRoot == null)
+            return;
 
-        var instances = envRoot.GetComponentsInChildren<GPUIPrefab>(true);
+        RegisterEnvironmentGPUIPrefabs(envRoot);
+        RegisterEnvironmentGPUITerrains(envRoot);
+    }
 
-        // 0 ID bo'lganlarini filtr qilamiz (aks holda error spam)
-        List<GPUIPrefab> valid = new List<GPUIPrefab>(instances.Length);
+    private void RegisterEnvironmentGPUIPrefabs(Transform envRoot)
+    {
+        GPUIPrefab[] instances = envRoot.GetComponentsInChildren<GPUIPrefab>(true);
+        List<GPUIPrefab> validInstances = new List<GPUIPrefab>(instances.Length);
         for (int i = 0; i < instances.Length; i++)
         {
             GPUIPrefab instance = instances[i];
             if (instance != null && instance.GetPrefabID() != 0 && !instance.IsInstanced)
-                valid.Add(instance);
+                validInstances.Add(instance);
         }
 
-        // Queue'ga qo'shadi, manager LateUpdate'da instancelaydi
-        GPUIPrefabManager.AddPrefabInstances(valid);
+        if (validInstances.Count == 0)
+            return;
 
-        // Agar Transform updates o'chirilgan bo'lsa, bir marta update talab qilsa bo'ladi
-        prefabManager.RequireTransformUpdate();
+        GPUIPrefabManager environmentManager =
+            envRoot.GetComponentInChildren<GPUIPrefabManager>(true);
+        GPUIPrefabManager activeManager =
+            environmentManager != null ? environmentManager : prefabManager;
+
+        WarnIfDuplicateManagers(environmentManager, prefabManager, "GPUIPrefabManager");
+
+        if (activeManager == null)
+        {
+            Debug.LogWarning(
+                "AvatarCustomManager: CustomRoomEnvironment has GPUI prefab instances but no GPUIPrefabManager.");
+            return;
+        }
+
+        if (!activeManager.isActiveAndEnabled)
+        {
+            Debug.LogWarning(
+                "AvatarCustomManager: The selected GPUIPrefabManager is inactive. Runtime prefab registration was skipped.");
+            return;
+        }
+
+        Dictionary<int, int> prototypeIndexByPrefabId = new Dictionary<int, int>();
+        Dictionary<int, List<GPUIPrefab>> instancesByPrototypeIndex =
+            new Dictionary<int, List<GPUIPrefab>>();
+
+        for (int prototypeIndex = 0;
+             prototypeIndex < activeManager.GetPrototypeCount();
+             prototypeIndex++)
+        {
+            prototypeIndexByPrefabId[activeManager.GetPrefabID(prototypeIndex)] = prototypeIndex;
+        }
+
+        int unmatchedInstanceCount = 0;
+        for (int instanceIndex = 0; instanceIndex < validInstances.Count; instanceIndex++)
+        {
+            GPUIPrefab instance = validInstances[instanceIndex];
+            if (!prototypeIndexByPrefabId.TryGetValue(
+                    instance.GetPrefabID(),
+                    out int matchingPrototypeIndex))
+            {
+                unmatchedInstanceCount++;
+                continue;
+            }
+
+            if (!instancesByPrototypeIndex.TryGetValue(
+                    matchingPrototypeIndex,
+                    out List<GPUIPrefab> prototypeInstances))
+            {
+                prototypeInstances = new List<GPUIPrefab>();
+                instancesByPrototypeIndex.Add(matchingPrototypeIndex, prototypeInstances);
+            }
+
+            prototypeInstances.Add(instance);
+        }
+
+        foreach (KeyValuePair<int, List<GPUIPrefab>> pair in instancesByPrototypeIndex)
+            activeManager.AddPrefabInstances(pair.Value, pair.Key);
+
+        if (unmatchedInstanceCount > 0)
+        {
+            Debug.LogWarning(
+                $"AvatarCustomManager: {unmatchedInstanceCount} runtime GPUI prefab instance(s) do not have a matching " +
+                "prototype on CustomRoomEnvironment's GPUIPrefabManager.");
+        }
+
+        activeManager.RequireTransformUpdate();
+    }
+
+    private void RegisterEnvironmentGPUITerrains(Transform envRoot)
+    {
+        GPUITerrain[] terrains = envRoot.GetComponentsInChildren<GPUITerrain>(true);
+        if (terrains.Length == 0)
+            return;
+
+        GPUITreeManager environmentTreeManager =
+            envRoot.GetComponentInChildren<GPUITreeManager>(true);
+        GPUITreeManager activeTreeManager =
+            environmentTreeManager != null ? environmentTreeManager : treeManager;
+
+        WarnIfDuplicateManagers(environmentTreeManager, treeManager, "GPUITreeManager");
+
+        if (activeTreeManager != null && activeTreeManager.isActiveAndEnabled)
+        {
+            activeTreeManager.AddTerrains(terrains);
+            activeTreeManager.RequireUpdate(true);
+        }
+        else if (environmentTreeManager != null || treeManager != null)
+        {
+            Debug.LogWarning(
+                "AvatarCustomManager: The selected GPUITreeManager is inactive. Runtime tree registration was skipped.");
+        }
+
+        GPUIDetailManager environmentDetailManager =
+            envRoot.GetComponentInChildren<GPUIDetailManager>(true);
+        GPUIDetailManager activeDetailManager =
+            environmentDetailManager != null ? environmentDetailManager : detailManager;
+
+        WarnIfDuplicateManagers(environmentDetailManager, detailManager, "GPUIDetailManager");
+
+        if (activeDetailManager != null && activeDetailManager.isActiveAndEnabled)
+        {
+            activeDetailManager.AddTerrains(terrains);
+            activeDetailManager.RequireUpdate(true);
+        }
+        else if (environmentDetailManager != null || detailManager != null)
+        {
+            Debug.LogWarning(
+                "AvatarCustomManager: The selected GPUIDetailManager is inactive. Runtime detail registration was skipped.");
+        }
+    }
+
+    private static void WarnIfDuplicateManagers(
+        Component environmentManager,
+        Component sceneManager,
+        string managerName)
+    {
+        if (environmentManager == null || sceneManager == null || environmentManager == sceneManager)
+            return;
+
+        Debug.LogWarning(
+            $"AvatarCustomManager: Both CustomRoomEnvironment and the Avatar Custom scene contain a {managerName}. " +
+            "The Addressable manager will be used; remove the scene manager after migration to avoid duplicate GPUI processing.");
     }
 }

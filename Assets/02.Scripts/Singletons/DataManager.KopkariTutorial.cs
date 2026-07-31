@@ -85,7 +85,8 @@ public partial class DataManager
             { Constants.KopkariTutorial.CloudCompleted, FieldValue.Delete },
             { Constants.KopkariTutorial.CloudVersion, FieldValue.Delete },
             { Constants.KopkariTutorial.CloudCheckpoint, FieldValue.Delete },
-            { Constants.KopkariTutorial.CloudContextFlags, FieldValue.Delete }
+            { Constants.KopkariTutorial.CloudContextFlags, FieldValue.Delete },
+            { Constants.KopkariTutorial.CloudObjectiveReminderCounts, FieldValue.Delete }
         });
 
         while (!deleteTask.IsCompleted)
@@ -171,7 +172,13 @@ public partial class DataManager
                         data,
                         Constants.KopkariTutorial.CloudContextFlags,
                         0)
-                    : KopkariTutorialProgress.ContextLesson.None);
+                    : KopkariTutorialProgress.ContextLesson.None,
+                compatibleVersion
+                    ? GetTutorialInt(
+                        data,
+                        Constants.KopkariTutorial.CloudObjectiveReminderCounts,
+                        0)
+                    : 0);
 
             KopkariTutorialProgress.State merged =
                 KopkariTutorialProgress.MergeAndSave(cloudState);
@@ -180,11 +187,15 @@ public partial class DataManager
                 !data.ContainsKey(Constants.KopkariTutorial.CloudVersion) ||
                 !data.ContainsKey(Constants.KopkariTutorial.CloudCompleted) ||
                 !data.ContainsKey(Constants.KopkariTutorial.CloudCheckpoint) ||
-                !data.ContainsKey(Constants.KopkariTutorial.CloudContextFlags);
+                !data.ContainsKey(Constants.KopkariTutorial.CloudContextFlags) ||
+                !data.ContainsKey(
+                    Constants.KopkariTutorial.CloudObjectiveReminderCounts);
             bool localWasAhead =
                 merged.Completed != cloudState.Completed ||
                 merged.Checkpoint != cloudState.Checkpoint ||
-                merged.Context != cloudState.Context;
+                merged.Context != cloudState.Context ||
+                merged.ObjectiveReminderCounts !=
+                cloudState.ObjectiveReminderCounts;
 
             if (cloudMissingFields || localWasAhead || !compatibleVersion)
                 SyncKopkariTutorialProgress();
@@ -257,6 +268,10 @@ public partial class DataManager
                         (KopkariTutorialProgress.ContextLesson)GetTutorialInt(
                             cloudData,
                             Constants.KopkariTutorial.CloudContextFlags,
+                            0),
+                        GetTutorialInt(
+                            cloudData,
+                            Constants.KopkariTutorial.CloudObjectiveReminderCounts,
                             0));
                     state = KopkariTutorialProgress.MergeAndSave(cloudState);
                 }
@@ -279,6 +294,10 @@ public partial class DataManager
                 {
                     Constants.KopkariTutorial.CloudContextFlags,
                     (int)state.Context
+                },
+                {
+                    Constants.KopkariTutorial.CloudObjectiveReminderCounts,
+                    state.ObjectiveReminderCounts
                 },
                 {
                     Constants.Others.UpdatedAt,

@@ -1,5 +1,6 @@
 ﻿using DG.Tweening;
 using GPUInstancerPro.PrefabModule;
+using GPUInstancerPro.TerrainModule;
 using MalbersAnimations.Controller;
 using Michsky.UI.ModernUIPack;
 using System;
@@ -67,15 +68,23 @@ public class LobbyManager : MonoBehaviour
 
 
     [Header("Other room addressables")]
-    private List<string> customSceneAddressableAddresses = new List<string> { "CustomRoomEnvironment", "CustomRoomSound" };
+    private List<string> customSceneAddressableAddresses = new List<string>
+    {
+        "CustomRoomEnvironment",
+        "CustomRoomSound",
+        "CustomRoomSkybox"
+    };
 
     private List<string> preloadAddresses = new List<string> { };
     private List<string> preloadRacing = new List<string> { Constants.RoomSound.RacingSound};
     private bool isSleeping = false;
 
-    [Header("GPUI managers")]
-    [SerializeField] GPUInstancerPro.TerrainModule.GPUITreeManager treeManager;
-    [SerializeField] GPUInstancerPro.TerrainModule.GPUIDetailManager detailManager;
+    [Header("Legacy Scene GPUI Fallback")]
+    [Tooltip("Used only when the instantiated Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUITreeManager treeManager;
+    [Tooltip("Used only when the instantiated Addressable environment does not contain its own manager.")]
+    [SerializeField] private GPUIDetailManager detailManager;
+    [Tooltip("Used only when the instantiated Addressable environment does not contain its own manager.")]
     [SerializeField] private GPUIPrefabManager prefabManager;
     public static event Action<string> OnNameChanged;
     [Header("Lighting")]
@@ -115,6 +124,9 @@ public class LobbyManager : MonoBehaviour
                 SceneLoadManager.Instance?.SetAssetInstantiationFinished(true, succeeded: false);
                 return;
             }
+
+            RegisterEnvironmentGPUI(_currentEnvInstance.transform);
+
             // 2) Skybox material load + apply
             await ApplySkyboxByEnvironment(_currentEnvAddress);
 
@@ -143,7 +155,6 @@ public class LobbyManager : MonoBehaviour
             var horseSkinLoader = horseInstance.GetComponentInChildren<HorseSkinLoader>();
             if (horseSkinLoader != null)
                 await horseSkinLoader.ApplyAllSkins();
-            RegisterEnvPrefabs(_currentEnvInstance.transform);
 
             // 4️⃣ Scene ready
             SceneLoadManager.Instance?.SetAssetInstantiationFinished(true);
@@ -257,9 +268,9 @@ public class LobbyManager : MonoBehaviour
                 break;
 
             case Constants.MapNames.Kansas:
-                directionalLight.color = new Color(0.9f, 0.95f, 1f);
-                directionalLight.intensity = 1.05f;
-                directionalLight.transform.rotation = Quaternion.Euler(50f, -40f, 0f);
+                directionalLight.color = new Color32(254, 255, 138, 255);
+                directionalLight.intensity = 1.9f;
+                directionalLight.transform.rotation = Quaternion.Euler(132.3f, -71f, 0f);
                 break;
         }
 
@@ -651,17 +662,16 @@ public class LobbyManager : MonoBehaviour
                 return;
             }
 
+            RegisterEnvironmentGPUI(_currentEnvInstance.transform);
+
             await ApplySkyboxByEnvironment(envAddress);
             ApplyLightByEnvironment(envAddress);
-
-            StartCoroutine(EnableManagersNextFrame());
 
             Teleport(playerInstance.transform, playerSpawnPos);
             Teleport(horseInstance.transform, horseSpawnPos);
 
             OnNameChanged?.Invoke(envAddress);
             _currentEnvAddress = envAddress;
-            RegisterEnvPrefabs(_currentEnvInstance.transform);
             ChangeWeather(envAddress);
 
             await Task.Yield();
@@ -727,35 +737,150 @@ public class LobbyManager : MonoBehaviour
     }
 
 
-    private IEnumerator EnableManagersNextFrame()
+    private void RegisterEnvironmentGPUI(Transform envRoot)
     {
-        // 1) Hard reset
-        if (treeManager != null) treeManager.Dispose();
-        if (detailManager != null) detailManager.Dispose();
+        if (envRoot == null)
+            return;
 
-        yield return null; // terrain fully registered bo‘lsin
-
-        if (treeManager != null) treeManager.Initialize();
-        if (detailManager != null) detailManager.Initialize();
-
-        // 2) Force update
-        if (treeManager != null) treeManager.RequireUpdate(true);
-        if (detailManager != null) detailManager.RequireUpdate(true);
+        RegisterEnvironmentGPUIPrefabs(envRoot);
+        RegisterEnvironmentGPUITerrains(envRoot);
     }
-    public void RegisterEnvPrefabs(Transform envRoot)
+
+    private void RegisterEnvironmentGPUIPrefabs(Transform envRoot)
     {
-        if (prefabManager == null || envRoot == null) return;
+        GPUIPrefab[] instances = envRoot.GetComponentsInChildren<GPUIPrefab>(true);
+        GPUIPrefab[] validInstances = instances
+            .Where(instance =>
+                instance != null &&
+                instance.GetPrefabID() != 0 &&
+                !instance.IsInstanced)
+            .ToArray();
 
-        var instances = envRoot.GetComponentsInChildren<GPUIPrefab>(true);
+        if (validInstances.Length == 0)
+            return;
 
-        // 0 ID bo'lganlarini filtr qilamiz (aks holda error spam)
-        var valid = instances.Where(p => p != null && p.GetPrefabID() != 0 && !p.IsInstanced).ToArray();
+        GPUIPrefabManager environmentManager =
+            envRoot.GetComponentInChildren<GPUIPrefabManager>(true);
+        GPUIPrefabManager activeManager =
+            environmentManager != null ? environmentManager : prefabManager;
 
-        // Queue'ga qo'shadi, manager LateUpdate'da instancelaydi
-        GPUIPrefabManager.AddPrefabInstances(valid);
+        WarnIfDuplicateManagers(environmentManager, prefabManager, "GPUIPrefabManager");
 
-        // Agar Transform updates o'chirilgan bo'lsa, bir marta update talab qilsa bo'ladi
-        prefabManager.RequireTransformUpdate();
+        if (activeManager == null)
+        {
+            Debug.LogWarning(
+                "LobbyManager: The Addressable environment has GPUI prefab instances but no GPUIPrefabManager.");
+            return;
+        }
+
+        if (!activeManager.isActiveAndEnabled)
+        {
+            Debug.LogWarning(
+                "LobbyManager: The selected GPUIPrefabManager is inactive. Runtime prefab registration was skipped.");
+            return;
+        }
+
+        Dictionary<int, int> prototypeIndexByPrefabId = new Dictionary<int, int>();
+        Dictionary<int, List<GPUIPrefab>> instancesByPrototypeIndex =
+            new Dictionary<int, List<GPUIPrefab>>();
+
+        for (int prototypeIndex = 0;
+             prototypeIndex < activeManager.GetPrototypeCount();
+             prototypeIndex++)
+        {
+            prototypeIndexByPrefabId[activeManager.GetPrefabID(prototypeIndex)] = prototypeIndex;
+        }
+
+        int unmatchedInstanceCount = 0;
+        for (int instanceIndex = 0; instanceIndex < validInstances.Length; instanceIndex++)
+        {
+            GPUIPrefab instance = validInstances[instanceIndex];
+            if (!prototypeIndexByPrefabId.TryGetValue(
+                    instance.GetPrefabID(),
+                    out int matchingPrototypeIndex))
+            {
+                unmatchedInstanceCount++;
+                continue;
+            }
+
+            if (!instancesByPrototypeIndex.TryGetValue(
+                    matchingPrototypeIndex,
+                    out List<GPUIPrefab> prototypeInstances))
+            {
+                prototypeInstances = new List<GPUIPrefab>();
+                instancesByPrototypeIndex.Add(matchingPrototypeIndex, prototypeInstances);
+            }
+
+            prototypeInstances.Add(instance);
+        }
+
+        foreach (KeyValuePair<int, List<GPUIPrefab>> pair in instancesByPrototypeIndex)
+            activeManager.AddPrefabInstances(pair.Value, pair.Key);
+
+        if (unmatchedInstanceCount > 0)
+        {
+            Debug.LogWarning(
+                $"LobbyManager: {unmatchedInstanceCount} runtime GPUI prefab instance(s) do not have a matching " +
+                "prototype on the Addressable environment's GPUIPrefabManager.");
+        }
+
+        activeManager.RequireTransformUpdate();
+    }
+
+    private void RegisterEnvironmentGPUITerrains(Transform envRoot)
+    {
+        GPUITerrain[] terrains = envRoot.GetComponentsInChildren<GPUITerrain>(true);
+        if (terrains.Length == 0)
+            return;
+
+        GPUITreeManager environmentTreeManager =
+            envRoot.GetComponentInChildren<GPUITreeManager>(true);
+        GPUITreeManager activeTreeManager =
+            environmentTreeManager != null ? environmentTreeManager : treeManager;
+
+        WarnIfDuplicateManagers(environmentTreeManager, treeManager, "GPUITreeManager");
+
+        if (activeTreeManager != null && activeTreeManager.isActiveAndEnabled)
+        {
+            activeTreeManager.AddTerrains(terrains);
+            activeTreeManager.RequireUpdate(true);
+        }
+        else if (environmentTreeManager != null || treeManager != null)
+        {
+            Debug.LogWarning(
+                "LobbyManager: The selected GPUITreeManager is inactive. Runtime tree registration was skipped.");
+        }
+
+        GPUIDetailManager environmentDetailManager =
+            envRoot.GetComponentInChildren<GPUIDetailManager>(true);
+        GPUIDetailManager activeDetailManager =
+            environmentDetailManager != null ? environmentDetailManager : detailManager;
+
+        WarnIfDuplicateManagers(environmentDetailManager, detailManager, "GPUIDetailManager");
+
+        if (activeDetailManager != null && activeDetailManager.isActiveAndEnabled)
+        {
+            activeDetailManager.AddTerrains(terrains);
+            activeDetailManager.RequireUpdate(true);
+        }
+        else if (environmentDetailManager != null || detailManager != null)
+        {
+            Debug.LogWarning(
+                "LobbyManager: The selected GPUIDetailManager is inactive. Runtime detail registration was skipped.");
+        }
+    }
+
+    private static void WarnIfDuplicateManagers(
+        Component environmentManager,
+        Component sceneManager,
+        string managerName)
+    {
+        if (environmentManager == null || sceneManager == null || environmentManager == sceneManager)
+            return;
+
+        Debug.LogWarning(
+            $"LobbyManager: Both the Addressable environment and the Home scene contain a {managerName}. " +
+            "The Addressable manager will be used; remove the scene manager after migration to avoid duplicate GPUI processing.");
     }
     #endregion
 
@@ -788,6 +913,10 @@ public class LobbyManager : MonoBehaviour
         {
             weatherController.ChangeWeather("Dust");
         }
+        else if (mapname == Constants.MapNames.Kansas)
+        {
+            weatherController.ChangeWeather("Calm");
+        }
     }
     public void ChangeWeather(string mapname)
     {
@@ -801,6 +930,10 @@ public class LobbyManager : MonoBehaviour
         else if (mapname == Constants.MapNames.Egypt)
         {
             weatherController.ChangeWeather("Dust");
+        }
+        else if (mapname == Constants.MapNames.Kansas)
+        {
+            weatherController.ChangeWeather("Calm");
         }
     }
     #endregion
