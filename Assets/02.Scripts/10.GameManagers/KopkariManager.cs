@@ -357,6 +357,16 @@ public class KopkariManager : MonoBehaviour
             return;
         }
 
+        try
+        {
+            await AIKopkariRider.ApplyRandomHorseMaterialsToActiveRidersAsync();
+        }
+        catch (Exception exception)
+        {
+            // Appearance variation must never prevent Kopkari gameplay from loading.
+            Debug.LogException(exception);
+        }
+
         if (pickableObj != null)
         {
             pickableObj.OnPicked.RemoveListener(OnUloqPicked);

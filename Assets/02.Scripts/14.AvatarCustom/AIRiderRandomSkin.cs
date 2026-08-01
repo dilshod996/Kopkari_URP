@@ -31,6 +31,19 @@ public class AIRiderRandomSkin : MonoBehaviour
     private List<string> _bodyKeys, _maneKeys, _saddleKeys;
     private bool _poolsReady;
 
+    private sealed class SkinPools
+    {
+        public List<string> body;
+        public List<string> mane;
+        public List<string> saddle;
+    }
+
+    private static readonly object CacheLock = new object();
+    private static readonly Dictionary<string, Task<SkinPools>> PoolTasks =
+        new Dictionary<string, Task<SkinPools>>();
+    private static readonly Dictionary<string, Task<Material>> MaterialTasks =
+        new Dictionary<string, Task<Material>>();
+
     // LOD renderers cache
     private readonly List<SkinnedMeshRenderer> _lodSMRs = new();
 
@@ -64,7 +77,7 @@ public class AIRiderRandomSkin : MonoBehaviour
 
     public void SetAvatarId(string id) => avatarId = id;
 
-    public async Task ApplyRandomAsync(int uniqueSeed = 0)
+    public async Task ApplyRandomAsync(int uniqueSeed = 0, bool useSharedLoading = false)
     {
         // LOD rendererlar yo'q bo'lsa qayta cache qilib ko'ramiz
         if (_lodSMRs.Count == 0)
@@ -78,9 +91,19 @@ public class AIRiderRandomSkin : MonoBehaviour
         // 1) Poollarni 1 marta olish
         if (!_poolsReady)
         {
-            _bodyKeys = await PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, bodySlotId);
-            _maneKeys = await PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, maneSlotId);
-            _saddleKeys = await PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, saddleSlotId);
+            if (useSharedLoading)
+            {
+                SkinPools pools = await GetSharedPoolsAsync();
+                _bodyKeys = pools.body;
+                _maneKeys = pools.mane;
+                _saddleKeys = pools.saddle;
+            }
+            else
+            {
+                _bodyKeys = await PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, bodySlotId);
+                _maneKeys = await PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, maneSlotId);
+                _saddleKeys = await PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, saddleSlotId);
+            }
             _poolsReady = true;
         }
 
@@ -168,8 +191,64 @@ public class AIRiderRandomSkin : MonoBehaviour
         if (MaterialCacheManager.TryGet(key, out var cached) && cached != null)
             return cached;
 
-        var mat = await AddressablesService.Instance.LoadAssetAsync<Material>(key);
-        if (mat != null) MaterialCacheManager.Add(key, mat);
-        return mat;
+        Task<Material> loadTask;
+        lock (CacheLock)
+        {
+            if (!MaterialTasks.TryGetValue(key, out loadTask))
+            {
+                loadTask = LoadAndCacheMaterial(key);
+                MaterialTasks.Add(key, loadTask);
+            }
+        }
+
+        return await loadTask;
+    }
+
+    private Task<SkinPools> GetSharedPoolsAsync()
+    {
+        string cacheKey = $"{avatarId}|{bodySlotId}|{maneSlotId}|{saddleSlotId}";
+        lock (CacheLock)
+        {
+            if (!PoolTasks.TryGetValue(cacheKey, out Task<SkinPools> task))
+            {
+                task = LoadPoolsAsync();
+                PoolTasks.Add(cacheKey, task);
+            }
+
+            return task;
+        }
+    }
+
+    private async Task<SkinPools> LoadPoolsAsync()
+    {
+        Task<List<string>> bodyTask =
+            PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, bodySlotId);
+        Task<List<string>> maneTask =
+            PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, maneSlotId);
+        Task<List<string>> saddleTask =
+            PlayerCatalogProvider.Instance.GetMaterialKeysAsync(avatarId, saddleSlotId);
+
+        await Task.WhenAll(bodyTask, maneTask, saddleTask);
+        return new SkinPools
+        {
+            body = await bodyTask,
+            mane = await maneTask,
+            saddle = await saddleTask
+        };
+    }
+
+    private static async Task<Material> LoadAndCacheMaterial(string key)
+    {
+        try
+        {
+            var mat = await AddressablesService.Instance.LoadAssetAsync<Material>(key);
+            if (mat != null) MaterialCacheManager.Add(key, mat);
+            return mat;
+        }
+        finally
+        {
+            lock (CacheLock)
+                MaterialTasks.Remove(key);
+        }
     }
 }

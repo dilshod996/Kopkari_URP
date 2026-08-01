@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -15,6 +16,9 @@ public class SpecialReachTriggerPoint : MonoBehaviour
     [Header("Rules")]
     [SerializeField] private float graceSeconds = 10f;
 
+    [Header("Optimization")]
+    [SerializeField] private bool optimizeMarkerParticles;
+
     [Header("Debug")]
     [SerializeField] private bool logDebug = false;
 
@@ -23,6 +27,10 @@ public class SpecialReachTriggerPoint : MonoBehaviour
     private bool _timerStarted;
     private bool _aiTutorialSignalSent;
     private Coroutine _routine;
+    private bool _playerCompleted;
+    private ParticleSystem[] _markerParticles;
+    private static readonly List<SpecialReachTriggerPoint> ActivePoints =
+        new List<SpecialReachTriggerPoint>();
 
 
 
@@ -39,11 +47,35 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         _passedOrder.Clear();
         _timerStarted = false;
         _aiTutorialSignalSent = false;
+        _playerCompleted = false;
+        if (optimizeMarkerParticles)
+        {
+            CacheMarkerParticles();
+
+            if (!ActivePoints.Contains(this))
+                ActivePoints.Add(this);
+            RefreshMarkerVisuals();
+        }
 
         if (_routine != null)
         {
             StopCoroutine(_routine);
             _routine = null;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_routine != null)
+        {
+            StopCoroutine(_routine);
+            _routine = null;
+        }
+
+        if (optimizeMarkerParticles)
+        {
+            ActivePoints.Remove(this);
+            RefreshMarkerVisuals();
         }
     }
 
@@ -67,7 +99,12 @@ public class SpecialReachTriggerPoint : MonoBehaviour
             Debug.Log($"[SpecialReach] Passed: {agent.displayName} (player={agent.isPlayer})");
 
         if (agent.isPlayer)
+        {
+            _playerCompleted = true;
+            if (optimizeMarkerParticles)
+                RefreshMarkerVisuals();
             OnPlayerEntered?.Invoke();
+        }
 
         // Birinchi o'tgan agent => timer start
         if (!_timerStarted && !controller.IsRaceOver)
@@ -82,6 +119,90 @@ public class SpecialReachTriggerPoint : MonoBehaviour
             {
                 _aiTutorialSignalSent = true;
                 OnFirstAIRiderEntered?.Invoke();
+            }
+        }
+    }
+
+    private static void RefreshMarkerVisuals()
+    {
+        ActivePoints.RemoveAll(point => point == null);
+        SpecialReachTriggerPoint next = ActivePoints
+            .Where(point => point.isActiveAndEnabled && !point._playerCompleted)
+            .OrderBy(point => point.GetCheckpointOrder())
+            .FirstOrDefault();
+
+        for (int i = 0; i < ActivePoints.Count; i++)
+            ActivePoints[i].SetMarkerVisible(ActivePoints[i] == next);
+    }
+
+    private int GetCheckpointOrder()
+    {
+        if (TryGetTrailingNumber(gameObject.name, out int numberedOrder))
+            return numberedOrder;
+
+        return transform.parent != null
+            ? transform.parent.GetSiblingIndex()
+            : transform.GetSiblingIndex();
+    }
+
+    private void CacheMarkerParticles()
+    {
+        _markerParticles = GetComponentsInChildren<ParticleSystem>(true);
+        if (_markerParticles.Length > 0 || transform.parent == null)
+            return;
+
+        Transform closestMarkerRoot = null;
+        float closestDistance = float.PositiveInfinity;
+        Transform groupRoot = transform.parent;
+
+        for (int i = 0; i < groupRoot.childCount; i++)
+        {
+            Transform candidate = groupRoot.GetChild(i);
+            if (candidate == transform) continue;
+            if (candidate.GetComponentInChildren<ParticleSystem>(true) == null) continue;
+
+            float distance = (candidate.position - transform.position).sqrMagnitude;
+            if (distance >= closestDistance) continue;
+
+            closestDistance = distance;
+            closestMarkerRoot = candidate;
+        }
+
+        _markerParticles = closestMarkerRoot != null
+            ? closestMarkerRoot.GetComponentsInChildren<ParticleSystem>(true)
+            : Array.Empty<ParticleSystem>();
+    }
+
+    private static bool TryGetTrailingNumber(string value, out int number)
+    {
+        number = 0;
+        if (string.IsNullOrEmpty(value)) return false;
+
+        int end = value.Length - 1;
+        while (end >= 0 && char.IsWhiteSpace(value[end])) end--;
+        int start = end;
+        while (start >= 0 && char.IsDigit(value[start])) start--;
+
+        return start < end && int.TryParse(value.Substring(start + 1, end - start), out number);
+    }
+
+    private void SetMarkerVisible(bool visible)
+    {
+        if (_markerParticles == null) return;
+
+        for (int i = 0; i < _markerParticles.Length; i++)
+        {
+            ParticleSystem marker = _markerParticles[i];
+            if (marker == null) continue;
+
+            if (visible)
+            {
+                if (!marker.isPlaying)
+                    marker.Play(true);
+            }
+            else
+            {
+                marker.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
         }
     }

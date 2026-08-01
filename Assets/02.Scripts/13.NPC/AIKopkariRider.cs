@@ -5,6 +5,7 @@ using UnityEngine.Serialization;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Random = UnityEngine.Random;
 using MalbersAnimations;
 using UnityEngine.AI;
@@ -62,6 +63,15 @@ public class AIKopkariRider : MonoBehaviour
     [SerializeField] private MAnimalBrain brain;
     [SerializeField] private MAnimalAIControl ai;
     [SerializeField] private ObstacleTouchSensor obstacleSensor;
+
+    [Header("AI Horse Material Variation")]
+    [SerializeField] private SkinnedMeshRenderer[] horseBodyRenderers;
+    [SerializeField] private SkinnedMeshRenderer[] horseManeRenderers;
+    [SerializeField] private SkinnedMeshRenderer[] horseTailRenderers;
+    [SerializeField] private SkinnedMeshRenderer[] horseSaddleRenderers;
+    [SerializeField] private SkinnedMeshRenderer[] horseReinsRenderers;
+    [SerializeField] private SkinnedMeshRenderer[] horseEyesRenderers;
+    [SerializeField] private SkinnedMeshRenderer[] combinedHorseRenderers;
 
     [Header("Pickup Timing")]
     [SerializeField, Min(0f)] private float pickupFocusMinDuration = 4f;
@@ -350,6 +360,35 @@ public class AIKopkariRider : MonoBehaviour
 
     public static event Action<AIKopkariRider> OnRiderReady;
     public static event Action<AIKopkariRider> OnRiderPassedGate;
+
+    public static async Task ApplyRandomHorseMaterialsToActiveRidersAsync()
+    {
+        var tasks = new List<Task>(ActiveRiders.Count);
+        int sessionSeed = Environment.TickCount;
+        for (int i = 0; i < ActiveRiders.Count; i++)
+        {
+            AIKopkariRider rider = ActiveRiders[i];
+            if (rider != null && rider.isActiveAndEnabled)
+                tasks.Add(rider.ApplyRandomHorseMaterialsAsync(sessionSeed));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private Task ApplyRandomHorseMaterialsAsync(int sessionSeed)
+    {
+        int riderSeed = id != 0 ? id : GetInstanceID();
+        int seed = sessionSeed ^ (riderSeed * 397);
+        return KopkariAIHorseMaterialRandomizer.ApplyRandomAsync(
+            seed,
+            horseBodyRenderers,
+            horseManeRenderers,
+            horseTailRenderers,
+            horseSaddleRenderers,
+            horseReinsRenderers,
+            horseEyesRenderers,
+            combinedHorseRenderers);
+    }
     public static event Action<AIKopkariRider, float, float> OnCarrierGripChanged;
 
     public int Id => id;

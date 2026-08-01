@@ -497,7 +497,9 @@ public class SceneLoadManager : MonoBehaviour
                 yield break;
             }
         }
-        if (targetScene == SceneType.SecondRacing || targetScene == SceneType.EgyptRacing)
+        if (targetScene == SceneType.SecondRacing ||
+            targetScene == SceneType.EgyptRacing ||
+            targetScene == SceneType.Registan)
         {
             var ensureCatalogTask = PlayerCatalogProvider.Instance.EnsureCatalogAsync();
             yield return WaitTask(ensureCatalogTask);
@@ -883,7 +885,9 @@ public class SceneLoadManager : MonoBehaviour
             }
         }
 
-        if (targetScene == SceneType.SecondRacing || targetScene == SceneType.EgyptRacing)
+        if (targetScene == SceneType.SecondRacing ||
+            targetScene == SceneType.EgyptRacing ||
+            targetScene == SceneType.Registan)
         {
             var ensureCatalogTask = PlayerCatalogProvider.Instance.EnsureCatalogAsync();
             yield return WaitTask(ensureCatalogTask);

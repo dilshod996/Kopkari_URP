@@ -79,6 +79,8 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     private Action onBuy;
     private Action onClose;
     private DetailsMode currentMode;
+    private int currentCost;
+    private int currentRewardAdsNyufiyAmount;
     private bool hasOpenDetails;
     private Tween rewardAdsButtonTween;
     private Vector3 rewardAdsButtonBaseScale = Vector3.one;
@@ -199,6 +201,8 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
         onBuy = buyAction;
         onClose = closeAction;
         currentMode = details.Mode;
+        currentCost = details.Cost;
+        currentRewardAdsNyufiyAmount = rewardAdsNyufiyAmount;
         hasOpenDetails = true;
 
         if (iconImage != null)
@@ -214,7 +218,7 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
         SetText(costTitle, GetLocalizedText(CostTextId, "Cost"));
         SetText(buyButtonText, GetLocalizedText(BuyButtonTextId, "Buy"));
         SetText(closeButtonText, GetLocalizedText(CloseButtonTextId, "Close"));
-        SetText(rewardAdsButtonText, $"+{rewardAdsNyufiyAmount:N0}");
+        SetText(rewardAdsButtonText, $"+{currentRewardAdsNyufiyAmount:N0}");
         HideNotEnoughNyufiy();
         ApplyMode(details);
 
@@ -228,12 +232,17 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
     public void ShowNotEnoughNyufiy()
     {
         string message = GetLocalizedText(NotEnoughNyufiyTextId, "Not enough Nyufiy.");
+        int currentNyufiy = CurrencyManager.Instance != null
+            ? CurrencyManager.Instance.Nyufiy
+            : PlayerPrefs.GetInt(Constants.Coins.Nyufiy, 0);
+        int missingNyufiy = Mathf.Max(0, currentCost - currentNyufiy);
+        currentRewardAdsNyufiyAmount = Mathf.Max(rewardAdsNyufiyAmount, missingNyufiy);
 
         if (notEnoughNyufiyPanel == null)
             SetText(nameText, message);
 
         SetText(notEnoughNyufiyText, message);
-        SetText(rewardAdsButtonText, $"+{rewardAdsNyufiyAmount:N0}");
+        SetText(rewardAdsButtonText, $"+{currentRewardAdsNyufiyAmount:N0}");
         SetActive(notEnoughNyufiyPanel, true);
         StartRewardAdsButtonAnimation();
     }
@@ -260,7 +269,7 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
         GameAnalyticsEvents.RewardedAdClicked(
             placement: "resource_details_popup",
             rewardType: "nyufiy",
-            rewardAmount: rewardAdsNyufiyAmount
+            rewardAmount: currentRewardAdsNyufiyAmount
         );
 
         if (AdsManager.Instance == null)
@@ -276,17 +285,17 @@ public class ResourceInfoDetailsPopup : MonoBehaviour
 
         AdsManager.Instance.ShowRewarded(() =>
         {
-            CurrencyManager.Instance?.AddNyufiy(rewardAdsNyufiyAmount, true);
+            CurrencyManager.Instance?.AddNyufiy(currentRewardAdsNyufiyAmount, true);
 
             GameAnalyticsEvents.RewardedAdCompleted(
                 placement: "resource_details_popup",
                 rewardType: "nyufiy",
-                rewardAmount: rewardAdsNyufiyAmount
+                rewardAmount: currentRewardAdsNyufiyAmount
             );
 
             GameAnalyticsEvents.CoinRewardClaimed(
                 source: "rewarded_ad_resource_details_popup",
-                amount: rewardAdsNyufiyAmount
+                amount: currentRewardAdsNyufiyAmount
             );
 
             HideNotEnoughNyufiy();

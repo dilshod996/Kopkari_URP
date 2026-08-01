@@ -21,12 +21,14 @@ public class ConditionCheck : MonoBehaviour
 
     private void OnEnable()
     {
+        HorseConditionStatsService.ConditionChanged += HandleConditionChanged;
         UITransilitaions();
         GetResources();
         openFoodPanel.onClick.AddListener(OpenFoodpanel);
     }
     private void OnDisable()
     {
+        HorseConditionStatsService.ConditionChanged -= HandleConditionChanged;
         openFoodPanel.onClick.RemoveAllListeners();
     }
     private void UITransilitaions()
@@ -45,6 +47,11 @@ public class ConditionCheck : MonoBehaviour
         HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(
             HorseConditionStatsService.GetCachedMaxOrDefault());
 
+        UpdateSliders(current.Power, current.Cooling, current.Stamina);
+    }
+
+    private void HandleConditionChanged(HorseConditionStats current)
+    {
         UpdateSliders(current.Power, current.Cooling, current.Stamina);
     }
     private void UpdateSliders(float powerValue, float coolingValue, float staminValue)

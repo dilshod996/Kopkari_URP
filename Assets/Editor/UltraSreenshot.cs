@@ -6,8 +6,8 @@ using System.IO;
 
 public class UltraScreenshot : EditorWindow
 {
-    int width = 5906;   // Default 100cm @150DPI
-    int height = 11811; // Default 200cm @150DPI
+    private const int Width = 1920;
+    private const int Height = 1080;
 
     [MenuItem("Tools/Ultra Screenshot")]
     public static void ShowWindow()
@@ -15,26 +15,40 @@ public class UltraScreenshot : EditorWindow
         GetWindow<UltraScreenshot>("Ultra Screenshot");
     }
 
-    void OnGUI()
+    private void OnGUI()
     {
-        GUILayout.Label("High Resolution Screenshot", EditorStyles.boldLabel);
-        width = EditorGUILayout.IntField("Width (px)", width);
-        height = EditorGUILayout.IntField("Height (px)", height);
+        GUILayout.Label("Google Play Phone Screenshot", EditorStyles.boldLabel);
 
-        if (GUILayout.Button("Capture GameView"))
+        EditorGUILayout.HelpBox(
+            "Game View resolutionini 1920 x 1080 qilib tanlang.",
+            MessageType.Info
+        );
+
+        EditorGUILayout.LabelField("Output", $"{Width} × {Height}");
+
+        if (GUILayout.Button("Capture Phone Screenshot"))
         {
-            CaptureScreenshot(width, height);
+            CaptureScreenshot();
         }
     }
 
-    void CaptureScreenshot(int w, int h)
+    private void CaptureScreenshot()
     {
-        string dir = Path.Combine(Application.dataPath, "../Screenshots");
-        Directory.CreateDirectory(dir);
-        string filePath = Path.Combine(dir, $"Poster_{w}x{h}_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+        string directory = Path.Combine(
+            Application.dataPath,
+            "../Screenshots"
+        );
 
-        // Bu joyda CaptureScreenshot UI bilan birga GameView’ni oladi
+        Directory.CreateDirectory(directory);
+
+        string filePath = Path.Combine(
+            directory,
+            $"PhoneScreenshot_{Width}x{Height}_{DateTime.Now:yyyyMMdd_HHmmss}.png"
+        );
+
+        // Game View 1920×1080 bo‘lsa, natija ham 1920×1080 chiqadi.
         ScreenCapture.CaptureScreenshot(filePath, 1);
-        Debug.Log("✅ Screenshot saved to: " + filePath);
+
+        Debug.Log($"✅ Screenshot saved: {filePath}");
     }
 }

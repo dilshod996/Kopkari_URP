@@ -13,6 +13,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using DG.Tweening;
 using GPUInstancerPro.PrefabModule;
@@ -35,10 +36,26 @@ public class RacingController : MonoBehaviour
         Kansas
     }
     public RacingType mapType = RacingType.None;
+    [FormerlySerializedAs("enableSecondRacingOptimizations")]
+    [SerializeField] private bool enableRacingOptimizations;
     public MAnimal horse;
     public MAnimal riderAnimal;
     [SerializeField] private List<AIRacingRider> aiRiders;
     [SerializeField] private TMP_Text countText;
+
+    [Header("AI Audio Optimization")]
+    [SerializeField, Range(1, 3)] private int maxAudibleAIHorses = 3;
+    [SerializeField, Min(0.1f)] private float aiAudioUpdateInterval = 0.5f;
+
+    private sealed class AIHorseAudio
+    {
+        public Transform root;
+        public readonly List<AudioSource> sources = new List<AudioSource>();
+    }
+
+    private readonly List<AIHorseAudio> aiHorseAudio = new List<AIHorseAudio>();
+    private readonly List<AIHorseAudio> nearestAIHorseAudio = new List<AIHorseAudio>(3);
+    private Coroutine aiAudioRoutine;
 
     [Header("Leaderboard Fade-In")]
     [SerializeField] private RacingLeaderboard leaderboard;
@@ -175,7 +192,7 @@ public class RacingController : MonoBehaviour
         else
             Destroy(gameObject);
 
-        Application.targetFrameRate = 60;
+        Application.targetFrameRate = enableRacingOptimizations ? 30 : 60;
         QualitySettings.vSyncCount = 0;
         _fpLayer = LayerMask.NameToLayer("FP_Hide");
         _mainCam = Camera.main; // CinemachineBrain shu kamerada bo‘ladi
@@ -183,11 +200,15 @@ public class RacingController : MonoBehaviour
     async void Start()
     {
         InitLeaderboardPanelHidden();
+        if (enableRacingOptimizations)
+            CacheAIAudio();
        // SimplePool.CreatePool(walkZonePrefab, prewarm: 10, maxSize: 40, expandable: true);
-        SimplePool.CreatePool(oneTimeFlashEffect, prewarm: 5, maxSize: 8, expandable: true); 
-        SimplePool.CreatePool(walkZoneFlash, prewarm: 5, maxSize: 8, expandable: true);
-        SimplePool.CreatePool(triggerPointProjectile, prewarm: 10, maxSize:30, expandable:true);
-        SimplePool.CreatePool(explostionVFX, prewarm: 10, maxSize: 15, expandable: true);
+        int smallEffectPrewarm = enableRacingOptimizations ? 2 : 5;
+        int largeEffectPrewarm = enableRacingOptimizations ? 3 : 10;
+        SimplePool.CreatePool(oneTimeFlashEffect, prewarm: smallEffectPrewarm, maxSize: 8, expandable: true);
+        SimplePool.CreatePool(walkZoneFlash, prewarm: smallEffectPrewarm, maxSize: 8, expandable: true);
+        SimplePool.CreatePool(triggerPointProjectile, prewarm: largeEffectPrewarm, maxSize:30, expandable:true);
+        SimplePool.CreatePool(explostionVFX, prewarm: largeEffectPrewarm, maxSize: 15, expandable: true);
 
         bool environmentReady;
         try
@@ -233,6 +254,12 @@ public class RacingController : MonoBehaviour
     private void OnDestroy()
     {
         environmentReadySource.TrySetResult(false);
+
+        if (aiAudioRoutine != null)
+        {
+            StopCoroutine(aiAudioRoutine);
+            aiAudioRoutine = null;
+        }
 
         // poolingdagi barcha aktiv WalkZone obyektlarni qaytaradi
         SimplePool.ClearAll();
@@ -738,7 +765,121 @@ public class RacingController : MonoBehaviour
         horse = horseAnimal;
         riderAnimal = riderAnim;
         playerAndHorseReady = horse != null && riderAnimal != null;
+        if (enableRacingOptimizations && playerAndHorseReady && aiAudioRoutine == null)
+            aiAudioRoutine = StartCoroutine(UpdateAIAudioByDistance());
         TryCompleteRacingLoading();
+    }
+
+    private void CacheAIAudio()
+    {
+        aiHorseAudio.Clear();
+
+        for (int i = 0; i < aiRiders.Count; i++)
+        {
+            AIRacingRider aiRider = aiRiders[i];
+            if (aiRider == null) continue;
+
+            Transform aiRoot = aiRider.transform.parent != null
+                ? aiRider.transform.parent
+                : aiRider.transform;
+            var entry = new AIHorseAudio { root = aiRider.transform };
+            AudioSource[] sources = aiRoot.GetComponentsInChildren<AudioSource>(true);
+            for (int j = 0; j < sources.Length; j++)
+            {
+                AudioSource source = sources[j];
+                if (source == null) continue;
+
+                bool isHorseAudio = source.transform == aiRider.transform;
+                bool isHoofAudio = source.gameObject.name == "Foot Audio";
+                if (isHorseAudio || isHoofAudio)
+                {
+                    if (source.enabled)
+                    {
+                        source.mute = true;
+                        entry.sources.Add(source);
+                    }
+                }
+                else
+                {
+                    source.Stop();
+                    source.enabled = false;
+                }
+            }
+
+            if (entry.sources.Count > 0)
+                aiHorseAudio.Add(entry);
+        }
+    }
+
+    private IEnumerator UpdateAIAudioByDistance()
+    {
+        var wait = new WaitForSecondsRealtime(aiAudioUpdateInterval);
+
+        while (!IsRaceOver)
+        {
+            RefreshNearestAIAudio();
+            yield return wait;
+        }
+
+        MuteAllAIAudio();
+        aiAudioRoutine = null;
+    }
+
+    private void RefreshNearestAIAudio()
+    {
+        if (horse == null) return;
+
+        nearestAIHorseAudio.Clear();
+        Vector3 playerPosition = horse.transform.position;
+
+        for (int i = 0; i < aiHorseAudio.Count; i++)
+        {
+            AIHorseAudio candidate = aiHorseAudio[i];
+            if (candidate.root == null || !candidate.root.gameObject.activeInHierarchy)
+                continue;
+
+            float candidateDistance = (candidate.root.position - playerPosition).sqrMagnitude;
+            int insertAt = nearestAIHorseAudio.Count;
+            for (int j = 0; j < nearestAIHorseAudio.Count; j++)
+            {
+                float existingDistance =
+                    (nearestAIHorseAudio[j].root.position - playerPosition).sqrMagnitude;
+                if (candidateDistance < existingDistance)
+                {
+                    insertAt = j;
+                    break;
+                }
+            }
+
+            nearestAIHorseAudio.Insert(insertAt, candidate);
+            if (nearestAIHorseAudio.Count > maxAudibleAIHorses)
+                nearestAIHorseAudio.RemoveAt(nearestAIHorseAudio.Count - 1);
+        }
+
+        for (int i = 0; i < aiHorseAudio.Count; i++)
+        {
+            AIHorseAudio entry = aiHorseAudio[i];
+            bool audible = nearestAIHorseAudio.Contains(entry);
+            for (int j = 0; j < entry.sources.Count; j++)
+            {
+                AudioSource source = entry.sources[j];
+                if (source != null)
+                    source.mute = !audible;
+            }
+        }
+    }
+
+    private void MuteAllAIAudio()
+    {
+        for (int i = 0; i < aiHorseAudio.Count; i++)
+        {
+            List<AudioSource> sources = aiHorseAudio[i].sources;
+            for (int j = 0; j < sources.Count; j++)
+            {
+                if (sources[j] != null)
+                    sources[j].mute = true;
+            }
+        }
     }
 
     public void StopHorseRun()
@@ -1093,6 +1234,18 @@ public class RacingController : MonoBehaviour
     #region AI Random skins
     private async Task ApplyRandomSkinsToAllAI()
     {
+        if (!enableRacingOptimizations)
+        {
+            for (int i = 0; i < aiRiders.Count; i++)
+            {
+                AIRacingRider rider = aiRiders[i];
+                if (rider?.randomSkin != null)
+                    await rider.randomSkin.ApplyRandomAsync();
+            }
+            return;
+        }
+
+        var skinTasks = new List<Task>(aiRiders.Count);
         for (int i = 0; i < aiRiders.Count; i++)
         {
             var rider = aiRiders[i];
@@ -1101,8 +1254,10 @@ public class RacingController : MonoBehaviour
             var rs = rider.randomSkin; // yoki rider.randomSkin
             if (rs == null) continue;
 
-            await rs.ApplyRandomAsync();
+            skinTasks.Add(rs.ApplyRandomAsync(useSharedLoading: true));
         }
+
+        await Task.WhenAll(skinTasks);
     }
     #endregion
 

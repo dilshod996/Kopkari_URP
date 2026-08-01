@@ -89,6 +89,7 @@ public class UIPauseGame : MonoBehaviour
     public void ReleaseForRacingTutorial()
     {
         StopResumeCountdown();
+        Time.timeScale = 1f;
         _paused = false;
         SetPauseDetailsVisible(true);
         SetCountdownVisible(false);

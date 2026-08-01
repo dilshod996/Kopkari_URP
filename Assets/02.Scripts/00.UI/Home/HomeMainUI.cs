@@ -3,7 +3,6 @@ using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -153,15 +152,6 @@ public class HomeMainUI : MonoBehaviour
     //private Coroutine activeRoutinePopup;
     #endregion
 
-    #region Update Horse resources timing
-
-    // Full bo‘lish vaqti minutda
-    private const float PowerRegenMinutes = 240f;   // 4 hours
-    private const float CoolingRegenMinutes = 300f; // 5 hours
-    private const float StaminaRegenMinutes = 180f; // 3 hours
-
-    #endregion
-
     #region Right Popup
     [Header("UI")]
     [SerializeField] private RightPopup rightPopup;
@@ -203,7 +193,7 @@ public class HomeMainUI : MonoBehaviour
 
     private void OnEnable()
     {
-        ApplyOfflineRegen();
+        HorseConditionStatsService.ConditionChanged += HandleHorseConditionChanged;
         AvailableMap();
         DailyReward();
         if(levelUpCheckRoutine != null)
@@ -266,6 +256,7 @@ public class HomeMainUI : MonoBehaviour
             CurrencyManager.Instance.OnCoinChanged -= UpdateOnlyCoin;
         }
         FoodInfo.OnFoodAddToHorse -= ApplyFoodBuffs;
+        HorseConditionStatsService.ConditionChanged -= HandleHorseConditionChanged;
         FoodShowerPopup.OnFoodGivenWithStats -= ApplyFoodBuffs;
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
         LobbyManager.OnNameChanged -= LobbyName;
@@ -500,12 +491,14 @@ public class HomeMainUI : MonoBehaviour
         // Team name (doim default bo'lsa ham bo'ladi)
         EnsureString(Constants.Player.TeamName, "Kaja Riders");
 
-        ApplyHorseStats(HorseConditionStatsService.GetCachedMaxOrDefault());
+        string activeHorseId = HorseConditionStatsService.ActiveHorseId;
+        if (!string.IsNullOrWhiteSpace(PlayerPrefs.GetString($"Sel_{activeHorseId}_Body", "")))
+            ApplyHorseStats(HorseConditionStatsService.GetCachedMaxOrDefault());
     }
 
     private IEnumerator RefreshHorseStatsFromCatalog()
     {
-        var task = HorseConditionStatsService.GetActiveMaxAsync();
+        var task = HorseConditionStatsService.RefreshActiveConditionAsync();
         while (!task.IsCompleted)
             yield return null;
 
@@ -515,13 +508,24 @@ public class HomeMainUI : MonoBehaviour
             yield break;
         }
 
-        ApplyHorseStats(task.Result);
+        ApplyCurrentHorseStats(task.Result);
         horseStatsRefreshRoutine = null;
     }
 
     private void ApplyHorseStats(HorseConditionStats max)
     {
         HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
+
+        ApplyCurrentHorseStats(current);
+    }
+
+    private void HandleHorseConditionChanged(HorseConditionStats current)
+    {
+        ApplyCurrentHorseStats(current);
+    }
+
+    private void ApplyCurrentHorseStats(HorseConditionStats current)
+    {
 
         horsePower.currentPercent = current.Power;
         horseStamina.currentPercent = current.Stamina;
@@ -906,65 +910,6 @@ public class HomeMainUI : MonoBehaviour
 
     //    rt.localScale = Vector3.one;
     //}
-
-    #endregion
-
-    #region Time Horse Resources Update
-    private void ApplyOfflineRegen()
-    {
-        Debug.Log("Regen Started");
-
-        if (!PlayerPrefs.HasKey(Constants.Timer.LastUpdateTime))
-        {
-            Debug.Log("Time key not exist");
-            PlayerPrefs.SetString(Constants.Timer.LastUpdateTime, DateTimeOffset.UtcNow.ToString("O"));
-            return;
-        }
-
-        string raw = PlayerPrefs.GetString(Constants.Timer.LastUpdateTime);
-        Debug.Log("Raw stored time: " + raw);
-
-        DateTimeOffset lastTime;
-        if (!DateTimeOffset.TryParse(raw, null, System.Globalization.DateTimeStyles.RoundtripKind, out lastTime))
-        {
-            Debug.Log("Parse failed, set lastTime = now");
-            lastTime = DateTimeOffset.UtcNow;
-        }
-
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-
-        float elapsedMinutes = (float)(now - lastTime).TotalMinutes;
-        Debug.Log($"LastTime: {lastTime:o}, Now: {now:o}, elapsedMinutes: {elapsedMinutes}");
-
-        if (elapsedMinutes <= 0f)
-        {
-            Debug.Log("Elapsed minutes <= 0, regen SKIPPED");
-            return;
-        }
-
-        HorseConditionStats max = HorseConditionStatsService.GetCachedMaxOrDefault();
-        HorseConditionStats current = HorseConditionStatsService.GetCurrentOrInitialize(max);
-
-        float powerPerMin = max.Power / PowerRegenMinutes;
-        float coolingPerMin = max.Cooling / CoolingRegenMinutes;
-        float staminaPerMin = max.Stamina / StaminaRegenMinutes;
-
-        Debug.Log("Offline adding resources: " + $"{powerPerMin} {coolingPerMin} {staminaPerMin}");
-
-        HorseConditionStats updated = HorseConditionStatsService.ApplyOfflineRegen(
-            current,
-            elapsedMinutes,
-            PowerRegenMinutes,
-            CoolingRegenMinutes,
-            StaminaRegenMinutes);
-
-        HorseConditionStatsService.SaveCurrent(updated, saveNow: false);
-
-        PlayerPrefs.SetString(Constants.Timer.LastUpdateTime, DateTimeOffset.UtcNow.ToString("O"));
-        PlayerPrefs.Save();
-
-        Debug.Log($"Regen applied. New stats: P={updated.Power}, C={updated.Cooling}, S={updated.Stamina}");
-    }
 
     #endregion
 
