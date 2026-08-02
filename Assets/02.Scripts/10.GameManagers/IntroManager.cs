@@ -41,8 +41,6 @@ namespace Kopkari
         [Header("User Details")]
         // private const string UsernameKey = "username";
         private const string DefaultUsername = "Player_123";
-        private const string HorseNameKey = "horseName";
-        private const string DefaultHorseName = "Qorakoz";
         private const string CountryName = "countryName";
         private const string FirstTimeKey = "firstTime";
         private const string PlayerFaceKey = "Player_Face";
@@ -86,7 +84,6 @@ namespace Kopkari
 
             SetSkipAvailable(false);
 
-            InitializePlayerPrefs();
             homePreloadAddresses = GetPreloadMaterialAddresses();
 
             Task<bool> languageInitializationTask = null;
@@ -109,7 +106,13 @@ namespace Kopkari
             }
 
             if (this != null)
+            {
                 SetInitialLanguage();
+
+                if (PlayerCatalogProvider.Instance != null)
+                    await PlayerCatalogProvider.Instance.CacheSelectedHorsePresentationAsync(
+                        downloadIcon: false);
+            }
         }
         private void OnDestroy()
         {
@@ -148,14 +151,6 @@ namespace Kopkari
             // Har doim uni LanguageManager ga uzatamiz
             string savedLang = PlayerPrefs.GetString(Constants.GameSettings.LanguageKey);
             LanguageManager.Instance.SetLanguage(savedLang);
-        }
-        private void InitializePlayerPrefs()
-        {
-
-            if (!PlayerPrefs.HasKey(Constants.Horse.HorseNameKey))
-                PlayerPrefs.SetString(HorseNameKey, DefaultHorseName);
-
-            PlayerPrefs.Save();
         }
 
         string GetLangCode(SystemLanguage lang)

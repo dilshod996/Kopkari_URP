@@ -41,9 +41,8 @@ public class UserSelection : MonoBehaviour
         //backLogoPageBtn.clickEvent.AddListener(BackToLogAction);
         nameInputPageBtn.clickEvent.AddListener(GoToNamePage);
 
-        //rider name and horse name input field checker
+        // Only the rider has a personal name. Horse names come from the selected body catalog entry.
         riderInput.onValueChanged.AddListener(delegate { CheckInputFields(); });
-        horseInput.onValueChanged.AddListener(delegate { CheckInputFields(); });
     }
     private void OnEnable()
     {
@@ -91,16 +90,14 @@ public class UserSelection : MonoBehaviour
     void CheckInputFields()
     {
         bool isInput1Valid = !string.IsNullOrWhiteSpace(riderInput.text);
-        bool isInput2Valid = !string.IsNullOrWhiteSpace(horseInput.text);
 
-        lobbyMoveBtn.buttonVar.interactable = isInput1Valid && isInput2Valid;
+        lobbyMoveBtn.buttonVar.interactable = isInput1Valid;
     }
     private void GoToLobby()
     {
         if (!PlayerPrefs.HasKey("username"))
         {
             PlayerPrefs.SetString("username", riderInput.text);
-            PlayerPrefs.SetString("horsename", horseInput.text); // Parol shifrlanmagan holda saqlanadi! ❌
             PlayerPrefs.Save();
             Debug.Log("Foydalanuvchi ro'yxatdan o'tdi!");
         }

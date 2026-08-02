@@ -557,9 +557,8 @@ public class MapShowPopup : MonoBehaviour
 
     private void OpenTacticItemsPanel()
     {
-        if(this.gameObject.activeSelf)
-            { this.gameObject.SetActive(false); }
-        HomeMainUI.Instance.ShowSuppliesPanel();
+        CloseMapField();
+        HomeMainUI.Instance.ShowSuppliesPanel();       
     }
 
     private void MoveToShop()

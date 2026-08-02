@@ -86,17 +86,7 @@ public class UIPauseGame : MonoBehaviour
         _paused = true;
     }
 
-    public void ReleaseForRacingTutorial()
-    {
-        StopResumeCountdown();
-        Time.timeScale = 1f;
-        _paused = false;
-        SetPauseDetailsVisible(true);
-        SetCountdownVisible(false);
-        gameObject.SetActive(false);
-    }
-
-    void ResumeGame()
+    public void ResumeGame()
     {
         if (resumeCountdownRoutine != null)
             return;

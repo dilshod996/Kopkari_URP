@@ -17,6 +17,12 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 7970c930a78805549a89df3ace0441e7
   m_SerializeEntries:
+  - m_GUID: 56d3177637c572343b30cdb80b014dac
+    m_Address: RegistanSkybox
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SkyBox
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5896895507e0b5c4885f9d45da257599
     m_Address: KansasSkybox
     m_ReadOnly: 0

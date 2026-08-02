@@ -184,7 +184,7 @@ public class RacingSettingsPanel : MonoBehaviour
 
         if (controllerChanged && joystickTurnMixer != null)
         {
-            UIButtonActions.Instance?.ReleaseRacingPauseForTutorial();
+            UIButtonActions.Instance?.ResumeRacingFromSettings();
             OnControllerApplied?.Invoke(_pendingControllerType);
         }
     }

@@ -31,7 +31,7 @@ public class JoiningPlayer : MonoBehaviour
     private void GetUserData()
     {
         playerNameText.text = PlayerPrefs.GetString(Constants.Player.UsernameKey);
-        horseNameText.text = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
+        horseNameText.text = PlayerPrefs.GetString(PlayerCatalogProvider.HorseBodyDisplayNamePrefKey);
     }
     private IEnumerator ChangeStatusAfterRandomDelay()
     {

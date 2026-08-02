@@ -1,5 +1,6 @@
 using Michsky.UI.ModernUIPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -19,6 +20,7 @@ public class RacingResultPage : MonoBehaviour
     [Header("Details")]
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text horseName;
+    [SerializeField] private Image horseIcon;
     [SerializeField] private TMP_Text coolingText;
     [SerializeField] private TMP_Text powerText;
     [SerializeField] private TMP_Text staminaText;
@@ -71,6 +73,12 @@ public class RacingResultPage : MonoBehaviour
     private float cachedRecordTime;
     private string cachedRecordText;
     private bool cachedPlayerFinished;
+    private Coroutine resultLoadRoutine;
+    private bool replayRequested;
+    private bool replayDecisionPending;
+    private bool adRequestInProgress;
+
+    private const int StandingsLoadRetryFrames = 30;
 
     private int GetAdsAmountByScene(SceneLoadManager.SceneType sceneType)
     {
@@ -97,6 +105,7 @@ public class RacingResultPage : MonoBehaviour
             backToHome.onClick.AddListener(BackLobby);
         }
         if (LanguageManager.Instance != null) UITransilations();
+        LoadHorsePresentation();
         ShowResults();
 
         if (adWatchBtn != null)
@@ -143,21 +152,110 @@ public class RacingResultPage : MonoBehaviour
         overAllPenaltyTime = 0f;
         overAllWalkZoneTime = Booster.TotalWalkZoneDamagedTime;
     }
+
+    private async void LoadHorsePresentation()
+    {
+        ApplyCachedHorseName();
+
+        string activeHorseId = HorseConditionStatsService.ActiveHorseId;
+        string selectedBodyOptionId = AvatarCustomPrefs.GetSelection(activeHorseId, "Body");
+        string expectedSelection = string.IsNullOrWhiteSpace(selectedBodyOptionId)
+            ? string.Empty
+            : $"{activeHorseId}|{selectedBodyOptionId}";
+        string iconKey = PlayerPrefs.GetString(PlayerCatalogProvider.HorseBodyIconPrefKey, string.Empty);
+        string displayName = PlayerPrefs.GetString(PlayerCatalogProvider.HorseBodyDisplayNamePrefKey, string.Empty);
+        string cachedSelection = PlayerPrefs.GetString(
+            PlayerCatalogProvider.HorseBodyPresentationSelectionPrefKey,
+            string.Empty);
+        bool needsPresentationRefresh =
+            string.IsNullOrWhiteSpace(iconKey) ||
+            string.IsNullOrWhiteSpace(displayName) ||
+            (!string.IsNullOrWhiteSpace(expectedSelection) && cachedSelection != expectedSelection);
+
+        if (needsPresentationRefresh && PlayerCatalogProvider.Instance != null)
+        {
+            await PlayerCatalogProvider.Instance.CacheSelectedHorsePresentationAsync(
+                activeHorseId,
+                downloadIcon: true);
+
+            if (this == null || !isActiveAndEnabled)
+                return;
+
+            ApplyCachedHorseName();
+            iconKey = PlayerPrefs.GetString(PlayerCatalogProvider.HorseBodyIconPrefKey, string.Empty);
+        }
+
+        if (string.IsNullOrWhiteSpace(iconKey) || horseIcon == null || AddressablesService.Instance == null)
+            return;
+
+        try
+        {
+            await AddressablesService.Instance.EnsureInitializedAsync();
+            Sprite selectedHorseIcon = await AddressablesService.Instance.LoadAssetAsync<Sprite>(iconKey);
+
+            if (this != null && isActiveAndEnabled && selectedHorseIcon != null)
+                horseIcon.sprite = selectedHorseIcon;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[RacingResultPage] Could not load selected horse icon '{iconKey}': {exception.Message}");
+        }
+    }
+
+    private void ApplyCachedHorseName()
+    {
+        if (horseName == null)
+            return;
+
+        string displayName = PlayerPrefs.GetString(
+            PlayerCatalogProvider.HorseBodyDisplayNamePrefKey,
+            string.Empty);
+
+        if (!string.IsNullOrWhiteSpace(displayName))
+            horseName.text = displayName;
+    }
     #region Player List && Racing Stats && Records
     public void ShowResults()
+    {
+        if (TryShowResults())
+            return;
+
+        if (resultLoadRoutine != null)
+            StopCoroutine(resultLoadRoutine);
+
+        resultLoadRoutine = StartCoroutine(ShowResultsWhenStandingsAreReady());
+    }
+
+    private bool TryShowResults()
     {
         var lb = RacingLeaderboard.Instance;
         var standings = lb?.GetStandings();
 
-        if (standings == null || standings.Count == 0)
-        {
-            Debug.Log("[ShowResultPanel] standings is null or empty.");
-            return;
-        }
+        if (standings == null || standings.Count == 0 || !standings.Any(entry => entry != null && entry.isPlayer))
+            return false;
+
         BuildList(standings);
         GetBoostTime();
         GetOverallPenaltyTime();
         HorseStats();
+        return true;
+    }
+
+    private IEnumerator ShowResultsWhenStandingsAreReady()
+    {
+        for (int i = 0; i < StandingsLoadRetryFrames; i++)
+        {
+            yield return null;
+
+            if (TryShowResults())
+            {
+                resultLoadRoutine = null;
+                yield break;
+            }
+        }
+
+        resultLoadRoutine = null;
+        Debug.LogError("[RacingResultPage] Final standings were unavailable, so the result could not be applied.");
     }
     public void BuildList(List<RacingAgent> entries)
     {
@@ -432,12 +530,9 @@ public class RacingResultPage : MonoBehaviour
         lastCooling = rCooling;
         lastStamina = rStamina;
         // Progress Bar Updatelar
-        powerProgress.currentPercent = lastPower;
-        powerProgress.UpdateUI();
-        coolingProgress.currentPercent = lastCooling;
-        coolingProgress.UpdateUI();
-        staminaProgress.currentPercent = lastStamina;
-        staminaProgress.UpdateUI();
+        UpdateProgressBar(powerProgress, lastPower);
+        UpdateProgressBar(coolingProgress, lastCooling);
+        UpdateProgressBar(staminaProgress, lastStamina);
         HorseConditionStatsService.SaveCurrent(new HorseConditionStats(rPower, rCooling, rStamina));
         horseStatsApplied = true;
 
@@ -453,12 +548,18 @@ public class RacingResultPage : MonoBehaviour
         lastCooling = Mathf.Round(current.Cooling);
         lastStamina = Mathf.Round(current.Stamina);
 
-        powerProgress.currentPercent = lastPower;
-        powerProgress.UpdateUI();
-        coolingProgress.currentPercent = lastCooling;
-        coolingProgress.UpdateUI();
-        staminaProgress.currentPercent = lastStamina;
-        staminaProgress.UpdateUI();
+        UpdateProgressBar(powerProgress, lastPower);
+        UpdateProgressBar(coolingProgress, lastCooling);
+        UpdateProgressBar(staminaProgress, lastStamina);
+    }
+
+    private static void UpdateProgressBar(ProgressBar progressBar, float value)
+    {
+        if (progressBar == null)
+            return;
+
+        progressBar.currentPercent = value;
+        progressBar.UpdateUI();
     }
 
     private void GetOverallPenaltyTime()
@@ -478,20 +579,29 @@ public class RacingResultPage : MonoBehaviour
 
     private void UITransilations()
     {
-        titleText.text = LanguageManager.Instance.GetText(318);
-        currentRecordTitle.text = LanguageManager.Instance.GetText(317);
-        raceAgainText.text = LanguageManager.Instance.GetText(321);
-        mainMenuText.text = LanguageManager.Instance.GetText(330);
-        powerText.text = LanguageManager.Instance.GetText(326);
-        staminaText.text = LanguageManager.Instance.GetText(328);
-        coolingText.text = LanguageManager.Instance.GetText(327);
-        levelText.text = LanguageManager.Instance.GetText(319);
-        racingStatsTitleText.text = LanguageManager.Instance.GetText(331);
-        adsMoneyText.text = GetAdsAmountByScene(sceneType).ToString();
+        SetLocalizedText(titleText, 318);
+        SetLocalizedText(currentRecordTitle, 317);
+        SetLocalizedText(raceAgainText, 321);
+        SetLocalizedText(mainMenuText, 330);
+        SetLocalizedText(powerText, 326);
+        SetLocalizedText(staminaText, 328);
+        SetLocalizedText(coolingText, 327);
+        SetLocalizedText(levelText, 319);
+        SetLocalizedText(racingStatsTitleText, 331);
+
+        if (adsMoneyText != null)
+            adsMoneyText.text = GetAdsAmountByScene(sceneType).ToString();
+    }
+
+    private static void SetLocalizedText(TMP_Text target, int textId)
+    {
+        if (target != null && LanguageManager.Instance != null)
+            target.text = LanguageManager.Instance.GetText(textId);
     }
     public void Clear()
     {
         StopAllCoroutines();
+        resultLoadRoutine = null;
 
         foreach (var it in _spawned)
         {
@@ -508,28 +618,57 @@ public class RacingResultPage : MonoBehaviour
 
     public void Replay()
     {
+        if (replayRequested || replayDecisionPending)
+            return;
+
         if (lastPower < Constants.HorseConditionNum.Power || lastCooling < Constants.HorseConditionNum.Cool || lastStamina < Constants.HorseConditionNum.Stamina)
         {
             OpenFoodPanelPopup();
             return;  // Racing davom etmaydi
         }
-        bool success = CurrencyManager.Instance != null && CurrencyManager.Instance.SpendNyufiy(CheckRoomCost(), true);
-        if(!success)
-        {
-            // pul yetmayapti
-            UIOverlayRoot.I.Done(487, 488, 498, OnMoneyNotEnoughPlayAgain);
-            return;
-        }
+
         int defenseCheck = DataManager.Instance != null ? DataManager.Instance.GetItemAmount(Constants.PlayerItems.Defense) : 0;
         if (defenseCheck < 1)
         {
-            UIOverlayRoot.I.Confirm(493, 494, 496, 253, OpenTacticItemsPanel, PlayAgain);
+            if (UIOverlayRoot.I == null)
+                return;
+
+            replayDecisionPending = true;
+            UIOverlayRoot.I.Confirm(493, 494, 496, 253, HandleOpenTacticItemsPanel, HandleReplayConfirmed);
         }
         else
         {
-            PlayAgain();
+            TryPayAndPlayAgain();
         }
 
+    }
+
+    private void TryPayAndPlayAgain()
+    {
+        if (replayRequested)
+            return;
+
+        bool success = CurrencyManager.Instance != null && CurrencyManager.Instance.SpendNyufiy(CheckRoomCost(), true);
+        if (!success)
+        {
+            UIOverlayRoot.I?.Done(487, 488, 498, OnMoneyNotEnoughPlayAgain);
+            return;
+        }
+
+        replayRequested = true;
+        PlayAgain();
+    }
+
+    private void HandleOpenTacticItemsPanel()
+    {
+        replayDecisionPending = false;
+        OpenTacticItemsPanel();
+    }
+
+    private void HandleReplayConfirmed()
+    {
+        replayDecisionPending = false;
+        TryPayAndPlayAgain();
     }
     private void PlusMoneyReward()
     {
@@ -542,6 +681,9 @@ public class RacingResultPage : MonoBehaviour
     }
     private void OnMoneyNotEnough(int amount)
     {
+        if (adRequestInProgress)
+            return;
+
         GameAnalyticsEvents.RewardedAdClicked(
           placement: "coin_shop",
           rewardType: "nyufiy",
@@ -554,9 +696,15 @@ public class RacingResultPage : MonoBehaviour
             return;
         }
 
+        adRequestInProgress = true;
+        if (adWatchBtn != null)
+            adWatchBtn.interactable = false;
+
         AdsManager.Instance.ShowRewarded(() =>
         {
-            CurrencyManager.Instance.AddNyufiy(amount, true);
+            CurrencyManager.Instance?.AddNyufiy(amount, true);
+            RefreshCurrencyTotals();
+            FinishAdRequest();
 
 
             GameAnalyticsEvents.RewardedAdCompleted(
@@ -571,7 +719,30 @@ public class RacingResultPage : MonoBehaviour
             );
 
         },
-        () => GameAnalyticsEvents.RewardedAdFailed("coin_shop"));
+        () =>
+        {
+            FinishAdRequest();
+            GameAnalyticsEvents.RewardedAdFailed("coin_shop");
+        });
+    }
+
+    private void FinishAdRequest()
+    {
+        adRequestInProgress = false;
+        if (adWatchBtn != null)
+            adWatchBtn.interactable = true;
+    }
+
+    private void RefreshCurrencyTotals()
+    {
+        if (CurrencyManager.Instance == null)
+            return;
+
+        if (allNyufiyText != null)
+            allNyufiyText.text = $"{CurrencyManager.Instance.Nyufiy:N0}";
+
+        if (allCoinText != null)
+            allCoinText.text = $"{CurrencyManager.Instance.Coin:N0}";
     }
     public void PlayAgain()
     {

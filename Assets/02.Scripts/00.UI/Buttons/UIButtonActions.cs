@@ -881,7 +881,7 @@ public class UIButtonActions : MonoBehaviour
         inGameSettingsPanel.gameObject.SetActive(true);
     }
 
-    public void ReleaseRacingPauseForTutorial()
+    public void ResumeRacingFromSettings()
     {
         if (inGameSettingsPanel != null &&
             inGameSettingsPanel.gameObject.activeSelf)
@@ -889,9 +889,7 @@ public class UIButtonActions : MonoBehaviour
             inGameSettingsPanel.gameObject.SetActive(false);
         }
 
-        pauseMenu?.ReleaseForRacingTutorial();
-        RacingController.Instance?.ResumeRaceTime();
-        _pausedByApp = false;
+        pauseMenu?.ResumeGame();
     }
 
     public void ShowResultPage()

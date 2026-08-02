@@ -17,6 +17,10 @@ using UnityEngine.Networking;
 /// </summary>
 public sealed class PlayerCatalogProvider : MonoBehaviour
 {
+    public const string HorseBodyDisplayNamePrefKey = "selectedHorseBodyDisplayName";
+    public const string HorseBodyIconPrefKey = "selectedHorseBodyIconKey";
+    public const string HorseBodyPresentationSelectionPrefKey = "selectedHorseBodyPresentationSelection";
+
     public static PlayerCatalogProvider Instance { get; private set; }
 
     public event Action OnCatalogReady; // global ready
@@ -96,11 +100,13 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
             await PreloadSelectedAssetsAsync(playerId);
         }
         // ✅ horse ham xuddi shunday (faqat providerda)
+        string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
         if (preloadActiveHorseSelectedAssets)
         {
-            string horseId = PlayerPrefs.GetString("ActiveHorseId", "horse_01");
             await PreloadSelectedAssetsAsync(horseId);
         }
+
+        await CacheSelectedHorsePresentationAsync(horseId, preloadActiveHorseSelectedAssets);
     }
 
     public async Task<CatalogData> EnsureCatalogAsync()
@@ -181,6 +187,63 @@ public sealed class PlayerCatalogProvider : MonoBehaviour
     {
         if (_globalCatalog == null) return "";
         return _globalCatalog.GetDefaultOptionId(playerId, slotId);
+    }
+
+    public async Task<bool> CacheSelectedHorsePresentationAsync(
+        string horseId = null,
+        bool downloadIcon = true,
+        string bodyOptionId = null)
+    {
+        const string bodySlotId = "Body";
+
+        horseId = string.IsNullOrWhiteSpace(horseId)
+            ? PlayerPrefs.GetString("ActiveHorseId", "horse_01")
+            : horseId.Trim();
+
+        CatalogData catalog = await EnsureCatalogAsync();
+        if (catalog == null)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(bodyOptionId))
+            bodyOptionId = AvatarCustomPrefs.GetSelection(horseId, bodySlotId);
+
+        if (string.IsNullOrWhiteSpace(bodyOptionId))
+            bodyOptionId = catalog.GetDefaultOptionId(horseId, bodySlotId);
+
+        CatalogEntry entry = catalog.Find(horseId, bodySlotId, bodyOptionId);
+        if (entry == null)
+            return false;
+
+        AvatarCustomPrefs.SetSelection(horseId, bodySlotId, entry.OptionId);
+
+        string displayName = entry.DisplayName;
+        if (string.IsNullOrWhiteSpace(displayName) && LanguageManager.Instance != null && LanguageManager.Instance.IsReady)
+        {
+            string localizedName = LanguageManager.Instance.GetText(entry.NameCode);
+            if (!string.IsNullOrWhiteSpace(localizedName) && !localizedName.StartsWith("#", StringComparison.Ordinal))
+                displayName = localizedName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(displayName))
+            PlayerPrefs.SetString(HorseBodyDisplayNamePrefKey, displayName.Trim());
+
+        if (!string.IsNullOrWhiteSpace(entry.IconKey))
+            PlayerPrefs.SetString(HorseBodyIconPrefKey, entry.IconKey);
+
+        PlayerPrefs.SetString(
+            HorseBodyPresentationSelectionPrefKey,
+            $"{horseId}|{entry.OptionId}");
+
+        PlayerPrefs.Save();
+
+        if (downloadIcon && !string.IsNullOrWhiteSpace(entry.IconKey) && AddressablesService.Instance != null)
+        {
+            await AddressablesService.Instance.EnsureDependenciesDownloadedAsync(
+                entry.IconKey,
+                showErrorPopup: false);
+        }
+
+        return true;
     }
 
     // -------- Preload (download deps) --------
@@ -515,6 +578,7 @@ public sealed class CatalogData
                 meshKey: r.meshKey,
                 materialKey: r.materialKey,
                 iconKey: r.iconKey,
+                displayName: r.displayName,
                 isDefault: r.isDefault,
                 price: r.price,
                 nameCode: r.nameCode,
@@ -565,6 +629,7 @@ public sealed class CatalogData
         public string meshKey;
         public string materialKey;
         public string iconKey;
+        public string displayName;
         public bool isDefault;
         public int price;
         public int nameCode;
@@ -583,6 +648,7 @@ public sealed class CatalogEntry
     public string MeshKey { get; }
     public string MaterialKey { get; }
     public string IconKey { get; }
+    public string DisplayName { get; }
     public bool IsDefault { get; }
     public int Price { get; }   // 0 → bepul
     public int NameCode { get; }
@@ -595,7 +661,7 @@ public sealed class CatalogEntry
 
     public CatalogEntry(
         string avatarId, string slotId, string optionId,
-        string meshKey, string materialKey, string iconKey,
+        string meshKey, string materialKey, string iconKey, string displayName,
         bool isDefault, int price, int nameCode, int horseTag,
         int power, int cool, int stamina)
     {
@@ -605,6 +671,7 @@ public sealed class CatalogEntry
         MeshKey = (meshKey ?? "").Trim();
         MaterialKey = (materialKey ?? "").Trim();
         IconKey = (iconKey ?? "").Trim();
+        DisplayName = (displayName ?? "").Trim();
         IsDefault = isDefault;
         Price = Mathf.Max(0, price);
         NameCode = Mathf.Max(0, nameCode);

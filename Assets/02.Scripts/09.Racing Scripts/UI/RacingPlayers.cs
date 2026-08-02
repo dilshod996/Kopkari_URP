@@ -154,7 +154,7 @@ public class RacingPlayers : MonoBehaviour
     {
         string userName = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         string teamName = PlayerPrefs.GetString(Constants.Player.TeamName);
-        string horseName = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
+        string horseName = PlayerPrefs.GetString(PlayerCatalogProvider.HorseBodyDisplayNamePrefKey);
         if (!useDemoSeed) return new List<PlayerEntry>();
 
         return new List<PlayerEntry>

@@ -947,6 +947,15 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void ShowPickupButtonExplanation()
     {
+        // The explanation only needs to interrupt gameplay once. If the player
+        // already acknowledged it and later re-enters pickup range, return
+        // directly to the non-blocking hold prompt.
+        if (PlayerPrefs.GetInt(Constants.KopkariTutorial.PickupButton, 0) == 1)
+        {
+            BeginPickupPractice();
+            return;
+        }
+
         HideTutorialObjectivePreview();
         state = TutorialState.PickupButtonExplanation;
         TutorialPauseController.Apply(TutorialTimeMode.PauseGame);
@@ -962,9 +971,12 @@ public sealed class RegistanTutorialController : MonoBehaviour
 
     private void BeginPickupPractice()
     {
-        CompleteCoreStep(
-            Constants.KopkariTutorial.PickupButton,
-            KopkariTutorialProgress.LoadLocal().Checkpoint);
+        if (PlayerPrefs.GetInt(Constants.KopkariTutorial.PickupButton, 0) != 1)
+        {
+            CompleteCoreStep(
+                Constants.KopkariTutorial.PickupButton,
+                KopkariTutorialProgress.LoadLocal().Checkpoint);
+        }
         state = TutorialState.WaitingForPickupPress;
         TutorialPauseController.Apply(TutorialTimeMode.KeepPlaying);
         ShowPresentation(

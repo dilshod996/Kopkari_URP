@@ -108,14 +108,17 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private GameObject horseResourcesObject;
     [SerializeField] private GameObject coinsPage;
     [SerializeField] private EnvironmentChangeUI environmentChangePanel;
-    [SerializeField] private EnvironmentLoadingUI environmentLoadingUI;
     [SerializeField] private ConditionCheck conditionCheckObj;
     [SerializeField] private LevelUPUI levelUPUI;
+    [SerializeField] private HomeWelcomeBanner welcomeBanner;
+    [SerializeField, Min(0f)] private float welcomeDelayAfterHomeReady = 2f;
 
     #region Horse and Player Data
 
-    [Header("PlayerData")]
-    [SerializeField] private TMP_Text playerName, suppliesName;
+    [Header("PlayerName")]
+    [SerializeField] private TMP_Text playerName;
+    [Header("Player Data")]
+    [SerializeField] private TMP_Text suppliesName;
     [SerializeField] private TMP_Text defenseText, slowDownText, webText, whipText;
 
     [SerializeField] private TMP_Text defenseAmountText, webAmountText, slowDownAmountText, whipAmountText;
@@ -128,6 +131,9 @@ public class HomeMainUI : MonoBehaviour
     [SerializeField] private TMP_Text powerText, staminaText, coolingText;
     private float foolPercentage=100f;
     private Coroutine horseStatsRefreshRoutine;
+    private HorseConditionStats welcomeHorseCurrent;
+    private HorseConditionStats welcomeHorseMax;
+    private bool welcomeHorseConditionReady;
 
     #endregion
 
@@ -171,6 +177,7 @@ public class HomeMainUI : MonoBehaviour
     public event Action FoodPanelShown;
     private Coroutine levelUpCheckRoutine;
     private Coroutine homeTutorialResumeRoutine;
+    private Coroutine welcomeBannerRoutine;
     private static bool IsAnyHomeTutorialActive =>
         HomeTutorialController.IsTutorialActive ||
         HomeHorseConditionTutorialController.IsTutorialActive;
@@ -210,6 +217,7 @@ public class HomeMainUI : MonoBehaviour
         //}
         RiderStatistcs();
         HorseStatistcs();
+        welcomeHorseConditionReady = false;
         horseStatsRefreshRoutine = StartCoroutine(RefreshHorseStatsFromCatalog());
         if(LanguageManager.Instance != null) UITransilations();
         //PlayerResourse.OnNyufiyUpdated += UpdateNyufiy;
@@ -233,6 +241,10 @@ public class HomeMainUI : MonoBehaviour
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
         CheckTutorialRewardOnReturn();
+
+        if (welcomeBannerRoutine != null)
+            StopCoroutine(welcomeBannerRoutine);
+        welcomeBannerRoutine = StartCoroutine(ShowWelcomeBannerWhenReady());
     }
     private void OnDisable()
     {
@@ -261,6 +273,13 @@ public class HomeMainUI : MonoBehaviour
         FoodShowerPopup.OnFoodPopupVisibilityChanged -= FoodPanelState;
         LobbyManager.OnNameChanged -= LobbyName;
         DataManager.OnPlayerDataLoaded -= HandlePlayerDataLoaded;
+        if (welcomeBannerRoutine != null)
+        {
+            StopCoroutine(welcomeBannerRoutine);
+            welcomeBannerRoutine = null;
+        }
+        if (welcomeBanner != null)
+            welcomeBanner.HideAndClear();
         playBtn.onClick.RemoveAllListeners();
         nyufiyButton.onClick.RemoveAllListeners();
         korakButton.onClick.RemoveAllListeners();
@@ -483,10 +502,9 @@ public class HomeMainUI : MonoBehaviour
     private void HorseStatistcs()
     {
         // Horse name (bor bo'lsa chiqaramiz)
-        if (PlayerPrefs.HasKey(Constants.Horse.HorseNameKey))
-        {
-            horseName.text = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
-        }
+        horseName.text = PlayerPrefs.GetString(
+             PlayerCatalogProvider.HorseBodyDisplayNamePrefKey,
+             string.Empty);
 
         // Team name (doim default bo'lsa ham bo'ladi)
         EnsureString(Constants.Player.TeamName, "Kaja Riders");
@@ -505,9 +523,14 @@ public class HomeMainUI : MonoBehaviour
         if (task.Exception != null)
         {
             Debug.LogWarning($"Horse max stat refresh failed: {task.Exception.GetBaseException().Message}");
+            CacheWelcomeHorseConditionFromLocal();
+            horseStatsRefreshRoutine = null;
             yield break;
         }
 
+        welcomeHorseMax = HorseConditionStatsService.GetCachedMaxOrDefault();
+        welcomeHorseCurrent = task.Result;
+        welcomeHorseConditionReady = true;
         ApplyCurrentHorseStats(task.Result);
         horseStatsRefreshRoutine = null;
     }
@@ -521,7 +544,17 @@ public class HomeMainUI : MonoBehaviour
 
     private void HandleHorseConditionChanged(HorseConditionStats current)
     {
+        welcomeHorseMax = HorseConditionStatsService.GetCachedMaxOrDefault();
+        welcomeHorseCurrent = current;
+        welcomeHorseConditionReady = true;
         ApplyCurrentHorseStats(current);
+    }
+
+    private void CacheWelcomeHorseConditionFromLocal()
+    {
+        welcomeHorseMax = HorseConditionStatsService.GetCachedMaxOrDefault();
+        welcomeHorseCurrent = HorseConditionStatsService.GetCurrentOrInitialize(welcomeHorseMax);
+        welcomeHorseConditionReady = true;
     }
 
     private void ApplyCurrentHorseStats(HorseConditionStats current)
@@ -570,6 +603,7 @@ public class HomeMainUI : MonoBehaviour
     }
     public void SHowFoodPanel()
     {
+        CancelWelcomeBannerSequence();
         MoveHomePanelCameraIn(
             GetHomePanelCameraPosition(FoodCameraPosition),
             FoodCameraRotation,
@@ -620,19 +654,6 @@ public class HomeMainUI : MonoBehaviour
     }
     #endregion
 
-    #region Beginning FadeOut Image
-
-    public void RemoveInitialImage()
-    {
-        StartCoroutine(FadeOut());
-    }
-    public IEnumerator FadeOut()  // 1 -> 0
-    {
-        yield return new WaitForSeconds(0.6f);
-        environmentLoadingUI.gameObject.SetActive(false);
-    }
-
-    #endregion
 
     #region SHow and Hide UI Pages
     public void ShowUI(MonoBehaviour ui) => ShowUI(ui.gameObject);
@@ -943,6 +964,7 @@ public class HomeMainUI : MonoBehaviour
     }
     public void OpenGameMainPanel()
     {
+        CancelWelcomeBannerSequence();
         ShowUI(playMode.gameObject, () =>
         {
             GameModePanelShown?.Invoke();
@@ -1035,25 +1057,210 @@ public class HomeMainUI : MonoBehaviour
             case Constants.MapNames.Egypt:
                 lobbyName.text= LanguageManager.Instance.GetText(410);
                 break;
+            case Constants.MapNames.Kansas:
+                lobbyName.text = LanguageManager.Instance.GetText(804);
+                break;
             default:
                 lobbyName.text = "Unknown";
                 break;
         }
         
     }
-    public void SetEnvironmentLoading()
-    {
-        string getEnvrionmentName = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
-        if (!environmentLoadingUI.gameObject.activeSelf)
-        {
-            environmentLoadingUI.gameObject.SetActive(true);
-        }
-        environmentLoadingUI.SetMapData(getEnvrionmentName);
-        LobbyName(getEnvrionmentName);
-    }
     #endregion
 
     #region Home Tutorial Coordination
+
+    private IEnumerator ShowWelcomeBannerWhenReady()
+    {
+        // Let Daily Reward and Level Up decide whether they need the screen first.
+        yield return null;
+
+        if (IsWelcomeSuppressedByOpenPanel() ||
+            welcomeBanner == null ||
+            !HomeTutorialProgress.LoadLocal().Completed)
+        {
+            welcomeBannerRoutine = null;
+            yield break;
+        }
+
+        string savedPlayerName = PlayerPrefs.GetString(
+            Constants.Player.UsernameKey,
+            string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(savedPlayerName))
+        {
+            welcomeBannerRoutine = null;
+            yield break;
+        }
+
+        while (IsWelcomeBannerBlocked())
+        {
+            if (IsWelcomeSuppressedByOpenPanel())
+            {
+                welcomeBannerRoutine = null;
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        while (!welcomeHorseConditionReady && horseStatsRefreshRoutine != null)
+            yield return null;
+
+        float readyTime = 0f;
+        while (readyTime < welcomeDelayAfterHomeReady)
+        {
+            if (IsWelcomeSuppressedByOpenPanel())
+            {
+                welcomeBannerRoutine = null;
+                yield break;
+            }
+
+            if (IsWelcomeBannerBlocked())
+                readyTime = 0f;
+            else
+                readyTime += Time.unscaledDeltaTime;
+
+            yield return null;
+        }
+
+        if (IsWelcomeSuppressedByOpenPanel())
+        {
+            welcomeBannerRoutine = null;
+            yield break;
+        }
+
+        welcomeBanner.ShowWelcome(
+            welcomeBanner.WelcomeBackText,
+            savedPlayerName,
+            priority: HomeWelcomeBanner.MessagePriority.Normal);
+
+        if (welcomeHorseConditionReady)
+            QueueHorseConditionMessage();
+
+        welcomeBannerRoutine = null;
+    }
+
+    private void QueueHorseConditionMessage()
+    {
+        bool fullyRecovered = IsAtMaximum(welcomeHorseCurrent.Power, welcomeHorseMax.Power) &&
+                              IsAtMaximum(welcomeHorseCurrent.Cooling, welcomeHorseMax.Cooling) &&
+                              IsAtMaximum(welcomeHorseCurrent.Stamina, welcomeHorseMax.Stamina);
+
+        string horseDisplayName = PlayerPrefs.GetString(
+            PlayerCatalogProvider.HorseBodyDisplayNamePrefKey,
+            string.Empty).Trim();
+        string title = string.IsNullOrWhiteSpace(horseDisplayName)
+            ? welcomeBanner.HorseConditionTitleText
+            : horseDisplayName;
+
+        if (fullyRecovered)
+        {
+            welcomeBanner.ShowWelcome(
+                title,
+                welcomeBanner.FullyRecoveredText,
+                duration: 8f,
+                actionLabel: welcomeBanner.PlayButtonText,
+                onAction: OpenGameMainPanel);
+            return;
+        }
+
+        string lowConditionMessage = GetMostUrgentLowConditionMessage(welcomeHorseCurrent);
+        if (!string.IsNullOrEmpty(lowConditionMessage))
+        {
+            welcomeBanner.ShowWelcome(
+                title,
+                lowConditionMessage,
+                duration: 8f,
+                actionLabel: welcomeBanner.ConditionButtonText,
+                onAction: SHowFoodPanel);
+            return;
+        }
+
+        welcomeBanner.ShowWelcome(
+            title,
+            welcomeBanner.ReadyToRaceText,
+            duration: 8f,
+            actionLabel: welcomeBanner.PlayButtonText,
+            onAction: OpenGameMainPanel);
+    }
+
+    private string GetMostUrgentLowConditionMessage(HorseConditionStats current)
+    {
+        float largestDeficit = 0f;
+        string message = string.Empty;
+
+        ConsiderConditionDeficit(
+            current.Stamina,
+            Constants.HorseConditionNum.Stamina,
+            welcomeBanner.NeedsFoodText,
+            ref largestDeficit,
+            ref message);
+        ConsiderConditionDeficit(
+            current.Cooling,
+            Constants.HorseConditionNum.Cool,
+            welcomeBanner.NeedsWaterText,
+            ref largestDeficit,
+            ref message);
+        ConsiderConditionDeficit(
+            current.Power,
+            Constants.HorseConditionNum.Power,
+            welcomeBanner.NeedsRecoveryText,
+            ref largestDeficit,
+            ref message);
+
+        return message;
+    }
+
+    private static void ConsiderConditionDeficit(
+        float current,
+        float required,
+        string conditionMessage,
+        ref float largestDeficit,
+        ref string selectedMessage)
+    {
+        if (required <= 0f || current >= required)
+            return;
+
+        float deficit = (required - current) / required;
+        if (deficit <= largestDeficit)
+            return;
+
+        largestDeficit = deficit;
+        selectedMessage = conditionMessage;
+    }
+
+    private static bool IsAtMaximum(float current, float maximum)
+    {
+        return maximum > 0f && current >= maximum - 0.01f;
+    }
+
+    private bool IsWelcomeBannerBlocked()
+    {
+        return IsAnyHomeTutorialActive ||
+               (dailyRewardUI != null && dailyRewardUI.gameObject.activeInHierarchy) ||
+               (rewardPopup != null && rewardPopup.gameObject.activeInHierarchy) ||
+               (levelUPUI != null && levelUPUI.gameObject.activeInHierarchy) ||
+               PlayerPrefs.GetInt(Constants.Level.LevelUpPending, 0) > 0;
+    }
+
+    private bool IsWelcomeSuppressedByOpenPanel()
+    {
+        return (foodPanel != null && foodPanel.activeInHierarchy) ||
+               (playMode != null && playMode.gameObject.activeInHierarchy);
+    }
+
+    private void CancelWelcomeBannerSequence()
+    {
+        if (welcomeBannerRoutine != null)
+        {
+            StopCoroutine(welcomeBannerRoutine);
+            welcomeBannerRoutine = null;
+        }
+
+        if (welcomeBanner != null)
+            welcomeBanner.HideAndClear();
+    }
 
     private void HandlePlayerDataLoaded()
     {

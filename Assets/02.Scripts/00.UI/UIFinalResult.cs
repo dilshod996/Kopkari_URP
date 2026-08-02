@@ -40,7 +40,7 @@ public class UIFinalResult : MonoBehaviour
         title.text = LanguageManager.Instance.GetText(278);
         string playerNameGet = PlayerPrefs.GetString(Constants.Player.UsernameKey);
         playerName.text = playerNameGet;
-        string horseNameGet = PlayerPrefs.GetString(Constants.Horse.HorseNameKey);
+        string horseNameGet = PlayerPrefs.GetString(PlayerCatalogProvider.HorseBodyDisplayNamePrefKey);
         horseName.text = horseNameGet;
         backBtnText.text = LanguageManager.Instance.GetText(254);
         playAgainBtnText.text = LanguageManager.Instance.GetText(279);

@@ -197,7 +197,15 @@ public class HorseSkinLoader : MonoBehaviour
         _pending.Clear();
 
         if (!string.IsNullOrEmpty(pendingBodyOptionId))
+        {
+            if (PlayerCatalogProvider.Instance != null)
+                await PlayerCatalogProvider.Instance.CacheSelectedHorsePresentationAsync(
+                    _horseId,
+                    downloadIcon: true,
+                    bodyOptionId: pendingBodyOptionId);
+
             await HorseConditionStatsService.SyncSelectedBodyMaxAsync(_horseId, pendingBodyOptionId);
+        }
     }
 
     // ----------------- helpers -----------------

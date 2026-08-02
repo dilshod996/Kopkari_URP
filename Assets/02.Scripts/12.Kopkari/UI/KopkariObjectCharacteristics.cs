@@ -133,7 +133,9 @@ public sealed class KopkariObjectCharacteristics : MonoBehaviour
             : PlayerPrefs.GetString(Constants.Player.TeamName, "Kaja Riders");
         string countryName = playersList != null ? playersList.LocalCountryName : string.Empty;
         Sprite flag = playersList != null ? playersList.LocalFlagIcon : null;
-        string horseName = PlayerPrefs.GetString(Constants.Horse.HorseNameKey, playerHorseFallback);
+        string horseName = PlayerPrefs.GetString(
+            PlayerCatalogProvider.HorseBodyDisplayNamePrefKey,
+            playerHorseFallback);
         int wins = PlayerPrefs.GetInt(Constants.RacingData.TotalWins, 0);
 
         ApplyLocalizedLabels();
