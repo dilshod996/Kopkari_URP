@@ -1370,6 +1370,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   startingPage: {fileID: 1778978682}
   videoPlayer: {fileID: 52523315}
+  skipBtnText: {fileID: 848545049}
+  versionText: {fileID: 1924353117}
   notificationManager: {fileID: 0}
   progressBar: {fileID: 1292556200}
   skipButton: {fileID: 1937657689}
@@ -1733,7 +1735,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: Skip Intro
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: d8ae1f98df36a63449dc94282545eadd, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: faa84a64b9c21f947afc9419a878ce21, type: 2}
   m_sharedMaterial: {fileID: 477140456564442613, guid: d8ae1f98df36a63449dc94282545eadd,
     type: 2}
   m_fontSharedMaterials: []
@@ -1798,7 +1800,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!222 &848545050

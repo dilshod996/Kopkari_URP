@@ -210,11 +210,6 @@ public class HomeMainUI : MonoBehaviour
         saleBtn.onClick.AddListener(OnClickNextDayDebug);
         lastInputTime = Time.realtimeSinceStartup;
 
-        //if (touchAction != null)
-        //{
-        //    touchAction.Enable();
-        //    touchAction.performed += OnTouch;
-        //}
         RiderStatistcs();
         HorseStatistcs();
         welcomeHorseConditionReady = false;
@@ -241,7 +236,7 @@ public class HomeMainUI : MonoBehaviour
         competationsBtn.onClick.AddListener(OpenCompetationsPanel);
         envChangeBtn.onClick.AddListener(OpenEnvironmentChangePanel);
         CheckTutorialRewardOnReturn();
-
+        SetInitialMapName();
         if (welcomeBannerRoutine != null)
             StopCoroutine(welcomeBannerRoutine);
         welcomeBannerRoutine = StartCoroutine(ShowWelcomeBannerWhenReady());
@@ -1066,14 +1061,64 @@ public class HomeMainUI : MonoBehaviour
         }
         
     }
+    private void SetInitialMapName()
+    {
+        string mapname = PlayerPrefs.GetString(Constants.HomeEnivronments.SelectedEnvironment);
+        switch (mapname)
+        {
+            case Constants.MapNames.Zarafshan:
+                lobbyName.text = LanguageManager.Instance.GetText(27);
+                break;
+            case Constants.MapNames.Egypt:
+                lobbyName.text = LanguageManager.Instance.GetText(410);
+                break;
+            case Constants.MapNames.Kansas:
+                lobbyName.text = LanguageManager.Instance.GetText(804);
+                break;
+            default:
+                lobbyName.text = "Unknown";
+                break;
+        }
+    }
     #endregion
 
     #region Home Tutorial Coordination
+
+    private enum HorseConditionNotice
+    {
+        None,
+        NeedsFood,
+        NeedsWater,
+        NeedsRecovery
+    }
+
+    private enum HomeReturnType
+    {
+        None,
+        Kopkari,
+        Zarafshan,
+        Egypt,
+        Kansas
+    }
 
     private IEnumerator ShowWelcomeBannerWhenReady()
     {
         // Let Daily Reward and Level Up decide whether they need the screen first.
         yield return null;
+
+        SceneLoadManager.SceneType previousScene = SceneLoadManager.Instance != null
+            ? SceneLoadManager.Instance.PreviousSceneType
+            : SceneLoadManager.SceneType.None;
+        bool cameFromIntro = previousScene == SceneLoadManager.SceneType.Intro;
+        bool cameFromAvatarCustom = previousScene == SceneLoadManager.SceneType.AvatarCustom;
+        HomeReturnType gameReturnType = GetGameReturnType(previousScene);
+        bool cameFromGame = gameReturnType != HomeReturnType.None;
+
+        if (!cameFromIntro && !cameFromAvatarCustom && !cameFromGame)
+        {
+            welcomeBannerRoutine = null;
+            yield break;
+        }
 
         if (IsWelcomeSuppressedByOpenPanel() ||
             welcomeBanner == null ||
@@ -1087,7 +1132,7 @@ public class HomeMainUI : MonoBehaviour
             Constants.Player.UsernameKey,
             string.Empty).Trim();
 
-        if (string.IsNullOrWhiteSpace(savedPlayerName))
+        if (cameFromIntro && string.IsNullOrWhiteSpace(savedPlayerName))
         {
             welcomeBannerRoutine = null;
             yield break;
@@ -1104,7 +1149,9 @@ public class HomeMainUI : MonoBehaviour
             yield return null;
         }
 
-        while (!welcomeHorseConditionReady && horseStatsRefreshRoutine != null)
+        while ((cameFromIntro || cameFromGame) &&
+               !welcomeHorseConditionReady &&
+               horseStatsRefreshRoutine != null)
             yield return null;
 
         float readyTime = 0f;
@@ -1130,13 +1177,38 @@ public class HomeMainUI : MonoBehaviour
             yield break;
         }
 
-        welcomeBanner.ShowWelcome(
-            welcomeBanner.WelcomeBackText,
-            savedPlayerName,
-            priority: HomeWelcomeBanner.MessagePriority.Normal);
+        if (cameFromAvatarCustom)
+        {
+            HomeWelcomeBanner.LocalizedMessage avatarMessage = welcomeBanner.GetAvatarReturnMessage();
+            welcomeBanner.ShowWelcome(
+                avatarMessage.Title,
+                avatarMessage.Details,
+                priority: HomeWelcomeBanner.MessagePriority.Normal);
+        }
+        else if (cameFromIntro)
+        {
+            HomeWelcomeBanner.LocalizedMessage welcomeMessage =
+                welcomeBanner.GetIntroWelcomeMessage(savedPlayerName);
+            welcomeBanner.ShowWelcome(
+                welcomeMessage.Title,
+                welcomeMessage.Details,
+                priority: HomeWelcomeBanner.MessagePriority.Normal);
 
-        if (welcomeHorseConditionReady)
-            QueueHorseConditionMessage();
+            if (welcomeHorseConditionReady)
+                QueueHorseConditionMessage();
+        }
+        else if (cameFromGame)
+        {
+            HomeWelcomeBanner.LocalizedMessage returnMessage =
+                GetGameReturnMessage(gameReturnType);
+            welcomeBanner.ShowWelcome(
+                returnMessage.Title,
+                returnMessage.Details,
+                priority: HomeWelcomeBanner.MessagePriority.Normal);
+
+            if (welcomeHorseConditionReady)
+                QueueHorseConditionMessage();
+        }
 
         welcomeBannerRoutine = null;
     }
@@ -1150,74 +1222,77 @@ public class HomeMainUI : MonoBehaviour
         string horseDisplayName = PlayerPrefs.GetString(
             PlayerCatalogProvider.HorseBodyDisplayNamePrefKey,
             string.Empty).Trim();
-        string title = string.IsNullOrWhiteSpace(horseDisplayName)
-            ? welcomeBanner.HorseConditionTitleText
-            : horseDisplayName;
 
         if (fullyRecovered)
         {
+            HomeWelcomeBanner.LocalizedMessage message =
+                welcomeBanner.GetFullyRecoveredMessage(horseDisplayName);
             welcomeBanner.ShowWelcome(
-                title,
-                welcomeBanner.FullyRecoveredText,
+                message.Title,
+                message.Details,
                 duration: 8f,
                 actionLabel: welcomeBanner.PlayButtonText,
                 onAction: OpenGameMainPanel);
             return;
         }
 
-        string lowConditionMessage = GetMostUrgentLowConditionMessage(welcomeHorseCurrent);
-        if (!string.IsNullOrEmpty(lowConditionMessage))
+        HorseConditionNotice lowCondition = GetMostUrgentLowCondition(welcomeHorseCurrent);
+        if (lowCondition != HorseConditionNotice.None)
         {
+            HomeWelcomeBanner.LocalizedMessage message =
+                GetHorseConditionMessage(lowCondition, horseDisplayName);
             welcomeBanner.ShowWelcome(
-                title,
-                lowConditionMessage,
+                message.Title,
+                message.Details,
                 duration: 8f,
                 actionLabel: welcomeBanner.ConditionButtonText,
                 onAction: SHowFoodPanel);
             return;
         }
 
+        HomeWelcomeBanner.LocalizedMessage readyMessage =
+            welcomeBanner.GetReadyToRaceMessage(horseDisplayName);
         welcomeBanner.ShowWelcome(
-            title,
-            welcomeBanner.ReadyToRaceText,
+            readyMessage.Title,
+            readyMessage.Details,
             duration: 8f,
             actionLabel: welcomeBanner.PlayButtonText,
             onAction: OpenGameMainPanel);
     }
 
-    private string GetMostUrgentLowConditionMessage(HorseConditionStats current)
+    private HorseConditionNotice GetMostUrgentLowCondition(HorseConditionStats current)
     {
         float largestDeficit = 0f;
-        string message = string.Empty;
+        HorseConditionNotice notice = HorseConditionNotice.None;
 
         ConsiderConditionDeficit(
             current.Stamina,
             Constants.HorseConditionNum.Stamina,
-            welcomeBanner.NeedsFoodText,
+            HorseConditionNotice.NeedsFood,
             ref largestDeficit,
-            ref message);
+            ref notice);
         ConsiderConditionDeficit(
             current.Cooling,
             Constants.HorseConditionNum.Cool,
-            welcomeBanner.NeedsWaterText,
+            HorseConditionNotice.NeedsWater,
             ref largestDeficit,
-            ref message);
+            ref notice);
         ConsiderConditionDeficit(
             current.Power,
             Constants.HorseConditionNum.Power,
-            welcomeBanner.NeedsRecoveryText,
+            HorseConditionNotice.NeedsRecovery,
             ref largestDeficit,
-            ref message);
+            ref notice);
 
-        return message;
+        return notice;
     }
 
     private static void ConsiderConditionDeficit(
         float current,
         float required,
-        string conditionMessage,
+        HorseConditionNotice conditionNotice,
         ref float largestDeficit,
-        ref string selectedMessage)
+        ref HorseConditionNotice selectedNotice)
     {
         if (required <= 0f || current >= required)
             return;
@@ -1227,7 +1302,62 @@ public class HomeMainUI : MonoBehaviour
             return;
 
         largestDeficit = deficit;
-        selectedMessage = conditionMessage;
+        selectedNotice = conditionNotice;
+    }
+
+    private HomeWelcomeBanner.LocalizedMessage GetHorseConditionMessage(
+        HorseConditionNotice notice,
+        string horseName)
+    {
+        switch (notice)
+        {
+            case HorseConditionNotice.NeedsFood:
+                return welcomeBanner.GetNeedsFoodMessage(horseName);
+            case HorseConditionNotice.NeedsWater:
+                return welcomeBanner.GetNeedsWaterMessage(horseName);
+            case HorseConditionNotice.NeedsRecovery:
+                return welcomeBanner.GetNeedsRecoveryMessage(horseName);
+            default:
+                return welcomeBanner.GetReadyToRaceMessage(horseName);
+        }
+    }
+
+    private HomeWelcomeBanner.LocalizedMessage GetGameReturnMessage(HomeReturnType returnType)
+    {
+        switch (returnType)
+        {
+            case HomeReturnType.Kopkari:
+                return welcomeBanner.GetKopkariReturnMessage();
+            case HomeReturnType.Zarafshan:
+                return welcomeBanner.GetZarafshanReturnMessage();
+            case HomeReturnType.Egypt:
+                return welcomeBanner.GetEgyptReturnMessage();
+            case HomeReturnType.Kansas:
+                return welcomeBanner.GetKansasReturnMessage();
+            default:
+                return default;
+        }
+    }
+
+    private static HomeReturnType GetGameReturnType(SceneLoadManager.SceneType sceneType)
+    {
+        switch (sceneType)
+        {
+            case SceneLoadManager.SceneType.Beginer:
+            case SceneLoadManager.SceneType.Jomboy:
+            case SceneLoadManager.SceneType.PastDargom:
+            case SceneLoadManager.SceneType.Sibir:
+            case SceneLoadManager.SceneType.Registan:
+                return HomeReturnType.Kopkari;
+            case SceneLoadManager.SceneType.SecondRacing:
+                return HomeReturnType.Zarafshan;
+            case SceneLoadManager.SceneType.EgyptRacing:
+                return HomeReturnType.Egypt;
+            case SceneLoadManager.SceneType.Kansas:
+                return HomeReturnType.Kansas;
+            default:
+                return HomeReturnType.None;
+        }
     }
 
     private static bool IsAtMaximum(float current, float maximum)

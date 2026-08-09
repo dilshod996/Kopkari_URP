@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -17,6 +18,8 @@ namespace Kopkari
         [SerializeField] GameObject startingPage;
         [SerializeField] VideoPlayer videoPlayer;
 
+        [SerializeField] TMP_Text skipBtnText;
+        [SerializeField] TMP_Text versionText;
         // Popup
         [Header("Popup")]
         public ModalWindowManager notificationManager;
@@ -62,7 +65,8 @@ namespace Kopkari
             {
                 SceneLoadManager.Instance.CurrentSceneType = SceneLoadManager.SceneType.Intro;
             }
-
+            if(versionText != null)
+                versionText.text = $"v-{Application.version}";
             if (notificationManager != null)
                 notificationManager.onConfirm.AddListener(RetryIntroContentLoad);
 
@@ -113,6 +117,9 @@ namespace Kopkari
                     await PlayerCatalogProvider.Instance.CacheSelectedHorsePresentationAsync(
                         downloadIcon: false);
             }
+            skipBtnText.text = LanguageManager.Instance != null
+                ? LanguageManager.Instance.GetText(553)
+                : "Skip";
         }
         private void OnDestroy()
         {

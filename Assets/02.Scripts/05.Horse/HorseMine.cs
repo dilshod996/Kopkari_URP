@@ -56,6 +56,18 @@ public class HorseMine : MonoBehaviour
     {
         if (isPenalized) return;
 
+        if (RacingController.Instance != null)
+        {
+            Vector3 hitPosition = obstacleSensor != null
+                ? obstacleSensor.LastHitPosition
+                : transform.position;
+            Quaternion hitRotation = obstacleSensor != null
+                ? obstacleSensor.LastHitRotation
+                : transform.rotation;
+
+            RacingController.Instance.PlayObstacleHitVFX(hitPosition, hitRotation);
+        }
+
         OnObstacleTouchedEvent?.Invoke();
         //UIButtonActions.Instance.PlayShock();
 

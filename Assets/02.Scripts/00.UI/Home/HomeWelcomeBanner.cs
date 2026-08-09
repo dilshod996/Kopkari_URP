@@ -7,6 +7,28 @@ using UnityEngine.UI;
 
 public class HomeWelcomeBanner : MonoBehaviour
 {
+    [Serializable]
+    private sealed class LocalizedMessageIds
+    {
+        [SerializeField] private int titleTextId = -1;
+        [SerializeField] private int detailsTextId = -1;
+
+        public int TitleTextId => titleTextId;
+        public int DetailsTextId => detailsTextId;
+    }
+
+    public readonly struct LocalizedMessage
+    {
+        public LocalizedMessage(string title, string details)
+        {
+            Title = title;
+            Details = details;
+        }
+
+        public string Title { get; }
+        public string Details { get; }
+    }
+
     public enum MessageMode
     {
         Welcome,
@@ -40,13 +62,17 @@ public class HomeWelcomeBanner : MonoBehaviour
     [SerializeField] private Color toastAccentColor = new Color32(41, 203, 255, 255);
 
     [Header("Localization IDs")]
-    [SerializeField] private int welcomeBackTextId = -1;
-    [SerializeField] private int horseConditionTitleTextId = -1;
-    [SerializeField] private int fullyRecoveredTextId = -1;
-    [SerializeField] private int needsFoodTextId = -1;
-    [SerializeField] private int needsWaterTextId = -1;
-    [SerializeField] private int needsRecoveryTextId = -1;
-    [SerializeField] private int readyToRaceTextId = -1;
+    [SerializeField] private LocalizedMessageIds introWelcomeIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds fullyRecoveredIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds needsFoodIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds needsWaterIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds needsRecoveryIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds readyToRaceIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds avatarReturnIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds kopkariReturnIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds zarafshanReturnIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds egyptReturnIds = new LocalizedMessageIds();
+    [SerializeField] private LocalizedMessageIds kansasReturnIds = new LocalizedMessageIds();
     [SerializeField] private int playButtonTextId = -1;
     [SerializeField] private int conditionButtonTextId = -1;
 
@@ -64,15 +90,63 @@ public class HomeWelcomeBanner : MonoBehaviour
 
     public bool IsShowing => currentRequest != null;
     public int PendingCount => pendingRequests.Count;
-    public string WelcomeBackText => GetLocalizedText(welcomeBackTextId, "Welcome Back,");
-    public string HorseConditionTitleText => GetLocalizedText(horseConditionTitleTextId, "Horse Condition");
-    public string FullyRecoveredText => GetLocalizedText(fullyRecoveredTextId, "Your horse is fully recovered.");
-    public string NeedsFoodText => GetLocalizedText(needsFoodTextId, "Your horse needs food before racing.");
-    public string NeedsWaterText => GetLocalizedText(needsWaterTextId, "Your horse needs water.");
-    public string NeedsRecoveryText => GetLocalizedText(needsRecoveryTextId, "Your horse needs more recovery.");
-    public string ReadyToRaceText => GetLocalizedText(readyToRaceTextId, "Your horse is ready to race.");
     public string PlayButtonText => GetLocalizedText(playButtonTextId, "Play");
     public string ConditionButtonText => GetLocalizedText(conditionButtonTextId, "Condition");
+
+    public LocalizedMessage GetIntroWelcomeMessage(string playerName)
+    {
+        return GetLocalizedMessage(introWelcomeIds, "Welcome Back,", playerName, playerName);
+    }
+
+    public LocalizedMessage GetFullyRecoveredMessage(string horseName)
+    {
+        return GetLocalizedMessage(fullyRecoveredIds, GetHorseTitleFallback(horseName), "Your horse is fully recovered.", horseName);
+    }
+
+    public LocalizedMessage GetNeedsFoodMessage(string horseName)
+    {
+        return GetLocalizedMessage(needsFoodIds, GetHorseTitleFallback(horseName), "Your horse needs food before racing.", horseName);
+    }
+
+    public LocalizedMessage GetNeedsWaterMessage(string horseName)
+    {
+        return GetLocalizedMessage(needsWaterIds, GetHorseTitleFallback(horseName), "Your horse needs water.", horseName);
+    }
+
+    public LocalizedMessage GetNeedsRecoveryMessage(string horseName)
+    {
+        return GetLocalizedMessage(needsRecoveryIds, GetHorseTitleFallback(horseName), "Your horse needs more recovery.", horseName);
+    }
+
+    public LocalizedMessage GetReadyToRaceMessage(string horseName)
+    {
+        return GetLocalizedMessage(readyToRaceIds, GetHorseTitleFallback(horseName), "Your horse is ready to race.", horseName);
+    }
+
+    public LocalizedMessage GetAvatarReturnMessage()
+    {
+        return GetLocalizedMessage(avatarReturnIds, "Appearance Updated", "Your changes were saved.");
+    }
+
+    public LocalizedMessage GetKopkariReturnMessage()
+    {
+        return GetLocalizedMessage(kopkariReturnIds, "Back from Kopkari", "Check your horse before playing again.");
+    }
+
+    public LocalizedMessage GetZarafshanReturnMessage()
+    {
+        return GetLocalizedMessage(zarafshanReturnIds, "Back from Zarafshan", "Check your horse before the next race.");
+    }
+
+    public LocalizedMessage GetEgyptReturnMessage()
+    {
+        return GetLocalizedMessage(egyptReturnIds, "Back from Egypt", "Check your horse before the next race.");
+    }
+
+    public LocalizedMessage GetKansasReturnMessage()
+    {
+        return GetLocalizedMessage(kansasReturnIds, "Back from Kansas", "Check your horse before the next race.");
+    }
 
     public event Action<MessageMode> MessageShown;
     public event Action<MessageMode> MessageHidden;
@@ -402,12 +476,38 @@ public class HomeWelcomeBanner : MonoBehaviour
         action?.Invoke();
     }
 
+    private static LocalizedMessage GetLocalizedMessage(
+        LocalizedMessageIds ids,
+        string fallbackTitle,
+        string fallbackDetails,
+        params object[] formatArgs)
+    {
+        if (ids == null)
+            return new LocalizedMessage(fallbackTitle, fallbackDetails);
+
+        return new LocalizedMessage(
+            GetLocalizedText(ids.TitleTextId, fallbackTitle, formatArgs),
+            GetLocalizedText(ids.DetailsTextId, fallbackDetails, formatArgs));
+    }
+
+    private static string GetHorseTitleFallback(string horseName)
+    {
+        return string.IsNullOrWhiteSpace(horseName) ? "Horse Condition" : horseName;
+    }
+
     private static string GetLocalizedText(int textId, string fallback)
+    {
+        return GetLocalizedText(textId, fallback, Array.Empty<object>());
+    }
+
+    private static string GetLocalizedText(int textId, string fallback, params object[] formatArgs)
     {
         if (textId < 0 || LanguageManager.Instance == null)
             return fallback;
 
-        string localized = LanguageManager.Instance.GetText(textId);
+        string localized = formatArgs != null && formatArgs.Length > 0
+            ? LanguageManager.Instance.GetText(textId, formatArgs)
+            : LanguageManager.Instance.GetText(textId);
         return string.IsNullOrWhiteSpace(localized) ? fallback : localized;
     }
 

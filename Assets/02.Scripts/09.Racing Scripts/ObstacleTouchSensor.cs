@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ObstacleTouchSensor : MonoBehaviour
@@ -12,6 +10,8 @@ public class ObstacleTouchSensor : MonoBehaviour
 
     public event Action OnTouched;
     public GameObject defendSphere;
+    public Vector3 LastHitPosition { get; private set; }
+    public Quaternion LastHitRotation { get; private set; } = Quaternion.identity;
 
     private void OnTriggerEnter(Collider other)
     {
@@ -26,6 +26,14 @@ public class ObstacleTouchSensor : MonoBehaviour
             return;
 
         lastHitTime = Time.time;
+        LastHitPosition = other.ClosestPoint(transform.position);
+
+        Vector3 impactDirection = transform.position - LastHitPosition;
+        if (impactDirection.sqrMagnitude > 0.0001f)
+            LastHitRotation = Quaternion.LookRotation(impactDirection.normalized, transform.up);
+        else
+            LastHitRotation = transform.rotation;
+
         OnTouched?.Invoke();
     }
 }

@@ -84,6 +84,11 @@ public class RacingController : MonoBehaviour
     public GameObject walkZoneFlash;
     public GameObject triggerPointProjectile;
     public GameObject explostionVFX;
+
+    [Header("Obstacle Hit VFX")]
+    [SerializeField] private GameObject obstacleHitVfxPrefab;
+    [SerializeField, Min(0.1f)] private float obstacleHitVfxLifetime = 2f;
+
     [Header("Camera Details")]
     [SerializeField] private ThirdPersonFollowTarget mainCam;
     [SerializeField] private ThirdPersonFollowTarget finishCam;
@@ -170,6 +175,7 @@ public class RacingController : MonoBehaviour
     private bool playerAndHorseReady;
     private bool racingLoadingCompleted;
     private bool finishSequenceStarted;
+    private bool raceLossRecorded;
     private int racingEnvironmentInstanceId;
     private readonly TaskCompletionSource<bool> environmentReadySource =
         new TaskCompletionSource<bool>();
@@ -209,6 +215,7 @@ public class RacingController : MonoBehaviour
         SimplePool.CreatePool(walkZoneFlash, prewarm: smallEffectPrewarm, maxSize: 8, expandable: true);
         SimplePool.CreatePool(triggerPointProjectile, prewarm: largeEffectPrewarm, maxSize:30, expandable:true);
         SimplePool.CreatePool(explostionVFX, prewarm: largeEffectPrewarm, maxSize: 15, expandable: true);
+        SimplePool.CreatePool(obstacleHitVfxPrefab, prewarm: 2, maxSize: 4, expandable: false);
 
         bool environmentReady;
         try
@@ -253,6 +260,7 @@ public class RacingController : MonoBehaviour
     }
     private void OnDestroy()
     {
+        RecordAbandonedRace();
         environmentReadySource.TrySetResult(false);
 
         if (aiAudioRoutine != null)
@@ -282,6 +290,11 @@ public class RacingController : MonoBehaviour
         riderAnimal = null;
         horse = null;
         ClearAgents();
+    }
+
+    private void OnApplicationQuit()
+    {
+        RecordAbandonedRace();
     }
     #endregion
 
@@ -1315,15 +1328,71 @@ public class RacingController : MonoBehaviour
     public void EndRacing()
     {
         FinishRace();
+        RecordRaceLoss();
         IsRaceOver = true;
         StopMyHorse();
         mobileCanvasPanel.gameObject.SetActive(false);       
         leaderboard.gameObject.SetActive(false);
     }
+
+    public void RecordAbandonedRace()
+    {
+        if (!HasStarted || HasFinished || IsRaceOver)
+            return;
+
+        FinishRace();
+        RecordRaceLoss();
+        IsRaceOver = true;
+    }
+
+    private void RecordRaceLoss()
+    {
+        if (raceLossRecorded)
+            return;
+
+        raceLossRecorded = true;
+
+        int playerRank = RacingLeaderboard.Instance != null
+            ? RacingLeaderboard.Instance.PlayerRank()
+            : 0;
+        int playTimeSeconds = Mathf.Max(0, (int)ElapsedTime);
+
+        GameAnalyticsEvents.RaceFinished(mapType.ToString(), "racing", playerRank, 0);
+        DataManager.Instance?.SaveRaceResult(GetRaceMapKey(), false, playTimeSeconds);
+    }
+
+    private string GetRaceMapKey()
+    {
+        switch (mapType)
+        {
+            case RacingType.Training:
+                return Constants.MapNames.RacingTraining;
+            case RacingType.Egypt:
+                return Constants.MapNames.Egypt;
+            case RacingType.Kansas:
+                return Constants.MapNames.Kansas;
+            case RacingType.Zarafshan:
+            default:
+                return Constants.MapNames.Zarafshan;
+        }
+    }
+
     public void EndRacingCollision()
     {
         GamOverType(GameOverTypes.ObstacleHit);
         EndRacing();
+    }
+
+    public void PlayObstacleHitVFX(Vector3 position, Quaternion rotation)
+    {
+        if (obstacleHitVfxPrefab == null)
+            return;
+
+        SimplePool.Spawn(
+            obstacleHitVfxPrefab,
+            position,
+            rotation,
+            lifeTime: Mathf.Max(0.1f, obstacleHitVfxLifetime));
     }
 
     public void GamOverType(GameOverTypes types)

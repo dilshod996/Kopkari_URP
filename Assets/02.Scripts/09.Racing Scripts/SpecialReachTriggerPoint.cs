@@ -140,6 +140,10 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         if (TryGetTrailingNumber(gameObject.name, out int numberedOrder))
             return numberedOrder;
 
+        if (transform.parent != null &&
+            TryGetUnityCopyOrder(transform.parent.name, out int copyOrder))
+            return copyOrder;
+
         return transform.parent != null
             ? transform.parent.GetSiblingIndex()
             : transform.GetSiblingIndex();
@@ -184,6 +188,27 @@ public class SpecialReachTriggerPoint : MonoBehaviour
         while (start >= 0 && char.IsDigit(value[start])) start--;
 
         return start < end && int.TryParse(value.Substring(start + 1, end - start), out number);
+    }
+
+    private static bool TryGetUnityCopyOrder(string value, out int order)
+    {
+        order = 0;
+        if (string.IsNullOrEmpty(value) ||
+            !value.StartsWith("TimeCheckTrigger", StringComparison.Ordinal))
+            return false;
+
+        int openParenthesis = value.LastIndexOf('(');
+        int closeParenthesis = value.LastIndexOf(')');
+        if (openParenthesis < 0 || closeParenthesis <= openParenthesis)
+            return true;
+
+        if (!int.TryParse(
+                value.Substring(openParenthesis + 1, closeParenthesis - openParenthesis - 1),
+                out int copyIndex))
+            return false;
+
+        order = copyIndex + 1;
+        return true;
     }
 
     private void SetMarkerVisible(bool visible)

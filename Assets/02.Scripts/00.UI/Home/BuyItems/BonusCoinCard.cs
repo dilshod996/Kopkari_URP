@@ -8,7 +8,7 @@ public class BonusCoinCard : MonoBehaviour
     {
         None,
         bonus_card_coin_15_websnare_10,
-        bonus_card_7900_nyufiy_10_defender
+        bonus_card_7900_nyufiy_10_defeder
     }
 
     [SerializeField] private TMP_Text bonusTitle;

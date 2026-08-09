@@ -169,6 +169,7 @@ public class UIPauseGame : MonoBehaviour
         }
         else
         {
+            RacingController.Instance?.RecordAbandonedRace();
             Time.timeScale = 1f;
             GetGameFinishedTime();
             GetOverallPenaltyTimeAndBoost();

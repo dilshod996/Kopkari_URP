@@ -164,3 +164,5 @@ ShaderVariantCollection:
       variants:
       - keywords: LOD_FADE_CROSSFADE _ALPHATEST_ON
         passType: 0
+      - keywords: _ALPHATEST_ON
+        passType: 0
